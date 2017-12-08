@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+cd cmd/agent
+
+CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
+rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
+
+mv agent ../../dist/agent
+docker -H 10.0.7.10:2375 build -t portainer/agent:develop -f ../../Dockerfile ../..
+docker -H 10.0.7.11:2375 build -t portainer/agent:develop -f ../../Dockerfile ../..
+docker -H 10.0.7.12:2375 build -t portainer/agent:develop -f ../../Dockerfile ../..
+
+docker -H 10.0.7.10:2375 service rm pagent
+docker -H 10.0.7.10:2375 network rm pagent-net
+sleep 5
+docker -H 10.0.7.10:2375 network create --driver overlay pagent-net
+docker -H 10.0.7.10:2375 service create --network pagent-net \
+--name pagent \
+-e AGENT_ADDR=:9001 \
+-e AGENT_CLUSTER_ADDR=pagent \
+--mode global \
+--mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
+--publish mode=host,target=9001,published=9001 \
+portainer/agent:develop
