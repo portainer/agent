@@ -59,11 +59,11 @@ func ClusterOperation(request *http.Request, clusterMembers []agent.ClusterMembe
 	for result := range ch {
 		for _, JSONObject := range result.data {
 
-			// TODO: object should be decorated inside the "Portainer" namespace
+			metadata := agent.AgentMetadata{}
+			metadata.Agent.Node = result.nodeName
+
 			object := JSONObject.(map[string]interface{})
-			agentMetadata := make(map[string]interface{})
-			agentMetadata["Node"] = result.nodeName
-			object["PortainerAgent"] = agentMetadata
+			object[agent.ResponseMetadataKey] = metadata
 
 			data = append(data, object)
 		}
