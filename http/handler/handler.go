@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"bitbucket.org/portainer/agent"
@@ -11,14 +12,14 @@ import (
 )
 
 type Handler struct {
-	agentHandler  *AgentHandler
-	dockerHandler *DockerHandler
+	agentHandler       *AgentHandler
+	dockerProxyHandler *DockerProxyHandler
 }
 
 func NewHandler(cs agent.ClusterService) *Handler {
 	return &Handler{
-		agentHandler:  NewAgentHandler(cs),
-		dockerHandler: NewDockerHandler(cs),
+		agentHandler:       NewAgentHandler(cs),
+		dockerProxyHandler: NewDockerProxyHandler(cs),
 	}
 }
 
@@ -27,13 +28,22 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(r.URL.Path, "/agents"):
 		h.agentHandler.ServeHTTP(w, r)
 	case strings.HasPrefix(r.URL.Path, "/"):
-		h.dockerHandler.ServeHTTP(w, r)
+		h.dockerProxyHandler.ServeHTTP(w, r)
 	}
 }
 
 // encodeJSON encodes v to w in JSON format. WriteErrorResponse() is called if encoding fails.
 func encodeJSON(w http.ResponseWriter, v interface{}, logger *log.Logger) {
-	if err := json.NewEncoder(w).Encode(v); err != nil {
+	jsonData, err := json.Marshal(v)
+	if err != nil {
+		httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, logger)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(jsonData)))
+
+	_, err = w.Write(jsonData)
+	if err != nil {
 		httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, logger)
 	}
 }

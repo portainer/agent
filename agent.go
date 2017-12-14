@@ -1,7 +1,5 @@
 package agent
 
-import "bitbucket.org/portainer/agent"
-
 type (
 	ClusterMember struct {
 		Name      string
@@ -10,7 +8,13 @@ type (
 
 	ClusterService interface {
 		Create(advertiseAddr, joinAddr string) error
-		Members() ([]agent.ClusterMember, error)
+		Members() ([]ClusterMember, error)
 		Leave()
 	}
+)
+
+const (
+	HTTPOperationHeaderName  = "X-PortainerAgent-Operation"
+	HTTPOperationHeaderValue = "local"
+	HTTPTargetHeaderName     = "X-PortainerAgent-Target"
 )

@@ -12,16 +12,14 @@ import (
 )
 
 type SocketProxy struct {
-	proxyTransport *dockerProxyTransport
-	logger         *log.Logger
+	transport *http.Transport
+	logger    *log.Logger
 }
 
 func NewSocketProxy(socketPath string, clusterService agent.ClusterService) *SocketProxy {
 	proxy := &SocketProxy{
-		proxyTransport: &dockerProxyTransport{
-			transport: newSocketTransport(socketPath),
-		},
-		logger: log.New(os.Stderr, "", log.LstdFlags),
+		transport: newSocketTransport(socketPath),
+		logger:    log.New(os.Stderr, "", log.LstdFlags),
 	}
 	return proxy
 }
@@ -32,7 +30,7 @@ func (proxy *SocketProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.URL.Scheme = "http"
 	r.URL.Host = "unixsocket"
 
-	res, err := proxy.proxyTransport.proxyDockerRequest(r)
+	res, err := proxy.transport.RoundTrip(r)
 	if err != nil {
 		code := http.StatusInternalServerError
 		if res != nil && res.StatusCode != 0 {

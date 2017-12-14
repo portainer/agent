@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"bitbucket.org/portainer/agent/http"
 	cluster "bitbucket.org/portainer/agent/serf"
@@ -57,8 +58,12 @@ func main() {
 		}
 	}
 
-	// Service name should be specified here to use DNS-SRV records.
+	// Service name should be specified here to use DNS-SRV records (automatically append tasks.).
 	joinAddr := "tasks." + os.Getenv("AGENT_CLUSTER_ADDR")
+
+	// TODO: looks like the Docker DNS cannot find any info on tasks.<service_name>
+	// sometimes... Waiting a bit before starting the discovery seems to solve the problem.
+	time.Sleep(3 * time.Second)
 
 	clusterService := cluster.NewClusterService()
 	err = clusterService.Create(advertiseAddr, joinAddr)

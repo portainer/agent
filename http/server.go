@@ -14,6 +14,5 @@ type Server struct {
 func (server *Server) Start(listenAddr string) error {
 
 	h := handler.NewHandler(server.ClusterService)
-
 	return http.ListenAndServe(listenAddr, h)
 }
