@@ -7,8 +7,8 @@ import (
 	"bitbucket.org/portainer/agent"
 )
 
-func NodeOperation(request *http.Request, targetNode string) (interface{}, error) {
-	response, err := executeRequestOnSpecifiedHost(request, targetNode)
+func NodeOperation(request *http.Request, member *agent.ClusterMember) (interface{}, error) {
+	response, err := executeRequestOnClusterMember(request, member)
 	if err != nil {
 		return nil, err
 	}
@@ -35,11 +35,13 @@ func ClusterOperation(request *http.Request, clusterMembers []agent.ClusterMembe
 	// we create a waitgroup - basically block until N tasks say they are done
 	wg := sync.WaitGroup{}
 
-	for _, member := range clusterMembers {
+	for i := range clusterMembers {
 		//we add 1 to the wait group - each worker will decrease it back
 		wg.Add(1)
 
-		go executeParallelRequest(request, member.Name, ch, &wg)
+		member := &clusterMembers[i]
+
+		go executeParallelRequest(request, member, ch, &wg)
 	}
 
 	// now we wait for everyone to finish - again, not a must.

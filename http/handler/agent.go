@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"bitbucket.org/portainer/agent"
-	httperror "bitbucket.org/portainer/agent/http/error"
 	"github.com/gorilla/mux"
 )
 
@@ -30,10 +29,6 @@ func NewAgentHandler(cs agent.ClusterService) *AgentHandler {
 }
 
 func (handler *AgentHandler) handleGetAgents(w http.ResponseWriter, r *http.Request) {
-	members, err := handler.clusterService.Members()
-	if err != nil {
-		httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, handler.logger)
-	}
-
+	members := handler.clusterService.Members()
 	encodeJSON(w, members, handler.logger)
 }

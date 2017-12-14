@@ -23,7 +23,7 @@ func (service *ClusterService) Leave() {
 	}
 }
 
-func (service *ClusterService) Create(advertiseAddr, joinAddr string) error {
+func (service *ClusterService) Create(advertiseAddr, joinAddr string, tags map[string]string) error {
 
 	filter := &logutils.LevelFilter{
 		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
@@ -33,6 +33,7 @@ func (service *ClusterService) Create(advertiseAddr, joinAddr string) error {
 
 	conf := serf.DefaultConfig()
 	conf.Init()
+	conf.Tags = tags
 	conf.MemberlistConfig.LogOutput = filter
 	conf.LogOutput = filter
 	conf.MemberlistConfig.AdvertiseAddr = advertiseAddr
@@ -55,7 +56,7 @@ func (service *ClusterService) Create(advertiseAddr, joinAddr string) error {
 	return nil
 }
 
-func (service *ClusterService) Members() ([]agent.ClusterMember, error) {
+func (service *ClusterService) Members() []agent.ClusterMember {
 	var clusterMembers = make([]agent.ClusterMember, 0)
 
 	members := service.cluster.Members()
@@ -63,11 +64,14 @@ func (service *ClusterService) Members() ([]agent.ClusterMember, error) {
 
 	for _, member := range members {
 		clusterMember := agent.ClusterMember{
-			Name:      member.Name,
-			IPAddress: member.Addr.String(),
+			Name:        member.Name,
+			IPAddress:   member.Addr.String(),
+			AgentPort:   member.Tags[agent.MemberTagKeyAgentPort],
+			NodeAddress: member.Tags[agent.MemberTagKeyNodeAddress],
+			NodeRole:    member.Tags[agent.MemberTagKeyNodeRole],
 		}
 		clusterMembers = append(clusterMembers, clusterMember)
 	}
 
-	return clusterMembers, nil
+	return clusterMembers
 }

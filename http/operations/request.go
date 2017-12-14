@@ -15,9 +15,9 @@ type parallelRequestResult struct {
 	err      error
 }
 
-func executeParallelRequest(request *http.Request, host string, ch chan parallelRequestResult, wg *sync.WaitGroup) {
+func executeParallelRequest(request *http.Request, member *agent.ClusterMember, ch chan parallelRequestResult, wg *sync.WaitGroup) {
 
-	response, err := executeRequestOnSpecifiedHost(request, host)
+	response, err := executeRequestOnClusterMember(request, member)
 	if err != nil {
 		ch <- parallelRequestResult{err: err, data: nil}
 		wg.Done()
@@ -29,11 +29,11 @@ func executeParallelRequest(request *http.Request, host string, ch chan parallel
 		wg.Done()
 	}
 
-	ch <- parallelRequestResult{err: nil, data: data, nodeName: host}
+	ch <- parallelRequestResult{err: nil, data: data, nodeName: member.Name}
 	wg.Done()
 }
 
-func executeRequestOnSpecifiedHost(request *http.Request, host string) (*http.Response, error) {
+func executeRequestOnClusterMember(request *http.Request, member *agent.ClusterMember) (*http.Response, error) {
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return nil, err
@@ -44,8 +44,9 @@ func executeRequestOnSpecifiedHost(request *http.Request, host string) (*http.Re
 	request.Body = ioutil.NopCloser(bytes.NewReader(body))
 
 	url := request.URL
-	// TODO: retrieve port from agent metadata
-	url.Host = host + ":9001"
+	// TODO: member.AgentPort is in the address format here (:9001), could be a real IP address.
+	// Fix that.
+	url.Host = member.IPAddress + member.AgentPort
 
 	// TODO: figure out if this is the best way to determine scheme
 	url.Scheme = "http"

@@ -2,8 +2,11 @@ package agent
 
 type (
 	ClusterMember struct {
-		Name      string
-		IPAddress string
+		Name        string
+		IPAddress   string
+		AgentPort   string
+		NodeAddress string
+		NodeRole    string
 	}
 
 	AgentMetadata struct {
@@ -13,8 +16,8 @@ type (
 	}
 
 	ClusterService interface {
-		Create(advertiseAddr, joinAddr string) error
-		Members() ([]ClusterMember, error)
+		Create(advertiseAddr, joinAddr string, tags map[string]string) error
+		Members() []ClusterMember
 		Leave()
 	}
 )
@@ -24,4 +27,7 @@ const (
 	HTTPOperationHeaderValue = "local"
 	HTTPTargetHeaderName     = "X-PortainerAgent-Target"
 	ResponseMetadataKey      = "Portainer"
+	MemberTagKeyAgentPort    = "AgentPort"
+	MemberTagKeyNodeAddress  = "NodeAddress"
+	MemberTagKeyNodeRole     = "NodeRole"
 )

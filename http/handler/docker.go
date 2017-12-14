@@ -42,8 +42,23 @@ func (handler *DockerProxyHandler) executeOperationAgainstNode(w http.ResponseWr
 		handler.proxy.ServeHTTP(w, request)
 	} else {
 
-		// TODO: should check if the agentTargetHeader is available in the cluster first
-		data, err := operations.NodeOperation(request, agentTargetHeader)
+		// TODO: finding the member should probably be relocated somewhere else.
+		// Also we might want to check if the member is alive.
+		var targetMember *agent.ClusterMember
+		members := handler.clusterService.Members()
+		for _, member := range members {
+			if member.Name == agentTargetHeader {
+				targetMember = &member
+				break
+			}
+		}
+
+		// TODO: find something to do when the targeted member is not found inside the cluster
+		if targetMember == nil {
+			httperror.WriteErrorResponse(w, agent.Error("Member not found!"), http.StatusInternalServerError, handler.logger)
+		}
+
+		data, err := operations.NodeOperation(request, targetMember)
 		if err != nil {
 			httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, handler.logger)
 		}
@@ -67,10 +82,7 @@ func (handler *DockerProxyHandler) executeOperationAgainstCluster(w http.Respons
 	if agentOperationHeader == agent.HTTPOperationHeaderValue {
 		handler.proxy.ServeHTTP(w, request)
 	} else {
-		clusterMembers, err := handler.clusterService.Members()
-		if err != nil {
-			httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, handler.logger)
-		}
+		clusterMembers := handler.clusterService.Members()
 
 		data, err := operations.ClusterOperation(request, clusterMembers)
 		if err != nil {
