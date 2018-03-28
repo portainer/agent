@@ -42,18 +42,9 @@ func NewWebSocketHandler(clusterService agent.ClusterService) *WebSocketHandler 
 		connectionUpgrader: websocket.Upgrader{},
 		clusterService:     clusterService,
 	}
-	// h.Handle("/websocket/exec", websocket.Handler(h.webSocketDockerExec))
 	h.HandleFunc("/websocket/exec", h.handleWebsocketExec)
 	return h
 }
-
-// TODO:
-// * fix all TODOs
-// * remove old code related to net.webocket
-// * rename websocket to websocket
-// * copy the handler into the agent
-// * proxy websocket request to the agent
-// * praise the sun
 
 func (handler *WebSocketHandler) handleWebsocketExec(w http.ResponseWriter, r *http.Request) {
 
