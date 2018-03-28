@@ -66,12 +66,37 @@ func (service *ClusterService) Members() []agent.ClusterMember {
 		clusterMember := agent.ClusterMember{
 			Name:        member.Name,
 			IPAddress:   member.Addr.String(),
-			AgentPort:   member.Tags[agent.MemberTagKeyAgentPort],
+			Port:        member.Tags[agent.MemberTagKeyAgentPort],
 			NodeAddress: member.Tags[agent.MemberTagKeyNodeAddress],
 			NodeRole:    member.Tags[agent.MemberTagKeyNodeRole],
+			NodeName:    member.Tags[agent.MemberTagKeyNodeName],
 		}
 		clusterMembers = append(clusterMembers, clusterMember)
 	}
 
 	return clusterMembers
+}
+
+func (service *ClusterService) GetMemberByRole(role string) *agent.ClusterMember {
+	// TODO: might want to add an extra parameter to this function to return only healthy agents.
+	members := service.Members()
+	for _, member := range members {
+		if member.NodeRole == role {
+			return &member
+		}
+	}
+
+	return nil
+}
+
+func (service *ClusterService) GetMemberByNodeName(nodeName string) *agent.ClusterMember {
+	// TODO: might want to add an extra parameter to this function to return only healthy agents.
+	members := service.Members()
+	for _, member := range members {
+		if member.NodeName == nodeName {
+			return &member
+		}
+	}
+
+	return nil
 }

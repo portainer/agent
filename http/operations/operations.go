@@ -7,18 +7,40 @@ import (
 	"bitbucket.org/portainer/agent"
 )
 
-func NodeOperation(request *http.Request, member *agent.ClusterMember) (interface{}, error) {
-	response, err := executeRequestOnClusterMember(request, member)
-	if err != nil {
-		return nil, err
+func NodeWSOperation(w http.ResponseWriter, request *http.Request, member *agent.ClusterMember) {
+	u := request.URL
+	// TODO: member.AgentPort is in the address format here (:9001), could be a real IP address.
+	// Fix that.
+	u.Host = member.IPAddress + member.Port
+
+	// TODO: will this work with TLS comms between agents?
+	u.Scheme = "ws"
+	// if request.TLS != nil {
+	// 	url.Scheme = "https"
+	// }
+
+	websocketReverseProxy(w, request, u)
+}
+
+func NodeOperation2(w http.ResponseWriter, request *http.Request, member *agent.ClusterMember) {
+	url := request.URL
+	// TODO: member.AgentPort is in the address format here (:9001), could be a real IP address.
+	// Fix that.
+	url.Host = member.IPAddress + member.Port
+
+	// TODO: figure out if this is the best way to determine scheme
+	url.Scheme = "http"
+	if request.TLS != nil {
+		url.Scheme = "https"
 	}
 
-	data, err := getResponseBodyAsGenericJSON(response)
-	if err != nil {
-		return nil, err
-	}
+	reverseProxy(w, request, url)
+}
 
-	return data, nil
+// TODO: replaced by NodeOperation2, make sure everything is OK and check if that's actually
+// a better way to do this.
+func NodeOperation(request *http.Request, member *agent.ClusterMember) (*http.Response, error) {
+	return executeRequestOnClusterMember(request, member)
 }
 
 func ClusterOperation(request *http.Request, clusterMembers []agent.ClusterMember) ([]interface{}, error) {
@@ -62,7 +84,7 @@ func ClusterOperation(request *http.Request, clusterMembers []agent.ClusterMembe
 		for _, JSONObject := range result.data {
 
 			metadata := agent.AgentMetadata{}
-			metadata.Agent.Node = result.nodeName
+			metadata.Agent.NodeName = result.nodeName
 
 			object := JSONObject.(map[string]interface{})
 			object[agent.ResponseMetadataKey] = metadata

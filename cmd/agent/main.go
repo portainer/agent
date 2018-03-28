@@ -1,16 +1,15 @@
 package main // import "bitbucket.org/portainer/agent"
 
 import (
-	"context"
 	"log"
 	"net"
 	"os"
 	"time"
 
 	"bitbucket.org/portainer/agent"
+	"bitbucket.org/portainer/agent/docker"
 	"bitbucket.org/portainer/agent/http"
 	cluster "bitbucket.org/portainer/agent/serf"
-	"github.com/docker/docker/client"
 	"github.com/hashicorp/logutils"
 )
 
@@ -18,7 +17,7 @@ func main() {
 
 	filter := &logutils.LevelFilter{
 		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
-		MinLevel: logutils.LogLevel("DEBUG"),
+		MinLevel: logutils.LogLevel("INFO"),
 		Writer:   os.Stderr,
 	}
 	log.SetOutput(filter)
@@ -61,23 +60,13 @@ func main() {
 		}
 	}
 
-	cli, err := client.NewClient("unix:///var/run/docker.sock", "1.30", nil, nil)
-	if err != nil {
-		log.Printf("[ERROR] - Err: %v\n", err)
-		log.Fatal("[ERROR] - Unable to start Docker client")
-	}
-
-	info, err := cli.Info(context.Background())
-	if err != nil {
-		log.Printf("[ERROR] - Err: %v\n", err)
-		log.Fatal("[ERROR] - Unable to retrieve Docker info from server")
-	}
+	infoService := docker.InfoService{}
 
 	agentTags := make(map[string]string)
-	agentTags[agent.MemberTagKeyNodeAddress] = info.Swarm.NodeAddr
-	agentTags[agent.MemberTagKeyNodeRole] = "worker"
-	if info.Swarm.ControlAvailable {
-		agentTags[agent.MemberTagKeyNodeRole] = "manager"
+	err = infoService.GetInformationFromDockerEngine(agentTags)
+	if err != nil {
+		log.Printf("[ERROR] - Err: %v\n", err)
+		log.Fatal("[ERROR] - Unable to retrieve information from Docker engine")
 	}
 
 	// TODO: update the value of MemberTagKeyAgentPort, the listenAddr is injected here

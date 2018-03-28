@@ -32,6 +32,7 @@ func (proxy *SocketProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	res, err := proxy.transport.RoundTrip(r)
 	if err != nil {
+		log.Println("0.0")
 		code := http.StatusInternalServerError
 		if res != nil && res.StatusCode != 0 {
 			code = res.StatusCode
@@ -39,6 +40,7 @@ func (proxy *SocketProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.WriteErrorResponse(w, err, code, proxy.logger)
 		return
 	}
+
 	defer res.Body.Close()
 
 	for k, vv := range res.Header {
@@ -49,7 +51,8 @@ func (proxy *SocketProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(res.StatusCode)
 
-	if _, err := io.Copy(w, res.Body); err != nil {
+	_, err = io.Copy(w, res.Body)
+	if err != nil {
 		httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, proxy.logger)
 	}
 }
