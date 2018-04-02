@@ -30,5 +30,5 @@ func NewAgentHandler(cs agent.ClusterService) *AgentHandler {
 
 func (handler *AgentHandler) handleGetAgents(w http.ResponseWriter, r *http.Request) {
 	members := handler.clusterService.Members()
-	encodeJSON(w, members, handler.logger)
+	writeJSONResponse(w, members, handler.logger)
 }

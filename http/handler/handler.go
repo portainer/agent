@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -22,11 +21,11 @@ const (
 	errInvalidQueryParameters = agent.Error("Invalid query parameters")
 )
 
-func NewHandler(cs agent.ClusterService) *Handler {
+func NewHandler(cs agent.ClusterService, agentTags map[string]string) *Handler {
 	return &Handler{
 		agentHandler:       NewAgentHandler(cs),
-		dockerProxyHandler: NewDockerProxyHandler(cs),
-		webSocketHandler:   NewWebSocketHandler(cs),
+		dockerProxyHandler: NewDockerProxyHandler(cs, agentTags),
+		webSocketHandler:   NewWebSocketHandler(cs, agentTags),
 	}
 }
 
@@ -41,41 +40,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func encodeJSON(w http.ResponseWriter, v interface{}, logger *log.Logger) {
-	if v == nil {
+func writeJSONResponse(rw http.ResponseWriter, data interface{}, logger *log.Logger) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		httperror.WriteErrorResponse(rw, err, http.StatusInternalServerError, logger)
 		return
 	}
 
-	jsonData, err := json.Marshal(v)
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Header().Set("Content-Length", strconv.Itoa(len(jsonData)))
+
+	_, err = rw.Write(jsonData)
 	if err != nil {
-		httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, logger)
+		httperror.WriteErrorResponse(rw, err, http.StatusInternalServerError, logger)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Length", strconv.Itoa(len(jsonData)))
-
-	_, err = w.Write(jsonData)
-	if err != nil {
-		httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, logger)
-	}
-}
-
-func copyResponseToResponseWriter(response *http.Response, responseWriter http.ResponseWriter) error {
-
-	defer response.Body.Close()
-
-	for k, vv := range response.Header {
-		for _, v := range vv {
-			responseWriter.Header().Add(k, v)
-		}
-	}
-
-	responseWriter.WriteHeader(response.StatusCode)
-
-	_, err := io.Copy(responseWriter, response.Body)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

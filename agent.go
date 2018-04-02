@@ -2,13 +2,10 @@ package agent
 
 type (
 	ClusterMember struct {
-		// TODO: container hostname for the agent is probably not needed
-		Name        string
-		IPAddress   string
-		Port        string
-		NodeName    string
-		NodeAddress string
-		NodeRole    string
+		IPAddress string
+		Port      string
+		NodeName  string
+		NodeRole  string
 	}
 
 	AgentMetadata struct {
@@ -26,17 +23,20 @@ type (
 	}
 
 	InfoService interface {
-		GetInformationFromDockerEngine(info map[string]string) error
+		GetInformationFromDockerEngine() (map[string]string, error)
 	}
 )
 
 const (
-	HTTPOperationHeaderName  = "X-PortainerAgent-Operation"
-	HTTPOperationHeaderValue = "local"
-	HTTPTargetHeaderName     = "X-PortainerAgent-Target"
-	ResponseMetadataKey      = "Portainer"
-	MemberTagKeyAgentPort    = "AgentPort"
-	MemberTagKeyNodeAddress  = "NodeAddress"
-	MemberTagKeyNodeRole     = "NodeRole"
-	MemberTagKeyNodeName     = "NodeName"
+	DefaultListenAddr         = "0.0.0.0"
+	DefaultAgentPort          = "9001"
+	DefaultLogLevel           = "INFO"
+	SupportedDockerAPIVersion = "1.24"
+	HTTPTargetHeaderName      = "X-PortainerAgent-Target"
+	ResponseMetadataKey       = "Portainer"
+	MemberTagKeyAgentPort     = "AgentPort"
+	MemberTagKeyNodeName      = "NodeName"
+	MemberTagKeyNodeRole      = "NodeRole"
+	NodeRoleManager           = "manager"
+	NodeRoleWorker            = "worker"
 )

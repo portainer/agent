@@ -25,14 +25,11 @@ func NewSocketProxy(socketPath string, clusterService agent.ClusterService) *Soc
 }
 
 func (proxy *SocketProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Force URL/domain to http/unixsocket to be able to
-	// use http.Transport RoundTrip to do the requests via the socket
 	r.URL.Scheme = "http"
 	r.URL.Host = "unixsocket"
 
 	res, err := proxy.transport.RoundTrip(r)
 	if err != nil {
-		log.Println("0.0")
 		code := http.StatusInternalServerError
 		if res != nil && res.StatusCode != 0 {
 			code = res.StatusCode
@@ -53,7 +50,9 @@ func (proxy *SocketProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, err = io.Copy(w, res.Body)
 	if err != nil {
+		log.Println("Ramen balls")
 		httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, proxy.logger)
+		return
 	}
 }
 

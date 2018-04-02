@@ -60,16 +60,13 @@ func (service *ClusterService) Members() []agent.ClusterMember {
 	var clusterMembers = make([]agent.ClusterMember, 0)
 
 	members := service.cluster.Members()
-	log.Printf("[DEBUG] - Members are: %v", members)
 
 	for _, member := range members {
 		clusterMember := agent.ClusterMember{
-			Name:        member.Name,
-			IPAddress:   member.Addr.String(),
-			Port:        member.Tags[agent.MemberTagKeyAgentPort],
-			NodeAddress: member.Tags[agent.MemberTagKeyNodeAddress],
-			NodeRole:    member.Tags[agent.MemberTagKeyNodeRole],
-			NodeName:    member.Tags[agent.MemberTagKeyNodeName],
+			IPAddress: member.Addr.String(),
+			Port:      member.Tags[agent.MemberTagKeyAgentPort],
+			NodeRole:  member.Tags[agent.MemberTagKeyNodeRole],
+			NodeName:  member.Tags[agent.MemberTagKeyNodeName],
 		}
 		clusterMembers = append(clusterMembers, clusterMember)
 	}
@@ -78,7 +75,6 @@ func (service *ClusterService) Members() []agent.ClusterMember {
 }
 
 func (service *ClusterService) GetMemberByRole(role string) *agent.ClusterMember {
-	// TODO: might want to add an extra parameter to this function to return only healthy agents.
 	members := service.Members()
 	for _, member := range members {
 		if member.NodeRole == role {
@@ -90,7 +86,6 @@ func (service *ClusterService) GetMemberByRole(role string) *agent.ClusterMember
 }
 
 func (service *ClusterService) GetMemberByNodeName(nodeName string) *agent.ClusterMember {
-	// TODO: might want to add an extra parameter to this function to return only healthy agents.
 	members := service.Members()
 	for _, member := range members {
 		if member.NodeName == nodeName {

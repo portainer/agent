@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-IMAGE_NAME=portainer/agent:develop
+IMAGE_NAME=portainer-agent:develop
 
 cd cmd/agent
 
@@ -23,7 +23,7 @@ docker -H 10.0.7.10:2375 network rm pagent-net
 
 echo "Sleep..."
 
-sleep 10
+sleep 7
 
 echo "Swarm setup..."
 

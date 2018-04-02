@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"bitbucket.org/portainer/agent"
@@ -17,24 +18,39 @@ func main() {
 
 	filter := &logutils.LevelFilter{
 		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
-		MinLevel: logutils.LogLevel("INFO"),
+		MinLevel: logutils.LogLevel(agent.DefaultLogLevel),
 		Writer:   os.Stderr,
 	}
 	log.SetOutput(filter)
 
-	listenAddr := ":9001"
-	listenAddrEnv := os.Getenv("AGENT_ADDR")
-	if listenAddrEnv != "" {
-		listenAddr = listenAddrEnv
+	agentPort := agent.DefaultAgentPort
+	agentPortEnv := os.Getenv("AGENT_PORT")
+	if agentPortEnv != "" {
+		_, err := strconv.Atoi(agentPortEnv)
+		if err != nil {
+			log.Printf("[ERROR] - Err: %v\n", err)
+			log.Fatal("[ERROR] - Invalid port format in AGENT_PORT environment variable.")
+		}
+		agentPort = agentPortEnv
 	}
-	log.Printf("[DEBUG] - Using listenAddr: %s\n", listenAddr)
+	log.Printf("[DEBUG] - Using agent port: %s\n", agentPort)
 
-	advertiseAddr := "0.0.0.0"
-	advertiseAddrEnv := os.Getenv("AGENT_ADV_ADDR")
-	if advertiseAddrEnv != "" {
-		advertiseAddr = advertiseAddrEnv
+	// Service name should be specified here to use DNS-SRV records.
+	// We automatically append "tasks." to discover the other agents.
+	clusterJoinAddr := os.Getenv("AGENT_CLUSTER_ADDR")
+	if clusterJoinAddr == "" {
+		log.Fatal("[ERROR] - AGENT_CLUSTER_ADDR environment variable is required.")
 	}
-	log.Printf("[DEBUG] - Using advertiseAddr: %s\n", advertiseAddr)
+	joinAddr := "tasks." + clusterJoinAddr
+
+	infoService := docker.InfoService{}
+	agentTags, err := infoService.GetInformationFromDockerEngine()
+	if err != nil {
+		log.Printf("[ERROR] - Err: %v\n", err)
+		log.Fatal("[ERROR] - Unable to retrieve information from Docker engine")
+	}
+	agentTags[agent.MemberTagKeyAgentPort] = agentPort
+	log.Printf("[DEBUG] - Agent details: %v\n", agentTags)
 
 	// TODO: determine a cleaner way to retrieve the container IP that will be used
 	// to communicate with other agents.
@@ -46,6 +62,7 @@ func main() {
 		log.Fatal("[ERROR] - Unable to retrieve network interfaces details")
 	}
 
+	advertiseAddr := "0.0.0.0"
 	for _, i := range ifaces {
 		if i.Name == "eth0" {
 			var ip net.IP
@@ -59,22 +76,7 @@ func main() {
 			advertiseAddr = ip.String()
 		}
 	}
-
-	infoService := docker.InfoService{}
-
-	agentTags := make(map[string]string)
-	err = infoService.GetInformationFromDockerEngine(agentTags)
-	if err != nil {
-		log.Printf("[ERROR] - Err: %v\n", err)
-		log.Fatal("[ERROR] - Unable to retrieve information from Docker engine")
-	}
-
-	// TODO: update the value of MemberTagKeyAgentPort, the listenAddr is injected here
-	// and is not the format of a port (e.g. :9001).
-	agentTags[agent.MemberTagKeyAgentPort] = listenAddr
-
-	// Service name should be specified here to use DNS-SRV records (automatically append tasks.).
-	joinAddr := "tasks." + os.Getenv("AGENT_CLUSTER_ADDR")
+	log.Printf("[DEBUG] - Using advertiseAddr: %s\n", advertiseAddr)
 
 	// TODO: looks like the Docker DNS cannot find any info on tasks.<service_name>
 	// sometimes... Waiting a bit before starting the discovery seems to solve the problem.
@@ -88,7 +90,7 @@ func main() {
 	}
 	defer clusterService.Leave()
 
-	server := http.Server{}
-	server.ClusterService = clusterService
+	server := http.NewServer(clusterService, agentTags)
+	listenAddr := agent.DefaultListenAddr + ":" + agentPort
 	server.Start(listenAddr)
 }

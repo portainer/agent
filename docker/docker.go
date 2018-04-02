@@ -9,25 +9,23 @@ import (
 
 type InfoService struct{}
 
-func (service *InfoService) GetInformationFromDockerEngine(info map[string]string) error {
-
-	// TODO: URL should probably be a parameter, what API version should be used?
-	cli, err := client.NewClient("unix:///var/run/docker.sock", "1.30", nil, nil)
+func (service *InfoService) GetInformationFromDockerEngine() (map[string]string, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	dockerInfo, err := cli.Info(context.Background())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	info := make(map[string]string)
 	info[agent.MemberTagKeyNodeName] = dockerInfo.Name
-	info[agent.MemberTagKeyNodeAddress] = dockerInfo.Swarm.NodeAddr
-	info[agent.MemberTagKeyNodeRole] = "worker"
+	info[agent.MemberTagKeyNodeRole] = agent.NodeRoleWorker
 	if dockerInfo.Swarm.ControlAvailable {
-		info[agent.MemberTagKeyNodeRole] = "manager"
+		info[agent.MemberTagKeyNodeRole] = agent.NodeRoleManager
 	}
 
-	return nil
+	return info, nil
 }

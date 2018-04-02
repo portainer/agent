@@ -14,7 +14,7 @@ import (
 
 	"bitbucket.org/portainer/agent"
 	httperror "bitbucket.org/portainer/agent/http/error"
-	"bitbucket.org/portainer/agent/http/operations"
+	"bitbucket.org/portainer/agent/http/proxy"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -26,6 +26,7 @@ type (
 		logger             *log.Logger
 		clusterService     agent.ClusterService
 		connectionUpgrader websocket.Upgrader
+		agentTags          map[string]string
 	}
 
 	execStartOperationPayload struct {
@@ -35,48 +36,46 @@ type (
 )
 
 // NewWebSocketHandler returns a new instance of WebSocketHandler.
-func NewWebSocketHandler(clusterService agent.ClusterService) *WebSocketHandler {
+func NewWebSocketHandler(clusterService agent.ClusterService, agentTags map[string]string) *WebSocketHandler {
 	h := &WebSocketHandler{
 		Router:             mux.NewRouter(),
 		logger:             log.New(os.Stderr, "", log.LstdFlags),
 		connectionUpgrader: websocket.Upgrader{},
 		clusterService:     clusterService,
+		agentTags:          agentTags,
 	}
 	h.HandleFunc("/websocket/exec", h.handleWebsocketExec)
 	return h
 }
 
-func (handler *WebSocketHandler) handleWebsocketExec(w http.ResponseWriter, r *http.Request) {
+func (handler *WebSocketHandler) handleWebsocketExec(rw http.ResponseWriter, request *http.Request) {
+	agentTargetHeader := request.Header.Get(agent.HTTPTargetHeaderName)
 
-	agentOperationHeader := r.Header.Get(agent.HTTPOperationHeaderName)
-	agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
-
-	if agentOperationHeader == agent.HTTPOperationHeaderValue || agentTargetHeader == "" {
-		execID := r.FormValue("id")
+	if agentTargetHeader == handler.agentTags[agent.MemberTagKeyNodeName] {
+		execID := request.FormValue("id")
 		if execID == "" {
-			httperror.WriteErrorResponse(w, errInvalidQueryParameters, http.StatusBadRequest, handler.logger)
+			httperror.WriteErrorResponse(rw, errInvalidQueryParameters, http.StatusBadRequest, handler.logger)
 			return
 		}
 
-		err := handler.handleRequest(w, r, execID)
+		err := handler.handleRequest(rw, request, execID)
 		if err != nil {
-			httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, handler.logger)
+			httperror.WriteErrorResponse(rw, err, http.StatusInternalServerError, handler.logger)
 			return
 		}
 	} else {
 		targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
-		// TODO: find something to do when the targeted member is not found inside the cluster
 		if targetMember == nil {
-			httperror.WriteErrorResponse(w, agent.Error("Unable to find the agent."),
-				http.StatusInternalServerError, handler.logger)
+			httperror.WriteErrorResponse(rw, agent.ErrAgentNotFound, http.StatusInternalServerError, handler.logger)
+			return
 		}
 
-		operations.NodeWSOperation(w, r, targetMember)
+		proxy.ProxyWebsocketOperation(rw, request, targetMember)
 	}
 }
 
-func (handler *WebSocketHandler) handleRequest(w http.ResponseWriter, r *http.Request, execID string) error {
-	websocketConn, err := handler.connectionUpgrader.Upgrade(w, r, nil)
+func (handler *WebSocketHandler) handleRequest(rw http.ResponseWriter, request *http.Request, execID string) error {
+	websocketConn, err := handler.connectionUpgrader.Upgrade(rw, request, nil)
 	if err != nil {
 		return err
 	}
