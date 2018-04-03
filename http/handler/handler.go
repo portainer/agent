@@ -49,6 +49,7 @@ func writeJSONResponse(rw http.ResponseWriter, data interface{}, logger *log.Log
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.Header().Set("Content-Length", strconv.Itoa(len(jsonData)))
+	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
 
 	_, err = rw.Write(jsonData)
 	if err != nil {

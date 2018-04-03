@@ -56,5 +56,8 @@ func newSingleHostReverseProxyWithAgentHeader(target *url.URL, targetNode string
 		}
 		req.Header.Set(agent.HTTPTargetHeaderName, targetNode)
 	}
-	return &httputil.ReverseProxy{Director: director}
+
+	return &httputil.ReverseProxy{
+		Director: director,
+	}
 }

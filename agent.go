@@ -28,15 +28,17 @@ type (
 )
 
 const (
-	DefaultListenAddr         = "0.0.0.0"
-	DefaultAgentPort          = "9001"
-	DefaultLogLevel           = "INFO"
-	SupportedDockerAPIVersion = "1.24"
-	HTTPTargetHeaderName      = "X-PortainerAgent-Target"
-	ResponseMetadataKey       = "Portainer"
-	MemberTagKeyAgentPort     = "AgentPort"
-	MemberTagKeyNodeName      = "NodeName"
-	MemberTagKeyNodeRole      = "NodeRole"
-	NodeRoleManager           = "manager"
-	NodeRoleWorker            = "worker"
+	AgentVersion                = "0.1.0"
+	DefaultListenAddr           = "0.0.0.0"
+	DefaultAgentPort            = "9001"
+	DefaultLogLevel             = "INFO"
+	SupportedDockerAPIVersion   = "1.24"
+	HTTPTargetHeaderName        = "X-PortainerAgent-Target"
+	HTTPResponseAgentHeaderName = "Portainer-Agent"
+	ResponseMetadataKey         = "Portainer"
+	MemberTagKeyAgentPort       = "AgentPort"
+	MemberTagKeyNodeName        = "NodeName"
+	MemberTagKeyNodeRole        = "NodeRole"
+	NodeRoleManager             = "manager"
+	NodeRoleWorker              = "worker"
 )

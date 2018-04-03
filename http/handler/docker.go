@@ -51,7 +51,7 @@ func (handler *DockerProxyHandler) executeOperationOnManagerNode(rw http.Respons
 	if handler.agentTags[agent.MemberTagKeyNodeRole] == agent.NodeRoleManager {
 		handler.dockerProxy.ServeHTTP(rw, request)
 	} else {
-		targetMember := handler.clusterService.GetMemberByRole("zob")
+		targetMember := handler.clusterService.GetMemberByRole(agent.NodeRoleManager)
 		if targetMember == nil {
 			httperror.WriteErrorResponse(rw, agent.ErrManagerAgentNotFound, http.StatusInternalServerError, handler.logger)
 			return

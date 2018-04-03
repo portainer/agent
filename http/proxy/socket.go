@@ -24,17 +24,17 @@ func NewSocketProxy(socketPath string, clusterService agent.ClusterService) *Soc
 	return proxy
 }
 
-func (proxy *SocketProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r.URL.Scheme = "http"
-	r.URL.Host = "unixsocket"
+func (proxy *SocketProxy) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
+	request.URL.Scheme = "http"
+	request.URL.Host = "unixsocket"
 
-	res, err := proxy.transport.RoundTrip(r)
+	res, err := proxy.transport.RoundTrip(request)
 	if err != nil {
 		code := http.StatusInternalServerError
 		if res != nil && res.StatusCode != 0 {
 			code = res.StatusCode
 		}
-		httperror.WriteErrorResponse(w, err, code, proxy.logger)
+		httperror.WriteErrorResponse(rw, err, code, proxy.logger)
 		return
 	}
 
@@ -42,18 +42,13 @@ func (proxy *SocketProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for k, vv := range res.Header {
 		for _, v := range vv {
-			w.Header().Add(k, v)
+			rw.Header().Add(k, v)
 		}
 	}
+	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
 
-	w.WriteHeader(res.StatusCode)
-
-	_, err = io.Copy(w, res.Body)
-	if err != nil {
-		log.Println("Ramen balls")
-		httperror.WriteErrorResponse(w, err, http.StatusInternalServerError, proxy.logger)
-		return
-	}
+	rw.WriteHeader(res.StatusCode)
+	io.Copy(rw, res.Body)
 }
 
 func newSocketTransport(socketPath string) *http.Transport {
