@@ -22,5 +22,5 @@ type Server struct {
 func (server *Server) Start(listenAddr string) error {
 
 	h := handler.NewHandler(server.clusterService, server.agentTags)
-	return http.ListenAndServe(listenAddr, h)
+	return http.ListenAndServeTLS(listenAddr, "cert.pem", "key.pem", h)
 }

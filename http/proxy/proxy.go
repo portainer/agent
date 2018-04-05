@@ -1,35 +1,33 @@
 package proxy
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 
 	"bitbucket.org/portainer/agent"
+	"github.com/gorilla/websocket"
 	"github.com/koding/websocketproxy"
 )
 
 func ProxyOperation(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
 	url := request.URL
 	url.Host = target.IPAddress + ":" + target.Port
+	url.Scheme = "https"
 
-	// TODO: agents will use TLS as default protocol, might need to default to https
-	url.Scheme = "http"
-
-	proxyHTTPRequest(rw, request, url, target.NodeName)
+	proxyHTTPSRequest(rw, request, url, target.NodeName)
 }
 
 func ProxyWebsocketOperation(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
 	url := request.URL
 	url.Host = target.IPAddress + ":" + target.Port
-
-	// TODO: agents will use TLS as default protocol, might need to switch to wss
-	url.Scheme = "ws"
+	url.Scheme = "wss"
 
 	proxyWebsocketRequest(rw, request, url, target.NodeName)
 }
 
-func proxyHTTPRequest(rw http.ResponseWriter, request *http.Request, target *url.URL, targetNode string) {
+func proxyHTTPSRequest(rw http.ResponseWriter, request *http.Request, target *url.URL, targetNode string) {
 	proxy := newSingleHostReverseProxyWithAgentHeader(target, targetNode)
 	proxy.ServeHTTP(rw, request)
 }
@@ -39,6 +37,12 @@ func proxyWebsocketRequest(rw http.ResponseWriter, request *http.Request, target
 	proxy.Director = func(incoming *http.Request, out http.Header) {
 		out.Set(agent.HTTPTargetHeaderName, targetNode)
 	}
+	proxy.Dialer = &websocket.Dialer{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
 	proxy.ServeHTTP(rw, request)
 }
 
@@ -59,5 +63,10 @@ func newSingleHostReverseProxyWithAgentHeader(target *url.URL, targetNode string
 
 	return &httputil.ReverseProxy{
 		Director: director,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
 	}
 }

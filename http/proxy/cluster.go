@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"bytes"
+	"crypto/tls"
 	"io/ioutil"
 	"net/http"
 	"sync"
@@ -15,9 +16,16 @@ type ClusterProxy struct {
 }
 
 func NewClusterProxy() *ClusterProxy {
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
 	return &ClusterProxy{
 		client: &http.Client{
 			Timeout: time.Second * 10,
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConfig,
+			},
 		},
 	}
 }
@@ -102,9 +110,7 @@ func copyRequest(request *http.Request, member *agent.ClusterMember) (*http.Requ
 
 	url := request.URL
 	url.Host = member.IPAddress + ":" + member.Port
-
-	// TODO: agents will use TLS as default protocol, might need to default to https
-	url.Scheme = "http"
+	url.Scheme = "https"
 
 	requestCopy, err := http.NewRequest(request.Method, url.String(), bytes.NewReader(body))
 	if err != nil {

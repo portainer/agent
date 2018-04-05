@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"bitbucket.org/portainer/agent"
+	"bitbucket.org/portainer/agent/crypto"
 	"bitbucket.org/portainer/agent/docker"
 	"bitbucket.org/portainer/agent/http"
 	cluster "bitbucket.org/portainer/agent/serf"
@@ -30,13 +31,11 @@ func initOptionsFromEnvironment() (*agent.AgentOptions, error) {
 		options.Port = agentPortEnv
 	}
 
-	// Service name should be specified here to use DNS-SRV records.
-	// We automatically append "tasks." to discover the other agents.
-	clusterJoinAddr := os.Getenv("AGENT_CLUSTER_ADDR")
-	if clusterJoinAddr == "" {
+	clusterAddressEnv := os.Getenv("AGENT_CLUSTER_ADDR")
+	if clusterAddressEnv == "" {
 		return nil, agent.ErrEnvClusterAddressRequired
 	}
-	options.ClusterAddress = "tasks." + clusterJoinAddr
+	options.ClusterAddress = clusterAddressEnv
 
 	logLevelEnv := os.Getenv("LOG_LEVEL")
 	if logLevelEnv != "" {
@@ -108,18 +107,22 @@ func main() {
 	log.Printf("[DEBUG] - Using agent port: %s\n", options.Port)
 	log.Printf("[DEBUG] - Using cluster address: %s\n", options.ClusterAddress)
 
+	advertiseAddr, err := retrieveAdvertiseAddress()
+	if err != nil {
+		log.Fatalf("[ERROR] - Unable to retrieve advertise address: %s", err)
+	}
+	log.Printf("[DEBUG] - Using advertiseAddr: %s\n", advertiseAddr)
+
+	TLSService := crypto.TLSService{}
+	log.Println("[DEBUG] - Generating TLS files...")
+	TLSService.GenerateCertsForHost(advertiseAddr)
+
 	agentTags, err := retrieveInformationFromDockerEnvironment()
 	if err != nil {
 		log.Fatalf("[ERROR] - Unable to retrieve information from Docker: %s", err)
 	}
 	agentTags[agent.MemberTagKeyAgentPort] = options.Port
 	log.Printf("[DEBUG] - Agent details: %v\n", agentTags)
-
-	advertiseAddr, err := retrieveAdvertiseAddress()
-	if err != nil {
-		log.Fatalf("[ERROR] - Unable to retrieve advertise address: %s", err)
-	}
-	log.Printf("[DEBUG] - Using advertiseAddr: %s\n", advertiseAddr)
 
 	// TODO: looks like the Docker DNS cannot find any info on tasks.<service_name>
 	// sometimes... Waiting a bit before starting the discovery seems to solve the problem.

@@ -31,6 +31,10 @@ type (
 	InfoService interface {
 		GetInformationFromDockerEngine() (map[string]string, error)
 	}
+
+	TLSService interface {
+		GenerateCertsForHost(host string) error
+	}
 )
 
 const (

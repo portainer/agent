@@ -1,4 +1,4 @@
-FROM scratch
+FROM portainer/base
 
 WORKDIR /app
 
