@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"bitbucket.org/portainer/agent"
@@ -14,55 +15,67 @@ import (
 	"github.com/hashicorp/logutils"
 )
 
-func main() {
-
-	filter := &logutils.LevelFilter{
-		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
-		MinLevel: logutils.LogLevel(agent.DefaultLogLevel),
-		Writer:   os.Stderr,
+func initOptionsFromEnvironment() (*agent.AgentOptions, error) {
+	options := &agent.AgentOptions{
+		Port:     agent.DefaultAgentPort,
+		LogLevel: agent.DefaultLogLevel,
 	}
-	log.SetOutput(filter)
 
-	agentPort := agent.DefaultAgentPort
 	agentPortEnv := os.Getenv("AGENT_PORT")
 	if agentPortEnv != "" {
 		_, err := strconv.Atoi(agentPortEnv)
 		if err != nil {
-			log.Printf("[ERROR] - Err: %v\n", err)
-			log.Fatal("[ERROR] - Invalid port format in AGENT_PORT environment variable.")
+			return nil, agent.ErrInvalidEnvPortFormat
 		}
-		agentPort = agentPortEnv
+		options.Port = agentPortEnv
 	}
-	log.Printf("[DEBUG] - Using agent port: %s\n", agentPort)
 
 	// Service name should be specified here to use DNS-SRV records.
 	// We automatically append "tasks." to discover the other agents.
 	clusterJoinAddr := os.Getenv("AGENT_CLUSTER_ADDR")
 	if clusterJoinAddr == "" {
-		log.Fatal("[ERROR] - AGENT_CLUSTER_ADDR environment variable is required.")
+		return nil, agent.ErrEnvClusterAddressRequired
 	}
-	joinAddr := "tasks." + clusterJoinAddr
+	options.ClusterAddress = "tasks." + clusterJoinAddr
 
+	logLevelEnv := os.Getenv("LOG_LEVEL")
+	if logLevelEnv != "" {
+		options.LogLevel = logLevelEnv
+	}
+
+	return options, nil
+}
+
+func setupLogging(logLevel string) {
+	filter := &logutils.LevelFilter{
+		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
+		MinLevel: logutils.LogLevel(strings.ToUpper(logLevel)),
+		Writer:   os.Stderr,
+	}
+	log.SetOutput(filter)
+}
+
+func retrieveInformationFromDockerEnvironment() (map[string]string, error) {
 	infoService := docker.InfoService{}
 	agentTags, err := infoService.GetInformationFromDockerEngine()
 	if err != nil {
-		log.Printf("[ERROR] - Err: %v\n", err)
-		log.Fatal("[ERROR] - Unable to retrieve information from Docker engine")
+		return nil, err
 	}
-	agentTags[agent.MemberTagKeyAgentPort] = agentPort
-	log.Printf("[DEBUG] - Agent details: %v\n", agentTags)
 
+	return agentTags, nil
+}
+
+func retrieveAdvertiseAddress() (string, error) {
 	// TODO: determine a cleaner way to retrieve the container IP that will be used
 	// to communicate with other agents.
 	// Must be container IP in overlay when used inside a Swarm.
 	// What about outside of Swarm (e.g. on Standalone engine) ?
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		log.Printf("[ERROR] - Err: %v\n", err)
-		log.Fatal("[ERROR] - Unable to retrieve network interfaces details")
+		return "", err
 	}
 
-	advertiseAddr := "0.0.0.0"
+	var advertiseAddr string
 	for _, i := range ifaces {
 		if i.Name == "eth0" {
 			var ip net.IP
@@ -76,6 +89,36 @@ func main() {
 			advertiseAddr = ip.String()
 		}
 	}
+
+	if advertiseAddr == "" {
+		return "", agent.ErrRetrievingAdvertiseAddr
+	}
+
+	return advertiseAddr, nil
+}
+
+func main() {
+	options, err := initOptionsFromEnvironment()
+	if err != nil {
+		log.Fatalf("[ERROR] - Error during agent initialization: %s", err)
+	}
+
+	setupLogging(options.LogLevel)
+
+	log.Printf("[DEBUG] - Using agent port: %s\n", options.Port)
+	log.Printf("[DEBUG] - Using cluster address: %s\n", options.ClusterAddress)
+
+	agentTags, err := retrieveInformationFromDockerEnvironment()
+	if err != nil {
+		log.Fatalf("[ERROR] - Unable to retrieve information from Docker: %s", err)
+	}
+	agentTags[agent.MemberTagKeyAgentPort] = options.Port
+	log.Printf("[DEBUG] - Agent details: %v\n", agentTags)
+
+	advertiseAddr, err := retrieveAdvertiseAddress()
+	if err != nil {
+		log.Fatalf("[ERROR] - Unable to retrieve advertise address: %s", err)
+	}
 	log.Printf("[DEBUG] - Using advertiseAddr: %s\n", advertiseAddr)
 
 	// TODO: looks like the Docker DNS cannot find any info on tasks.<service_name>
@@ -83,14 +126,13 @@ func main() {
 	time.Sleep(3 * time.Second)
 
 	clusterService := cluster.NewClusterService()
-	err = clusterService.Create(advertiseAddr, joinAddr, agentTags)
+	err = clusterService.Create(advertiseAddr, options.ClusterAddress, agentTags)
 	if err != nil {
-		log.Printf("[ERROR] - Err: %v\n", err)
-		log.Fatal("[ERROR] - Unable to create cluster")
+		log.Fatalf("[ERROR] - Unable to create cluster: %s", err)
 	}
 	defer clusterService.Leave()
 
 	server := http.NewServer(clusterService, agentTags)
-	listenAddr := agent.DefaultListenAddr + ":" + agentPort
+	listenAddr := agent.DefaultListenAddr + ":" + options.Port
 	server.Start(listenAddr)
 }

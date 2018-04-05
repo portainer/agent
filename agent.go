@@ -1,6 +1,12 @@
 package agent
 
 type (
+	AgentOptions struct {
+		Port           string
+		ClusterAddress string
+		LogLevel       string
+	}
+
 	ClusterMember struct {
 		IPAddress string
 		Port      string

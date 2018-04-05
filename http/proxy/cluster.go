@@ -70,27 +70,28 @@ func (clusterProxy *ClusterProxy) executeRequestOnCluster(request *http.Request,
 }
 
 func (clusterProxy *ClusterProxy) copyAndExecuteRequest(request *http.Request, member *agent.ClusterMember, ch chan agentRequestResult, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	requestCopy, err := copyRequest(request, member)
 	if err != nil {
 		ch <- agentRequestResult{err: err}
-		wg.Done()
+		return
 	}
 
 	response, err := clusterProxy.client.Do(requestCopy)
 	if err != nil {
 		ch <- agentRequestResult{err: err}
-		wg.Done()
+		return
 	}
 	defer response.Body.Close()
 
 	data, err := responseToJSONArray(response, request.URL.Path)
 	if err != nil {
 		ch <- agentRequestResult{err: err}
-		wg.Done()
+		return
 	}
 
 	ch <- agentRequestResult{err: nil, responseContent: data, nodeName: member.NodeName}
-	wg.Done()
 }
 
 func copyRequest(request *http.Request, member *agent.ClusterMember) (*http.Request, error) {

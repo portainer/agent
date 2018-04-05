@@ -30,6 +30,7 @@ echo "Swarm setup..."
 docker -H 10.0.7.10:2375 network create --driver overlay pagent-net
 docker -H 10.0.7.10:2375 service create --name pagent \
 --network pagent-net \
+-e LOG_LEVEL=DEBUG \
 -e AGENT_CLUSTER_ADDR=pagent \
 --mode global \
 --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
