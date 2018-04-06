@@ -62,13 +62,15 @@ func (service *ClusterService) Members() []agent.ClusterMember {
 	members := service.cluster.Members()
 
 	for _, member := range members {
-		clusterMember := agent.ClusterMember{
-			IPAddress: member.Addr.String(),
-			Port:      member.Tags[agent.MemberTagKeyAgentPort],
-			NodeRole:  member.Tags[agent.MemberTagKeyNodeRole],
-			NodeName:  member.Tags[agent.MemberTagKeyNodeName],
+		if member.Status == serf.StatusAlive {
+			clusterMember := agent.ClusterMember{
+				IPAddress: member.Addr.String(),
+				Port:      member.Tags[agent.MemberTagKeyAgentPort],
+				NodeRole:  member.Tags[agent.MemberTagKeyNodeRole],
+				NodeName:  member.Tags[agent.MemberTagKeyNodeName],
+			}
+			clusterMembers = append(clusterMembers, clusterMember)
 		}
-		clusterMembers = append(clusterMembers, clusterMember)
 	}
 
 	return clusterMembers
