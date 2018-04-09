@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 IMAGE_NAME=portainer-agent:develop
+LOG_LEVEL=INFO
 
 cd cmd/agent
 
@@ -30,7 +31,7 @@ echo "Swarm setup..."
 docker -H 10.0.7.10:2375 network create --driver overlay pagent-net
 docker -H 10.0.7.10:2375 service create --name pagent \
 --network pagent-net \
--e LOG_LEVEL=DEBUG \
+-e LOG_LEVEL=${LOG_LEVEL} \
 -e AGENT_CLUSTER_ADDR=tasks.pagent \
 --mode global \
 --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
