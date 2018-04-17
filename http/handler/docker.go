@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"bitbucket.org/portainer/agent"
 	httperror "bitbucket.org/portainer/agent/http/error"
@@ -32,19 +33,58 @@ func NewDockerProxyHandler(clusterService agent.ClusterService, agentTags map[st
 		agentTags:      agentTags,
 	}
 
-	h.Handle("/containers/json", http.HandlerFunc(h.executeOperationOnCluster)).Methods(http.MethodGet)
-	h.Handle("/images/json", http.HandlerFunc(h.executeOperationOnCluster)).Methods(http.MethodGet)
-	h.Handle("/volumes", http.HandlerFunc(h.executeOperationOnCluster)).Methods(http.MethodGet)
-	h.Handle("/networks", http.HandlerFunc(h.executeOperationOnCluster)).Methods(http.MethodGet)
-	h.PathPrefix("/services").Handler(http.HandlerFunc(h.executeOperationOnManagerNode))
-	h.PathPrefix("/tasks").Handler(http.HandlerFunc(h.executeOperationOnManagerNode))
-	h.PathPrefix("/secrets").Handler(http.HandlerFunc(h.executeOperationOnManagerNode))
-	h.PathPrefix("/configs").Handler(http.HandlerFunc(h.executeOperationOnManagerNode))
-	h.PathPrefix("/swarm").Handler(http.HandlerFunc(h.executeOperationOnManagerNode))
-	h.PathPrefix("/nodes").Handler(http.HandlerFunc(h.executeOperationOnManagerNode))
-	h.PathPrefix("/").Handler(http.HandlerFunc(h.executeOperationOnNode))
-
+	h.PathPrefix("/").Handler(http.HandlerFunc(h.handleDockerOperation))
 	return h
+}
+
+func (handler *DockerProxyHandler) handleDockerOperation(rw http.ResponseWriter, request *http.Request) {
+	managerOperationHeader := request.Header.Get(agent.HTTPManagerOperationHeaderName)
+
+	if managerOperationHeader != "" {
+		handler.executeOperationOnManagerNode(rw, request)
+		return
+	}
+
+	handler.dispatchOperation(rw, request)
+}
+
+func (handler *DockerProxyHandler) dispatchOperation(rw http.ResponseWriter, request *http.Request) {
+	path := request.URL.Path
+
+	switch {
+	case strings.HasPrefix(path, "/containers/json"):
+		handler.executeOperationOnCluster(rw, request)
+		return
+	case strings.HasPrefix(path, "/images/json"):
+		handler.executeOperationOnCluster(rw, request)
+		return
+	case strings.HasPrefix(path, "/volumes"):
+		handler.executeOperationOnCluster(rw, request)
+		return
+	case strings.HasPrefix(path, "/networks"):
+		handler.executeOperationOnCluster(rw, request)
+		return
+	case strings.HasPrefix(path, "/services"):
+		handler.executeOperationOnManagerNode(rw, request)
+		return
+	case strings.HasPrefix(path, "/tasks"):
+		handler.executeOperationOnManagerNode(rw, request)
+		return
+	case strings.HasPrefix(path, "/secrets"):
+		handler.executeOperationOnManagerNode(rw, request)
+		return
+	case strings.HasPrefix(path, "/configs"):
+		handler.executeOperationOnManagerNode(rw, request)
+		return
+	case strings.HasPrefix(path, "/swarm"):
+		handler.executeOperationOnManagerNode(rw, request)
+		return
+	case strings.HasPrefix(path, "/nodes"):
+		handler.executeOperationOnManagerNode(rw, request)
+		return
+	default:
+		handler.executeOperationOnNode(rw, request)
+	}
 }
 
 func (handler *DockerProxyHandler) executeOperationOnManagerNode(rw http.ResponseWriter, request *http.Request) {

@@ -1,6 +1,8 @@
 package main // import "bitbucket.org/portainer/agent"
 
 import (
+	"crypto/x509"
+	"encoding/hex"
 	"log"
 	"net"
 	"os"
@@ -22,6 +24,18 @@ func initOptionsFromEnvironment() (*agent.AgentOptions, error) {
 		LogLevel: agent.DefaultLogLevel,
 	}
 
+	clusterAddressEnv := os.Getenv("AGENT_CLUSTER_ADDR")
+	if clusterAddressEnv == "" {
+		return nil, agent.ErrEnvClusterAddressRequired
+	}
+	options.ClusterAddress = clusterAddressEnv
+
+	pubKeyEnv := os.Getenv("PORTAINER_PUBKEY")
+	if pubKeyEnv == "" {
+		return nil, agent.ErrPortainerPublicKeyRequired
+	}
+	options.PortainerPublicKey = pubKeyEnv
+
 	agentPortEnv := os.Getenv("AGENT_PORT")
 	if agentPortEnv != "" {
 		_, err := strconv.Atoi(agentPortEnv)
@@ -30,12 +44,6 @@ func initOptionsFromEnvironment() (*agent.AgentOptions, error) {
 		}
 		options.Port = agentPortEnv
 	}
-
-	clusterAddressEnv := os.Getenv("AGENT_CLUSTER_ADDR")
-	if clusterAddressEnv == "" {
-		return nil, agent.ErrEnvClusterAddressRequired
-	}
-	options.ClusterAddress = clusterAddressEnv
 
 	logLevelEnv := os.Getenv("LOG_LEVEL")
 	if logLevelEnv != "" {
@@ -104,6 +112,16 @@ func main() {
 
 	setupLogging(options.LogLevel)
 
+	// TODO: should be part of a service to hide the implementation
+	key, err := hex.DecodeString(options.PortainerPublicKey)
+	if err != nil {
+		log.Fatalf("[ERROR] - Unable to decode public key: %s", err)
+	}
+	publicKey, err := x509.ParsePKIXPublicKey(key)
+	if err != nil {
+		log.Fatalf("[ERROR] - Unable to parse public key: %s", err)
+	}
+
 	log.Printf("[DEBUG] - Using agent port: %s\n", options.Port)
 	log.Printf("[DEBUG] - Using cluster address: %s\n", options.ClusterAddress)
 
@@ -135,7 +153,7 @@ func main() {
 	}
 	defer clusterService.Leave()
 
-	server := http.NewServer(clusterService, agentTags)
+	server := http.NewServer(clusterService, agentTags, publicKey)
 	listenAddr := agent.DefaultListenAddr + ":" + options.Port
 	server.Start(listenAddr)
 }

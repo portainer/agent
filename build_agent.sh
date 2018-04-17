@@ -2,6 +2,7 @@
 
 IMAGE_NAME=portainer-agent:develop
 LOG_LEVEL=INFO
+PUBLIC_KEY=<PUBKEY>
 
 cd cmd/agent
 
@@ -33,9 +34,11 @@ docker -H 10.0.7.10:2375 service create --name pagent \
 --network pagent-net \
 -e LOG_LEVEL=${LOG_LEVEL} \
 -e AGENT_CLUSTER_ADDR=tasks.pagent \
+-e PORTAINER_PUBKEY=${PUBLIC_KEY} \
 --mode global \
 --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
 --publish mode=host,target=9001,published=9001 \
+--restart-condition none \
 ${IMAGE_NAME}
 
 docker -H 10.0.7.10:2375 service logs -f pagent

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,8 @@ const (
 	errInvalidQueryParameters = agent.Error("Invalid query parameters")
 )
 
+var apiVersionRe = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
+
 func NewHandler(cs agent.ClusterService, agentTags map[string]string) *Handler {
 	return &Handler{
 		agentHandler:       NewAgentHandler(cs),
@@ -29,14 +32,15 @@ func NewHandler(cs agent.ClusterService, agentTags map[string]string) *Handler {
 	}
 }
 
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	switch {
-	case strings.HasPrefix(r.URL.Path, "/agents"):
-		h.agentHandler.ServeHTTP(w, r)
-	case strings.HasPrefix(r.URL.Path, "/websocket"):
-		h.webSocketHandler.ServeHTTP(w, r)
-	case strings.HasPrefix(r.URL.Path, "/"):
-		h.dockerProxyHandler.ServeHTTP(w, r)
+	case strings.HasPrefix(request.URL.Path, "/agents"):
+		h.agentHandler.ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/websocket"):
+		h.webSocketHandler.ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/"):
+		request.URL.Path = apiVersionRe.ReplaceAllString(request.URL.Path, "")
+		h.dockerProxyHandler.ServeHTTP(rw, request)
 	}
 }
 

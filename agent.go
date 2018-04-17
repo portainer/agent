@@ -2,9 +2,10 @@ package agent
 
 type (
 	AgentOptions struct {
-		Port           string
-		ClusterAddress string
-		LogLevel       string
+		Port               string
+		ClusterAddress     string
+		LogLevel           string
+		PortainerPublicKey string
 	}
 
 	ClusterMember struct {
@@ -38,17 +39,20 @@ type (
 )
 
 const (
-	AgentVersion                = "0.1.0"
-	DefaultListenAddr           = "0.0.0.0"
-	DefaultAgentPort            = "9001"
-	DefaultLogLevel             = "INFO"
-	SupportedDockerAPIVersion   = "1.24"
-	HTTPTargetHeaderName        = "X-PortainerAgent-Target"
-	HTTPResponseAgentHeaderName = "Portainer-Agent"
-	ResponseMetadataKey         = "Portainer"
-	MemberTagKeyAgentPort       = "AgentPort"
-	MemberTagKeyNodeName        = "NodeName"
-	MemberTagKeyNodeRole        = "NodeRole"
-	NodeRoleManager             = "manager"
-	NodeRoleWorker              = "worker"
+	AgentVersion                   = "0.1.0"
+	DefaultListenAddr              = "0.0.0.0"
+	DefaultAgentPort               = "9001"
+	DefaultLogLevel                = "INFO"
+	SupportedDockerAPIVersion      = "1.24"
+	HTTPTargetHeaderName           = "X-PortainerAgent-Target"
+	HTTPManagerOperationHeaderName = "X-PortainerAgent-ManagerOperation"
+	HTTPSignatureHeaderName        = "X-PortainerAgent-Signature"
+	HTTPResponseAgentHeaderName    = "Portainer-Agent"
+	PortainerAgentSignatureMessage = "Portainer-App"
+	ResponseMetadataKey            = "Portainer"
+	MemberTagKeyAgentPort          = "AgentPort"
+	MemberTagKeyNodeName           = "NodeName"
+	MemberTagKeyNodeRole           = "NodeRole"
+	NodeRoleManager                = "manager"
+	NodeRoleWorker                 = "worker"
 )
