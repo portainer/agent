@@ -44,6 +44,16 @@ func responseToJSONArray(response *http.Response, requestPath string) ([]interfa
 	return responseData, nil
 }
 
+func getErrorMessageFromResponse(response *http.Response) (string, error) {
+	responseObject, err := getResponseBodyAsGenericJSON(response)
+	if err != nil {
+		return "", err
+	}
+
+	obj := responseObject.(map[string]interface{})
+	return obj["message"].(string), nil
+}
+
 func getResponseBodyAsGenericJSON(response *http.Response) (interface{}, error) {
 	var data interface{}
 
