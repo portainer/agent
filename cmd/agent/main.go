@@ -1,8 +1,6 @@
 package main // import "bitbucket.org/portainer/agent"
 
 import (
-	"crypto/x509"
-	"encoding/hex"
 	"log"
 	"net"
 	"os"
@@ -112,16 +110,6 @@ func main() {
 
 	setupLogging(options.LogLevel)
 
-	// TODO: should be part of a service to hide the implementation
-	key, err := hex.DecodeString(options.PortainerPublicKey)
-	if err != nil {
-		log.Fatalf("[ERROR] - Unable to decode public key: %s", err)
-	}
-	publicKey, err := x509.ParsePKIXPublicKey(key)
-	if err != nil {
-		log.Fatalf("[ERROR] - Unable to parse public key: %s", err)
-	}
-
 	log.Printf("[DEBUG] - Using agent port: %s\n", options.Port)
 	log.Printf("[DEBUG] - Using cluster address: %s\n", options.ClusterAddress)
 
@@ -142,6 +130,12 @@ func main() {
 	agentTags[agent.MemberTagKeyAgentPort] = options.Port
 	log.Printf("[DEBUG] - Agent details: %v\n", agentTags)
 
+	signatureService := crypto.NewECDSAService()
+	err = signatureService.ParsePublicKey(options.PortainerPublicKey)
+	if err != nil {
+		log.Fatalf("[ERROR] - Unable to parse Portainer public key: %s", err)
+	}
+
 	// TODO: looks like the Docker DNS cannot find any info on tasks.<service_name>
 	// sometimes... Waiting a bit before starting the discovery seems to solve the problem.
 	time.Sleep(3 * time.Second)
@@ -153,7 +147,7 @@ func main() {
 	}
 	defer clusterService.Leave()
 
-	server := http.NewServer(clusterService, agentTags, publicKey)
+	server := http.NewServer(clusterService, signatureService, agentTags)
 	listenAddr := agent.DefaultListenAddr + ":" + options.Port
 	server.Start(listenAddr)
 }

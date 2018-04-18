@@ -9,6 +9,8 @@ import (
 	"net"
 	"os"
 	"time"
+
+	"bitbucket.org/portainer/agent"
 )
 
 type TLSService struct{}
@@ -43,27 +45,30 @@ func (service *TLSService) GenerateCertsForHost(host string) error {
 		return err
 	}
 
-	certFile, err := os.Create("cert.pem")
+	err = createPEMEncodedFile(agent.TLSCertPath, "CERTIFICATE", encodedCert)
 	if err != nil {
 		return err
 	}
 
-	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: encodedCert})
-	if err != nil {
-		return err
-	}
-	certFile.Close()
-
-	keyFile, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	err = createPEMEncodedFile(agent.TLSKeyPath, "RSA PRIVATE KEY", x509.MarshalPKCS1PrivateKey(keyPair))
 	if err != nil {
 		return err
 	}
 
-	err = pem.Encode(keyFile, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(keyPair)})
+	return nil
+}
+
+func createPEMEncodedFile(path, header string, data []byte) error {
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
-	keyFile.Close()
+	defer file.Close()
+
+	err = pem.Encode(file, &pem.Block{Type: header, Bytes: data})
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

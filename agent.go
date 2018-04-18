@@ -29,6 +29,11 @@ type (
 		GetMemberByNodeName(nodeName string) *ClusterMember
 	}
 
+	DigitalSignatureService interface {
+		ParsePublicKey(key string) error
+		ValidSignature(signature string) bool
+	}
+
 	InfoService interface {
 		GetInformationFromDockerEngine() (map[string]string, error)
 	}
@@ -55,4 +60,6 @@ const (
 	MemberTagKeyNodeRole           = "NodeRole"
 	NodeRoleManager                = "manager"
 	NodeRoleWorker                 = "worker"
+	TLSCertPath                    = "cert.pem"
+	TLSKeyPath                     = "key.pem"
 )
