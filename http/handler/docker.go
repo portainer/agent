@@ -23,6 +23,7 @@ type DockerProxyHandler struct {
 }
 
 // NewDockerProxyHandler returns a new instance of DockerProxyHandler.
+// It sets the associated handle functions for all the Docker related HTTP endpoints.
 func NewDockerProxyHandler(clusterService agent.ClusterService, agentTags map[string]string) *DockerProxyHandler {
 	h := &DockerProxyHandler{
 		Router:         mux.NewRouter(),

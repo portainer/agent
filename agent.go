@@ -1,6 +1,7 @@
 package agent
 
 type (
+	// AgentOptions are the options used to start an agent.
 	AgentOptions struct {
 		Port               string
 		ClusterAddress     string
@@ -8,6 +9,7 @@ type (
 		PortainerPublicKey string
 	}
 
+	// ClusterMember is the representation of an agent inside a cluster.
 	ClusterMember struct {
 		IPAddress string
 		Port      string
@@ -15,12 +17,15 @@ type (
 		NodeRole  string
 	}
 
+	// AgentMetadata is the representation of the metadata object used to decorate
+	// all the objects in an aggregated response.
 	AgentMetadata struct {
 		Agent struct {
 			NodeName string `json:"NodeName"`
 		} `json:"Agent"`
 	}
 
+	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
 		Create(advertiseAddr, joinAddr string, tags map[string]string) error
 		Members() []ClusterMember
@@ -29,37 +34,66 @@ type (
 		GetMemberByNodeName(nodeName string) *ClusterMember
 	}
 
+	// DigitalSignatureService is used to validate digital signatures.
 	DigitalSignatureService interface {
 		ParsePublicKey(key string) error
 		ValidSignature(signature string) bool
 	}
 
+	// InfoService is used to retrieve information from a Docker environment.
 	InfoService interface {
 		GetInformationFromDockerEngine() (map[string]string, error)
 	}
 
+	// TLSService is used to create TLS certificates to use enable HTTPS.
 	TLSService interface {
 		GenerateCertsForHost(host string) error
 	}
 )
 
 const (
-	AgentVersion                   = "0.1.0"
-	DefaultListenAddr              = "0.0.0.0"
-	DefaultAgentPort               = "9001"
-	DefaultLogLevel                = "INFO"
-	SupportedDockerAPIVersion      = "1.24"
-	HTTPTargetHeaderName           = "X-PortainerAgent-Target"
+	// AgentVersion represents the version of the agent.
+	AgentVersion = "0.1.0"
+	// DefaultListenAddr is the default address used by the web server.
+	DefaultListenAddr = "0.0.0.0"
+	// DefaultAgentPort is the default port exposed by the web server.
+	DefaultAgentPort = "9001"
+	// DefaultLogLevel is the default logging level.
+	DefaultLogLevel = "INFO"
+	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
+	SupportedDockerAPIVersion = "1.24"
+	// HTTPTargetHeaderName is the name of the header used to specify a target node.
+	HTTPTargetHeaderName = "X-PortainerAgent-Target"
+	// HTTPManagerOperationHeaderName is the name of the header used to specify that
+	// a request must target a manager node.
 	HTTPManagerOperationHeaderName = "X-PortainerAgent-ManagerOperation"
-	HTTPSignatureHeaderName        = "X-PortainerAgent-Signature"
-	HTTPResponseAgentHeaderName    = "Portainer-Agent"
+	// HTTPSignatureHeaderName is the name of the header containing the digital signature
+	// of a Portainer instance.
+	HTTPSignatureHeaderName = "X-PortainerAgent-Signature"
+	// HTTPResponseAgentHeaderName is the name of the header that is automatically added
+	// to each agent response.
+	HTTPResponseAgentHeaderName = "Portainer-Agent"
+	// PortainerAgentSignatureMessage is the unhashed content that is signed by the Portainer instance.
+	// It is used by the agent during the signature verification process.
 	PortainerAgentSignatureMessage = "Portainer-App"
-	ResponseMetadataKey            = "Portainer"
-	MemberTagKeyAgentPort          = "AgentPort"
-	MemberTagKeyNodeName           = "NodeName"
-	MemberTagKeyNodeRole           = "NodeRole"
-	NodeRoleManager                = "manager"
-	NodeRoleWorker                 = "worker"
-	TLSCertPath                    = "cert.pem"
-	TLSKeyPath                     = "key.pem"
+	// ResponseMetadataKey is the JSON field used to store any Portainer related information in
+	// response objects.
+	ResponseMetadataKey = "Portainer"
+	// MemberTagKeyAgentPort is the name of the label storing information about the port exposed
+	// by the agent.
+	MemberTagKeyAgentPort = "AgentPort"
+	// MemberTagKeyNodeName is the name of the label storing information about the name of the
+	// node where the agent is running.
+	MemberTagKeyNodeName = "NodeName"
+	// MemberTagKeyNodeRole is the name of the label storing information about the role of the
+	// node where the agent is running.
+	MemberTagKeyNodeRole = "NodeRole"
+	// NodeRoleManager represents a manager node.
+	NodeRoleManager = "manager"
+	// NodeRoleWorker represents a worker node.
+	NodeRoleWorker = "worker"
+	// TLSCertPath is the default path to the TLS certificate file.
+	TLSCertPath = "cert.pem"
+	// TLSKeyPath is the default path to the TLS key file.
+	TLSKeyPath = "key.pem"
 )

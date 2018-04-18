@@ -11,11 +11,14 @@ import (
 	httperror "bitbucket.org/portainer/agent/http/error"
 )
 
+// SocketProxy is a service used to proxy requests to a Unix socket.
+// The proxy operation implementation is defined in the ServeHTTP funtion..
 type SocketProxy struct {
 	transport *http.Transport
 	logger    *log.Logger
 }
 
+// NewSocketProxy returns a pointer to a SocketProxy.
 func NewSocketProxy(socketPath string, clusterService agent.ClusterService) *SocketProxy {
 	proxy := &SocketProxy{
 		transport: newSocketTransport(socketPath),

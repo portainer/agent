@@ -11,14 +11,20 @@ import (
 	"bitbucket.org/portainer/agent"
 )
 
+// ECDSAService is a service used to validate a digital signature.
+// Use NewECDSAService to create a new service and ParsePublicKey to parse and
+// associate the Portainer public key.
 type ECDSAService struct {
 	publicKey *ecdsa.PublicKey
 }
 
+// NewECDSAService returns a pointer to a ECDSAService.
 func NewECDSAService() *ECDSAService {
 	return &ECDSAService{}
 }
 
+// ParsePublicKey decodes a hexadecimal encoded public key, parse the
+// decoded DER data and associate the public key to the service.
 func (service *ECDSAService) ParsePublicKey(key string) error {
 	decodedKey, err := hex.DecodeString(key)
 	if err != nil {
@@ -34,6 +40,7 @@ func (service *ECDSAService) ParsePublicKey(key string) error {
 	return nil
 }
 
+// ValidSignature returns true if the signature is valid.
 func (service *ECDSAService) ValidSignature(signature string) bool {
 	sign, err := hex.DecodeString(signature)
 	if err != nil {

@@ -9,12 +9,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// AgentHandler is a handler used to managed requests on /agents
 type AgentHandler struct {
 	*mux.Router
 	logger         *log.Logger
 	clusterService agent.ClusterService
 }
 
+// NewAgentHandler returns a pointer to an AgentHandler
+// It sets the associated handle functions for all the agent related HTTP endpoints.
 func NewAgentHandler(cs agent.ClusterService) *AgentHandler {
 	h := &AgentHandler{
 		Router:         mux.NewRouter(),

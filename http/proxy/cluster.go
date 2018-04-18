@@ -12,10 +12,13 @@ import (
 	"bitbucket.org/portainer/agent"
 )
 
+// ClusterProxy is a service used to execute the same requests on multiple targets.
 type ClusterProxy struct {
 	client *http.Client
 }
 
+// NewClusterProxy returns a pointer to a ClusterProxy.
+// It also sets the default values used in the underlying http.Client.
 func NewClusterProxy() *ClusterProxy {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
@@ -37,6 +40,8 @@ type agentRequestResult struct {
 	nodeName        string
 }
 
+// ClusterOperation will copy and execute the specified request on a set of agents.
+// It aggregates the data of each request's response in a single response object.
 func (clusterProxy *ClusterProxy) ClusterOperation(request *http.Request, clusterMembers []agent.ClusterMember) (interface{}, error) {
 
 	memberCount := len(clusterMembers)

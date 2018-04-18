@@ -12,6 +12,8 @@ import (
 	httperror "bitbucket.org/portainer/agent/http/error"
 )
 
+// Handler is the main handler of the application.
+// Redirection to sub handlers is done in the ServeHTTP function.
 type Handler struct {
 	agentHandler       *AgentHandler
 	dockerProxyHandler *DockerProxyHandler
@@ -24,6 +26,7 @@ const (
 
 var apiVersionRe = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
+// NewHandler returns a pointer to a Handler.
 func NewHandler(cs agent.ClusterService, agentTags map[string]string) *Handler {
 	return &Handler{
 		agentHandler:       NewAgentHandler(cs),
