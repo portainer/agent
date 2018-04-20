@@ -3,10 +3,10 @@ package agent
 type (
 	// AgentOptions are the options used to start an agent.
 	AgentOptions struct {
-		Port               string
-		ClusterAddress     string
-		LogLevel           string
-		PortainerPublicKey string
+		Port           string
+		ClusterAddress string
+		LogLevel       string
+		// PortainerPublicKey string
 	}
 
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -32,10 +32,12 @@ type (
 		Leave()
 		GetMemberByRole(role string) *ClusterMember
 		GetMemberByNodeName(nodeName string) *ClusterMember
+		Broadcast(name string, payload []byte) error
 	}
 
 	// DigitalSignatureService is used to validate digital signatures.
 	DigitalSignatureService interface {
+		RequiresPublicKey() bool
 		ParsePublicKey(key string) error
 		ValidSignature(signature string) bool
 	}

@@ -15,8 +15,14 @@ const (
 
 // Agent setup errors.
 const (
-	ErrInvalidEnvPortFormat       = Error("Invalid port format in AGENT_PORT environment variable")
-	ErrEnvClusterAddressRequired  = Error("AGENT_CLUSTER_ADDR environment variable is required")
-	ErrPortainerPublicKeyRequired = Error("A Portainer instance public key must be specified via PORTAINER_PUBKEY environment variable")
-	ErrRetrievingAdvertiseAddr    = Error("Unable to retrieve the address on which the agent can advertise. Check your network settings")
+	ErrInvalidEnvPortFormat      = Error("Invalid port format in AGENT_PORT environment variable")
+	ErrEnvClusterAddressRequired = Error("AGENT_CLUSTER_ADDR environment variable is required")
+	// ErrPortainerPublicKeyRequired = Error("A Portainer instance public key must be specified via PORTAINER_PUBKEY environment variable")
+	ErrRetrievingAdvertiseAddr = Error("Unable to retrieve the address on which the agent can advertise. Check your network settings")
+)
+
+// Agent runtime errors
+const (
+	// TODO: review message
+	ErrPublicKeyUnavailable = Error("A Portainer instance public key must be specified")
 )

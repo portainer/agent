@@ -23,6 +23,16 @@ func NewECDSAService() *ECDSAService {
 	return &ECDSAService{}
 }
 
+// RequiresPublicKey returns true if a public key has not been associated to
+// the service yet. It returns false if the service has a public key associated
+// and therefore can be used to verify digital signatures.
+func (service *ECDSAService) RequiresPublicKey() bool {
+	if service.publicKey == nil {
+		return true
+	}
+	return false
+}
+
 // ParsePublicKey decodes a hexadecimal encoded public key, parse the
 // decoded DER data and associate the public key to the service.
 func (service *ECDSAService) ParsePublicKey(key string) error {

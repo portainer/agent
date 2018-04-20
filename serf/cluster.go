@@ -10,7 +10,8 @@ import (
 )
 
 type ClusterService struct {
-	cluster *serf.Serf
+	cluster      *serf.Serf
+	eventChannel chan serf.Event
 }
 
 func NewClusterService() *ClusterService {
@@ -20,6 +21,22 @@ func NewClusterService() *ClusterService {
 func (service *ClusterService) Leave() {
 	if service.cluster != nil {
 		service.cluster.Leave()
+	}
+}
+
+func (service *ClusterService) listenForEvents() {
+	for {
+		if service.cluster.State() != serf.SerfAlive {
+			break
+		}
+
+		event := <-service.eventChannel
+		if event.EventType() == serf.EventUser {
+			userEvent := event.(serf.UserEvent)
+			log.Printf("Received a USER event: %s\n", userEvent.Payload)
+		} else {
+			log.Println("Received a SERF event")
+		}
 	}
 }
 
@@ -39,6 +56,10 @@ func (service *ClusterService) Create(advertiseAddr, joinAddr string, tags map[s
 	conf.MemberlistConfig.AdvertiseAddr = advertiseAddr
 	log.Printf("[DEBUG] - Serf configured with AdvertiseAddr: %s\n", advertiseAddr)
 
+	eventCh := make(chan serf.Event)
+	conf.EventCh = eventCh
+	service.eventChannel = eventCh
+
 	cluster, err := serf.Create(conf)
 	if err != nil {
 		return err
@@ -53,7 +74,13 @@ func (service *ClusterService) Create(advertiseAddr, joinAddr string, tags map[s
 
 	service.cluster = cluster
 
+	go service.listenForEvents()
+
 	return nil
+}
+
+func (service *ClusterService) Broadcast(name string, payload []byte) error {
+	return service.cluster.UserEvent(name, payload, true)
 }
 
 func (service *ClusterService) Members() []agent.ClusterMember {

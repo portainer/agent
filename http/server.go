@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"net/http"
 
 	"bitbucket.org/portainer/agent"
@@ -26,6 +27,26 @@ func NewServer(clusterService agent.ClusterService, signatureService agent.Digit
 
 func (server *Server) checkDigitalSignature(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, request *http.Request) {
+		publicKeyHeader := request.Header.Get("X-PortainerAgent-PublicKey")
+		if server.signatureService.RequiresPublicKey() && publicKeyHeader == "" {
+			httperror.WriteErrorResponse(rw, agent.ErrPublicKeyUnavailable, http.StatusForbidden, nil)
+			return
+		}
+
+		if server.signatureService.RequiresPublicKey() && publicKeyHeader != "" {
+			err := server.signatureService.ParsePublicKey(publicKeyHeader)
+			if err != nil {
+				httperror.WriteErrorResponse(rw, err, http.StatusInternalServerError, nil)
+				return
+			}
+			log.Println("Broadcasting !")
+			err = server.clusterService.Broadcast("pubkey", []byte(publicKeyHeader))
+			if err != nil {
+				httperror.WriteErrorResponse(rw, err, http.StatusInternalServerError, nil)
+				return
+			}
+		}
+
 		signatureHeader := request.Header.Get(agent.HTTPSignatureHeaderName)
 		if signatureHeader == "" {
 			httperror.WriteErrorResponse(rw, agent.ErrUnauthorized, http.StatusForbidden, nil)
@@ -36,6 +57,7 @@ func (server *Server) checkDigitalSignature(next http.Handler) http.Handler {
 			httperror.WriteErrorResponse(rw, agent.ErrUnauthorized, http.StatusForbidden, nil)
 			return
 		}
+
 		next.ServeHTTP(rw, request)
 	})
 }

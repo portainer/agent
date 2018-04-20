@@ -2,7 +2,7 @@
 
 IMAGE_NAME=portainer-agent:develop
 LOG_LEVEL=INFO
-# PUBLIC_KEY=3059301306072a8648ce3d020106082a8648ce3d0301070342000447438d06749bd1946a6e48a97a669a8d09dd814e60b6df785fa93c59c5ef3c15cfbb717a58833a30bc690857cd4a69ee3e7afb24b88de7780208caecdd5cfced
+# PUBLIC_KEY=3059301306072a8648ce3d020106082a8648ce3d030107034200044f09b3d537c41ff12557bea6e6325c9d83ec7e8795665f2b2e637cf67eb6db0a3ae193dc473c0bfbe13df64a68aa6033feb4bc36d121b5663156a994c3c96693
 
 cd cmd/agent
 
@@ -34,7 +34,6 @@ docker -H 10.0.7.10:2375 service create --name pagent \
 --network pagent-net \
 -e LOG_LEVEL=${LOG_LEVEL} \
 -e AGENT_CLUSTER_ADDR=tasks.pagent \
--e PORTAINER_PUBKEY=${PUBLIC_KEY} \
 --mode global \
 --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
 --publish mode=host,target=9001,published=9001 \
