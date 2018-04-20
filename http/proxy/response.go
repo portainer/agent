@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 )
@@ -23,6 +24,11 @@ func responseToJSONArray(response *http.Response, requestPath string) ([]interfa
 		return nil, err
 	}
 
+	obj, ok := responseObject.(map[string]interface{})
+	if ok && obj["message"] != nil {
+		return nil, errors.New(obj["message"].(string))
+	}
+
 	var responseData []interface{}
 
 	// VolumeList operation returns an object, not an array.
@@ -42,16 +48,6 @@ func responseToJSONArray(response *http.Response, requestPath string) ([]interfa
 	}
 
 	return responseData, nil
-}
-
-func getErrorMessageFromResponse(response *http.Response) (string, error) {
-	responseObject, err := getResponseBodyAsGenericJSON(response)
-	if err != nil {
-		return "", err
-	}
-
-	obj := responseObject.(map[string]interface{})
-	return obj["message"].(string), nil
 }
 
 func getResponseBodyAsGenericJSON(response *http.Response) (interface{}, error) {

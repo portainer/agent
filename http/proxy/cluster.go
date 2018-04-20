@@ -3,7 +3,6 @@ package proxy
 import (
 	"bytes"
 	"crypto/tls"
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"sync"
@@ -98,17 +97,6 @@ func (clusterProxy *ClusterProxy) copyAndExecuteRequest(request *http.Request, m
 		return
 	}
 	defer response.Body.Close()
-
-	if response.StatusCode > 400 {
-		var message string
-		message, err = getErrorMessageFromResponse(response)
-		if err != nil {
-			ch <- agentRequestResult{err: err}
-			return
-		}
-		ch <- agentRequestResult{err: errors.New(message)}
-		return
-	}
 
 	data, err := responseToJSONArray(response, request.URL.Path)
 	if err != nil {
