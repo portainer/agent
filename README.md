@@ -28,8 +28,7 @@ The final goal is to bring a better Docker UX when managing Swarm clusters.
 The Portainer agent is basically a cluster of Docker API proxies. Deployed inside a Swarm cluster on each node, it allows the
 redirection (proxy) of a Docker API request on any specific node as well as the aggregration of the response of multiple nodes.
 
-At startup, the agent will communicate with the Docker node it is deployed on via the Unix socket (**not available on Windows yet**) to retrieve information about the node (name, IP address, role in the Swarm cluster). This data will be shared when the agent
-will register into the agent cluster.
+At startup, the agent will communicate with the Docker node it is deployed on via the Unix socket (**not available on Windows yet**) to retrieve information about the node (name, IP address, role in the Swarm cluster). This data will be shared when the agent will register into the agent cluster.
 
 ### Agent cluster
 
@@ -49,7 +48,13 @@ be proxied to the local Docker API.
 Some requests are specifically marked to be executed against a manager node inside the cluster (`/services/**`, `/tasks/**`, `/nodes/**`, etc... e.g. all the Docker API operations that can only be executed on a Swarm manager node). This means that you can execute these requests
 against any agent in the cluster and they will be proxied to an agent (and to the associated Docker API) located on a Swarm manager node.
 
-### Aggregation
+### Proxy & aggregation
+
+By default, the agent will inspect any requests and search for the `X-PortainerAgent-ManagerOperation` header. If it is found (the value of the header does not matter),
+then the agent will proxy that request to an agent located on any manager node. If this header is not found, then an operation will be executed based on the endpoint prefix (`/networks` for a cluster operation, `/services` for a manager operation, etc...).
+
+The `X-PortainerAgent-ManagerOperation` header was introduced to work-around the fact that a Portainer instance uses the Docker CLI binary to manage stacks and the binary
+**MUST** always target a manager node when executing any command.
 
 Some requests are specifically marked to be executed against the whole cluster:
 
@@ -60,6 +65,7 @@ Some requests are specifically marked to be executed against the whole cluster:
 
 The agent handles these requests using the same header mechanism. If no `X-PortainerAgent-Target` is found, it will automatically execute
 the request against each node in the cluster in a concurrent way. Behind the scene, it retrieves the IP address of each node, create a copy of the request, decorate each request with the `X-PortainerAgent-Target` header and aggregate the response of each request into a single one (reproducing the Docker API response format).
+
 
 ### Docker API compliance
 
