@@ -32,7 +32,6 @@ type (
 		Leave()
 		GetMemberByRole(role string) *ClusterMember
 		GetMemberByNodeName(nodeName string) *ClusterMember
-		Broadcast(name string, payload []byte) error
 	}
 
 	// DigitalSignatureService is used to validate digital signatures.
@@ -72,6 +71,9 @@ const (
 	// HTTPSignatureHeaderName is the name of the header containing the digital signature
 	// of a Portainer instance.
 	HTTPSignatureHeaderName = "X-PortainerAgent-Signature"
+	// HTTPPublicKeyHeaderName is the name of the header containing the public key
+	// of a Portainer instance.
+	HTTPPublicKeyHeaderName = "X-PortainerAgent-PublicKey"
 	// HTTPResponseAgentHeaderName is the name of the header that is automatically added
 	// to each agent response.
 	HTTPResponseAgentHeaderName = "Portainer-Agent"

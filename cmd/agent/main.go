@@ -28,12 +28,6 @@ func initOptionsFromEnvironment() (*agent.AgentOptions, error) {
 	}
 	options.ClusterAddress = clusterAddressEnv
 
-	// pubKeyEnv := os.Getenv("PORTAINER_PUBKEY")
-	// if pubKeyEnv == "" {
-	// 	return nil, agent.ErrPortainerPublicKeyRequired
-	// }
-	// options.PortainerPublicKey = pubKeyEnv
-
 	agentPortEnv := os.Getenv("AGENT_PORT")
 	if agentPortEnv != "" {
 		_, err := strconv.Atoi(agentPortEnv)
@@ -131,10 +125,6 @@ func main() {
 	log.Printf("[DEBUG] - Agent details: %v\n", agentTags)
 
 	signatureService := crypto.NewECDSAService()
-	// err = signatureService.ParsePublicKey(options.PortainerPublicKey)
-	// if err != nil {
-	// 	log.Fatalf("[ERROR] - Unable to parse Portainer public key: %s", err)
-	// }
 
 	// TODO: looks like the Docker DNS cannot find any info on tasks.<service_name>
 	// sometimes... Waiting a bit before starting the discovery seems to solve the problem.
