@@ -9,20 +9,25 @@ import (
 	"github.com/hashicorp/serf/serf"
 )
 
+// ClusterService is a service used to manage cluster related actions such as joining
+// the cluster, retrieving members in the clusters...
 type ClusterService struct {
 	cluster *serf.Serf
 }
 
+// NewClusterService returns a pointer to a ClusterService.
 func NewClusterService() *ClusterService {
 	return &ClusterService{}
 }
 
+// Leave leaves the cluster.
 func (service *ClusterService) Leave() {
 	if service.cluster != nil {
 		service.cluster.Leave()
 	}
 }
 
+// Create will create the agent configuration and automatically join the cluster.
 func (service *ClusterService) Create(advertiseAddr, joinAddr string, tags map[string]string) error {
 
 	filter := &logutils.LevelFilter{
@@ -56,10 +61,7 @@ func (service *ClusterService) Create(advertiseAddr, joinAddr string, tags map[s
 	return nil
 }
 
-func (service *ClusterService) Broadcast(name string, payload []byte) error {
-	return service.cluster.UserEvent(name, payload, true)
-}
-
+// Members returns the list of cluster members.
 func (service *ClusterService) Members() []agent.ClusterMember {
 	var clusterMembers = make([]agent.ClusterMember, 0)
 
@@ -80,6 +82,7 @@ func (service *ClusterService) Members() []agent.ClusterMember {
 	return clusterMembers
 }
 
+// GetMemberByRole will return the first member with the specified role.
 func (service *ClusterService) GetMemberByRole(role string) *agent.ClusterMember {
 	members := service.Members()
 	for _, member := range members {
@@ -91,6 +94,7 @@ func (service *ClusterService) GetMemberByRole(role string) *agent.ClusterMember
 	return nil
 }
 
+// GetMemberByNodeName will return the first member with the specified node name.
 func (service *ClusterService) GetMemberByNodeName(nodeName string) *agent.ClusterMember {
 	members := service.Members()
 	for _, member := range members {
