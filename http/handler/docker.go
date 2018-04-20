@@ -53,16 +53,16 @@ func (handler *DockerProxyHandler) dispatchOperation(rw http.ResponseWriter, req
 	path := request.URL.Path
 
 	switch {
-	case strings.HasPrefix(path, "/containers/json"):
+	case path == "/containers/json":
 		handler.executeOperationOnCluster(rw, request)
 		return
-	case strings.HasPrefix(path, "/images/json"):
+	case path == "/images/json":
 		handler.executeOperationOnCluster(rw, request)
 		return
-	case strings.HasPrefix(path, "/volumes"):
+	case path == "/volumes" && request.Method == http.MethodGet:
 		handler.executeOperationOnCluster(rw, request)
 		return
-	case strings.HasPrefix(path, "/networks"):
+	case path == "/networks" && request.Method == http.MethodGet:
 		handler.executeOperationOnCluster(rw, request)
 		return
 	case strings.HasPrefix(path, "/services"):
