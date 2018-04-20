@@ -88,6 +88,13 @@ server where the agent API is exposed. By using self-signed certificates, each a
 
 ### Authentication
 
-WIP
+Each request to an agent must include a digital signature in the `X-PortainerAgent-Signature` header. The signature is generated using a private key in the Portainer instance and included in each request. The agent uses the public key of the Portainer instance to verify if the signature is valid.
+
+For convenience, the Portainer public key is always included inside the `X-PortainerAgent-PublicKey` header in each request to the agent. The first time the agent will
+find the `X-PortainerAgent-PublicKey` header in a request, it will automatically register the public key contained in the header and will stop looking at this header.
+
+If no public key is registered and the agent cannot find the `X-PortainerAgent-PublicKey` header in a request, it will return a 403. If a public key is registered and
+the agent cannot find the `X-PortainerAgent-Signature` header or that the header contains an invalid signature, it will return a 403.
+
 
 ## Deployment
