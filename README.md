@@ -96,5 +96,35 @@ find the `X-PortainerAgent-PublicKey` header in a request, it will automatically
 If no public key is registered and the agent cannot find the `X-PortainerAgent-PublicKey` header in a request, it will return a 403. If a public key is registered and
 the agent cannot find the `X-PortainerAgent-Signature` header or that the header contains an invalid signature, it will return a 403.
 
-
 ## Deployment
+
+*This setup will assume that you're executing the following instructions on a Swarm manager node*
+
+First thing to do, create an overlay network in which the agent will be deployed:
+
+```
+$ docker network create --driver overlay portainer_agent_network
+```
+
+Then, deploy the agent as a global service inside the previously created network:
+
+```
+$ docker service create --name portainer_agent \
+--network portainer_agent_network \
+-e AGENT_CLUSTER_ADDR=tasks.portainer_agent \
+--mode global \
+--mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
+portainer/agent:develop
+```
+
+The last step is to connect Portainer to the agent.
+
+If the Portainer instance is deployed inside the same overlay network as the agent then
+Portainer can leverages the internal Docker DNS to automatically join any agent using `tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT>`.
+
+For example, based on the previous service deployment, `tasks.portainer_agent:9001` can be used as endpoint URL.
+
+**IMPORTANT NOTE**: The agent is using HTTPS communication with self-signed certificates, any endpoint created inside the UI must
+enable the `TLS` switch and use the `TLS only` option.
+
+When creating the endpoint on the CLI using the `-H` Portainer flag, the `--tlsskipverify` flag must be specified, example: `-H tcp://tasks.portainer_agent:9001 --tlsskipverify`.
