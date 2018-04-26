@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-IMAGE_NAME=portainer-agent:develop
+IMAGE_NAME=portainer/agent:develop
 LOG_LEVEL=INFO
 
 cd cmd/agent
