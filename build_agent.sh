@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-IMAGE_NAME=portainer/agent:develop
-LOG_LEVEL=INFO
+IMAGE_NAME=localagent:develop
+LOG_LEVEL=DEBUG
 
 cd cmd/agent
 
@@ -13,9 +13,9 @@ mv agent ../../dist/agent
 
 echo "Image build..."
 
-docker -H 10.0.7.10:2375 build -t ${IMAGE_NAME} -f ../../Dockerfile ../..
-docker -H 10.0.7.11:2375 build -t ${IMAGE_NAME} -f ../../Dockerfile ../..
-docker -H 10.0.7.12:2375 build -t ${IMAGE_NAME} -f ../../Dockerfile ../..
+docker -H 10.0.7.10:2375 build --no-cache -t ${IMAGE_NAME} -f ../../Dockerfile ../..
+docker -H 10.0.7.11:2375 build --no-cache -t ${IMAGE_NAME} -f ../../Dockerfile ../..
+docker -H 10.0.7.12:2375 build --no-cache -t ${IMAGE_NAME} -f ../../Dockerfile ../..
 
 echo "Cleanup previous settings..."
 

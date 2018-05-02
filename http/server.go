@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/base64"
 	"net/http"
 
 	"bitbucket.org/portainer/agent"
@@ -24,30 +25,43 @@ func NewServer(clusterService agent.ClusterService, signatureService agent.Digit
 	}
 }
 
-func (server *Server) checkDigitalSignature(next http.Handler) http.Handler {
+func (server *Server) verifySignature(signatureHeaderValue string) error {
+	if signatureHeaderValue == "" {
+		return agent.ErrUnauthorized
+	}
+
+	decodedSignature, err := base64.RawStdEncoding.DecodeString(signatureHeaderValue)
+	if err != nil {
+		return agent.ErrUnauthorized
+	}
+
+	if !server.signatureService.ValidSignature(decodedSignature) {
+		return agent.ErrUnauthorized
+	}
+
+	return nil
+}
+
+func (server *Server) digitalSignatureVerification(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, request *http.Request) {
-		publicKeyHeader := request.Header.Get(agent.HTTPPublicKeyHeaderName)
-		if server.signatureService.RequiresPublicKey() && publicKeyHeader == "" {
+		publicKeyHeaderValue := request.Header.Get(agent.HTTPPublicKeyHeaderName)
+		if server.signatureService.RequiresPublicKey() && publicKeyHeaderValue == "" {
 			httperror.WriteErrorResponse(rw, agent.ErrPublicKeyUnavailable, http.StatusForbidden, nil)
 			return
 		}
 
-		if server.signatureService.RequiresPublicKey() && publicKeyHeader != "" {
-			err := server.signatureService.ParsePublicKey(publicKeyHeader)
+		if server.signatureService.RequiresPublicKey() && publicKeyHeaderValue != "" {
+			err := server.signatureService.ParsePublicKey(publicKeyHeaderValue)
 			if err != nil {
 				httperror.WriteErrorResponse(rw, err, http.StatusInternalServerError, nil)
 				return
 			}
 		}
 
-		signatureHeader := request.Header.Get(agent.HTTPSignatureHeaderName)
-		if signatureHeader == "" {
-			httperror.WriteErrorResponse(rw, agent.ErrUnauthorized, http.StatusForbidden, nil)
-			return
-		}
-
-		if !server.signatureService.ValidSignature(signatureHeader) {
-			httperror.WriteErrorResponse(rw, agent.ErrUnauthorized, http.StatusForbidden, nil)
+		signatureHeaderValue := request.Header.Get(agent.HTTPSignatureHeaderName)
+		err := server.verifySignature(signatureHeaderValue)
+		if err != nil {
+			httperror.WriteErrorResponse(rw, err, http.StatusForbidden, nil)
 			return
 		}
 
@@ -58,5 +72,5 @@ func (server *Server) checkDigitalSignature(next http.Handler) http.Handler {
 // Start starts a new webserver by listening on the specified listenAddr.
 func (server *Server) Start(listenAddr string) error {
 	h := handler.NewHandler(server.clusterService, server.agentTags)
-	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, server.checkDigitalSignature(h))
+	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, server.digitalSignatureVerification(h))
 }
