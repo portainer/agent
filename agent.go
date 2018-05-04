@@ -38,7 +38,7 @@ type (
 	DigitalSignatureService interface {
 		RequiresPublicKey() bool
 		ParsePublicKey(key string) error
-		ValidSignature(signature []byte) bool
+		ValidSignature(signature string) bool
 	}
 
 	// InfoService is used to retrieve information from a Docker environment.

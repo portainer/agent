@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/base64"
 	"net/http"
 
 	"bitbucket.org/portainer/agent"
@@ -30,12 +29,7 @@ func (server *Server) verifySignature(signatureHeaderValue string) error {
 		return agent.ErrUnauthorized
 	}
 
-	decodedSignature, err := base64.RawStdEncoding.DecodeString(signatureHeaderValue)
-	if err != nil {
-		return agent.ErrUnauthorized
-	}
-
-	if !server.signatureService.ValidSignature(decodedSignature) {
+	if !server.signatureService.ValidSignature(signatureHeaderValue) {
 		return agent.ErrUnauthorized
 	}
 

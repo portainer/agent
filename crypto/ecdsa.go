@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/md5"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"math/big"
 
@@ -50,15 +51,20 @@ func (service *ECDSAService) ParsePublicKey(key string) error {
 }
 
 // ValidSignature returns true if the signature is valid.
-func (service *ECDSAService) ValidSignature(signature []byte) bool {
-	keySize := service.publicKey.Params().BitSize / 8
-
-	if len(signature) != 2*keySize {
+func (service *ECDSAService) ValidSignature(signature string) bool {
+	decodedSignature, err := base64.RawStdEncoding.DecodeString(signature)
+	if err != nil {
 		return false
 	}
 
-	r := big.NewInt(0).SetBytes(signature[:keySize])
-	s := big.NewInt(0).SetBytes(signature[keySize:])
+	keySize := service.publicKey.Params().BitSize / 8
+
+	if len(decodedSignature) != 2*keySize {
+		return false
+	}
+
+	r := big.NewInt(0).SetBytes(decodedSignature[:keySize])
+	s := big.NewInt(0).SetBytes(decodedSignature[keySize:])
 
 	digest := md5.New()
 	digest.Write([]byte(agent.PortainerAgentSignatureMessage))
