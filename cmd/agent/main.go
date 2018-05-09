@@ -137,7 +137,8 @@ func main() {
 	}
 	defer clusterService.Leave()
 
-	server := http.NewServer(clusterService, signatureService, agentTags)
 	listenAddr := agent.DefaultListenAddr + ":" + options.Port
+	log.Printf("[INFO] - Starting Portainer agent version %s on %s", agent.AgentVersion, listenAddr)
+	server := http.NewServer(clusterService, signatureService, agentTags)
 	server.Start(listenAddr)
 }
