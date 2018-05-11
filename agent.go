@@ -54,7 +54,7 @@ type (
 
 const (
 	// AgentVersion represents the version of the agent.
-	AgentVersion = "0.1.0"
+	AgentVersion = "1.0.0"
 	// DefaultListenAddr is the default address used by the web server.
 	DefaultListenAddr = "0.0.0.0"
 	// DefaultAgentPort is the default port exposed by the web server.
