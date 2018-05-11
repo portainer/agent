@@ -3,9 +3,13 @@
 if [[ $# -ne 1 ]] ; then
   echo "Usage: $(basename $0) <VERSION>"
   exit 1
-done
+fi
 
 VERSION=$1
+
+function clean() {
+  rm -rf dist/*
+}
 
 function build_and_push_image() {
   docker build -t "portainer/agent:${1}-${VERSION}" .
@@ -26,8 +30,10 @@ function build_all() {
 
     build_binary "${os}" "${arch}"
     build_and_push_image "${tag}"
+    clean
   done
 }
 
 build_all 'linux-amd64 linux-arm linux-arm64 linux-ppc64le linux-s390x'
+
 exit 0
