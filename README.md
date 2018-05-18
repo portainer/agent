@@ -2,26 +2,13 @@
 
 ## Purpose
 
-The purpose of the agent is to work around a Docker API limitation. When using the
-Docker API to manage a Docker environment, the user interactions with specific resources
-(containers, networks, volumes and images) are limited to these available on the node targeted by the
-Docker API request.
+The Portainer Agent is a workaround for a Docker API limitation when using the Docker API to manage a Docker environment. The user interactions with specific resources (containers, networks, volumes and images) are limited to those available on the node targeted by the Docker API request.
 
-Docker Swarm mode introduce the concept of cluster of Docker nodes. With that concept, it
-also introduces the services, tasks, configs and secrets which are cluster aware resources.
-This means that you can query for the list of service or inspect a task inside any node on the cluster
-as long as you're executing the Docker API request on a manager node.
+Docker Swarm mode introduces a concept which is the clustering of Docker nodes. It also adds services, tasks, configs and secrets which are cluster-aware resources. Cluster-aware means that you can query for a list of services or inspect a task inside any node on the cluster, as long as you’re executing the Docker API request on a manager node.
 
-Containers, networks, volumes and images are node specific resources, not cluster aware.
-If you want to get the list of all the volumes available on the node number 3 inside your cluster,
-you need to execute the request to query the volumes on that specific node.
+Containers, networks, volumes and images are node specific resources, not cluster-aware. When you, for example, want to list all the volumes available on a node inside your cluster, you will need to send a query to that specific node.
 
-The agent purpose aims to solve that issue and make the containers, networks and volumes resources cluster aware while
-keeping the Docker API request format.
-
-This means that you only need to execute one Docker API request to retrieve all the volumes inside your cluster for example.
-
-The final goal is to bring a better Docker UX when managing Swarm clusters.
+The purpose of the agent aims to allows previously node specific resources to be cluster-aware, all while keeping the Docker API request format. As aforementioned, this means that you only need to execute one Docker API request to retrieve all these resources from every node inside the cluster. In all bringing a better Docker user experience when managing Swarm clusters.
 
 ## Technical details
 
