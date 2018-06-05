@@ -11,8 +11,8 @@ import (
 	"github.com/koding/websocketproxy"
 )
 
-// ProxyOperation redirects a requests to another agent.
-func ProxyOperation(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
+// HTTPRequest redirects a HTTP request to another agent.
+func HTTPRequest(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
 	url := request.URL
 	url.Host = target.IPAddress + ":" + target.Port
 	url.Scheme = "https"
@@ -20,8 +20,8 @@ func ProxyOperation(rw http.ResponseWriter, request *http.Request, target *agent
 	proxyHTTPSRequest(rw, request, url, target.NodeName)
 }
 
-// ProxyWebsocketOperation redirects a websocket request to another agent.
-func ProxyWebsocketOperation(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
+// WebsocketRequest redirects a websocket request to another agent.
+func WebsocketRequest(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
 	url := request.URL
 	url.Host = target.IPAddress + ":" + target.Port
 	url.Scheme = "wss"

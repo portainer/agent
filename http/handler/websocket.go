@@ -70,7 +70,7 @@ func (handler *WebSocketHandler) handleWebsocketExec(rw http.ResponseWriter, req
 			return
 		}
 
-		proxy.ProxyWebsocketOperation(rw, request, targetMember)
+		proxy.WebsocketRequest(rw, request, targetMember)
 	}
 }
 

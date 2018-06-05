@@ -97,7 +97,7 @@ func (handler *DockerProxyHandler) executeOperationOnManagerNode(rw http.Respons
 			httperror.WriteErrorResponse(rw, agent.ErrManagerAgentNotFound, http.StatusInternalServerError, handler.logger)
 			return
 		}
-		proxy.ProxyOperation(rw, request, targetMember)
+		proxy.HTTPRequest(rw, request, targetMember)
 	}
 }
 
@@ -113,7 +113,7 @@ func (handler *DockerProxyHandler) executeOperationOnNode(rw http.ResponseWriter
 			return
 		}
 
-		proxy.ProxyOperation(rw, request, targetMember)
+		proxy.HTTPRequest(rw, request, targetMember)
 	}
 }
 
