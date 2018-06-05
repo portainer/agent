@@ -53,6 +53,8 @@ func responseToJSONArray(response *http.Response, requestPath string) ([]interfa
 func getResponseBodyAsGenericJSON(response *http.Response) (interface{}, error) {
 	var data interface{}
 
+	// TODO: resource duplication error: it seems that the body size is different here
+	// from the size returned in socket.go
 	err := json.NewDecoder(response.Body).Decode(&data)
 	if err != nil {
 		return nil, err

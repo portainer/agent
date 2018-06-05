@@ -51,6 +51,9 @@ func (proxy *SocketProxy) ServeHTTP(rw http.ResponseWriter, request *http.Reques
 	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
 
 	rw.WriteHeader(res.StatusCode)
+
+	// TODO: resource duplication error: it seems that the body size is different here
+	// from the size retrieve in cluster.go
 	io.Copy(rw, res.Body)
 }
 
