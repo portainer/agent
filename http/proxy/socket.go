@@ -2,10 +2,8 @@ package proxy
 
 import (
 	"io"
-	"log"
 	"net"
 	"net/http"
-	"os"
 
 	"bitbucket.org/portainer/agent"
 	httperror "bitbucket.org/portainer/agent/http/error"
@@ -15,14 +13,12 @@ import (
 // The proxy operation implementation is defined in the ServeHTTP funtion..
 type SocketProxy struct {
 	transport *http.Transport
-	logger    *log.Logger
 }
 
 // NewSocketProxy returns a pointer to a SocketProxy.
 func NewSocketProxy(socketPath string, clusterService agent.ClusterService) *SocketProxy {
 	proxy := &SocketProxy{
 		transport: newSocketTransport(socketPath),
-		logger:    log.New(os.Stderr, "", log.LstdFlags),
 	}
 	return proxy
 }
@@ -37,7 +33,7 @@ func (proxy *SocketProxy) ServeHTTP(rw http.ResponseWriter, request *http.Reques
 		if res != nil && res.StatusCode != 0 {
 			code = res.StatusCode
 		}
-		httperror.WriteErrorResponse(rw, err, code, proxy.logger)
+		httperror.WriteError(rw, code, "Unable to proxy the request via the Docker socket", err)
 		return
 	}
 
