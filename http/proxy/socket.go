@@ -2,28 +2,21 @@ package proxy
 
 import (
 	"io"
-	"net"
+	"log"
 	"net/http"
 
 	"bitbucket.org/portainer/agent"
 	httperror "bitbucket.org/portainer/agent/http/error"
 )
 
-// SocketProxy is a service used to proxy requests to a Unix socket.
+// LocalProxy is a service used to proxy requests to a Unix socket.
 // The proxy operation implementation is defined in the ServeHTTP funtion..
-type SocketProxy struct {
+type LocalProxy struct {
 	transport *http.Transport
+	logger    *log.Logger
 }
 
-// NewSocketProxy returns a pointer to a SocketProxy.
-func NewSocketProxy(socketPath string, clusterService agent.ClusterService) *SocketProxy {
-	proxy := &SocketProxy{
-		transport: newSocketTransport(socketPath),
-	}
-	return proxy
-}
-
-func (proxy *SocketProxy) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
+func (proxy *LocalProxy) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	request.URL.Scheme = "http"
 	request.URL.Host = "unixsocket"
 
@@ -51,12 +44,4 @@ func (proxy *SocketProxy) ServeHTTP(rw http.ResponseWriter, request *http.Reques
 	// TODO: resource duplication error: it seems that the body size is different here
 	// from the size retrieve in cluster.go
 	io.Copy(rw, res.Body)
-}
-
-func newSocketTransport(socketPath string) *http.Transport {
-	return &http.Transport{
-		Dial: func(proto, addr string) (conn net.Conn, err error) {
-			return net.Dial("unix", socketPath)
-		},
-	}
 }

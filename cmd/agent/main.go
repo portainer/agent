@@ -4,6 +4,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -76,16 +78,26 @@ func retrieveAdvertiseAddress() (string, error) {
 
 	var advertiseAddr string
 	for _, i := range ifaces {
-		if i.Name == "eth0" {
+		if matched, _ := regexp.MatchString(`^(eth0)$||^(vEthernet) \(.*\)$`, i.Name); matched {
 			var ip net.IP
 			addrs, _ := i.Addrs()
-			switch v := addrs[0].(type) {
+
+			j := 0
+			// On Windows first IP address is link-local IPv6
+			if runtime.GOOS == "windows" {
+				j = 1
+			}
+
+			switch v := addrs[j].(type) {
 			case *net.IPNet:
 				ip = v.IP
 			case *net.IPAddr:
 				ip = v.IP
 			}
-			advertiseAddr = ip.String()
+			if ip.String() != `127.0.0.1` {
+				advertiseAddr = ip.String()
+				break
+			}
 		}
 	}
 

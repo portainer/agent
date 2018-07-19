@@ -10,7 +10,7 @@ import (
 // Handler represents an HTTP API handler for proxying requests to the Docker API.
 type Handler struct {
 	*mux.Router
-	dockerProxy    *proxy.SocketProxy
+	dockerProxy    *proxy.LocalProxy
 	clusterProxy   *proxy.ClusterProxy
 	clusterService agent.ClusterService
 	agentTags      map[string]string
@@ -21,7 +21,7 @@ type Handler struct {
 func NewHandler(clusterService agent.ClusterService, agentTags map[string]string) *Handler {
 	h := &Handler{
 		Router:         mux.NewRouter(),
-		dockerProxy:    proxy.NewSocketProxy("/var/run/docker.sock", clusterService),
+		dockerProxy:    proxy.NewLocalProxy(clusterService),
 		clusterProxy:   proxy.NewClusterProxy(),
 		clusterService: clusterService,
 		agentTags:      agentTags,
