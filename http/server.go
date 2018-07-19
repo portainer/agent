@@ -37,29 +37,27 @@ func (server *Server) verifySignature(signatureHeaderValue string) error {
 }
 
 func (server *Server) digitalSignatureVerification(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, request *http.Request) {
-		publicKeyHeaderValue := request.Header.Get(agent.HTTPPublicKeyHeaderName)
+	return httperror.LoggerHandler(func(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+		publicKeyHeaderValue := r.Header.Get(agent.HTTPPublicKeyHeaderName)
 		if server.signatureService.RequiresPublicKey() && publicKeyHeaderValue == "" {
-			httperror.WriteErrorResponse(rw, agent.ErrPublicKeyUnavailable, http.StatusForbidden, nil)
-			return
+			return &httperror.HandlerError{http.StatusForbidden, "Missing Portainer public key", agent.ErrPublicKeyUnavailable}
 		}
 
 		if server.signatureService.RequiresPublicKey() && publicKeyHeaderValue != "" {
 			err := server.signatureService.ParsePublicKey(publicKeyHeaderValue)
 			if err != nil {
-				httperror.WriteErrorResponse(rw, err, http.StatusInternalServerError, nil)
-				return
+				return &httperror.HandlerError{http.StatusInternalServerError, "Unable to parse Portainer public key", err}
 			}
 		}
 
-		signatureHeaderValue := request.Header.Get(agent.HTTPSignatureHeaderName)
+		signatureHeaderValue := r.Header.Get(agent.HTTPSignatureHeaderName)
 		err := server.verifySignature(signatureHeaderValue)
 		if err != nil {
-			httperror.WriteErrorResponse(rw, err, http.StatusForbidden, nil)
-			return
+			return &httperror.HandlerError{http.StatusForbidden, "Unable to verify Portainer signature", err}
 		}
 
-		next.ServeHTTP(rw, request)
+		next.ServeHTTP(rw, r)
+		return nil
 	})
 }
 
