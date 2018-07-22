@@ -15,7 +15,7 @@ The purpose of the agent aims to allows previously node specific resources to be
 The Portainer agent is basically a cluster of Docker API proxies. Deployed inside a Swarm cluster on each node, it allows the
 redirection (proxy) of a Docker API request on any specific node as well as the aggregration of the response of multiple nodes.
 
-At startup, the agent will communicate with the Docker node it is deployed on via the Unix socket (**not available on Windows yet**) to retrieve information about the node (name, IP address, role in the Swarm cluster). This data will be shared when the agent will register into the agent cluster.
+At startup, the agent will communicate with the Docker node it is deployed on via the Unix socket/Windows named pipe to retrieve information about the node (name, IP address, role in the Swarm cluster). This data will be shared when the agent will register into the agent cluster.
 
 ### Agent cluster
 
@@ -90,7 +90,7 @@ the agent cannot find the `X-PortainerAgent-Signature` header or that the header
 First thing to do, create an overlay network in which the agent will be deployed:
 
 ```
-$ docker network create --driver overlay portainer_agent_network
+$ docker network create --driver overlay --attachable portainer_agent_network
 ```
 
 Then, deploy the agent as a global service inside the previously created network:
@@ -101,7 +101,17 @@ $ docker service create --name portainer_agent \
 -e AGENT_CLUSTER_ADDR=tasks.portainer_agent \
 --mode global \
 --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
+--constraint node.platform.os==linux \
 portainer/agent:develop
+```
+
+```powershell
+docker run -d --name portainer_agent `
+--restart always --network portainer_agent_network `
+--label com.docker.stack.namespace=portainer `
+-e AGENT_CLUSTER_ADDR=tasks.agent `
+--mount type=npipe,source=\\.\pipe\docker_engine,target=\\.\pipe\docker_engine `
+portainer/agent:windows1803-amd64
 ```
 
 The last step is to connect Portainer to the agent.

@@ -90,10 +90,6 @@ func hijackExecStartOperation(websocketConn *websocket.Conn, execID string) erro
 	return nil
 }
 
-func createDial() (net.Conn, error) {
-	return net.Dial("unix", "/var/run/docker.sock")
-}
-
 func createExecStartRequest(execID string) (*http.Request, error) {
 	execStartOperationPayload := &execStartOperationPayload{
 		Tty:    true,
