@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-IMAGE_NAME=localagent:develop
+IMAGE_NAME=portainer/agent:local
 LOG_LEVEL=DEBUG
 
 cd cmd/agent
@@ -11,22 +11,23 @@ CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
 rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 mv agent ../../dist/agent
 
-echo "Image build..."
-
-docker -H 10.0.7.10:2375 build --no-cache -t ${IMAGE_NAME} -f ../../Dockerfile ../..
-docker -H 10.0.7.11:2375 build --no-cache -t ${IMAGE_NAME} -f ../../Dockerfile ../..
-# docker -H 10.0.7.12:2375 build --no-cache -t ${IMAGE_NAME} -f ../../Dockerfile ../..
-
 echo "Cleanup previous settings..."
 
 docker -H 10.0.7.10:2375 service rm pagent
 docker -H 10.0.7.10:2375 network rm pagent-net
+docker -H 10.0.7.10:2375 rmi -f ${IMAGE_NAME}
+docker -H 10.0.7.11:2375 rmi -f ${IMAGE_NAME}
+
+echo "Image build..."
+
+docker -H 10.0.7.10:2375 build --no-cache -t ${IMAGE_NAME} -f ../../Dockerfile ../..
+docker -H 10.0.7.11:2375 build --no-cache -t ${IMAGE_NAME} -f ../../Dockerfile ../..
 
 echo "Sleep..."
 
-sleep 7
+sleep 3
 
-echo "Swarm setup..."
+echo "Deployment..."
 
 docker -H 10.0.7.10:2375 network create --driver overlay --attachable pagent-net
 docker -H 10.0.7.10:2375 service create --name pagent \
