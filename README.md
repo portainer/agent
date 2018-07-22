@@ -102,16 +102,16 @@ $ docker service create --name portainer_agent \
 --mode global \
 --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
 --constraint node.platform.os==linux \
-portainer/agent:develop
+portainer/agent:latest
 ```
 
-```powershell
+```
 docker run -d --name portainer_agent `
 --restart always --network portainer_agent_network `
 --label com.docker.stack.namespace=portainer `
 -e AGENT_CLUSTER_ADDR=tasks.agent `
 --mount type=npipe,source=\\.\pipe\docker_engine,target=\\.\pipe\docker_engine `
-portainer/agent:windows1803-amd64
+portainer/agent:latest
 ```
 
 The last step is to connect Portainer to the agent.
