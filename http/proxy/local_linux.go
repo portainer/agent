@@ -3,10 +3,8 @@
 package proxy
 
 import (
-	"log"
 	"net"
 	"net/http"
-	"os"
 
 	"bitbucket.org/portainer/agent"
 )
@@ -15,7 +13,6 @@ import (
 func NewLocalProxy(clusterService agent.ClusterService) *LocalProxy {
 	proxy := &LocalProxy{
 		transport: newSocketTransport("/var/run/docker.sock"),
-		logger:    log.New(os.Stderr, "", log.LstdFlags),
 	}
 	return proxy
 }

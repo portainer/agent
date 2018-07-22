@@ -3,10 +3,8 @@
 package proxy
 
 import (
-	"log"
 	"net"
 	"net/http"
-	"os"
 
 	"bitbucket.org/portainer/agent"
 	"github.com/Microsoft/go-winio"
@@ -16,7 +14,6 @@ import (
 func NewLocalProxy(clusterService agent.ClusterService) *LocalProxy {
 	proxy := &LocalProxy{
 		transport: newNamedPipeTransport("//./pipe/docker_engine"),
-		logger:    log.New(os.Stderr, "", log.LstdFlags),
 	}
 	return proxy
 }

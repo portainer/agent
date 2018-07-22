@@ -2,18 +2,16 @@ package proxy
 
 import (
 	"io"
-	"log"
 	"net/http"
 
 	"bitbucket.org/portainer/agent"
 	httperror "bitbucket.org/portainer/agent/http/error"
 )
 
-// LocalProxy is a service used to proxy requests to a Unix socket.
-// The proxy operation implementation is defined in the ServeHTTP funtion..
+// LocalProxy is a service used to proxy requests to a Unix socket (Linux) or named pipe (Windows).
+// The proxy operation implementation is defined in the ServeHTTP function.
 type LocalProxy struct {
 	transport *http.Transport
-	logger    *log.Logger
 }
 
 func (proxy *LocalProxy) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
