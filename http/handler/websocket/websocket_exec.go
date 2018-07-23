@@ -19,6 +19,10 @@ import (
 )
 
 func (handler *Handler) websocketExec(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	if handler.clusterService == nil {
+		return handler.handleRequest(rw, r)
+	}
+
 	agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
 
 	if agentTargetHeader == handler.agentTags[agent.MemberTagKeyNodeName] {

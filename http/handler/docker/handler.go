@@ -21,7 +21,7 @@ type Handler struct {
 func NewHandler(clusterService agent.ClusterService, agentTags map[string]string) *Handler {
 	h := &Handler{
 		Router:         mux.NewRouter(),
-		dockerProxy:    proxy.NewLocalProxy(clusterService),
+		dockerProxy:    proxy.NewLocalProxy(),
 		clusterProxy:   proxy.NewClusterProxy(),
 		clusterService: clusterService,
 		agentTags:      agentTags,

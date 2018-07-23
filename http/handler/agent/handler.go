@@ -8,6 +8,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	errAgentManagementDisabled = agent.Error("Agent management is disabled")
+)
+
 // Handler is the HTTP handler used to handle agent operations.
 type Handler struct {
 	*mux.Router

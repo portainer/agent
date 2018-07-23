@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"bitbucket.org/portainer/agent"
 )
 
 type (
@@ -30,6 +32,7 @@ func (handler LoggerHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) 
 func writeErrorResponse(rw http.ResponseWriter, err *HandlerError) {
 	log.Printf("http error: %s (err=%s) (code=%d)\n", err.Message, err.Err, err.StatusCode)
 	rw.Header().Set("Content-Type", "application/json")
+	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
 	rw.WriteHeader(err.StatusCode)
 	json.NewEncoder(rw).Encode(&errorResponse{Err: err.Message})
 }

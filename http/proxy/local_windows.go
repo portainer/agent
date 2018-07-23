@@ -6,12 +6,11 @@ import (
 	"net"
 	"net/http"
 
-	"bitbucket.org/portainer/agent"
 	"github.com/Microsoft/go-winio"
 )
 
 // NewLocalProxy returns a pointer to a LocalProxy.
-func NewLocalProxy(clusterService agent.ClusterService) *LocalProxy {
+func NewLocalProxy() *LocalProxy {
 	proxy := &LocalProxy{
 		transport: newNamedPipeTransport("//./pipe/docker_engine"),
 	}
