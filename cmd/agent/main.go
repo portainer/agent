@@ -145,7 +145,7 @@ func main() {
 
 	log.Printf("[DEBUG] - Using agent port: %s\n", options.Port)
 
-	var clusterService *cluster.ClusterService
+	var clusterService agent.ClusterService
 	if clusterMode {
 		clusterService := cluster.NewClusterService()
 
