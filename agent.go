@@ -5,8 +5,6 @@ type (
 	AgentOptions struct {
 		Port           string
 		ClusterAddress string
-		LogLevel       string
-		// PortainerPublicKey string
 	}
 
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -92,6 +90,9 @@ const (
 	// MemberTagKeyNodeRole is the name of the label storing information about the role of the
 	// node where the agent is running.
 	MemberTagKeyNodeRole = "NodeRole"
+	// ApplicationTagMode is the name of the label storing information about the mode of the application, either
+	// "standalone" or "swarm".
+	ApplicationTagMode = "Mode"
 	// NodeRoleManager represents a manager node.
 	NodeRoleManager = "manager"
 	// NodeRoleWorker represents a worker node.

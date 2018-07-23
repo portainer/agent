@@ -38,6 +38,12 @@ func NewHandler(clusterService agent.ClusterService, agentTags map[string]string
 
 func (handler *Handler) agentProxy(next http.Handler) http.Handler {
 	return httperror.LoggerHandler(func(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+
+		if handler.clusterService == nil {
+			next.ServeHTTP(rw, r)
+			return nil
+		}
+
 		agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
 
 		if agentTargetHeader == handler.agentTags[agent.MemberTagKeyNodeName] || agentTargetHeader == "" {

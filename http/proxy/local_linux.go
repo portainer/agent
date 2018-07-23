@@ -5,12 +5,10 @@ package proxy
 import (
 	"net"
 	"net/http"
-
-	"bitbucket.org/portainer/agent"
 )
 
 // NewLocalProxy returns a pointer to a LocalProxy.
-func NewLocalProxy(clusterService agent.ClusterService) *LocalProxy {
+func NewLocalProxy() *LocalProxy {
 	proxy := &LocalProxy{
 		transport: newSocketTransport("/var/run/docker.sock"),
 	}
