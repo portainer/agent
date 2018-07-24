@@ -147,7 +147,7 @@ func main() {
 
 	var clusterService agent.ClusterService
 	if clusterMode {
-		clusterService := cluster.NewClusterService()
+		clusterService = cluster.NewClusterService()
 
 		// TODO: looks like the Docker DNS cannot find any info on tasks.<service_name>
 		// sometimes... Waiting a bit before starting the discovery seems to solve the problem.
