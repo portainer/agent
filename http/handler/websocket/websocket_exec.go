@@ -1,87 +1,65 @@
-package handler
+package websocket
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
-	"os"
 	"time"
 
 	"bitbucket.org/portainer/agent"
 	httperror "bitbucket.org/portainer/agent/http/error"
 	"bitbucket.org/portainer/agent/http/proxy"
-	"github.com/gorilla/mux"
+	"bitbucket.org/portainer/agent/http/request"
+	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/websocket"
 )
 
-type (
-	// WebSocketHandler represents an HTTP API handler for proxying requests to a web socket.
-	WebSocketHandler struct {
-		*mux.Router
-		logger             *log.Logger
-		clusterService     agent.ClusterService
-		connectionUpgrader websocket.Upgrader
-		agentTags          map[string]string
+func (handler *Handler) websocketExec(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	if handler.clusterService == nil {
+		return handler.handleRequest(rw, r)
 	}
 
-	execStartOperationPayload struct {
-		Tty    bool
-		Detach bool
-	}
-)
-
-// NewWebSocketHandler returns a new instance of WebSocketHandler.
-func NewWebSocketHandler(clusterService agent.ClusterService, agentTags map[string]string) *WebSocketHandler {
-	h := &WebSocketHandler{
-		Router:             mux.NewRouter(),
-		logger:             log.New(os.Stderr, "", log.LstdFlags),
-		connectionUpgrader: websocket.Upgrader{},
-		clusterService:     clusterService,
-		agentTags:          agentTags,
-	}
-	h.HandleFunc("/websocket/exec", h.handleWebsocketExec)
-	return h
-}
-
-func (handler *WebSocketHandler) handleWebsocketExec(rw http.ResponseWriter, request *http.Request) {
-	agentTargetHeader := request.Header.Get(agent.HTTPTargetHeaderName)
+	agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
 
 	if agentTargetHeader == handler.agentTags[agent.MemberTagKeyNodeName] {
-		execID := request.FormValue("id")
-		if execID == "" {
-			httperror.WriteErrorResponse(rw, errInvalidQueryParameters, http.StatusBadRequest, handler.logger)
-			return
-		}
-
-		err := handler.handleRequest(rw, request, execID)
-		if err != nil {
-			httperror.WriteErrorResponse(rw, err, http.StatusInternalServerError, handler.logger)
-			return
-		}
-	} else {
-		targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
-		if targetMember == nil {
-			httperror.WriteErrorResponse(rw, agent.ErrAgentNotFound, http.StatusInternalServerError, handler.logger)
-			return
-		}
-
-		proxy.ProxyWebsocketOperation(rw, request, targetMember)
+		return handler.handleRequest(rw, r)
 	}
+
+	targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
+	if targetMember == nil {
+		return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", agent.ErrAgentNotFound}
+	}
+
+	proxy.WebsocketRequest(rw, r, targetMember)
+	return nil
 }
 
-func (handler *WebSocketHandler) handleRequest(rw http.ResponseWriter, request *http.Request, execID string) error {
-	websocketConn, err := handler.connectionUpgrader.Upgrade(rw, request, nil)
+func (handler *Handler) handleRequest(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	execID, err := request.RetrieveQueryParameter(r, "id", false)
+	if execID == "" {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: id", err}
+	}
+
+	if !govalidator.IsHexadecimal(execID) {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: id (must be hexadecimal identifier)", err}
+	}
+
+	websocketConn, err := handler.connectionUpgrader.Upgrade(rw, r, nil)
 	if err != nil {
-		return err
+		return &httperror.HandlerError{http.StatusInternalServerError, "An error occured during websocket exec operation: unable to upgrade connection", err}
 	}
 	defer websocketConn.Close()
 
-	return hijackExecStartOperation(websocketConn, execID)
+	err = hijackExecStartOperation(websocketConn, execID)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusInternalServerError, "An error occured during websocket exec operation", err}
+	}
+
+	return nil
 }
 
 func hijackExecStartOperation(websocketConn *websocket.Conn, execID string) error {
@@ -114,10 +92,6 @@ func hijackExecStartOperation(websocketConn *websocket.Conn, execID string) erro
 	}
 
 	return nil
-}
-
-func createDial() (net.Conn, error) {
-	return net.Dial("unix", "/var/run/docker.sock")
 }
 
 func createExecStartRequest(execID string) (*http.Request, error) {

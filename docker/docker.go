@@ -25,9 +25,15 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 
 	info := make(map[string]string)
 	info[agent.MemberTagKeyNodeName] = dockerInfo.Name
-	info[agent.MemberTagKeyNodeRole] = agent.NodeRoleWorker
-	if dockerInfo.Swarm.ControlAvailable {
-		info[agent.MemberTagKeyNodeRole] = agent.NodeRoleManager
+
+	if dockerInfo.Swarm.NodeID == "" {
+		info[agent.ApplicationTagMode] = "standalone"
+	} else {
+		info[agent.ApplicationTagMode] = "swarm"
+		info[agent.MemberTagKeyNodeRole] = agent.NodeRoleWorker
+		if dockerInfo.Swarm.ControlAvailable {
+			info[agent.MemberTagKeyNodeRole] = agent.NodeRoleManager
+		}
 	}
 
 	return info, nil
