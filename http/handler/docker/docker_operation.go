@@ -47,6 +47,8 @@ func (handler *Handler) dispatchOperation(rw http.ResponseWriter, request *http.
 		return handler.executeOperationOnManagerNode(rw, request)
 	case strings.HasPrefix(path, "/swarm"):
 		return handler.executeOperationOnManagerNode(rw, request)
+	case strings.HasPrefix(path, "/info"):
+		return handler.executeOperationOnManagerNode(rw, request)
 	case strings.HasPrefix(path, "/nodes"):
 		return handler.executeOperationOnManagerNode(rw, request)
 	default:
