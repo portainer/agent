@@ -79,7 +79,7 @@ func retrieveAdvertiseAddress() (string, error) {
 
 	var advertiseAddr string
 	for _, i := range ifaces {
-		if matched, _ := regexp.MatchString(`^(eth0)$||^(vEthernet) \(.*\)$`, i.Name); matched {
+		if matched, _ := regexp.MatchString(`^(eth0)$|^(vEthernet) \(.*\)$`, i.Name); matched {
 			addrs, err := i.Addrs()
 			if err != nil {
 				return "", err
