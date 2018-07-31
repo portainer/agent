@@ -85,8 +85,6 @@ func retrieveAdvertiseAddress() (string, error) {
 				return "", err
 			}
 
-			log.Printf("Found addrs: %+v", addrs)
-
 			j := 0
 			// On Windows first IP address is link-local IPv6
 			if runtime.GOOS == "windows" {
