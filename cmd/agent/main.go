@@ -80,8 +80,10 @@ func retrieveAdvertiseAddress() (string, error) {
 	var advertiseAddr string
 	for _, i := range ifaces {
 		if matched, _ := regexp.MatchString(`^(eth0)$||^(vEthernet) \(.*\)$`, i.Name); matched {
-			var ip net.IP
-			addrs, _ := i.Addrs()
+			addrs, err := i.Addrs()
+			if err != nil {
+				return "", err
+			}
 
 			j := 0
 			// On Windows first IP address is link-local IPv6
@@ -89,6 +91,7 @@ func retrieveAdvertiseAddress() (string, error) {
 				j = 1
 			}
 
+			var ip net.IP
 			switch v := addrs[j].(type) {
 			case *net.IPNet:
 				ip = v.IP
