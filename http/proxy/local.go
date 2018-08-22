@@ -4,8 +4,8 @@ import (
 	"io"
 	"net/http"
 
-	"bitbucket.org/portainer/agent"
-	httperror "bitbucket.org/portainer/agent/http/error"
+	"github.com/portainer/agent"
+	httperror "github.com/portainer/agent/http/error"
 )
 
 // LocalProxy is a service used to proxy requests to a Unix socket (Linux) or named pipe (Windows).

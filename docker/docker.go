@@ -3,7 +3,7 @@ package docker
 import (
 	"context"
 
-	"bitbucket.org/portainer/agent"
+	"github.com/portainer/agent"
 	"github.com/docker/docker/client"
 )
 

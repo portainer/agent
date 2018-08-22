@@ -3,9 +3,9 @@ package browse
 import (
 	"net/http"
 
-	"bitbucket.org/portainer/agent/filesystem"
-	httperror "bitbucket.org/portainer/agent/http/error"
-	"bitbucket.org/portainer/agent/http/request"
+	"github.com/portainer/agent/filesystem"
+	httperror "github.com/portainer/agent/http/error"
+	"github.com/portainer/agent/http/request"
 )
 
 func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {

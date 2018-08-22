@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"bitbucket.org/portainer/agent"
-	httperror "bitbucket.org/portainer/agent/http/error"
-	"bitbucket.org/portainer/agent/http/proxy"
-	"bitbucket.org/portainer/agent/http/response"
+	"github.com/portainer/agent"
+	httperror "github.com/portainer/agent/http/error"
+	"github.com/portainer/agent/http/proxy"
+	"github.com/portainer/agent/http/response"
 )
 
 func (handler *Handler) dockerOperation(rw http.ResponseWriter, request *http.Request) *httperror.HandlerError {

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"bitbucket.org/portainer/agent"
-	httperror "bitbucket.org/portainer/agent/http/error"
+	"github.com/portainer/agent"
+	httperror "github.com/portainer/agent/http/error"
 )
 
 // JSON encodes data to rw in JSON format. Returns a pointer to a

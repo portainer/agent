@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"bitbucket.org/portainer/agent"
+	"github.com/portainer/agent"
 )
 
 type (

@@ -6,7 +6,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 
-	"bitbucket.org/portainer/agent"
+	"github.com/portainer/agent"
 	"github.com/gorilla/websocket"
 	"github.com/koding/websocketproxy"
 )

@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"math/big"
 
-	"bitbucket.org/portainer/agent"
+	"github.com/portainer/agent"
 )
 
 // ECDSAService is a service used to validate a digital signature.

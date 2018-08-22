@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"bitbucket.org/portainer/agent"
+	"github.com/portainer/agent"
 	"github.com/hashicorp/logutils"
 	"github.com/hashicorp/serf/serf"
 )

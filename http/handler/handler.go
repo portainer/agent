@@ -5,11 +5,11 @@ import (
 	"regexp"
 	"strings"
 
-	"bitbucket.org/portainer/agent"
-	httpagenthandler "bitbucket.org/portainer/agent/http/handler/agent"
-	"bitbucket.org/portainer/agent/http/handler/browse"
-	"bitbucket.org/portainer/agent/http/handler/docker"
-	"bitbucket.org/portainer/agent/http/handler/websocket"
+	"github.com/portainer/agent"
+	httpagenthandler "github.com/portainer/agent/http/handler/agent"
+	"github.com/portainer/agent/http/handler/browse"
+	"github.com/portainer/agent/http/handler/docker"
+	"github.com/portainer/agent/http/handler/websocket"
 )
 
 // Handler is the main handler of the application.

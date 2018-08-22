@@ -1,4 +1,4 @@
-package main // import "bitbucket.org/portainer/agent"
+package main // import "github.com/portainer/agent"
 
 import (
 	"log"
@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/portainer/agent"
-	"bitbucket.org/portainer/agent/crypto"
-	"bitbucket.org/portainer/agent/docker"
-	"bitbucket.org/portainer/agent/http"
-	cluster "bitbucket.org/portainer/agent/serf"
 	"github.com/hashicorp/logutils"
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/crypto"
+	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/http"
+	cluster "github.com/portainer/agent/serf"
 )
 
 func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {

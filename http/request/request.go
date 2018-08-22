@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"bitbucket.org/portainer/agent"
+	"github.com/portainer/agent"
 	"github.com/gorilla/mux"
 )
 

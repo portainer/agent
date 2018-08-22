@@ -1,8 +1,8 @@
 package websocket
 
 import (
-	"bitbucket.org/portainer/agent"
-	httperror "bitbucket.org/portainer/agent/http/error"
+	"github.com/portainer/agent"
+	httperror "github.com/portainer/agent/http/error"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )

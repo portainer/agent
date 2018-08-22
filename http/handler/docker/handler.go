@@ -1,9 +1,9 @@
 package docker
 
 import (
-	"bitbucket.org/portainer/agent"
-	httperror "bitbucket.org/portainer/agent/http/error"
-	"bitbucket.org/portainer/agent/http/proxy"
+	"github.com/portainer/agent"
+	httperror "github.com/portainer/agent/http/error"
+	"github.com/portainer/agent/http/proxy"
 	"github.com/gorilla/mux"
 )
 

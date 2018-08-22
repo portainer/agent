@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/portainer/agent"
-	"bitbucket.org/portainer/agent/constants"
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/constants"
 )
 
 const (
