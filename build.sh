@@ -52,6 +52,7 @@ function build_all() {
   done
 }
 
+mkdir dist
 build_all 'linux-amd64 linux-arm linux-arm64 linux-ppc64le linux-s390x windows-amd64'
 
 exit 0

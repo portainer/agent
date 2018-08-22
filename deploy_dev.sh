@@ -63,6 +63,8 @@ function deploy_swarm() {
 }
 
 function main() {
+
+  mkdir dist
   cd cmd/agent
 
   echo "Compilation..."
