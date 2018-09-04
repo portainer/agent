@@ -3,8 +3,8 @@ package docker
 import (
 	"context"
 
-	"github.com/portainer/agent"
 	"github.com/docker/docker/client"
+	"github.com/portainer/agent"
 )
 
 // InfoService is a service used to retrieve information from a Docker environment.
@@ -17,6 +17,7 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 	if err != nil {
 		return nil, err
 	}
+	defer cli.Close()
 
 	dockerInfo, err := cli.Info(context.Background())
 	if err != nil {
