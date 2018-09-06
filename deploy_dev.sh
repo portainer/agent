@@ -59,7 +59,7 @@ function deploy_swarm() {
 
     echo "Sleep..."
     sleep 5
-    
+
     echo "Deployment..."
 
     docker -H $DOCKER_MANAGER:2375 network create --driver overlay --attachable pagent-net
@@ -82,14 +82,6 @@ function deploy_swarm() {
 
 function main() {
 
-  # mkdir dist
-  # cd cmd/agent
-  #
-
-  # echo "Compilation..."
-  # CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
-  # rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
-  # mv agent ../../dist/agent
   compile
   if [ ${MODE} == 'local' ]
   then
