@@ -3,10 +3,10 @@ package browse
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/portainer/agent"
 	httperror "github.com/portainer/agent/http/error"
 	"github.com/portainer/agent/http/proxy"
-	"github.com/gorilla/mux"
 )
 
 // Handler is the HTTP handler used to handle volume browsing operations.
@@ -33,6 +33,8 @@ func NewHandler(clusterService agent.ClusterService, agentTags map[string]string
 		h.agentProxy(httperror.LoggerHandler(h.browseDelete))).Methods(http.MethodDelete)
 	h.Handle("/browse/{id}/rename",
 		h.agentProxy(httperror.LoggerHandler(h.browseRename))).Methods(http.MethodPut)
+	h.Handle("/browse/{id}/put",
+		h.agentProxy(httperror.LoggerHandler(h.browsePut))).Methods(http.MethodPut)
 	return h
 }
 
