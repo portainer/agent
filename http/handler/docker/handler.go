@@ -1,10 +1,10 @@
 package docker
 
 import (
+	"github.com/gorilla/mux"
 	"github.com/portainer/agent"
 	httperror "github.com/portainer/agent/http/error"
 	"github.com/portainer/agent/http/proxy"
-	"github.com/gorilla/mux"
 )
 
 // Handler represents an HTTP API handler for proxying requests to the Docker API.
