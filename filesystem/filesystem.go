@@ -1,9 +1,7 @@
 package filesystem
 
 import (
-	"io"
 	"io/ioutil"
-	"mime/multipart"
 	"os"
 	"path"
 	"strings"
@@ -113,19 +111,18 @@ func RenameFileInsideVolume(volumeID, oldPath, newPath string) error {
 }
 
 // UploadFileToVolume takes a file, volume, and path, and writes it to that volume
-func UploadFileToVolume(file multipart.File, header *multipart.FileHeader, volumeID, path string) error {
-	defer file.Close()
+func UploadFileToVolume(volumeID, path, filename string, file []byte) error {
+
 	pathInsideVolume, err := buildPathToFileInsideVolume(volumeID, path)
 	if err != nil {
 		return err
 	}
 
-	f, err := os.OpenFile(pathInsideVolume+"/test/"+header.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+	err = ioutil.WriteFile(pathInsideVolume+filename, file, 0644)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	io.Copy(f, file)
+
 	return err
 }
 
