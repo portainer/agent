@@ -5,8 +5,8 @@ arch=$2
 binary="agent-$platform-$arch"
 
 mkdir -p dist
-rm dist/$binary
-rm dist/agent
+rm -rf dist/$binary
+rm -rf dist/agent
 
 docker run --rm -tv "$(pwd):/src" -e BUILD_GOOS="$platform" -e BUILD_GOARCH="$arch" portainer/golang-builder:cross-platform /src/cmd/agent
 
