@@ -34,7 +34,7 @@ func NewHandler(clusterService agent.ClusterService, agentTags map[string]string
 	h.Handle("/browse/{id}/rename",
 		h.agentProxy(httperror.LoggerHandler(h.browseRename))).Methods(http.MethodPut)
 	h.Handle("/browse/{id}/put",
-		h.agentProxy(httperror.LoggerHandler(h.browsePut))).Methods(http.MethodPut)
+		h.agentProxy(httperror.LoggerHandler(h.browsePut))).Methods(http.MethodPost)
 	return h
 }
 
