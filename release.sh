@@ -31,9 +31,7 @@ function build_archive() {
 }
 
 function build_binary() {
-  name="agent"; if [ "$(echo "$tag" | cut -c1)"  = "w" ]; then name="${name}.exe"; fi
-  docker run --rm -tv $(pwd):/src -e BUILD_GOOS="$1" -e BUILD_GOARCH="$2" portainer/golang-builder:cross-platform /src/cmd/agent
-  mv "cmd/agent/agent-${1}-${2}" dist/${name}
+  ./build/build_in_container.sh "$1" "$2"
 }
 
 function build_all() {
