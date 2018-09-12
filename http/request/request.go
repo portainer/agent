@@ -7,7 +7,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/portainer/agent"
-	"github.com/portainer/portainer"
 )
 
 const (
@@ -16,7 +15,7 @@ const (
 	// errMissingQueryParameter defines an error raised when a mandatory query parameter is missing.
 	errMissingQueryParameter = agent.Error("Missing query parameter")
 	// errMissingFormDataValue defines an error raised when a mandatory form data value is missing.
-	errMissingFormDataValue = portainer.Error("Missing form data value")
+	errMissingFormDataValue = agent.Error("Missing form data value")
 )
 
 // PayloadValidation is an interface used to validate the payload of a request.
@@ -57,19 +56,19 @@ func RetrieveQueryParameter(request *http.Request, name string, optional bool) (
 	return queryParameter, nil
 }
 
-// RetrieveMultiPartFormFile returns the content of an uploaded file (form data) as bytes.
-func RetrieveMultiPartFormFile(request *http.Request, requestParameter string) ([]byte, error) {
-	file, _, err := request.FormFile(requestParameter)
+// RetrieveMultiPartFormFile returns the content of an uploaded file (form data) as bytes, along with the name of the file.
+func RetrieveMultiPartFormFile(request *http.Request, requestParameter string) ([]byte, string, error) {
+	file, header, err := request.FormFile(requestParameter)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer file.Close()
 
 	fileContent, err := ioutil.ReadAll(file)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return fileContent, nil
+	return fileContent, header.Filename, nil
 }
 
 // RetrieveMultiPartFormValue returns the value of some form data as a string.

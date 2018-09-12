@@ -101,6 +101,4 @@ const (
 	TLSCertPath = "cert.pem"
 	// TLSKeyPath is the default path to the TLS key file.
 	TLSKeyPath = "key.pem"
-	// UploadMaxMemory is the amount of memory to store an upload file before using a tmp file on disk
-	UploadMaxMemory = 32
 )

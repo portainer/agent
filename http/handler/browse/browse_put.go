@@ -10,30 +10,16 @@ import (
 	"github.com/portainer/agent/http/response"
 )
 
-type browseUploadPayload struct {
+type browsePutPayload struct {
 	FilePath string
-	FileName string
-	File     []byte
 }
 
-func (payload *browseUploadPayload) Validate(r *http.Request) error {
+func (payload *browsePutPayload) Validate(r *http.Request) error {
 	path, err := request.RetrieveMultiPartFormValue(r, "Path", false)
 	if err != nil {
 		return agent.Error("Invalid file path")
 	}
 	payload.FilePath = path
-
-	filename, err := request.RetrieveMultiPartFormValue(r, "Filename", false)
-	if err != nil {
-		return agent.Error("Invalid file name")
-	}
-	payload.FileName = filename
-
-	file, err := request.RetrieveMultiPartFormFile(r, "file")
-	if err != nil {
-		return agent.Error("Invalid upload file")
-	}
-	payload.File = file
 
 	return nil
 }
@@ -43,10 +29,19 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 	if err != nil {
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
 	}
-	var payload browseUploadPayload
-	err = request.DecodeAndValidateJSONPayload(r, &payload)
 
-	err = filesystem.UploadFileToVolume(volumeID, payload.FilePath, payload.FileName, payload.File)
+	var payload browsePutPayload
+	err = payload.Validate(r)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
+	}
+
+	file, filename, err := request.RetrieveMultiPartFormFile(r, "file")
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid Uploaded File", err}
+	}
+
+	err = filesystem.UploadFileToVolume(volumeID, payload.FilePath, filename, file)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Error saving file to disk", err}
 	}
