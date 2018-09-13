@@ -9,6 +9,7 @@ import (
 	httpagenthandler "github.com/portainer/agent/http/handler/agent"
 	"github.com/portainer/agent/http/handler/browse"
 	"github.com/portainer/agent/http/handler/docker"
+	"github.com/portainer/agent/http/handler/host"
 	"github.com/portainer/agent/http/handler/websocket"
 )
 
@@ -19,6 +20,7 @@ type Handler struct {
 	browseHandler      *browse.Handler
 	dockerProxyHandler *docker.Handler
 	webSocketHandler   *websocket.Handler
+	hostHandler        *host.Handler
 }
 
 const (
@@ -34,6 +36,7 @@ func NewHandler(cs agent.ClusterService, agentTags map[string]string) *Handler {
 		browseHandler:      browse.NewHandler(cs, agentTags),
 		dockerProxyHandler: docker.NewHandler(cs, agentTags),
 		webSocketHandler:   websocket.NewHandler(cs, agentTags),
+		hostHandler:        host.NewHandler(),
 	}
 }
 
@@ -41,6 +44,8 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	switch {
 	case strings.HasPrefix(request.URL.Path, "/agents"):
 		h.agentHandler.ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/host"):
+		h.hostHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/browse"):
 		h.browseHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/websocket"):
