@@ -36,7 +36,7 @@ func NewHandler(cs agent.ClusterService, agentTags map[string]string) *Handler {
 		browseHandler:      browse.NewHandler(cs, agentTags),
 		dockerProxyHandler: docker.NewHandler(cs, agentTags),
 		webSocketHandler:   websocket.NewHandler(cs, agentTags),
-		hostHandler:        host.NewHandler(),
+		hostHandler:        host.NewHandler(cs, agentTags),
 	}
 }
 
