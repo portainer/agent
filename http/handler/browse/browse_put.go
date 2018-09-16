@@ -5,9 +5,9 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
-	httperror "github.com/portainer/agent/http/error"
-	"github.com/portainer/agent/http/request"
-	"github.com/portainer/agent/http/response"
+	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/request"
+	"github.com/portainer/libhttp/response"
 )
 
 type browsePutPayload struct {

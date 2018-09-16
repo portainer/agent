@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/portainer/agent"
-	httperror "github.com/portainer/agent/http/error"
 	"github.com/portainer/agent/http/proxy"
-	"github.com/portainer/agent/http/response"
+	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/response"
 )
 
 func (handler *Handler) dockerOperation(rw http.ResponseWriter, request *http.Request) *httperror.HandlerError {
