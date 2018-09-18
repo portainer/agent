@@ -13,6 +13,7 @@ import (
 
 const (
 	errInvalidFilePath = agent.Error("Invalid path. Ensure that the path do not contain '..' elements")
+	errUploadFile      = agent.Error("Error with uploaded file, or file already exists")
 )
 
 // FileInfo represents information about a file on the filesystem
@@ -110,18 +111,25 @@ func RenameFileInsideVolume(volumeID, oldPath, newPath string) error {
 	return os.Rename(oldPathInsideVolume, newPathInsideVolume)
 }
 
-// UploadFileInVolume takes a volume, path, and file and writes it to that volume
-func UploadFileInVolume(volumeID, uploadedFilePath string, file []byte) error {
+// UploadFileToVolume takes a volume, path, filename, and file and writes it to that volume
+func UploadFileToVolume(volumeID, uploadedFilePath, filename string, file []byte) error {
 
 	pathInsideVolume, err := buildPathToFileInsideVolume(volumeID, uploadedFilePath)
 	if err != nil {
 		return err
 	}
 
-	dir, _ := path.Split(pathInsideVolume)
-	os.MkdirAll(dir, 0644)
+	os.MkdirAll(pathInsideVolume, 0644)
 
-	err = ioutil.WriteFile(pathInsideVolume, file, 0644)
+	filePath := path.Join(pathInsideVolume, filename)
+
+	//Check to see if the file already exists
+	_, err = os.Stat(filePath)
+	if !os.IsNotExist(err) {
+		return errUploadFile
+	}
+
+	err = ioutil.WriteFile(filePath, file, 0644)
 	if err != nil {
 		return err
 	}

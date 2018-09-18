@@ -11,17 +11,16 @@ import (
 )
 
 type browsePutPayload struct {
-	Path string
-	File []byte
+	FilePath string
 }
 
 func (payload *browsePutPayload) Validate(r *http.Request) error {
-	file, path, err := request.RetrieveMultiPartFormFile(r, "file")
+	path, err := request.RetrieveMultiPartFormValue(r, "Path", false)
 	if err != nil {
-		return agent.Error("Invalid file")
+		return agent.Error("Invalid file path")
 	}
-	payload.Path = path
-	payload.File = file
+	payload.FilePath = path
+
 	return nil
 }
 
@@ -37,7 +36,12 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
 	}
 
-	err = filesystem.UploadFileInVolume(volumeID, payload.Path, payload.File)
+	file, filename, err := request.RetrieveMultiPartFormFile(r, "file")
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid Uploaded File", err}
+	}
+
+	err = filesystem.UploadFileToVolume(volumeID, payload.FilePath, filename, file)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Error saving file to disk", err}
 	}
