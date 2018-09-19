@@ -10,12 +10,12 @@ import (
 	"net/http/httputil"
 	"time"
 
-	"github.com/portainer/agent"
-	httperror "github.com/portainer/agent/http/error"
-	"github.com/portainer/agent/http/proxy"
-	"github.com/portainer/agent/http/request"
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/websocket"
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/http/proxy"
+	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/request"
 )
 
 func (handler *Handler) websocketExec(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {

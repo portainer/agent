@@ -110,6 +110,26 @@ func RenameFileInsideVolume(volumeID, oldPath, newPath string) error {
 	return os.Rename(oldPathInsideVolume, newPathInsideVolume)
 }
 
+// UploadFileInVolume takes a volume, path, filename, and file and writes it to that volume
+func UploadFileInVolume(volumeID, uploadedFilePath, filename string, file []byte) error {
+
+	pathInsideVolume, err := buildPathToFileInsideVolume(volumeID, uploadedFilePath)
+	if err != nil {
+		return err
+	}
+
+	os.MkdirAll(pathInsideVolume, 0644)
+
+	filePath := path.Join(pathInsideVolume, filename)
+
+	err = ioutil.WriteFile(filePath, file, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func buildPathToFileInsideVolume(volumeID, filePath string) (string, error) {
 	if !isValidPath(filePath) {
 		return "", errInvalidFilePath

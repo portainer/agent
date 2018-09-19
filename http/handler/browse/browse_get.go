@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/portainer/agent/filesystem"
-	httperror "github.com/portainer/agent/http/error"
-	"github.com/portainer/agent/http/request"
+	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/request"
 )
 
 func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {

@@ -1,10 +1,10 @@
 package websocket
 
 import (
-	"github.com/portainer/agent"
-	httperror "github.com/portainer/agent/http/error"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/portainer/agent"
+	httperror "github.com/portainer/libhttp/error"
 )
 
 type (
