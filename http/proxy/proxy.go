@@ -6,9 +6,9 @@ import (
 	"net/http/httputil"
 	"net/url"
 
-	"github.com/portainer/agent"
 	"github.com/gorilla/websocket"
 	"github.com/koding/websocketproxy"
+	"github.com/portainer/agent"
 )
 
 // AgentHTTPRequest redirects a HTTP request to another agent.

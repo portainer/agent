@@ -3,12 +3,12 @@ package browse
 import (
 	"net/http"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
-	httperror "github.com/portainer/agent/http/error"
-	"github.com/portainer/agent/http/request"
-	"github.com/portainer/agent/http/response"
-	"github.com/asaskevich/govalidator"
+	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/request"
+	"github.com/portainer/libhttp/response"
 )
 
 type browseRenamePayload struct {

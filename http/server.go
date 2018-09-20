@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/portainer/agent"
-	httperror "github.com/portainer/agent/http/error"
 	"github.com/portainer/agent/http/handler"
+	httperror "github.com/portainer/libhttp/error"
 )
 
 // Server is the web server exposing the API of an agent.
