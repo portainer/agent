@@ -9,17 +9,20 @@ import (
 )
 
 func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
-	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
-	}
-
 	path, err := request.RetrieveQueryParameter(r, "path", false)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
 	}
 
-	fileDetails, err := filesystem.OpenFileInsideVolume(volumeID, path)
+	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", false)
+	if volumeID != "" {
+		path, err = filesystem.BuildPathToFileInsideVolume(volumeID, path)
+		if err != nil {
+			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+		}
+	}
+
+	fileDetails, err := filesystem.OpenFile(path)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to open file", err}
 	}

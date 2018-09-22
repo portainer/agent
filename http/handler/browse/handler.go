@@ -25,15 +25,15 @@ func NewHandler(clusterService agent.ClusterService, agentTags map[string]string
 		agentTags:      agentTags,
 	}
 
-	h.Handle("/browse/{id}/ls",
+	h.Handle("/browse/ls",
 		h.agentProxy(httperror.LoggerHandler(h.browseList))).Methods(http.MethodGet)
-	h.Handle("/browse/{id}/get",
+	h.Handle("/browse/get",
 		h.agentProxy(httperror.LoggerHandler(h.browseGet))).Methods(http.MethodGet)
-	h.Handle("/browse/{id}/delete",
+	h.Handle("/browse/delete",
 		h.agentProxy(httperror.LoggerHandler(h.browseDelete))).Methods(http.MethodDelete)
-	h.Handle("/browse/{id}/rename",
+	h.Handle("/browse/rename",
 		h.agentProxy(httperror.LoggerHandler(h.browseRename))).Methods(http.MethodPut)
-	h.Handle("/browse/{id}/put",
+	h.Handle("/browse/put",
 		h.agentProxy(httperror.LoggerHandler(h.browsePut))).Methods(http.MethodPost)
 	return h
 }
