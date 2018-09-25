@@ -30,13 +30,13 @@ const (
 var apiVersionRe = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
-func NewHandler(cs agent.ClusterService, agentTags map[string]string) *Handler {
+func NewHandler(systemService agent.SystemService, cs agent.ClusterService, agentTags map[string]string) *Handler {
 	return &Handler{
 		agentHandler:       httpagenthandler.NewHandler(cs),
 		browseHandler:      browse.NewHandler(cs, agentTags),
 		dockerProxyHandler: docker.NewHandler(cs, agentTags),
 		webSocketHandler:   websocket.NewHandler(cs, agentTags),
-		hostHandler:        host.NewHandler(cs, agentTags),
+		hostHandler:        host.NewHandler(systemService, cs, agentTags),
 	}
 }
 

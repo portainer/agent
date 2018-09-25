@@ -10,14 +10,16 @@ import (
 
 // Server is the web server exposing the API of an agent.
 type Server struct {
+	systemService    agent.SystemService
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
 	agentTags        map[string]string
 }
 
 // NewServer returns a pointer to a Server.
-func NewServer(clusterService agent.ClusterService, signatureService agent.DigitalSignatureService, agentTags map[string]string) *Server {
+func NewServer(systemService agent.SystemService, clusterService agent.ClusterService, signatureService agent.DigitalSignatureService, agentTags map[string]string) *Server {
 	return &Server{
+		systemService:    systemService,
 		clusterService:   clusterService,
 		signatureService: signatureService,
 		agentTags:        agentTags,
@@ -63,6 +65,6 @@ func (server *Server) digitalSignatureVerification(next http.Handler) http.Handl
 
 // Start starts a new webserver by listening on the specified listenAddr.
 func (server *Server) Start(listenAddr string) error {
-	h := handler.NewHandler(server.clusterService, server.agentTags)
+	h := handler.NewHandler(server.systemService, server.clusterService, server.agentTags)
 	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, server.digitalSignatureVerification(h))
 }

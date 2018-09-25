@@ -12,14 +12,16 @@ import (
 // Handler represents an HTTP API Handler for host specific actions
 type Handler struct {
 	*mux.Router
+	systemService  agent.SystemService
 	clusterService agent.ClusterService
 	agentTags      map[string]string
 }
 
 // NewHandler returns a new instance of Handler
-func NewHandler(clusterService agent.ClusterService, agentTags map[string]string) *Handler {
+func NewHandler(systemService agent.SystemService, clusterService agent.ClusterService, agentTags map[string]string) *Handler {
 	h := &Handler{
 		Router:         mux.NewRouter(),
+		systemService:  systemService,
 		clusterService: clusterService,
 		agentTags:      agentTags,
 	}

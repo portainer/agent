@@ -14,6 +14,7 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
 	cluster "github.com/portainer/agent/serf"
 )
@@ -163,8 +164,10 @@ func main() {
 		defer clusterService.Leave()
 	}
 
+	systemService := ghw.NewSystemService()
+
 	listenAddr := agent.DefaultListenAddr + ":" + options.Port
 	log.Printf("[INFO] - Starting Portainer agent version %s on %s (cluster mode: %t)", agent.AgentVersion, listenAddr, clusterMode)
-	server := http.NewServer(clusterService, signatureService, agentTags)
+	server := http.NewServer(systemService, clusterService, signatureService, agentTags)
 	server.Start(listenAddr)
 }
