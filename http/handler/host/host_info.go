@@ -10,10 +10,8 @@ import (
 )
 
 type pciDevice struct {
-	Vendor       string
-	Version      string
-	SerialNumber string
-	Name         string
+	Vendor string
+	Name   string
 }
 
 type physicalDisk struct {
@@ -69,9 +67,7 @@ func fillPciDevices() ([]pciDevice, error) {
 	for _, device := range devicesRaw {
 		devices = append(devices, pciDevice{
 			Vendor: device.Vendor.Name,
-			// DeviceSerialNumber: device.
-			// DeviceVersion
-			Name: device.Product.Name,
+			Name:   device.Product.Name,
 		})
 
 	}
