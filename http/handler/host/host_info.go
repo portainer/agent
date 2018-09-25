@@ -29,7 +29,7 @@ func (handler *Handler) hostInfo(rw http.ResponseWriter, r *http.Request) *httpe
 
 	err := fillHostInfo(&hi)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Can't get host info", err}
+		return &httperror.HandlerError{http.StatusInternalServerError, "Can't get host info", err}
 	}
 	response.JSON(rw, hi)
 	return nil
