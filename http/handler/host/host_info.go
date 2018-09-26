@@ -13,7 +13,7 @@ func (handler *Handler) hostInfo(rw http.ResponseWriter, r *http.Request) *httpe
 
 	err := handler.fillHostInfo(&hi)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Can't get host info", err}
+		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve host information", err}
 	}
 	response.JSON(rw, hi)
 	return nil
