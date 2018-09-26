@@ -9,13 +9,13 @@ import (
 )
 
 func (handler *Handler) hostInfo(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-	var hi agent.HostInfo
+	var hostInfo agent.HostInfo
 
-	err := handler.fillHostInfo(&hi)
+	err := handler.fillHostInfo(&hostInfo)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve host information", err}
 	}
-	response.JSON(rw, hi)
+	response.JSON(rw, hostInfo)
 	return nil
 }
 
