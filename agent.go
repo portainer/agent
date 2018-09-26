@@ -23,16 +23,19 @@ type (
 		} `json:"Agent"`
 	}
 
+	// PciDevice is the representation of a physical pci device on a host
 	PciDevice struct {
 		Vendor string
 		Name   string
 	}
 
+	// PhysicalDisk is the representation of a physical disk on a host
 	PhysicalDisk struct {
 		Vendor string
 		Size   uint64
 	}
 
+	// HostInfo is the representation of the collection of host information
 	HostInfo struct {
 		PCIDevices    []PciDevice
 		PhysicalDisks []PhysicalDisk
