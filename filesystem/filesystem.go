@@ -54,7 +54,7 @@ func OpenFile(filePath string) (*FileDetails, error) {
 	return fileDetails, nil
 }
 
-// RemoveFileInsideVolume will remove a file
+// RemoveFile will remove a file
 func RemoveFile(filePath string) error {
 	return os.Remove(filePath)
 }
@@ -82,7 +82,7 @@ func ListFilesInsideDirectory(directoryPath string) ([]FileInfo, error) {
 	return fileList, nil
 }
 
-// RenameFileInsideVolume will rename a file
+// RenameFile will rename a file
 func RenameFile(oldPath, newPath string) error {
 	return os.Rename(oldPath, newPath)
 }
