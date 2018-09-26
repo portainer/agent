@@ -33,7 +33,7 @@ func (handler *Handler) browseRename(rw http.ResponseWriter, r *http.Request) *h
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
 	}
 
-	volumeID, err := request.RetrieveQueryParameter(r, "volumeID", false)
+	volumeID, err := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID != "" {
 		payload.CurrentFilePath, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.CurrentFilePath)
 		if err != nil {

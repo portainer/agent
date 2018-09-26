@@ -14,7 +14,7 @@ func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *http
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
 	}
 
-	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", false)
+	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID != "" {
 		path, err = filesystem.BuildPathToFileInsideVolume(volumeID, path)
 		if err != nil {
