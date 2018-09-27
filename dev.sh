@@ -4,7 +4,7 @@ IMAGE_NAME=portainer/agent:local
 LOG_LEVEL=DEBUG
 
 VAGRANT=true
-BUILD_MODE="online"
+BUILD_MODE="offline"
 TMP="/tmp"
 
 if [[ $# -ne 1 ]] ; then
