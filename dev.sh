@@ -4,15 +4,15 @@ IMAGE_NAME=portainer/agent:local
 LOG_LEVEL=DEBUG
 
 VAGRANT=true
-BUILD_MODE="online"
 TMP="/tmp"
 
-if [[ $# -ne 1 ]] ; then
-  echo "Usage: $(basename $0) <MODE>"
+if [[ $# -ne 2 ]] ; then
+  echo "Usage: $(basename $0) <MODE:local/swarm> <BUILD_MODE:offline/online>"
   exit 1
 fi
 
 MODE=$1
+BUILD_MODE=$2
 
 function compile() {
   echo "Compilation..."
