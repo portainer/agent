@@ -15,8 +15,8 @@ func (handler *Handler) hostInfo(rw http.ResponseWriter, r *http.Request) *httpe
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve host information", err}
 	}
-	response.JSON(rw, hostInfo)
-	return nil
+	return response.JSON(rw, hostInfo)
+
 }
 
 func (handler *Handler) fillHostInfo(hi *agent.HostInfo) error {
