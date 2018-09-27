@@ -3,8 +3,7 @@
 package ghw
 
 import (
-	"demo-ghw/ghw"
-
+	"github.com/jaypipes/ghw"
 	"github.com/portainer/agent"
 )
 
@@ -17,11 +16,7 @@ func (service *SystemService) GetPciDevices() ([]agent.PciDevice, error) {
 
 	devicesRaw := pci.ListDevices()
 
-	if len(devicesRaw) == 0 {
-		return nil, agent.Error("Could not retrieve PCI devices")
-	}
-
-	var devices []agent.PciDevice
+	devices := []agent.PciDevice{}
 	for _, device := range devicesRaw {
 		devices = append(devices, agent.PciDevice{
 			Vendor: device.Vendor.Name,
