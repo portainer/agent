@@ -23,6 +23,24 @@ type (
 		} `json:"Agent"`
 	}
 
+	// PciDevice is the representation of a physical pci device on a host
+	PciDevice struct {
+		Vendor string
+		Name   string
+	}
+
+	// PhysicalDisk is the representation of a physical disk on a host
+	PhysicalDisk struct {
+		Vendor string
+		Size   uint64
+	}
+
+	// HostInfo is the representation of the collection of host information
+	HostInfo struct {
+		PCIDevices    []PciDevice
+		PhysicalDisks []PhysicalDisk
+	}
+
 	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
 		Create(advertiseAddr, joinAddr string, tags map[string]string) error
@@ -47,6 +65,12 @@ type (
 	// TLSService is used to create TLS certificates to use enable HTTPS.
 	TLSService interface {
 		GenerateCertsForHost(host string) error
+	}
+
+	// SystemService is used to get info about the host
+	SystemService interface {
+		GetDiskInfo() ([]PhysicalDisk, error)
+		GetPciDevices() ([]PciDevice, error)
 	}
 )
 
