@@ -40,6 +40,9 @@ func (server *Server) verifySignature(signatureHeaderValue string) error {
 
 func (server *Server) digitalSignatureVerification(next http.Handler) http.Handler {
 	return httperror.LoggerHandler(func(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+
+		rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
+
 		publicKeyHeaderValue := r.Header.Get(agent.HTTPPublicKeyHeaderName)
 		if server.signatureService.RequiresPublicKey() && publicKeyHeaderValue == "" {
 			return &httperror.HandlerError{http.StatusForbidden, "Missing Portainer public key", agent.ErrPublicKeyUnavailable}
