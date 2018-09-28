@@ -43,6 +43,7 @@ function deploy_local() {
   -e LOG_LEVEL=${LOG_LEVEL} \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /var/lib/docker/volumes:/var/lib/docker/volumes \
+  -v /:/host \
   -p 9001:9001 \
   portainer/agent:local
 
@@ -81,6 +82,7 @@ function deploy_swarm() {
   --mode global \
   --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
   --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
+  --mount type=bind,src=//,dst=/host \
   --publish mode=host,target=9001,published=9001 \
   --restart-condition none \
   "${IMAGE_NAME}"
