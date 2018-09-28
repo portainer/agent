@@ -30,16 +30,12 @@ type FileDetails struct {
 	BasePath string
 }
 
-// OpenFileInsideVolume will open a file inside a volume and return a FileDetails pointer
+// OpenFile will open a file and return a FileDetails pointer
 // with information about this file.
 // The returned FileDetails contains a pointer to the File that must be closed manually
-func OpenFileInsideVolume(volumeID, filePath string) (*FileDetails, error) {
-	pathInsideVolume, err := buildPathToFileInsideVolume(volumeID, filePath)
-	if err != nil {
-		return nil, err
-	}
+func OpenFile(filePath string) (*FileDetails, error) {
 
-	file, err := os.Open(pathInsideVolume)
+	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -52,30 +48,21 @@ func OpenFileInsideVolume(volumeID, filePath string) (*FileDetails, error) {
 	fileDetails := &FileDetails{
 		File:     file,
 		ModTime:  fileInfo.ModTime(),
-		BasePath: path.Base(pathInsideVolume),
+		BasePath: path.Base(filePath),
 	}
 
 	return fileDetails, nil
 }
 
-// RemoveFileInsideVolume will remove a file inside a volume
-func RemoveFileInsideVolume(volumeID, filePath string) error {
-	pathInsideVolume, err := buildPathToFileInsideVolume(volumeID, filePath)
-	if err != nil {
-		return err
-	}
-
-	return os.Remove(pathInsideVolume)
+// RemoveFile will remove a file
+func RemoveFile(filePath string) error {
+	return os.Remove(filePath)
 }
 
-// ListFilesInsideVolumeDirectory returns a slice of FileInfo for each file in the specified directory inside a volume
-func ListFilesInsideVolumeDirectory(volumeID, directoryPath string) ([]FileInfo, error) {
-	pathInsideVolume, err := buildPathToFileInsideVolume(volumeID, directoryPath)
-	if err != nil {
-		return nil, err
-	}
+// ListFilesInsideDirectory returns a slice of FileInfo for each file in the specified directory inside a volume
+func ListFilesInsideDirectory(directoryPath string) ([]FileInfo, error) {
 
-	files, err := ioutil.ReadDir(pathInsideVolume)
+	files, err := ioutil.ReadDir(directoryPath)
 	if err != nil {
 		return nil, err
 	}
@@ -95,34 +82,19 @@ func ListFilesInsideVolumeDirectory(volumeID, directoryPath string) ([]FileInfo,
 	return fileList, nil
 }
 
-// RenameFileInsideVolume will rename a file inside a volume
-func RenameFileInsideVolume(volumeID, oldPath, newPath string) error {
-	oldPathInsideVolume, err := buildPathToFileInsideVolume(volumeID, oldPath)
-	if err != nil {
-		return err
-	}
-
-	newPathInsideVolume, err := buildPathToFileInsideVolume(volumeID, newPath)
-	if err != nil {
-		return err
-	}
-
-	return os.Rename(oldPathInsideVolume, newPathInsideVolume)
+// RenameFile will rename a file
+func RenameFile(oldPath, newPath string) error {
+	return os.Rename(oldPath, newPath)
 }
 
-// UploadFileInVolume takes a volume, path, filename, and file and writes it to that volume
-func UploadFileInVolume(volumeID, uploadedFilePath, filename string, file []byte) error {
+// UploadFile takes a path, filename, and file and writes it to disk
+func UploadFile(uploadedFilePath, filename string, file []byte) error {
 
-	pathInsideVolume, err := buildPathToFileInsideVolume(volumeID, uploadedFilePath)
-	if err != nil {
-		return err
-	}
+	os.MkdirAll(uploadedFilePath, 0644)
 
-	os.MkdirAll(pathInsideVolume, 0644)
+	filePath := path.Join(uploadedFilePath, filename)
 
-	filePath := path.Join(pathInsideVolume, filename)
-
-	err = ioutil.WriteFile(filePath, file, 0644)
+	err := ioutil.WriteFile(filePath, file, 0644)
 	if err != nil {
 		return err
 	}
@@ -130,7 +102,8 @@ func UploadFileInVolume(volumeID, uploadedFilePath, filename string, file []byte
 	return nil
 }
 
-func buildPathToFileInsideVolume(volumeID, filePath string) (string, error) {
+// BuildPathToFileInsideVolume will take a volumeID and path, and build a full path on the host
+func BuildPathToFileInsideVolume(volumeID, filePath string) (string, error) {
 	if !isValidPath(filePath) {
 		return "", errInvalidFilePath
 	}

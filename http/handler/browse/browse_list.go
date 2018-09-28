@@ -10,17 +10,21 @@ import (
 )
 
 func (handler *Handler) browseList(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
-	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
-	}
 
 	path, err := request.RetrieveQueryParameter(r, "path", false)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
 	}
 
-	files, err := filesystem.ListFilesInsideVolumeDirectory(volumeID, path)
+	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
+	if volumeID != "" {
+		path, err = filesystem.BuildPathToFileInsideVolume(volumeID, path)
+		if err != nil {
+			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+		}
+	}
+
+	files, err := filesystem.ListFilesInsideDirectory(path)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to list files inside specified directory", err}
 	}
