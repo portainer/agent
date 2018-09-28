@@ -4,7 +4,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/portainer/agent"
 	httperror "github.com/portainer/libhttp/error"
 )
 
@@ -35,7 +34,6 @@ func (proxy *LocalProxy) ServeHTTP(rw http.ResponseWriter, request *http.Request
 			rw.Header().Add(k, v)
 		}
 	}
-	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
 
 	rw.WriteHeader(res.StatusCode)
 
