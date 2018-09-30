@@ -33,10 +33,10 @@ var apiVersionRe = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 func NewHandler(systemService agent.SystemService, cs agent.ClusterService, agentTags map[string]string) *Handler {
 	return &Handler{
 		agentHandler:       httpagenthandler.NewHandler(cs),
-		browseHandler:      browse.NewHandler(cs, agentTags),
+		browseHandler:      browse.NewHandler(agentProxyFactory(cs, agentTags)),
 		dockerProxyHandler: docker.NewHandler(cs, agentTags),
 		webSocketHandler:   websocket.NewHandler(cs, agentTags),
-		hostHandler:        host.NewHandler(systemService, cs, agentTags),
+		hostHandler:        host.NewHandler(systemService, agentProxyFactory(cs, agentTags)),
 	}
 }
 
