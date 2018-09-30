@@ -19,15 +19,15 @@ func NewHandler(agentProxy func(next http.Handler) http.Handler) *Handler {
 		Router: mux.NewRouter(),
 	}
 
-	h.Handle("/browse/{id}/ls",
+	h.Handle("/browse/ls",
 		agentProxy(httperror.LoggerHandler(h.browseList))).Methods(http.MethodGet)
-	h.Handle("/browse/{id}/get",
+	h.Handle("/browse/get",
 		agentProxy(httperror.LoggerHandler(h.browseGet))).Methods(http.MethodGet)
-	h.Handle("/browse/{id}/delete",
+	h.Handle("/browse/delete",
 		agentProxy(httperror.LoggerHandler(h.browseDelete))).Methods(http.MethodDelete)
-	h.Handle("/browse/{id}/rename",
+	h.Handle("/browse/rename",
 		agentProxy(httperror.LoggerHandler(h.browseRename))).Methods(http.MethodPut)
-	h.Handle("/browse/{id}/put",
+	h.Handle("/browse/put",
 		agentProxy(httperror.LoggerHandler(h.browsePut))).Methods(http.MethodPost)
 	return h
 }
