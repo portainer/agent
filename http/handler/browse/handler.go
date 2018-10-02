@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/portainer/agent/http/proxy"
 	httperror "github.com/portainer/libhttp/error"
 )
 
@@ -14,20 +15,20 @@ type Handler struct {
 
 // NewHandler returns a pointer to an Handler
 // It sets the associated handle functions for all the Browse related HTTP endpoints.
-func NewHandler(agentProxy func(next http.Handler) http.Handler) *Handler {
+func NewHandler(agentProxy *proxy.AgentProxy) *Handler {
 	h := &Handler{
 		Router: mux.NewRouter(),
 	}
 
 	h.Handle("/browse/ls",
-		agentProxy(httperror.LoggerHandler(h.browseList))).Methods(http.MethodGet)
+		agentProxy.Redirect(httperror.LoggerHandler(h.browseList))).Methods(http.MethodGet)
 	h.Handle("/browse/get",
-		agentProxy(httperror.LoggerHandler(h.browseGet))).Methods(http.MethodGet)
+		agentProxy.Redirect(httperror.LoggerHandler(h.browseGet))).Methods(http.MethodGet)
 	h.Handle("/browse/delete",
-		agentProxy(httperror.LoggerHandler(h.browseDelete))).Methods(http.MethodDelete)
+		agentProxy.Redirect(httperror.LoggerHandler(h.browseDelete))).Methods(http.MethodDelete)
 	h.Handle("/browse/rename",
-		agentProxy(httperror.LoggerHandler(h.browseRename))).Methods(http.MethodPut)
+		agentProxy.Redirect(httperror.LoggerHandler(h.browseRename))).Methods(http.MethodPut)
 	h.Handle("/browse/put",
-		agentProxy(httperror.LoggerHandler(h.browsePut))).Methods(http.MethodPost)
+		agentProxy.Redirect(httperror.LoggerHandler(h.browsePut))).Methods(http.MethodPost)
 	return h
 }

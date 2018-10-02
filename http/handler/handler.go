@@ -11,6 +11,7 @@ import (
 	"github.com/portainer/agent/http/handler/docker"
 	"github.com/portainer/agent/http/handler/host"
 	"github.com/portainer/agent/http/handler/websocket"
+	"github.com/portainer/agent/http/proxy"
 )
 
 // Handler is the main handler of the application.
@@ -31,12 +32,13 @@ var apiVersionRe = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
 func NewHandler(systemService agent.SystemService, cs agent.ClusterService, agentTags map[string]string) *Handler {
+	agentProxy := proxy.NewAgentProxy(cs, agentTags)
 	return &Handler{
 		agentHandler:       httpagenthandler.NewHandler(cs),
-		browseHandler:      browse.NewHandler(agentProxyFactory(cs, agentTags)),
+		browseHandler:      browse.NewHandler(agentProxy),
 		dockerProxyHandler: docker.NewHandler(cs, agentTags),
 		webSocketHandler:   websocket.NewHandler(cs, agentTags),
-		hostHandler:        host.NewHandler(systemService, agentProxyFactory(cs, agentTags)),
+		hostHandler:        host.NewHandler(systemService, agentProxy),
 	}
 }
 
