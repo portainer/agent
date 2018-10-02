@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/proxy"
 	httperror "github.com/portainer/libhttp/error"
 )
@@ -12,51 +11,24 @@ import (
 // Handler is the HTTP handler used to handle volume browsing operations.
 type Handler struct {
 	*mux.Router
-	clusterService agent.ClusterService
-	agentTags      map[string]string
 }
 
 // NewHandler returns a pointer to an Handler
 // It sets the associated handle functions for all the Browse related HTTP endpoints.
-func NewHandler(clusterService agent.ClusterService, agentTags map[string]string) *Handler {
+func NewHandler(agentProxy *proxy.AgentProxy) *Handler {
 	h := &Handler{
-		Router:         mux.NewRouter(),
-		clusterService: clusterService,
-		agentTags:      agentTags,
+		Router: mux.NewRouter(),
 	}
 
 	h.Handle("/browse/ls",
-		h.agentProxy(httperror.LoggerHandler(h.browseList))).Methods(http.MethodGet)
+		agentProxy.Redirect(httperror.LoggerHandler(h.browseList))).Methods(http.MethodGet)
 	h.Handle("/browse/get",
-		h.agentProxy(httperror.LoggerHandler(h.browseGet))).Methods(http.MethodGet)
+		agentProxy.Redirect(httperror.LoggerHandler(h.browseGet))).Methods(http.MethodGet)
 	h.Handle("/browse/delete",
-		h.agentProxy(httperror.LoggerHandler(h.browseDelete))).Methods(http.MethodDelete)
+		agentProxy.Redirect(httperror.LoggerHandler(h.browseDelete))).Methods(http.MethodDelete)
 	h.Handle("/browse/rename",
-		h.agentProxy(httperror.LoggerHandler(h.browseRename))).Methods(http.MethodPut)
+		agentProxy.Redirect(httperror.LoggerHandler(h.browseRename))).Methods(http.MethodPut)
 	h.Handle("/browse/put",
-		h.agentProxy(httperror.LoggerHandler(h.browsePut))).Methods(http.MethodPost)
+		agentProxy.Redirect(httperror.LoggerHandler(h.browsePut))).Methods(http.MethodPost)
 	return h
-}
-
-func (handler *Handler) agentProxy(next http.Handler) http.Handler {
-	return httperror.LoggerHandler(func(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-
-		if handler.clusterService == nil {
-			next.ServeHTTP(rw, r)
-			return nil
-		}
-
-		agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
-
-		if agentTargetHeader == handler.agentTags[agent.MemberTagKeyNodeName] || agentTargetHeader == "" {
-			next.ServeHTTP(rw, r)
-		} else {
-			targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
-			if targetMember == nil {
-				return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", agent.ErrAgentNotFound}
-			}
-			proxy.AgentHTTPRequest(rw, r, targetMember)
-		}
-		return nil
-	})
 }
