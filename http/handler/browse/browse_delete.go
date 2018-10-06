@@ -30,3 +30,23 @@ func (handler *Handler) browseDelete(rw http.ResponseWriter, r *http.Request) *h
 
 	return response.Empty(rw)
 }
+
+func (handler *Handler) browseDeleteV1(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
+	}
+
+	path, err := request.RetrieveQueryParameter(r, "path", false)
+	fullPath, err := filesystem.BuildPathToFileInsideVolume(volumeID, path)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
+	}
+
+	err = filesystem.RemoveFile(fullPath)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to remove file", err}
+	}
+
+	return response.Empty(rw)
+}
