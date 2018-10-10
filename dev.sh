@@ -6,27 +6,22 @@ LOG_LEVEL=DEBUG
 VAGRANT=true
 TMP="/tmp"
 
-if [[ $# -ne 2 ]] ; then
-  echo "Usage: $(basename $0) <MODE:local/swarm> <BUILD_MODE:offline/online>"
+if [[ $# -ne 1 ]] ; then
+  echo "Usage: $(basename $0) <MODE:local/swarm>"
   exit 1
 fi
 
 MODE=$1
-BUILD_MODE=$2
 
 function compile() {
   echo "Compilation..."
-  if [ "${BUILD_MODE}" == 'online' ]
-  then
-    ./build/build_in_container.sh linux amd64
-  else
-    rm -rf dist/*
-    cd cmd/agent
-    CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
-    rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
-    cd ../..
-    mv cmd/agent/agent dist/agent
-  fi
+
+  rm -rf dist/*
+  cd cmd/agent
+  CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
+  rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
+  cd ../..
+  mv cmd/agent/agent dist/agent
 
 }
 
