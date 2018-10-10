@@ -26,5 +26,8 @@ func NewHandler(systemService agent.SystemService, agentProxy *proxy.AgentProxy)
 	h.Handle("/host/info",
 		agentProxy.Redirect(httperror.LoggerHandler(h.hostInfo))).Methods(http.MethodGet)
 
+	h.Handle("/host/script",
+		h.AgentProxy(httperror.LoggerHandler(h.executeScript))).Methods(http.MethodPost)
+
 	return h
 }
