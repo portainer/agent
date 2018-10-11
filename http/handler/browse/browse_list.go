@@ -9,6 +9,7 @@ import (
 	"github.com/portainer/libhttp/response"
 )
 
+// GET request on /browse/ls?id=:id&path=:path
 func (handler *Handler) browseList(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 
 	path, err := request.RetrieveQueryParameter(r, "path", false)
@@ -32,6 +33,7 @@ func (handler *Handler) browseList(rw http.ResponseWriter, r *http.Request) *htt
 	return response.JSON(rw, files)
 }
 
+// GET request on /v1/browse/:id/get?path=:path
 func (handler *Handler) browseListV1(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
 	if err != nil {
