@@ -94,11 +94,21 @@ func UploadFile(uploadedFilePath, filename string, file []byte) error {
 
 	filePath := path.Join(uploadedFilePath, filename)
 
-	err := ioutil.WriteFile(filePath, file, 0644)
+	f, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write(file)
 	if err != nil {
 		return err
 	}
 
+	err = f.Sync()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
