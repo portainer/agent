@@ -29,7 +29,7 @@ const (
 	errInvalidQueryParameters = agent.Error("Invalid query parameters")
 )
 
-var apiVersionRe = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
+var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
 func NewHandler(systemService agent.SystemService, cs agent.ClusterService, agentTags map[string]string) *Handler {
@@ -45,6 +45,8 @@ func NewHandler(systemService agent.SystemService, cs agent.ClusterService, agen
 }
 
 func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
+	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
+
 	switch {
 	case strings.HasPrefix(request.URL.Path, "/v1"):
 		h.ServeHTTPV1(rw, request)
@@ -59,7 +61,6 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	case strings.HasPrefix(request.URL.Path, "/websocket"):
 		h.webSocketHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/"):
-		request.URL.Path = apiVersionRe.ReplaceAllString(request.URL.Path, "")
 		h.dockerProxyHandler.ServeHTTP(rw, request)
 	}
 }
