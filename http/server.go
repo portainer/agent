@@ -70,5 +70,6 @@ func (server *Server) digitalSignatureVerification(next http.Handler) http.Handl
 // Start starts a new webserver by listening on the specified listenAddr.
 func (server *Server) Start(listenAddr string) error {
 	h := handler.NewHandler(server.systemService, server.clusterService, server.agentTags)
-	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, server.digitalSignatureVerification(h))
+	// return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, server.digitalSignatureVerification(h))
+	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, h)
 }
