@@ -49,7 +49,7 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	case strings.HasPrefix(request.URL.Path, "/v1"):
 		h.ServeHTTPV1(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v2"):
-		h.ServeHTTPV1(rw, request)
+		h.ServeHTTPV2(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/agents"):
 		h.agentHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/host"):
