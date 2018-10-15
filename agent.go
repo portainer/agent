@@ -77,6 +77,8 @@ type (
 const (
 	// AgentVersion represents the version of the agent.
 	AgentVersion = "1.1.2"
+	// APIVersion represents the version of the agent's API.
+	APIVersion = "2"
 	// DefaultListenAddr is the default address used by the web server.
 	DefaultListenAddr = "0.0.0.0"
 	// DefaultAgentPort is the default port exposed by the web server.
@@ -99,6 +101,9 @@ const (
 	// HTTPResponseAgentHeaderName is the name of the header that is automatically added
 	// to each agent response.
 	HTTPResponseAgentHeaderName = "Portainer-Agent"
+	// HTTPResponseAgentApiVersion is the name of the header that will have the
+	// Portainer Agent API Version.
+	HTTPResponseAgentApiVersion = "Portainer-API-Version"
 	// PortainerAgentSignatureMessage is the unhashed content that is signed by the Portainer instance.
 	// It is used by the agent during the signature verification process.
 	PortainerAgentSignatureMessage = "Portainer-App"

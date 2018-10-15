@@ -42,6 +42,7 @@ func (server *Server) digitalSignatureVerification(next http.Handler) http.Handl
 	return httperror.LoggerHandler(func(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 
 		rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
+		rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
 
 		publicKeyHeaderValue := r.Header.Get(agent.HTTPPublicKeyHeaderName)
 		if server.signatureService.RequiresPublicKey() && publicKeyHeaderValue == "" {
