@@ -19,6 +19,7 @@ import (
 type Handler struct {
 	agentHandler       *httpagenthandler.Handler
 	browseHandler      *browse.Handler
+	browseHandlerV1    *browse.Handler
 	dockerProxyHandler *docker.Handler
 	webSocketHandler   *websocket.Handler
 	hostHandler        *host.Handler
@@ -36,6 +37,7 @@ func NewHandler(systemService agent.SystemService, cs agent.ClusterService, agen
 	return &Handler{
 		agentHandler:       httpagenthandler.NewHandler(cs),
 		browseHandler:      browse.NewHandler(agentProxy),
+		browseHandlerV1:    browse.NewHandlerV1(agentProxy),
 		dockerProxyHandler: docker.NewHandler(cs, agentTags),
 		webSocketHandler:   websocket.NewHandler(cs, agentTags),
 		hostHandler:        host.NewHandler(systemService, agentProxy),
@@ -44,6 +46,10 @@ func NewHandler(systemService agent.SystemService, cs agent.ClusterService, agen
 
 func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	switch {
+	case strings.HasPrefix(request.URL.Path, "/v1"):
+		h.ServeHTTPV1(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/v2"):
+		h.ServeHTTPV2(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/agents"):
 		h.agentHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/host"):

@@ -33,6 +33,7 @@ func (payload *browsePutPayload) Validate(r *http.Request) error {
 	return nil
 }
 
+// POST request on /browse/put?id=:id
 func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 
 	var payload browsePutPayload
@@ -47,6 +48,31 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 		if err != nil {
 			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
 		}
+	}
+
+	err = filesystem.UploadFile(payload.Path, payload.Filename, payload.File)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusInternalServerError, "Error saving file to disk", err}
+	}
+
+	return response.Empty(rw)
+}
+
+// POST request on /v1/browse/:id/put
+func (handler *Handler) browsePutV1(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
+	}
+
+	var payload browsePutPayload
+	err = payload.Validate(r)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
+	}
+	payload.Path, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.Path)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
 	}
 
 	err = filesystem.UploadFile(payload.Path, payload.Filename, payload.File)
