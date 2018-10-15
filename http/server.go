@@ -14,15 +14,17 @@ type Server struct {
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
 	agentTags        map[string]string
+	agentOptions     *agent.AgentOptions
 }
 
 // NewServer returns a pointer to a Server.
-func NewServer(systemService agent.SystemService, clusterService agent.ClusterService, signatureService agent.DigitalSignatureService, agentTags map[string]string) *Server {
+func NewServer(systemService agent.SystemService, clusterService agent.ClusterService, signatureService agent.DigitalSignatureService, agentTags map[string]string, agentOptions *agent.AgentOptions) *Server {
 	return &Server{
 		systemService:    systemService,
 		clusterService:   clusterService,
 		signatureService: signatureService,
 		agentTags:        agentTags,
+		agentOptions:     *agentOptions,
 	}
 }
 
@@ -69,6 +71,6 @@ func (server *Server) digitalSignatureVerification(next http.Handler) http.Handl
 
 // Start starts a new webserver by listening on the specified listenAddr.
 func (server *Server) Start(listenAddr string) error {
-	h := handler.NewHandler(server.systemService, server.clusterService, server.agentTags)
+	h := handler.NewHandler(server.systemService, server.clusterService, server.agentTags, server.agentOptions)
 	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, server.digitalSignatureVerification(h))
 }

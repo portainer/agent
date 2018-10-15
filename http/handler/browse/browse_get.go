@@ -3,6 +3,7 @@ package browse
 import (
 	"net/http"
 
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
 	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/request"
@@ -21,6 +22,8 @@ func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *http
 		if err != nil {
 			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
 		}
+	} else if !handler.AgentOptions.HostManagementEnabled {
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
 	}
 
 	fileDetails, err := filesystem.OpenFile(path)

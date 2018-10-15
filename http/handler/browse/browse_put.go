@@ -48,6 +48,8 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 		if err != nil {
 			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
 		}
+	} else if !handler.AgentOptions.HostManagementEnabled {
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
 	}
 
 	err = filesystem.UploadFile(payload.Path, payload.Filename, payload.File)
