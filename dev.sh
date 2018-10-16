@@ -2,7 +2,7 @@
 
 IMAGE_NAME=portainer/agent:local
 LOG_LEVEL=DEBUG
-
+CAP_HOST_MANAGEMENT=1 #Enabled by default. Change this to anything else to disable this feature
 VAGRANT=true
 TMP="/tmp"
 
@@ -41,6 +41,7 @@ function deploy_local() {
   echo "Deployment..."
   docker run -d --name portainer-agent-dev \
   -e LOG_LEVEL=${LOG_LEVEL} \
+  -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /var/lib/docker/volumes:/var/lib/docker/volumes \
   -v /:/host \
