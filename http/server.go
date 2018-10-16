@@ -24,7 +24,7 @@ func NewServer(systemService agent.SystemService, clusterService agent.ClusterSe
 		clusterService:   clusterService,
 		signatureService: signatureService,
 		agentTags:        agentTags,
-		agentOptions:     *agentOptions,
+		agentOptions:     agentOptions,
 	}
 }
 
