@@ -79,6 +79,7 @@ function deploy_swarm() {
   docker -H "${DOCKER_MANAGER}:2375" service create --name portainer-agent-dev \
   --network portainer-agent-dev-net \
   -e LOG_LEVEL="${LOG_LEVEL}" \
+  -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -e AGENT_CLUSTER_ADDR=tasks.portainer-agent-dev \
   --mode global \
   --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
