@@ -2,10 +2,12 @@ package http
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/handler"
 	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/response"
 )
 
 // Server is the web server exposing the API of an agent.
@@ -43,6 +45,10 @@ func (server *Server) digitalSignatureVerification(next http.Handler) http.Handl
 
 		rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
 		rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
+
+		if strings.HasPrefix(r.URL.Path, "/ping") {
+			return response.Empty(rw)
+		}
 
 		publicKeyHeaderValue := r.Header.Get(agent.HTTPPublicKeyHeaderName)
 		if server.signatureService.RequiresPublicKey() && publicKeyHeaderValue == "" {
