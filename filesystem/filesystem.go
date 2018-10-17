@@ -90,7 +90,7 @@ func RenameFile(oldPath, newPath string) error {
 // UploadFile takes a path, filename, and file and writes it to disk
 func UploadFile(uploadedFilePath, filename string, file []byte) error {
 
-	os.MkdirAll(uploadedFilePath, 0644)
+	os.MkdirAll(uploadedFilePath, 0755)
 
 	filePath := path.Join(uploadedFilePath, filename)
 
