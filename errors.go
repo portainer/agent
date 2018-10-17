@@ -23,5 +23,5 @@ const (
 // Agent runtime errors.
 const (
 	ErrPublicKeyUnavailable = Error("Portainer public key unavailable")
-	ErrFeatureDisabled      = Error("Portainer agent feature is disabled")
+	ErrFeatureDisabled      = Error("Agent feature is disabled")
 )
