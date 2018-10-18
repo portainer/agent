@@ -35,6 +35,10 @@ func (payload *browsePutPayload) Validate(r *http.Request) error {
 
 // POST request on /browse/put?id=:id
 func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
+	if volumeID == "" && !handler.AgentOptions.HostManagementEnabled {
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
+	}
 
 	var payload browsePutPayload
 	err := payload.Validate(r)
@@ -42,14 +46,11 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
 	}
 
-	volumeID, err := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID != "" {
 		payload.Path, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.Path)
 		if err != nil {
 			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
 		}
-	} else if !handler.AgentOptions.HostManagementEnabled {
-		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
 	}
 
 	err = filesystem.UploadFile(payload.Path, payload.Filename, payload.File)

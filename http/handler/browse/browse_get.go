@@ -11,19 +11,21 @@ import (
 
 // GET request on /browse/get?id=:id&path=:path
 func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
+	if volumeID == "" && !handler.AgentOptions.HostManagementEnabled {
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
+	}
+
 	path, err := request.RetrieveQueryParameter(r, "path", false)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
 	}
 
-	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID != "" {
 		path, err = filesystem.BuildPathToFileInsideVolume(volumeID, path)
 		if err != nil {
 			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
 		}
-	} else if !handler.AgentOptions.HostManagementEnabled {
-		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
 	}
 
 	fileDetails, err := filesystem.OpenFile(path)
