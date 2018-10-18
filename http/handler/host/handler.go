@@ -17,14 +17,14 @@ type Handler struct {
 }
 
 // NewHandler returns a new instance of Handler
-func NewHandler(systemService agent.SystemService, agentProxy *proxy.AgentProxy) *Handler {
+func NewHandler(systemService agent.SystemService, agentProxy *proxy.AgentProxy, notaryService agent.NotaryService) *Handler {
 	h := &Handler{
 		Router:        mux.NewRouter(),
 		systemService: systemService,
 	}
 
 	h.Handle("/host/info",
-		agentProxy.Redirect(httperror.LoggerHandler(h.hostInfo))).Methods(http.MethodGet)
+		agentProxy.Redirect(notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.hostInfo)))).Methods(http.MethodGet)
 
 	return h
 }

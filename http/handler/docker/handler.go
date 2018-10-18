@@ -18,7 +18,7 @@ type Handler struct {
 
 // NewHandler returns a new instance of Handler.
 // It sets the associated handle functions for all the Docker related HTTP endpoints.
-func NewHandler(clusterService agent.ClusterService, agentTags map[string]string) *Handler {
+func NewHandler(clusterService agent.ClusterService, agentTags map[string]string, notaryService agent.NotaryService) *Handler {
 	h := &Handler{
 		Router:         mux.NewRouter(),
 		dockerProxy:    proxy.NewLocalProxy(),
@@ -27,6 +27,6 @@ func NewHandler(clusterService agent.ClusterService, agentTags map[string]string
 		agentTags:      agentTags,
 	}
 
-	h.PathPrefix("/").Handler(httperror.LoggerHandler(h.dockerOperation))
+	h.PathPrefix("/").Handler(notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.dockerOperation)))
 	return h
 }

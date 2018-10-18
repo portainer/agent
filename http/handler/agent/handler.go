@@ -20,14 +20,14 @@ type Handler struct {
 
 // NewHandler returns a pointer to an Handler
 // It sets the associated handle functions for all the agent related HTTP endpoints.
-func NewHandler(cs agent.ClusterService) *Handler {
+func NewHandler(cs agent.ClusterService, notaryService agent.NotaryService) *Handler {
 	h := &Handler{
 		Router:         mux.NewRouter(),
 		clusterService: cs,
 	}
 
 	h.Handle("/agents",
-		httperror.LoggerHandler(h.agentList)).Methods(http.MethodGet)
+		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.agentList))).Methods(http.MethodGet)
 
 	return h
 }

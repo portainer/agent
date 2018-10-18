@@ -23,7 +23,7 @@ type (
 )
 
 // NewHandler returns a new instance of Handler.
-func NewHandler(clusterService agent.ClusterService, agentTags map[string]string) *Handler {
+func NewHandler(clusterService agent.ClusterService, agentTags map[string]string, notaryService agent.NotaryService) *Handler {
 	h := &Handler{
 		Router:             mux.NewRouter(),
 		connectionUpgrader: websocket.Upgrader{},
@@ -31,6 +31,6 @@ func NewHandler(clusterService agent.ClusterService, agentTags map[string]string
 		agentTags:          agentTags,
 	}
 
-	h.Handle("/websocket/exec", httperror.LoggerHandler(h.websocketExec))
+	h.Handle("/websocket/exec", notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.websocketExec)))
 	return h
 }

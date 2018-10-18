@@ -32,15 +32,15 @@ const (
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
-func NewHandler(systemService agent.SystemService, cs agent.ClusterService, agentTags map[string]string) *Handler {
+func NewHandler(systemService agent.SystemService, cs agent.ClusterService, notaryService agent.NotaryService, agentTags map[string]string) *Handler {
 	agentProxy := proxy.NewAgentProxy(cs, agentTags)
 	return &Handler{
-		agentHandler:       httpagenthandler.NewHandler(cs),
-		browseHandler:      browse.NewHandler(agentProxy),
-		browseHandlerV1:    browse.NewHandlerV1(agentProxy),
-		dockerProxyHandler: docker.NewHandler(cs, agentTags),
-		webSocketHandler:   websocket.NewHandler(cs, agentTags),
-		hostHandler:        host.NewHandler(systemService, agentProxy),
+		agentHandler:       httpagenthandler.NewHandler(cs, notaryService),
+		browseHandler:      browse.NewHandler(agentProxy, notaryService),
+		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
+		dockerProxyHandler: docker.NewHandler(cs, agentTags, notaryService),
+		webSocketHandler:   websocket.NewHandler(cs, agentTags, notaryService),
+		hostHandler:        host.NewHandler(systemService, agentProxy, notaryService),
 	}
 }
 

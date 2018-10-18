@@ -1,5 +1,7 @@
 package agent
 
+import "net/http"
+
 type (
 	// AgentOptions are the options used to start an agent.
 	AgentOptions struct {
@@ -71,6 +73,11 @@ type (
 	SystemService interface {
 		GetDiskInfo() ([]PhysicalDisk, error)
 		GetPciDevices() ([]PciDevice, error)
+	}
+
+	// NotaryService is used to secure routes on api
+	NotaryService interface {
+		DigitalSignatureVerification(next http.Handler) http.Handler
 	}
 )
 
