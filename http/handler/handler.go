@@ -46,8 +46,12 @@ func NewHandler(systemService agent.SystemService, cs agent.ClusterService, nota
 
 func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
+	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
+	rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
 
 	switch {
+	case strings.HasPrefix(request.URL.Path, "/ping"):
+		h.Ping(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v1"):
 		h.ServeHTTPV1(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v2"):

@@ -20,9 +20,6 @@ func NewService(signatureService agent.DigitalSignatureService) *NotaryService {
 func (service *NotaryService) DigitalSignatureVerification(next http.Handler) http.Handler {
 	return httperror.LoggerHandler(func(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 
-		rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
-		rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
-
 		publicKeyHeaderValue := r.Header.Get(agent.HTTPPublicKeyHeaderName)
 		if service.signatureService.RequiresPublicKey() && publicKeyHeaderValue == "" {
 			return &httperror.HandlerError{http.StatusForbidden, "Missing Portainer public key", agent.ErrPublicKeyUnavailable}
