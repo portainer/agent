@@ -16,7 +16,7 @@ import (
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
-	"github.com/portainer/agent/security"
+	"github.com/portainer/agent/http/security"
 	cluster "github.com/portainer/agent/serf"
 )
 
