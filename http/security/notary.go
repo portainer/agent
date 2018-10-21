@@ -11,7 +11,7 @@ type NotaryService struct {
 	signatureService agent.DigitalSignatureService
 }
 
-func NewService(signatureService agent.DigitalSignatureService) *NotaryService {
+func NewNotaryService(signatureService agent.DigitalSignatureService) *NotaryService {
 	return &NotaryService{
 		signatureService: signatureService,
 	}
