@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/http/security"
 	httperror "github.com/portainer/libhttp/error"
 )
 
@@ -20,7 +21,7 @@ type Handler struct {
 
 // NewHandler returns a pointer to an Handler
 // It sets the associated handle functions for all the agent related HTTP endpoints.
-func NewHandler(cs agent.ClusterService, notaryService agent.NotaryService) *Handler {
+func NewHandler(cs agent.ClusterService, notaryService *security.NotaryService) *Handler {
 	h := &Handler{
 		Router:         mux.NewRouter(),
 		clusterService: cs,

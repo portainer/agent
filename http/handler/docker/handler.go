@@ -4,6 +4,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/proxy"
+	"github.com/portainer/agent/http/security"
 	httperror "github.com/portainer/libhttp/error"
 )
 
@@ -18,7 +19,7 @@ type Handler struct {
 
 // NewHandler returns a new instance of Handler.
 // It sets the associated handle functions for all the Docker related HTTP endpoints.
-func NewHandler(clusterService agent.ClusterService, agentTags map[string]string, notaryService agent.NotaryService) *Handler {
+func NewHandler(clusterService agent.ClusterService, agentTags map[string]string, notaryService *security.NotaryService) *Handler {
 	h := &Handler{
 		Router:         mux.NewRouter(),
 		dockerProxy:    proxy.NewLocalProxy(),

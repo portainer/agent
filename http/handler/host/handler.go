@@ -7,6 +7,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/proxy"
+	"github.com/portainer/agent/http/security"
 	httperror "github.com/portainer/libhttp/error"
 )
 
@@ -17,7 +18,7 @@ type Handler struct {
 }
 
 // NewHandler returns a new instance of Handler
-func NewHandler(systemService agent.SystemService, agentProxy *proxy.AgentProxy, notaryService agent.NotaryService) *Handler {
+func NewHandler(systemService agent.SystemService, agentProxy *proxy.AgentProxy, notaryService *security.NotaryService) *Handler {
 	h := &Handler{
 		Router:        mux.NewRouter(),
 		systemService: systemService,

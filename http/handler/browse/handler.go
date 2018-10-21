@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/proxy"
+	"github.com/portainer/agent/http/security"
 	httperror "github.com/portainer/libhttp/error"
 )
 
@@ -16,7 +16,7 @@ type Handler struct {
 
 // NewHandler returns a pointer to an Handler
 // It sets the associated handle functions for all the Browse related HTTP endpoints.
-func NewHandler(agentProxy *proxy.AgentProxy, notaryService agent.NotaryService) *Handler {
+func NewHandler(agentProxy *proxy.AgentProxy, notaryService *security.NotaryService) *Handler {
 	h := &Handler{
 		Router: mux.NewRouter(),
 	}
@@ -36,7 +36,7 @@ func NewHandler(agentProxy *proxy.AgentProxy, notaryService agent.NotaryService)
 
 // NewHandlerV1 returns a pointer to an Handler
 // It sets the associated handle functions for all the Browse related HTTP endpoints.
-func NewHandlerV1(agentProxy *proxy.AgentProxy, notaryService agent.NotaryService) *Handler {
+func NewHandlerV1(agentProxy *proxy.AgentProxy, notaryService *security.NotaryService) *Handler {
 	h := &Handler{
 		Router: mux.NewRouter(),
 	}

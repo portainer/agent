@@ -4,6 +4,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/http/security"
 	httperror "github.com/portainer/libhttp/error"
 )
 
@@ -23,7 +24,7 @@ type (
 )
 
 // NewHandler returns a new instance of Handler.
-func NewHandler(clusterService agent.ClusterService, agentTags map[string]string, notaryService agent.NotaryService) *Handler {
+func NewHandler(clusterService agent.ClusterService, agentTags map[string]string, notaryService *security.NotaryService) *Handler {
 	h := &Handler{
 		Router:             mux.NewRouter(),
 		connectionUpgrader: websocket.Upgrader{},
