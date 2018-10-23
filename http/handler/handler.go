@@ -10,6 +10,7 @@ import (
 	"github.com/portainer/agent/http/handler/browse"
 	"github.com/portainer/agent/http/handler/docker"
 	"github.com/portainer/agent/http/handler/host"
+	"github.com/portainer/agent/http/handler/ping"
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
@@ -24,6 +25,7 @@ type Handler struct {
 	dockerProxyHandler *docker.Handler
 	webSocketHandler   *websocket.Handler
 	hostHandler        *host.Handler
+	pingHandler        *ping.Handler
 }
 
 const (
@@ -43,6 +45,7 @@ func NewHandler(systemService agent.SystemService, cs agent.ClusterService, sign
 		dockerProxyHandler: docker.NewHandler(cs, agentTags, notaryService),
 		webSocketHandler:   websocket.NewHandler(cs, agentTags, notaryService),
 		hostHandler:        host.NewHandler(systemService, agentProxy, notaryService),
+		pingHandler:        ping.NewHandler(),
 	}
 }
 
@@ -53,7 +56,7 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 
 	switch {
 	case strings.HasPrefix(request.URL.Path, "/ping"):
-		h.Ping(rw, request)
+		h.pingHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v1"):
 		h.ServeHTTPV1(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v2"):
