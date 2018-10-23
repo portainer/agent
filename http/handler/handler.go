@@ -55,8 +55,6 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
 
 	switch {
-	case strings.HasPrefix(request.URL.Path, "/ping"):
-		h.pingHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v1"):
 		h.ServeHTTPV1(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v2"):
