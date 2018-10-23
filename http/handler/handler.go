@@ -59,6 +59,8 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		h.ServeHTTPV1(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v2"):
 		h.ServeHTTPV2(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/ping"):
+		h.pingHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/agents"):
 		h.agentHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/host"):
