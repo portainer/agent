@@ -16,5 +16,7 @@ func (h *Handler) ServeHTTPV1(rw http.ResponseWriter, request *http.Request) {
 		http.StripPrefix("/v1", h.browseHandlerV1).ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v1/websocket"):
 		http.StripPrefix("/v1", h.webSocketHandler).ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/"):
+		h.dockerProxyHandler.ServeHTTP(rw, request)
 	}
 }

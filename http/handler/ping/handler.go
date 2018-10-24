@@ -7,18 +7,17 @@ import (
 	httperror "github.com/portainer/libhttp/error"
 )
 
-// Handler is the HTTP handler used to handle ping.
+// Handler represents an HTTP API Handler executing a ping operation
 type Handler struct {
 	*mux.Router
 }
 
-// NewHandler returns a pointer to an Handler
+// NewHandler returns a new instance of Handler
 func NewHandler() *Handler {
 	h := &Handler{
 		Router: mux.NewRouter(),
 	}
 
 	h.Handle("/ping", httperror.LoggerHandler(h.ping)).Methods(http.MethodGet)
-
 	return h
 }
