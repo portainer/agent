@@ -28,13 +28,17 @@ func (payload *browseRenamePayload) Validate(r *http.Request) error {
 
 // PUT request on /browse/rename?id=:id
 func (handler *Handler) browseRename(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
+	if volumeID == "" && !handler.AgentOptions.HostManagementEnabled {
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
+	}
+
 	var payload browseRenamePayload
 	err := request.DecodeAndValidateJSONPayload(r, &payload)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
 	}
 
-	volumeID, err := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID != "" {
 		payload.CurrentFilePath, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.CurrentFilePath)
 		if err != nil {

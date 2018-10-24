@@ -3,6 +3,7 @@ package browse
 import (
 	"net/http"
 
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
 	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/request"
@@ -11,12 +12,16 @@ import (
 
 // DELETE request on /browse/delete?id=:id&path=:path
 func (handler *Handler) browseDelete(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
+	if volumeID == "" && !handler.AgentOptions.HostManagementEnabled {
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
+	}
+
 	path, err := request.RetrieveQueryParameter(r, "path", false)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
 	}
 
-	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID != "" {
 		path, err = filesystem.BuildPathToFileInsideVolume(volumeID, path)
 		if err != nil {
