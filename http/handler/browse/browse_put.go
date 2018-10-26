@@ -53,7 +53,7 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 		}
 	}
 
-	err = filesystem.UploadFile(payload.Path, payload.Filename, payload.File)
+	err = filesystem.WriteFile(payload.Path, payload.Filename, payload.File, 0755)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Error saving file to disk", err}
 	}
@@ -78,7 +78,7 @@ func (handler *Handler) browsePutV1(rw http.ResponseWriter, r *http.Request) *ht
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
 	}
 
-	err = filesystem.UploadFile(payload.Path, payload.Filename, payload.File)
+	err = filesystem.WriteFile(payload.Path, payload.Filename, payload.File, 0755)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Error saving file to disk", err}
 	}

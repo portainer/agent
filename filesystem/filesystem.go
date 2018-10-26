@@ -87,14 +87,13 @@ func RenameFile(oldPath, newPath string) error {
 	return os.Rename(oldPath, newPath)
 }
 
-// UploadFile takes a path, filename, and file and writes it to disk
-func UploadFile(uploadedFilePath, filename string, file []byte) error {
-
-	os.MkdirAll(uploadedFilePath, 0644)
-
+// WriteFile takes a path, filename, a file and the mode that should be associated
+// to the file and writes it to disk
+func WriteFile(uploadedFilePath, filename string, file []byte, mode uint32) error {
+	os.MkdirAll(uploadedFilePath, 0755)
 	filePath := path.Join(uploadedFilePath, filename)
 
-	err := ioutil.WriteFile(filePath, file, 0644)
+	err := ioutil.WriteFile(filePath, file, os.FileMode(mode))
 	if err != nil {
 		return err
 	}
