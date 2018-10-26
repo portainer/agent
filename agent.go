@@ -3,8 +3,9 @@ package agent
 type (
 	// AgentOptions are the options used to start an agent.
 	AgentOptions struct {
-		Port           string
-		ClusterAddress string
+		Port                  string
+		ClusterAddress        string
+		HostManagementEnabled bool
 	}
 
 	// ClusterMember is the representation of an agent inside a cluster.

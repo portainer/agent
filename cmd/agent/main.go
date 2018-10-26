@@ -22,6 +22,7 @@ import (
 func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 	options := &agent.AgentOptions{
 		Port: agent.DefaultAgentPort,
+		HostManagementEnabled: false,
 	}
 
 	clusterAddressEnv := os.Getenv("AGENT_CLUSTER_ADDR")
@@ -37,6 +38,10 @@ func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 			return nil, agent.ErrInvalidEnvPortFormat
 		}
 		options.Port = agentPortEnv
+	}
+
+	if os.Getenv("CAP_HOST_MANAGEMENT") == "1" {
+		options.HostManagementEnabled = true
 	}
 
 	return options, nil
@@ -168,6 +173,6 @@ func main() {
 
 	listenAddr := agent.DefaultListenAddr + ":" + options.Port
 	log.Printf("[INFO] - Starting Portainer agent version %s on %s (cluster mode: %t)", agent.AgentVersion, listenAddr, clusterMode)
-	server := http.NewServer(systemService, clusterService, signatureService, agentTags)
+	server := http.NewServer(systemService, clusterService, signatureService, agentTags, options)
 	server.Start(listenAddr)
 }
