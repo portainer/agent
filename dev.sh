@@ -18,7 +18,7 @@ function compile() {
 
   rm -rf dist/*
   cd cmd/agent
-  CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
+  GOOS="linux" GOARCH="amd64" CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
   rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
   cd ../..
   mv cmd/agent/agent dist/agent
