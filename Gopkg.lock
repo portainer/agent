@@ -189,11 +189,12 @@
   version = "v0.8.1"
 
 [[projects]]
-  digest = "1:b3119e942d7b120ed64f225dc2afca3260ff02ff3d7c5766a9ddf6ed9431355c"
+  branch = "master"
+  digest = "1:116c124db55048c0e355351a3fe0dde2ac9534b143630edfc9b6752018307eb1"
   name = "github.com/jaypipes/ghw"
   packages = ["."]
   pruneopts = "UT"
-  revision = "34ad6ce201fc474e1878e8624d3662c1237534f8"
+  revision = "524701ced228d58b4f20b21089c696a4724c12eb"
 
 [[projects]]
   branch = "master"
