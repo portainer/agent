@@ -1,4 +1,4 @@
-package main // import "github.com/portainer/agent"
+package main
 
 import (
 	"log"

@@ -125,3 +125,14 @@ For example, based on the previous service deployment, `tasks.portainer_agent:90
 enable the `TLS` switch and use the `TLS only` option.
 
 When creating the endpoint on the CLI using the `-H` Portainer flag, the `--tlsskipverify` flag must be specified, example: `-H tcp://tasks.portainer_agent:9001 --tlsskipverify`.
+
+## Development
+
+1. Install go >= 1.11.2
+2. Install dep: https://golang.github.io/dep/docs/installation.html
+
+If you want to add any extra dependency:
+
+```go
+dep ensure -add github.com/foo/bar
+```

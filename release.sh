@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
+# Requires:
+# * Go SDK (version >= 1.10)
+
 ARCHIVE_BUILD_FOLDER="/tmp/portainer-builds"
+MAIN="cmd/agent/main.go"
 
 if [[ $# -ne 1 ]] ; then
   echo "Usage: $(basename $0) <VERSION>"
@@ -31,7 +35,10 @@ function build_archive() {
 }
 
 function build_binary() {
-  ./build/build_in_container.sh "$1" "$2"
+  platform=$1
+  arch=$2
+  GOOS="${platform}" GOARCH="${arch}" CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s' "${MAIN}"
+  mv main "dist/agent-${platform}-${arch}-${VERSION}"
 }
 
 function build_all() {
