@@ -1,5 +1,3 @@
-// +build linux
-//
 // Use and distribution licensed under the Apache license version 2.
 //
 // See the COPYING file in the root project directory for full text.
@@ -8,7 +6,6 @@
 package ghw
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,7 +14,11 @@ import (
 )
 
 const (
-	PATH_SYSFS_CLASS_DRM = "/sys/class/drm"
+	_WARN_NO_SYS_CLASS_DRM = `
+/sys/class/drm does not exist on this system (likely the host system is a
+virtual machine or container with no graphics). Therefore,
+GPUInfo.GraphicsCards will be an empty array.
+`
 )
 
 func gpuFillInfo(info *GPUInfo) error {
@@ -47,15 +48,9 @@ func gpuFillInfo(info *GPUInfo) error {
 	// we follow to gather information about the actual device from the PCI
 	// subsystem (we query the modalias file of the PCI device's sysfs
 	// directory using the `ghw.PCIInfo.GetDevice()` function.
-	links, err := ioutil.ReadDir(PATH_SYSFS_CLASS_DRM)
+	links, err := ioutil.ReadDir(pathSysClassDrm())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, `************************ WARNING ***********************************
-/sys/class/drm does not exist on this system (likely the host system is a
-virtual machine or container with no graphics). Therefore,
-GPUInfo.GraphicsCards will be an empty array.
-********************************************************************
-`,
-		)
+		warn(_WARN_NO_SYS_CLASS_DRM)
 		return nil
 	}
 	cards := make([]*GraphicsCard, 0)
@@ -76,7 +71,7 @@ GPUInfo.GraphicsCards will be an empty array.
 
 		// Calculate the card's PCI address by looking at the symbolic link's
 		// target
-		lpath := filepath.Join(PATH_SYSFS_CLASS_DRM, lname)
+		lpath := filepath.Join(pathSysClassDrm(), lname)
 		dest, err := os.Readlink(lpath)
 		if err != nil {
 			continue
@@ -110,57 +105,38 @@ func gpuFillPCIDevice(cards []*GraphicsCard) {
 	}
 }
 
-// Loops through each GraphicsCard struct and find which NUMA nodes the card is
-// affined to, setting the GraphicsCard.Nodes field accordingly. If the host
-// system is not a NUMA system, the Nodes field will be set to an empty array
-// of Node pointers.
+// Loops through each GraphicsCard struct and find which NUMA node the card is
+// affined to, setting the GraphicsCard.Node field accordingly. If the host
+// system is not a NUMA system, the Node field will be set to nil.
 func gpuFillNUMANodes(cards []*GraphicsCard) {
 	topo, err := Topology()
 	if err != nil {
 		for _, card := range cards {
 			if topo.Architecture != NUMA {
-				card.Nodes = make([]*TopologyNode, 0)
+				card.Node = nil
 			}
 		}
 		return
 	}
 	for _, card := range cards {
-		if topo.Architecture != NUMA {
-			card.Nodes = make([]*TopologyNode, 0)
-			continue
-		}
 		// Each graphics card on a NUMA system will have a pseudo-file
 		// called /sys/class/drm/card$CARD_INDEX/device/numa_node which
-		// contains a comma-separated list of NUMA nodes that the card is
-		// affined to
+		// contains the NUMA node that the card is affined to
 		cardIndexStr := strconv.Itoa(card.Index)
 		fpath := filepath.Join(
-			PATH_SYSFS_CLASS_DRM,
+			pathSysClassDrm(),
 			"card"+cardIndexStr,
 			"device",
 			"numa_node",
 		)
-		numaContents, err := ioutil.ReadFile(fpath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, `************************ WARNING ***********************************
-Unable to read numa_nodes descriptor file on this system.
-Setting graphics card's Nodes attribute to empty array.
-********************************************************************
-`,
-			)
-			card.Nodes = make([]*TopologyNode, 0)
+		nodeIdx := safeIntFromFile(fpath)
+		if nodeIdx == -1 {
 			continue
 		}
-		cardNodes := make([]*TopologyNode, 0)
-		nodeIndexes := strings.Split(string(numaContents), ",")
-		for _, nodeIndex := range nodeIndexes {
-			for _, node := range topo.Nodes {
-				nodeIndexInt, _ := strconv.Atoi(nodeIndex)
-				if nodeIndexInt == int(node.Id) {
-					cardNodes = append(cardNodes, node)
-				}
+		for _, node := range topo.Nodes {
+			if nodeIdx == int(node.Id) {
+				card.Node = node
 			}
 		}
-		card.Nodes = cardNodes
 	}
 }

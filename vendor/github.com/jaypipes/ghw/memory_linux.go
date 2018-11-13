@@ -1,5 +1,3 @@
-// +build linux
-//
 // Use and distribution licensed under the Apache license version 2.
 //
 // See the COPYING file in the root project directory for full text.
@@ -20,6 +18,22 @@ import (
 	"strings"
 )
 
+const (
+	_WARN_CANNOT_DETERMINE_PHYSICAL_MEMORY = `
+Could not determine total physical bytes of memory. This may
+be due to the host being a virtual machine or container with no
+/var/log/syslog file, or the current user may not have necessary
+privileges to read the syslog. We are falling back to setting the
+total physical amount of memory to the total usable amount of memory
+`
+)
+
+var (
+	// System log lines will look similar to the following:
+	// ... kernel: [0.000000] Memory: 24633272K/25155024K ...
+	_REGEX_SYSLOG_MEMLINE = regexp.MustCompile(`Memory:\s+\d+K\/(\d+)K`)
+)
+
 func memFillInfo(info *MemoryInfo) error {
 	tub := memTotalUsableBytes()
 	if tub < 1 {
@@ -29,26 +43,12 @@ func memFillInfo(info *MemoryInfo) error {
 	tpb := memTotalPhysicalBytes()
 	info.TotalPhysicalBytes = tpb
 	if tpb < 1 {
-		fmt.Fprintf(os.Stderr, `************************ WARNING ***********************************
-Could not determine total physical bytes of memory. This may
-be due to the host being a virtual machine or container with no
-/var/log/syslog file, or the current user may not have necessary
-privileges to read the syslog. We are falling back to setting the
-total physical amount of memory to the total usable amount of memory
-********************************************************************
-`,
-		)
+		warn(_WARN_CANNOT_DETERMINE_PHYSICAL_MEMORY)
 		info.TotalPhysicalBytes = tub
 	}
 	info.SupportedPageSizes = memSupportedPageSizes()
 	return nil
 }
-
-// System log lines will look similar to the following:
-// ... kernel: [0.000000] Memory: 24633272K/25155024K ...
-var (
-	syslogMemLineRe = regexp.MustCompile("Memory:\\s+\\d+K\\/(\\d+)K")
-)
 
 func memTotalPhysicalBytes() int64 {
 	// In Linux, the total physical memory can be determined by looking at the
@@ -56,7 +56,7 @@ func memTotalPhysicalBytes() int64 {
 	// so instead we examine the system logs for startup information containing
 	// total physical memory and cache the results of this.
 	findPhysicalKb := func(line string) int64 {
-		matches := syslogMemLineRe.FindStringSubmatch(line)
+		matches := _REGEX_SYSLOG_MEMLINE.FindStringSubmatch(line)
 		if len(matches) == 2 {
 			i, err := strconv.Atoi(matches[1])
 			if err != nil {
@@ -85,7 +85,7 @@ func memTotalPhysicalBytes() int64 {
 			if err != nil {
 				return -1
 			}
-			defer r.Close()
+			defer safeClose(r)
 			if unzip {
 				r, err = gzip.NewReader(r)
 				if err != nil {
@@ -134,7 +134,7 @@ func memTotalUsableBytes() int64 {
 	if err != nil {
 		return -1
 	}
-	defer r.Close()
+	defer safeClose(r)
 
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {

@@ -26,7 +26,6 @@ lint: $(GOMETALINTER)
 
 .PHONY: fmt
 fmt:
-	@echo "Running gofmt on all sources..."
 	@gofmt -s -l -w $(SRC)
 
 .PHONY: fmtcheck
@@ -41,7 +40,7 @@ vet:
 cover:
 	$(shell [ -e coverage.out ] && rm coverage.out)
 	@echo "mode: count" > coverage-all.out
-	$(foreach pkg,$(PKGS),\
+	@$(foreach pkg,$(PKGS),\
 		go test -coverprofile=coverage.out -covermode=count $(pkg);\
 		tail -n +2 coverage.out >> coverage-all.out;)
 	go tool cover -html=coverage-all.out -o=coverage-all.html

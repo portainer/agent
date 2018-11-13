@@ -11,16 +11,23 @@ import (
 	"math"
 )
 
+// Disk describes a single disk drive on the host system. Disk drives provide
+// raw block storage resources.
 type Disk struct {
-	Name            string
-	SizeBytes       uint64
-	SectorSizeBytes uint64
-	BusType         string
-	Vendor          string
-	SerialNumber    string
-	Partitions      []*Partition
+	Name                   string
+	SizeBytes              uint64
+	PhysicalBlockSizeBytes uint64
+	BusType                string
+	BusPath                string
+	NUMANodeID             int
+	Vendor                 string
+	Model                  string
+	SerialNumber           string
+	WWN                    string
+	Partitions             []*Partition
 }
 
+// Partition describes a logical division of a Disk.
 type Partition struct {
 	Disk       *Disk
 	Name       string
@@ -31,12 +38,15 @@ type Partition struct {
 	IsReadOnly bool
 }
 
+// BlockInfo describes all disk drives and partitions in the host system.
 type BlockInfo struct {
 	TotalPhysicalBytes uint64
 	Disks              []*Disk
 	Partitions         []*Partition
 }
 
+// Block returns a BlockInfo struct that describes the block storage resources
+// of the host system.
 func Block() (*BlockInfo, error) {
 	info := &BlockInfo{}
 	err := blockFillInfo(info)
@@ -47,7 +57,7 @@ func Block() (*BlockInfo, error) {
 }
 
 func (i *BlockInfo) String() string {
-	tpbs := "unknown"
+	tpbs := UNKNOWN
 	if i.TotalPhysicalBytes > 0 {
 		tpb := i.TotalPhysicalBytes
 		unit, unitStr := unitWithString(int64(tpb))
@@ -63,28 +73,44 @@ func (i *BlockInfo) String() string {
 }
 
 func (d *Disk) String() string {
-	vendor := ""
-	if d.Vendor != "" {
-		vendor = "  " + d.Vendor
-	}
-	serial := ""
-	if d.SerialNumber != "" {
-		serial = " - SN #" + d.SerialNumber
-	}
-	sizeStr := "unknown"
+	sizeStr := UNKNOWN
 	if d.SizeBytes > 0 {
 		size := d.SizeBytes
 		unit, unitStr := unitWithString(int64(size))
 		size = uint64(math.Ceil(float64(size) / float64(unit)))
 		sizeStr = fmt.Sprintf("%d%s", size, unitStr)
 	}
+	atNode := ""
+	if d.NUMANodeID >= 0 {
+		atNode = fmt.Sprintf(" (node #%d)", d.NUMANodeID)
+	}
+	vendor := ""
+	if d.Vendor != "" {
+		vendor = " vendor=" + d.Vendor
+	}
+	model := ""
+	if d.Model != UNKNOWN {
+		model = " model=" + d.Model
+	}
+	serial := ""
+	if d.SerialNumber != UNKNOWN {
+		serial = " serial=" + d.SerialNumber
+	}
+	wwn := ""
+	if d.WWN != UNKNOWN {
+		wwn = " WWN=" + d.WWN
+	}
 	return fmt.Sprintf(
-		"/dev/%s (%s) [%s]%s%s",
+		"/dev/%s (%s) [%s @ %s%s]%s%s%s%s",
 		d.Name,
 		sizeStr,
 		d.BusType,
+		d.BusPath,
+		atNode,
 		vendor,
+		model,
 		serial,
+		wwn,
 	)
 }
 
@@ -97,7 +123,7 @@ func (p *Partition) String() string {
 	if p.MountPoint != "" {
 		mountStr = fmt.Sprintf(" mounted@%s", p.MountPoint)
 	}
-	sizeStr := "unknown"
+	sizeStr := UNKNOWN
 	if p.SizeBytes > 0 {
 		size := p.SizeBytes
 		unit, unitStr := unitWithString(int64(size))

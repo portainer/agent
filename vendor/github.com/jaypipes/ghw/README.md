@@ -34,6 +34,16 @@ information about the host computer:
 * [PCI](#pci)
 * [GPU](#gpu)
 
+**NOTE**: The default root mountpoint that `ghw` uses when looking for
+information about the host system is `/`. So, for example, when looking up CPU
+information on Linux, `ghw` will attempt to parse the `/proc/cpuinfo` file. If
+you are calling `ghw` from a system that has an alternate root mountpoint, you
+can set the `GHW_CHROOT` environment variable to that alternate path. for
+example, if you are executing from within an application container that has
+bind-mounted the root host filesystem to the mount point `/host`, you would set
+`GHW_CHROOT` to `/host` so that `ghw` can find files like `/proc/cpuinfo` at
+`/host/proc/cpuinfo`.
+
 ### Memory
 
 Information about the host computer's memory can be retrieved using the
@@ -64,7 +74,7 @@ func main() {
 		fmt.Printf("Error getting memory info: %v", err)
 	}
 
-	fmt.Println(mem.String())
+	fmt.Println(memory.String())
 }
 ```
 
@@ -83,7 +93,7 @@ information about the CPUs on the host system.
 
 * `ghw.CPUInfo.TotalCores` has the total number of physical cores the host
   system contains
-* `ghw.CPUInfo.TotalCores` has the total number of hardware threads the
+* `ghw.CPUInfo.TotalThreads` has the total number of hardware threads the
   host system contains
 * `ghw.CPUInfo.Processors` is an array of `ghw.Processor` structs, one for each
   physical processor package contained in the host
@@ -203,12 +213,17 @@ Each `ghw.Disk` struct contains the following fields:
 
 * `ghw.Disk.Name` contains a string with the short name of the disk, e.g. "sda"
 * `ghw.Disk.SizeBytes` contains the amount of storage the disk provides
-* `ghw.Disk.SectorSizeBytes` contains the size of the sector used on the disk,
-  in bytes
+* `ghw.Disk.PhysicalBlockSizeBytes` contains the size of the physical blocks
+  used on the disk, in bytes
 * `ghw.Disk.BusType` will be either "scsi" or "ide"
+* `ghw.Disk.NUMANodeID` is the numeric index of the NUMA node this disk is
+  local to, or -1
 * `ghw.Disk.Vendor` contains a string with the name of the hardware vendor for
   the disk drive
+* `ghw.Disk.Model` contains a string with the vendor-assigned disk model name
 * `ghw.Disk.SerialNumber` contains a string with the disk's serial number
+* `ghw.Disk.WWN` contains a string with the disk's
+  [World Wide Name](https://en.wikipedia.org/wiki/World_Wide_Name)
 * `ghw.Disk.Partitions` contains an array of pointers to `ghw.Partition`
   structs, one for each partition on the disk
 
@@ -373,36 +388,105 @@ Each `ghw.NIC` struct contains the following fields:
 * `ghw.NIC.MacAddress` is the MAC address for the NIC, if any
 * `ghw.NIC.IsVirtual` is a boolean indicating if the NIC is a virtualized
   device
+* `ghw.NIC.Capabilities` is an array of pointers to `ghw.NICCapability` structs
+  that can describe the things the NIC supports. These capabilities match the
+  returned values from the `ethtool -k <DEVICE>` call on Linux
+
+The `ghw.NICCapability` struct contains the following fields:
+
+* `ghw.NICCapability.Name` is the string name of the capability (e.g.
+  "tcp-segmentation-offload")
+* `ghw.NICCapability.IsEnabled` is a boolean indicating whether the capability
+  is currently enabled/active on the NIC
+* `ghw.NICCapability.CanChange` is a boolean indicating whether the capability
+  may be turned on or off
 
 ```go
 package main
 
 import (
-	"fmt"
+    "fmt"
 
-	"github.com/jaypipes/ghw"
+    "github.com/jaypipes/ghw"
 )
 
 func main() {
-	net, err := ghw.Network()
-	if err != nil {
-		fmt.Printf("Error getting network info: %v", err)
-	}
+    net, err := ghw.Network()
+    if err != nil {
+        fmt.Printf("Error getting network info: %v", err)
+    }
 
-	fmt.Printf("%v\n", net)
+    fmt.Printf("%v\n", net)
 
-	for _, nic := range net.NICs {
-		fmt.Printf(" %v\n", nic)
-	}
+    for _, nic := range net.NICs {
+        fmt.Printf(" %v\n", nic)
+
+        enabledCaps := make([]int, 0)
+        for x, cap := range nic.Capabilities {
+            if cap.IsEnabled {
+                enabledCaps = append(enabledCaps, x)
+            }
+        }
+        if len(enabledCaps) > 0 {
+            fmt.Printf("  enabled capabilities:\n")
+            for _, x := range enabledCaps {
+                fmt.Printf("   - %s\n", nic.Capabilities[x].Name)
+            }
+        }
+    }
 }
 ```
 
-Example output from my personal workstation:
+Example output from my personal laptop:
 
 ```
-net (2 NICs)
- enp0s25
- wls1
+net (3 NICs)
+ docker0
+  enabled capabilities:
+   - tx-checksumming
+   - tx-checksum-ip-generic
+   - scatter-gather
+   - tx-scatter-gather
+   - tx-scatter-gather-fraglist
+   - tcp-segmentation-offload
+   - tx-tcp-segmentation
+   - tx-tcp-ecn-segmentation
+   - tx-tcp-mangleid-segmentation
+   - tx-tcp6-segmentation
+   - udp-fragmentation-offload
+   - generic-segmentation-offload
+   - generic-receive-offload
+   - tx-vlan-offload
+   - highdma
+   - tx-lockless
+   - netns-local
+   - tx-gso-robust
+   - tx-fcoe-segmentation
+   - tx-gre-segmentation
+   - tx-gre-csum-segmentation
+   - tx-ipxip4-segmentation
+   - tx-ipxip6-segmentation
+   - tx-udp_tnl-segmentation
+   - tx-udp_tnl-csum-segmentation
+   - tx-gso-partial
+   - tx-sctp-segmentation
+   - tx-esp-segmentation
+   - tx-vlan-stag-hw-insert
+ enp58s0f1
+  enabled capabilities:
+   - rx-checksumming
+   - generic-receive-offload
+   - rx-vlan-offload
+   - tx-vlan-offload
+   - highdma
+ wlp59s0
+  enabled capabilities:
+   - scatter-gather
+   - tx-scatter-gather
+   - generic-segmentation-offload
+   - generic-receive-offload
+   - highdma
+   - netns-local
 ```
 
 ### PCI
@@ -412,358 +496,27 @@ developers to not only gather information about devices on a local PCI bus but
 also query for information about hardware device classes, vendor and product
 information.
 
+**NOTE**: Parsing of the PCI-IDS file database is provided by the separate
+[github.com/jaypipes/pcidb library](http://github.com/jaypipes/pcidb). You can
+read that library's README for more information about the various structs that
+are exposed on the `ghw.PCIInfo` struct.
+
 The `ghw.PCI()` function returns a `ghw.PCIInfo` struct. The `ghw.PCIInfo`
 struct contains a number of fields that may be queried for PCI information:
 
 * `ghw.PCIInfo.Classes` is a map, keyed by the PCI class ID (a hex-encoded
-  string) of pointers to `ghw.PCIClass` structs, one for each class of PCI
+  string) of pointers to `pcidb.PCIClass` structs, one for each class of PCI
   device known to `ghw`
 * `ghw.PCIInfo.Vendors` is a map, keyed by the PCI vendor ID (a hex-encoded
-  string) of pointers to `ghw.PCIVendor` structs, one for each PCI vendor
+  string) of pointers to `pcidb.PCIVendor` structs, one for each PCI vendor
   known to `ghw`
 * `ghw.PCIInfo.Products` is a map, keyed by the PCI product ID* (a hex-encoded
-  string) of pointers to `ghw.PCIProduct` structs, one for each PCI product
+  string) of pointers to `pcidb.PCIProduct` structs, one for each PCI product
   known to `ghw`
 
 **NOTE**: PCI products are often referred to by their "device ID". We use
 the term "product ID" in `ghw` because it more accurately reflects what the
 identifier is for: a specific product line produced by the vendor.
-
-#### PCI device classes
-
-Let's take a look at the PCI device class information and how to query the PCI
-database for class, subclass, and programming interface information.
-
-Each `ghw.PCIClass` struct contains the following fields:
-
-* `ghw.PCIClass.Id` is the hex-encoded string identifier for the device
-  class
-* `ghw.PCIClass.Name` is the common name/description of the class
-* `ghw.PCIClass.Subclasses` is an array of pointers to
-  `ghw.PCISubclass` structs, one for each subclass in the device class
-
-Each `ghw.PCISubclass` struct contains the following fields:
-
-* `ghw.PCISubclass.Id` is the hex-encoded string identifier for the device
-  subclass
-* `ghw.PCISubclass.Name` is the common name/description of the subclass
-* `ghw.PCISubclass.ProgrammingInterfaces` is an array of pointers to
-  `ghw.PCIProgrammingInterface` structs, one for each programming interface
-   for the device subclass
-
-Each `ghw.PCIProgrammingInterface` struct contains the following fields:
-
-* `ghw.PCIProgrammingInterface.Id` is the hex-encoded string identifier for
-  the programming interface
-* `ghw.PCIProgrammingInterface.Name` is the common name/description for the
-  programming interface
-
-```go
-package main
-
-import (
-	"fmt"
-
-	"github.com/jaypipes/ghw"
-)
-
-func main() {
-	pci, err := ghw.PCI()
-	if err != nil {
-		fmt.Printf("Error getting PCI info: %v", err)
-	}
-
-	for _, devClass := range pci.Classes {
-		fmt.Printf(" Device class: %v ('%v')\n", devClass.Name, devClass.Id)
-        for _, devSubclass := range devClass.Subclasses {
-            fmt.Printf("    Device subclass: %v ('%v')\n", devSubclass.Name, devSubclass.Id)
-            for _, progIface := range devSubclass.ProgrammingInterfaces {
-                fmt.Printf("        Programming interface: %v ('%v')\n", progIface.Name, progIface.Id)
-            }
-        }
-	}
-}
-```
-
-Example output from my personal workstation, snipped for brevity:
-
-```
-...
- Device class: Serial bus controller ('0c')
-    Device subclass: FireWire (IEEE 1394) ('00')
-        Programming interface: Generic ('00')
-        Programming interface: OHCI ('10')
-    Device subclass: ACCESS Bus ('01')
-    Device subclass: SSA ('02')
-    Device subclass: USB controller ('03')
-        Programming interface: UHCI ('00')
-        Programming interface: OHCI ('10')
-        Programming interface: EHCI ('20')
-        Programming interface: XHCI ('30')
-        Programming interface: Unspecified ('80')
-        Programming interface: USB Device ('fe')
-    Device subclass: Fibre Channel ('04')
-    Device subclass: SMBus ('05')
-    Device subclass: InfiniBand ('06')
-    Device subclass: IPMI SMIC interface ('07')
-    Device subclass: SERCOS interface ('08')
-    Device subclass: CANBUS ('09')
-...
-```
-
-#### PCI vendors and products
-
-Let's take a look at the PCI vendor information and how to query the PCI
-database for vendor information and the products a vendor supplies.
-
-Each `ghw.PCIVendor` struct contains the following fields:
-
-* `ghw.PCIVendor.Id` is the hex-encoded string identifier for the vendor
-* `ghw.PCIVendor.Name` is the common name/description of the vendor
-* `ghw.PCIVendor.Products` is an array of pointers to `ghw.PCIProduct`
-  structs, one for each product supplied by the vendor
-
-Each `ghw.PCIProduct` struct contains the following fields:
-
-* `ghw.PCIProduct.VendorId` is the hex-encoded string identifier for the
-  product's vendor
-* `ghw.PCIProduct.Id` is the hex-encoded string identifier for the product
-* `ghw.PCIProduct.Name` is the common name/description of the subclass
-* `ghw.PCIProduct.Subsystems` is an array of pointers to
-  `ghw.PCIProduct` structs, one for each "subsystem" (sometimes called
-  "sub-device" in PCI literature) for the product
-
-**NOTE**: A subsystem product may have a different vendor than its "parent" PCI
-product. This is sometimes referred to as the "sub-vendor".
-
-Here's some example code that demonstrates listing the PCI vendors with the
-most known products:
-
-```go
-package main
-
-import (
-	"fmt"
-	"sort"
-
-	"github.com/jaypipes/ghw"
-)
-
-type ByCountProducts []*ghw.PCIVendor
-
-func (v ByCountProducts) Len() int {
-	return len(v)
-}
-
-func (v ByCountProducts) Swap(i, j int) {
-	v[i], v[j] = v[j], v[i]
-}
-
-func (v ByCountProducts) Less(i, j int) bool {
-	return len(v[i].Products) > len(v[j].Products)
-}
-
-func main() {
-	pci, err := ghw.PCI()
-	if err != nil {
-		fmt.Printf("Error getting PCI info: %v", err)
-	}
-
-	vendors := make([]*ghw.PCIVendor, len(pci.Vendors))
-	x := 0
-	for _, vendor := range pci.Vendors {
-		vendors[x] = vendor
-		x++
-	}
-
-	sort.Sort(ByCountProducts(vendors))
-
-	fmt.Println("Top 5 vendors by product")
-	fmt.Println("====================================================")
-	for _, vendor := range vendors[0:5] {
-		fmt.Printf("%v ('%v') has %d products\n", vendor.Name, vendor.Id, len(vendor.Products))
-	}
-}
-```
-
-which yields (on my local workstation as of July 7th, 2018):
-
-```
-Top 5 vendors by product
-====================================================
-Intel Corporation ('8086') has 3389 products
-NVIDIA Corporation ('10de') has 1358 products
-Advanced Micro Devices, Inc. [AMD/ATI] ('1002') has 886 products
-National Instruments ('1093') has 601 products
-Chelsio Communications Inc ('1425') has 525 products
-```
-
-The following is an example of querying the PCI product and subsystem
-information to find the products which have the most number of subsystems that
-have a different vendor than the top-level product. In other words, the two
-products which have been re-sold or re-manufactured with the most number of
-different companies.
-
-```go
-package main
-
-import (
-	"fmt"
-	"sort"
-
-	"github.com/jaypipes/ghw"
-)
-
-type ByCountSeparateSubvendors []*ghw.PCIProduct
-
-func (v ByCountSeparateSubvendors) Len() int {
-	return len(v)
-}
-
-func (v ByCountSeparateSubvendors) Swap(i, j int) {
-	v[i], v[j] = v[j], v[i]
-}
-
-func (v ByCountSeparateSubvendors) Less(i, j int) bool {
-	iVendor := v[i].VendorId
-	iSetSubvendors := make(map[string]bool, 0)
-	iNumDiffSubvendors := 0
-	jVendor := v[j].VendorId
-	jSetSubvendors := make(map[string]bool, 0)
-	jNumDiffSubvendors := 0
-
-	for _, sub := range v[i].Subsystems {
-		if sub.VendorId != iVendor {
-			iSetSubvendors[sub.VendorId] = true
-		}
-	}
-	iNumDiffSubvendors = len(iSetSubvendors)
-
-	for _, sub := range v[j].Subsystems {
-		if sub.VendorId != jVendor {
-			jSetSubvendors[sub.VendorId] = true
-		}
-	}
-	jNumDiffSubvendors = len(jSetSubvendors)
-
-	return iNumDiffSubvendors > jNumDiffSubvendors
-}
-
-func main() {
-	pci, err := ghw.PCI()
-	if err != nil {
-		fmt.Printf("Error getting PCI info: %v", err)
-	}
-
-	products := make([]*ghw.PCIProduct, len(pci.Products))
-	x := 0
-	for _, product := range pci.Products {
-		products[x] = product
-		x++
-	}
-
-	sort.Sort(ByCountSeparateSubvendors(products))
-
-	fmt.Println("Top 2 products by # different subvendors")
-	fmt.Println("====================================================")
-	for _, product := range products[0:2] {
-		vendorId := product.VendorId
-		vendor := pci.Vendors[vendorId]
-		setSubvendors := make(map[string]bool, 0)
-
-		for _, sub := range product.Subsystems {
-			if sub.VendorId != vendorId {
-				setSubvendors[sub.VendorId] = true
-			}
-		}
-		fmt.Printf("%v ('%v') from %v\n", product.Name, product.Id, vendor.Name)
-		fmt.Printf(" -> %d subsystems under the following different vendors:\n", len(setSubvendors))
-		for subvendorId, _ := range setSubvendors {
-			subvendor, exists := pci.Vendors[subvendorId]
-			subvendorName := "Unknown subvendor"
-			if exists {
-				subvendorName = subvendor.Name
-			}
-			fmt.Printf("      - %v ('%v')\n", subvendorName, subvendorId)
-		}
-	}
-}
-```
-
-which yields (on my local workstation as of July 7th, 2018):
-
-```
-Top 2 products by # different subvendors
-====================================================
-RTL-8100/8101L/8139 PCI Fast Ethernet Adapter ('8139') from Realtek Semiconductor Co., Ltd.
- -> 34 subsystems under the following different vendors:
-      - OVISLINK Corp. ('149c')
-      - EPoX Computer Co., Ltd. ('1695')
-      - Red Hat, Inc ('1af4')
-      - Mitac ('1071')
-      - Netgear ('1385')
-      - Micro-Star International Co., Ltd. [MSI] ('1462')
-      - Hangzhou Silan Microelectronics Co., Ltd. ('1904')
-      - Compex ('11f6')
-      - Edimax Computer Co. ('1432')
-      - KYE Systems Corporation ('1489')
-      - ZyXEL Communications Corporation ('187e')
-      - Acer Incorporated [ALI] ('1025')
-      - Matsushita Electric Industrial Co., Ltd. ('10f7')
-      - Ruby Tech Corp. ('146c')
-      - Belkin ('1799')
-      - Allied Telesis ('1259')
-      - Unex Technology Corp. ('1429')
-      - CIS Technology Inc ('1436')
-      - D-Link System Inc ('1186')
-      - Ambicom Inc ('1395')
-      - AOPEN Inc. ('a0a0')
-      - TTTech Computertechnik AG (Wrong ID) ('0357')
-      - Gigabyte Technology Co., Ltd ('1458')
-      - Packard Bell B.V. ('1631')
-      - Billionton Systems Inc ('14cb')
-      - Kingston Technologies ('2646')
-      - Accton Technology Corporation ('1113')
-      - Samsung Electronics Co Ltd ('144d')
-      - Biostar Microtech Int'l Corp ('1565')
-      - U.S. Robotics ('16ec')
-      - KTI ('8e2e')
-      - Hewlett-Packard Company ('103c')
-      - ASUSTeK Computer Inc. ('1043')
-      - Surecom Technology ('10bd')
-Bt878 Video Capture ('036e') from Brooktree Corporation
- -> 30 subsystems under the following different vendors:
-      - iTuner ('aa00')
-      - Nebula Electronics Ltd. ('0071')
-      - DViCO Corporation ('18ac')
-      - iTuner ('aa05')
-      - iTuner ('aa0d')
-      - LeadTek Research Inc. ('107d')
-      - Avermedia Technologies Inc ('1461')
-      - Chaintech Computer Co. Ltd ('270f')
-      - iTuner ('aa07')
-      - iTuner ('aa0a')
-      - Microtune, Inc. ('1851')
-      - iTuner ('aa01')
-      - iTuner ('aa04')
-      - iTuner ('aa06')
-      - iTuner ('aa0f')
-      - iTuner ('aa02')
-      - iTuner ('aa0b')
-      - Pinnacle Systems, Inc. (Wrong ID) ('bd11')
-      - Rockwell International ('127a')
-      - Askey Computer Corp. ('144f')
-      - Twinhan Technology Co. Ltd ('1822')
-      - Anritsu Corp. ('1852')
-      - iTuner ('aa08')
-      - Hauppauge computer works Inc. ('0070')
-      - Pinnacle Systems Inc. ('11bd')
-      - Conexant Systems, Inc. ('14f1')
-      - iTuner ('aa09')
-      - iTuner ('aa03')
-      - iTuner ('aa0c')
-      - iTuner ('aa0e')
-```
 
 #### Listing and accessing host PCI device information
 
@@ -777,18 +530,18 @@ This methods return either an array of or a single pointer to a `ghw.PCIDevice`
 struct, which has the following fields:
 
 
-* `ghw.PCIDevice.Vendor` is a pointer to a `ghw.PCIVendor` struct that
+* `ghw.PCIDevice.Vendor` is a pointer to a `pcidb.PCIVendor` struct that
   describes the device's primary vendor. This will always be non-nil.
-* `ghw.PCIDevice.Product` is a pointer to a `ghw.PCIProduct` struct that
+* `ghw.PCIDevice.Product` is a pointer to a `pcidb.PCIProduct` struct that
   describes the device's primary product. This will always be non-nil.
-* `ghw.PCIDevice.Subsystem` is a pointer to a `ghw.PCIProduct` struct that
+* `ghw.PCIDevice.Subsystem` is a pointer to a `pcidb.PCIProduct` struct that
   describes the device's secondary/sub-product. This will always be non-nil.
-* `ghw.PCIDevice.Class` is a pointer to a `ghw.PCIClass` struct that
+* `ghw.PCIDevice.Class` is a pointer to a `pcidb.PCIClass` struct that
   describes the device's class. This will always be non-nil.
-* `ghw.PCIDevice.Subclass` is a pointer to a `ghw.PCISubclass` struct
+* `ghw.PCIDevice.Subclass` is a pointer to a `pcidb.PCISubclass` struct
   that describes the device's subclass. This will always be non-nil.
 * `ghw.PCIDevice.ProgrammingInterface` is a pointer to a
-  `ghw.PCIProgrammingInterface` struct that describes the device subclass'
+  `pcidb.PCIProgrammingInterface` struct that describes the device subclass'
   programming interface. This will always be non-nil.
 
 The following code snippet shows how to call the `ghw.PCIInfo.ListDevices()`
@@ -979,9 +732,9 @@ Each `ghw.GraphicsCard` struct contains the following fields:
 * `ghw.GraphicsCard.DeviceInfo` is a pointer to a `ghw.PCIDevice` struct
   describing the graphics card. This may be `nil` if no PCI device information
   could be determined for the card.
-* `ghw.GraphicsCard.Nodes` is an array of pointers to `ghw.TopologyNode`
-  structs, one for each NUMA node that the GPU/graphics card is affined to. On
-  non-NUMA systems, this will always be an empty array.
+* `ghw.GraphicsCard.Node` is an pointer to a `ghw.TopologyNode` struct that the
+  GPU/graphics card is affined to. On non-NUMA systems, this will always be
+  `nil`.
 
 ```go
 package main
@@ -1026,6 +779,10 @@ subsystem
 Contributions to `ghw` are welcomed! Fork the repo on GitHub and submit a pull
 request with your proposed changes. Or, feel free to log an issue for a feature
 request or bug report.
+
+This project uses [dep](https://github.com/golang/dep) to manage dependencies.
+Dependencies must be set to a specific tag (no open-ended dependencies) in the
+`Gopkg.toml` file.  To manually execute `dep` run `make dep`.
 
 ### Running tests
 

@@ -189,12 +189,19 @@
   version = "v0.8.1"
 
 [[projects]]
-  digest = "1:c76fdfdccfd2c3ae87d7ccb89bb11236c76a27bd1a0f35cdb8bc9cfbda93e11d"
+  digest = "1:b3119e942d7b120ed64f225dc2afca3260ff02ff3d7c5766a9ddf6ed9431355c"
   name = "github.com/jaypipes/ghw"
   packages = ["."]
   pruneopts = "UT"
-  revision = "8fc4046cb80975e821e632e79fc8815ceaa11a0f"
-  version = "0.1"
+  revision = "34ad6ce201fc474e1878e8624d3662c1237534f8"
+
+[[projects]]
+  branch = "master"
+  digest = "1:bcd82b0ca88cbc09b727800401532961dd6ef5bed648184330607f5f4dd09895"
+  name = "github.com/jaypipes/pcidb"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "cfc62580bc59c587dbe668a49a2624c6009dca59"
 
 [[projects]]
   branch = "master"
@@ -211,6 +218,14 @@
   pruneopts = "UT"
   revision = "d74956db7b5b20451796774572d0f5a0222e377a"
   version = "v1.0.13"
+
+[[projects]]
+  digest = "1:78bbb1ba5b7c3f2ed0ea1eab57bdd3859aec7e177811563edc41198a760b06af"
+  name = "github.com/mitchellh/go-homedir"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ae18d6b8b3205b561c79e8e5f69bff09736185f4"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:ee4d4af67d93cc7644157882329023ce9a7bcfce956a079069a9405521c7cc8d"
