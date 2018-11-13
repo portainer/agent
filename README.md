@@ -128,7 +128,7 @@ When creating the endpoint on the CLI using the `-H` Portainer flag, the `--tlss
 
 ## Development
 
-1. Install go >= 1.10
+1. Install go >= 1.11.2
 2. Install dep: https://golang.github.io/dep/docs/installation.html
 
 If you want to add any extra dependency:
