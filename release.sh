@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Requires:
-# * Go SDK (version >= 1.10)
+# * Go SDK (version >= 1.11)
 
 ARCHIVE_BUILD_FOLDER="/tmp/portainer-builds"
 MAIN="cmd/agent/main.go"
@@ -18,7 +18,7 @@ function clean() {
 }
 
 function build_and_push_image() {
-  docker build -t "portainer/agent:${1}-${VERSION}" .
+  docker build -t "portainer/agent:${1}-${VERSION}" -f build/linux/Dockerfile .
   docker tag "portainer/agent:${1}-${VERSION}" "portainer/agent:${1}"
   docker push "portainer/agent:${1}-${VERSION}"
   docker push "portainer/agent:${1}"
@@ -38,7 +38,7 @@ function build_binary() {
   platform=$1
   arch=$2
   GOOS="${platform}" GOARCH="${arch}" CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s' "${MAIN}"
-  mv main "dist/agent-${platform}-${arch}-${VERSION}"
+  mv main "dist/agent"
 }
 
 function build_all() {
