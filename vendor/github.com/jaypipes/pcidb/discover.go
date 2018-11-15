@@ -30,7 +30,7 @@ func (db *PCIDB) load() error {
 	// on the local machine. If we fail to find one, we'll try pulling the
 	// latest pci-ids file from the network
 	paths := []string{cachePath}
-	addSearchPaths(&paths)
+	addSearchPaths(paths)
 	var foundPath string
 	for _, fp := range paths {
 		if _, err := os.Stat(fp); err == nil {
@@ -72,7 +72,7 @@ func cachePath() string {
 
 // Depending on the operating system, returns a set of local filepaths to
 // search for a pci.ids database file
-func addSearchPaths(paths *[]string) {
+func addSearchPaths(paths []string) {
 	// The PCIDB_CACHE_ONLY environs variable is mostly just useful for
 	// testing. It essentially disables looking for any non ~/.cache/pci.ids
 	// filepaths (which is useful when we want to test the fetch-from-network
@@ -89,15 +89,9 @@ func addSearchPaths(paths *[]string) {
 			return
 		}
 	}
-
-	rootPath := "/"
-	if val, exists := os.LookupEnv("PCIDB_CHROOT"); exists {
-		rootPath = val
-	}
-
 	if runtime.GOOS != "windows" {
-		*paths = append(*paths, filepath.Join(rootPath, "usr", "share", "hwdata", "pci.ids"))
-		*paths = append(*paths, filepath.Join(rootPath, "usr", "share", "misc", "pci.ids"))
+		paths = append(paths, "/usr/share/hwdata/pci.ids")
+		paths = append(paths, "/usr/share/misc/pci.ids")
 	}
 }
 

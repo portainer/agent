@@ -68,11 +68,7 @@
 
 [[constraint]]
   name = "github.com/jaypipes/ghw"
-  branch = "master"
-
-[[override]]
-  name = "github.com/jaypipes/pcidb"
-  branch = "master"
+  branch = "issue86"
 
 [[constraint]]
   branch = "master"

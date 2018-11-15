@@ -3,7 +3,7 @@
 `pcidb` is a small Golang library for programmatic querying of PCI vendor,
 product and class information.
 
-We currently [test](https://travis-ci.org/jaypipes/pcidb/) `pcidb` on Linux, Windows and MacOSX.
+We currently [test](https://travis-ci.org/jaypipes/pcidb/) `pcidb` on Linux and Windows.
 
 ## Usage
 
@@ -27,17 +27,6 @@ struct contains a number of fields that may be queried for PCI information:
 **NOTE**: PCI products are often referred to by their "device ID". We use
 the term "product ID" in `pcidb` because it more accurately reflects what the
 identifier is for: a specific product line produced by the vendor.
-
-**NOTE**: The default root mountpoint that `pcidb` uses when looking for
-information about the host system is `/`. So, for example, when looking up
-known PCI IDS DB files on Linux, `pcidb` will attempt to discover a pciids DB
-file at `/usr/share/misc/pci.ids`. If you are calling `pcidb` from a system
-that has an alternate root mountpoint, you can set the `PCIDB_CHROOT`
-environment variable to that alternate path. for example, if you are executing
-from within an application container that has bind-mounted the root host
-filesystem to the mount point `/host`, you would set `PCIDB_CHROOT` to `/host`
-so that pcidb can find files like `/usr/share/misc/pci.ids` at
-`/host/usr/share/misc/pci.ids`.
 
 ### PCI device classes
 
