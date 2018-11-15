@@ -47,8 +47,8 @@ function deploy_local() {
 }
 
 function deploy_swarm() {
-  DOCKER_MANAGER=10.0.7.10
-  DOCKER_NODE=10.0.7.11
+  DOCKER_MANAGER=tcp://10.0.7.10
+  DOCKER_NODE=tcp://10.0.7.11
 
   echo "Cleanup previous settings..."
 
