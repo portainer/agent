@@ -9,7 +9,7 @@ import (
 
 // GetPciDevices returns a list of pci devices
 func (service *SystemService) GetPciDevices() ([]agent.PciDevice, error) {
-	pci, err := ghw.PCI()
+	pci, err := ghw.PCI(ghw.WithChroot(service.hostRoot))
 	if err != nil {
 		return nil, err
 	}
