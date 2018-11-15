@@ -18,7 +18,7 @@ function compile() {
 
   rm -rf dist/*
   cd cmd/agent
-  CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
+  GOOS="linux" GOARCH="amd64" CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
   rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
   cd ../..
   mv cmd/agent/agent dist/agent
@@ -47,8 +47,8 @@ function deploy_local() {
 }
 
 function deploy_swarm() {
-  DOCKER_MANAGER=10.0.7.10
-  DOCKER_NODE=10.0.7.11
+  DOCKER_MANAGER=tcp://10.0.7.10
+  DOCKER_NODE=tcp://10.0.7.11
 
   echo "Cleanup previous settings..."
 
