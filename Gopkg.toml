@@ -68,8 +68,7 @@
 
 [[constraint]]
   name = "github.com/jaypipes/ghw"
-  branch = "issue87"
-
+  version = "0.2"
 
 [[constraint]]
   branch = "master"
