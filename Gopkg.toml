@@ -68,9 +68,7 @@
 
 [[constraint]]
   name = "github.com/jaypipes/ghw"
-  # Locked to this version caused by a bug in the latest version of ghw
-  # see: https://github.com/portainer/agent/issues/34
-  revision = "34ad6ce201fc474e1878e8624d3662c1237534f8"
+  version = "0.2"
 
 [[constraint]]
   branch = "master"

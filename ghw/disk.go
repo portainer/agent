@@ -9,7 +9,7 @@ import (
 
 // GetDiskInfo returns info about the host disks
 func (service *SystemService) GetDiskInfo() ([]agent.PhysicalDisk, error) {
-	block, err := ghw.Block()
+	block, err := ghw.Block(ghw.WithChroot(service.hostRoot))
 	if err != nil {
 		return nil, err
 	}

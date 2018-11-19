@@ -8,16 +8,22 @@
   version = "v1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/jaypipes/pcidb"
   packages = ["."]
-  revision = "707f051d2e53f280dbcd4673b856a8ebf051eb05"
+  revision = "141a53e65d4ad43fdbd2760c714344da88f24adb"
+  version = "0.3"
 
 [[projects]]
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
   revision = "ae18d6b8b3205b561c79e8e5f69bff09736185f4"
   version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   name = "github.com/spf13/cobra"
@@ -34,6 +40,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f59c3f1328beb18170f712acf703800f4d85d061cf41eef3e2058ffc4ff4bd5c"
+  inputs-digest = "d4e1adb583f0a5bc5d521064063b34804ec61cfd9446eacc2230804f38108142"
   solver-name = "gps-cdcl"
   solver-version = 1

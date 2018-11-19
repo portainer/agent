@@ -189,19 +189,20 @@
   version = "v0.8.1"
 
 [[projects]]
-  digest = "1:b3119e942d7b120ed64f225dc2afca3260ff02ff3d7c5766a9ddf6ed9431355c"
+  digest = "1:07b0c269ddc472197b0796a34761d707d1c71a8fa651bf6421282ad756f9c494"
   name = "github.com/jaypipes/ghw"
   packages = ["."]
   pruneopts = "UT"
-  revision = "34ad6ce201fc474e1878e8624d3662c1237534f8"
+  revision = "cebc0945838039223f5894c7d132eba3653b3961"
+  version = "0.2"
 
 [[projects]]
-  branch = "master"
-  digest = "1:bcd82b0ca88cbc09b727800401532961dd6ef5bed648184330607f5f4dd09895"
+  digest = "1:dc3448d37e47cd4e60f32bb114c69b67e7459c334f5b5eeff343a7b19b419c1e"
   name = "github.com/jaypipes/pcidb"
   packages = ["."]
   pruneopts = "UT"
-  revision = "cfc62580bc59c587dbe668a49a2624c6009dca59"
+  revision = "141a53e65d4ad43fdbd2760c714344da88f24adb"
+  version = "0.3"
 
 [[projects]]
   branch = "master"

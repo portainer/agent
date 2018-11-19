@@ -169,7 +169,7 @@ func main() {
 		defer clusterService.Leave()
 	}
 
-	systemService := ghw.NewSystemService()
+	systemService := ghw.NewSystemService("/host")
 
 	listenAddr := agent.DefaultListenAddr + ":" + options.Port
 	log.Printf("[INFO] - Starting Portainer agent version %s on %s (cluster mode: %t)", agent.AgentVersion, listenAddr, clusterMode)
