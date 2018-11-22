@@ -44,6 +44,8 @@ func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 		options.HostManagementEnabled = true
 	}
 
+	options.SharedSecret = os.Getenv("AGENT_SECRET")
+
 	return options, nil
 }
 
@@ -150,7 +152,7 @@ func main() {
 	log.Println("[DEBUG] - Generating TLS files...")
 	TLSService.GenerateCertsForHost(advertiseAddr)
 
-	signatureService := crypto.NewECDSAService()
+	signatureService := crypto.NewECDSAService(options.SharedSecret)
 
 	log.Printf("[DEBUG] - Using agent port: %s\n", options.Port)
 

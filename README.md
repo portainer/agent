@@ -70,18 +70,54 @@ The agent exposes the following endpoints:
 
 ### Encryption
 
-By default, each node will automatically generate its own set of TLS certificate and key. It will then use these to start the web
+By default, an agent will automatically generate its own set of TLS certificate and key. It will then use these to start the web
 server where the agent API is exposed. By using self-signed certificates, each agent client and proxy will skip the TLS server verification when executing a request against another agent.
 
 ### Authentication
 
-Each request to an agent must include a digital signature in the `X-PortainerAgent-Signature` header encoded using the `base64` format (without the padding characters). The signature is generated using a private key in the Portainer instance and included in each request. The agent uses the public key of the Portainer instance to verify if the signature is valid.
+Each request to an agent must include a digital signature in the `X-PortainerAgent-Signature` header encoded using the `base64` format (without the padding characters).
 
-For convenience, the Portainer public key is always included inside the `X-PortainerAgent-PublicKey` header in each request to the agent. The first time the agent will
-find the `X-PortainerAgent-PublicKey` header in a request, it will automatically register the public key contained in the header and will stop looking at this header.
+![public key cryptography wikipedia](https://user-images.githubusercontent.com/5485061/48817100-ac410b80-eda9-11e8-8d72-ef668e8278df.png)
 
-If no public key is registered and the agent cannot find the `X-PortainerAgent-PublicKey` header in a request, it will return a 403. If a public key is registered and
-the agent cannot find the `X-PortainerAgent-Signature` header or that the header contains an invalid signature, it will return a 403.
+The following protocol is used between a Portainer instance and an agent:
+
+For each HTTP request made from the Portainer instance to the agent:
+
+1. The Portainer instance generates a signature using its private key. It encodes this signature in base64 and add it to the `X-PortainerAgent-Signature` header of the request
+2. The Portainer instance encodes its public key in hexadecimal and adds it the `X-PortainerAgent-PublicKey` header of the request
+
+
+For each HTTP request received from the agent:
+
+1. The agent will check that the `X-PortainerAgent-PublicKey` and `X-PortainerAgent-Signature` headers are available in the request otherwise it returns a 403
+2. The agent will then trigger the signature verification process. If the signature is not valid it returns a 403
+
+#### Signature verification
+
+The signature verification process can follow two different paths based on how the agent was deployed.
+
+##### Default mode
+
+By default, the agent will wait for a valid request from a Portainer instance and automatically associate the first Portainer instance that communicates with it by registering the public key found in the `X-PortainerAgent-PublicKey` header inside memory.
+
+During the association process, the agent will first decode the specified public key from hexadecimal and then parse the public key. Only if these steps are successfull then the key will be associated to the agent.
+
+Once a Portainer instance is registered by the agent, the agent will not try to decode/parse the public key associated to a request anymore and will assume that only signatures associated to this public key are authorized (preventing any other Portainer instance to communicate with this agent).
+
+Finally, the agent uses the associated public key and a default message that is known by both entities to verify the signature available in the `X-PortainerAgent-Signature` header.
+
+##### Secret mode
+
+When the `AGENT_SECRET` environment variable is set in the execution context of the agent (`-e AGENT_SECRET=mysecret` when started as a container for example), the digital signature verification process will be slightly different.
+
+In secret mode, the agent will not register a Portainer public key in memory anymore. Instead, it will **ALWAYS** decode and parse the public key available in the `X-PortainerAgent-PublicKey` and will then trigger the signature verification using key.
+
+The signature verification is slightly altered as well, it now uses the public key sent in the request to verify the signature as well as the secret specified at startup in the `AGENT_SECRET` environment variable.
+
+This mode will allow multiple instances of Portainer to connect to a single agent.
+
+Note: Due to the fact that the agent will now decode and parse the public key associated to each request, this mode might be less performant than the default mode.
+
 
 ## Deployment
 

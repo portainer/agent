@@ -6,6 +6,7 @@ type (
 		Port                  string
 		ClusterAddress        string
 		HostManagementEnabled bool
+		SharedSecret          string
 	}
 
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -53,9 +54,7 @@ type (
 
 	// DigitalSignatureService is used to validate digital signatures.
 	DigitalSignatureService interface {
-		RequiresPublicKey() bool
-		ParsePublicKey(key string) error
-		ValidSignature(signature string) bool
+		VerifySignature(signature, key string) (bool, error)
 	}
 
 	// InfoService is used to retrieve information from a Docker environment.
