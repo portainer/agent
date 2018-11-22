@@ -62,9 +62,23 @@ The fact that the agent final proxy target is always the Docker API means that w
 
 ### Agent specific API
 
-The agent exposes the following endpoints:
+The agent also exposes the following endpoints:
 
-* `/agents` (*GET*): Returns the list of all the available agents in the cluster
+* `/agents` (*GET*): List all the available agents in the cluster
+* `/browse/ls` (*GET*): List the files available under a specific path on the filesystem
+* `/browse/get` (*GET*): Retrieve a file available under a specific path on the filesytem
+* `/browse/delete` (*DELETE*): Delete an existing file under a specific path on the filesytem
+* `/browse/rename` (*PUT*): Rename an existing file under a specific path on the filesytem
+* `/browse/put` (*POST*): Upload a file under a specific path on the filesytem
+* `/host/info` (*GET*): Get information about the underlying host system
+* `/ping` (*GET*): Returns a 204. Public endpoint that do not require any form of authentication
+
+Note: The `/browse/*` endpoints can be used to manage a filesystem. By default, it allows manipulation of files in Docker volumes (available under `/var/run/docker/volumes` when bind-mounted in the agent container) but can also manipulate files anywhere on the filesystem. To enable global
+filesystem manipulation support for these endpoints, the `CAP_HOST_MANAGEMENT` environment variable must be set to `1`.
+
+### Agent API version
+
+The agent API version is exposed via the `Portainer-Agent-API-Version` in each response of the agent.
 
 ## Security
 
@@ -119,48 +133,18 @@ This mode will allow multiple instances of Portainer to connect to a single agen
 Note: Due to the fact that the agent will now decode and parse the public key associated to each request, this mode might be less performant than the default mode.
 
 
-## Deployment
+## Deployment options
 
-*This setup will assume that you're executing the following instructions on a Swarm manager node*
+The behavior of the agent can be tuned via a set of mandatory and optional options available as environment variables:
 
-First thing to do, create an overlay network in which the agent will be deployed:
+* AGENT_CLUSTER_ADDR (*mandatory*): address (in the IP:PORT format) of an existing agent to join the agent cluster. When deploying the agent as a Docker Swarm service,
+we can leverage the internal Docker DNS to automatically join existing agents or form a cluster by using `tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT>` as the address.
+* AGENT_PORT (*optional*): port on which the agent web server will listen (default to `9001`).
+* CAP_HOST_MANAGEMENT (*optional*): enable advanced filesystem management features. Disabled by default, set to `1` to enable it.
+* AGENT_SECRET (*optional*): shared secret used in the signature verification process
+* LOG_LEVEL (*optional*): defines the log output verbosity (default to `INFO`)
 
-```
-$ docker network create --driver overlay --attachable portainer_agent_network
-```
-
-Then, deploy the agent as a global service inside the previously created network:
-
-```
-$ docker service create --name portainer_agent \
---network portainer_agent_network \
--e AGENT_CLUSTER_ADDR=tasks.portainer_agent \
---mode global \
---mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
---constraint node.platform.os==linux \
-portainer/agent:latest
-```
-
-```
-docker run -d --name portainer_agent `
---restart always --network portainer_agent_network `
---label com.docker.stack.namespace=portainer `
--e AGENT_CLUSTER_ADDR=tasks.agent `
---mount type=npipe,source=\\.\pipe\docker_engine,target=\\.\pipe\docker_engine `
-portainer/agent:latest
-```
-
-The last step is to connect Portainer to the agent.
-
-If the Portainer instance is deployed inside the same overlay network as the agent then
-Portainer can leverages the internal Docker DNS to automatically join any agent using `tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT>`.
-
-For example, based on the previous service deployment, `tasks.portainer_agent:9001` can be used as endpoint URL.
-
-**IMPORTANT NOTE**: The agent is using HTTPS communication with self-signed certificates, any endpoint created inside the UI must
-enable the `TLS` switch and use the `TLS only` option.
-
-When creating the endpoint on the CLI using the `-H` Portainer flag, the `--tlsskipverify` flag must be specified, example: `-H tcp://tasks.portainer_agent:9001 --tlsskipverify`.
+For more information about deployment scenarios, see: https://portainer.readthedocs.io/en/stable/agent.html
 
 ## Development
 
@@ -169,6 +153,18 @@ When creating the endpoint on the CLI using the `-H` Portainer flag, the `--tlss
 
 If you want to add any extra dependency:
 
-```go
+```
 dep ensure -add github.com/foo/bar
+```
+
+3. Run a local agent container:
+
+```
+./dev.sh local
+```
+
+4. Run the agent container inside a Swarm cluster (requires https://github.com/deviantony/vagrant-swarm-cluster)
+
+```
+./dev.sh swarm
 ```
