@@ -3,15 +3,17 @@ package browse
 import (
 	"net/http"
 
-	"bitbucket.org/portainer/agent/filesystem"
-	httperror "bitbucket.org/portainer/agent/http/error"
-	"bitbucket.org/portainer/agent/http/request"
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/filesystem"
+	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/request"
 )
 
+// GET request on /browse/get?id=:id&path=:path
 func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
-	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
+	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
+	if volumeID == "" && !handler.AgentOptions.HostManagementEnabled {
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
 	}
 
 	path, err := request.RetrieveQueryParameter(r, "path", false)
@@ -19,7 +21,38 @@ func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *http
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
 	}
 
-	fileDetails, err := filesystem.OpenFileInsideVolume(volumeID, path)
+	if volumeID != "" {
+		path, err = filesystem.BuildPathToFileInsideVolume(volumeID, path)
+		if err != nil {
+			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+		}
+	}
+
+	fileDetails, err := filesystem.OpenFile(path)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to open file", err}
+	}
+	defer fileDetails.File.Close()
+
+	http.ServeContent(rw, r, fileDetails.BasePath, fileDetails.ModTime, fileDetails.File)
+	return nil
+}
+
+// GET request on /v1/browse/:id/get?path=:path
+func (handler *Handler) browseGetV1(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
+	}
+
+	path, err := request.RetrieveQueryParameter(r, "path", false)
+	path, err = filesystem.BuildPathToFileInsideVolume(volumeID, path)
+
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
+	}
+
+	fileDetails, err := filesystem.OpenFile(path)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to open file", err}
 	}

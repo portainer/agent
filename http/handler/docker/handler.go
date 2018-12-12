@@ -1,10 +1,11 @@
 package docker
 
 import (
-	"bitbucket.org/portainer/agent"
-	httperror "bitbucket.org/portainer/agent/http/error"
-	"bitbucket.org/portainer/agent/http/proxy"
 	"github.com/gorilla/mux"
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/http/proxy"
+	"github.com/portainer/agent/http/security"
+	httperror "github.com/portainer/libhttp/error"
 )
 
 // Handler represents an HTTP API handler for proxying requests to the Docker API.
@@ -18,7 +19,7 @@ type Handler struct {
 
 // NewHandler returns a new instance of Handler.
 // It sets the associated handle functions for all the Docker related HTTP endpoints.
-func NewHandler(clusterService agent.ClusterService, agentTags map[string]string) *Handler {
+func NewHandler(clusterService agent.ClusterService, agentTags map[string]string, notaryService *security.NotaryService) *Handler {
 	h := &Handler{
 		Router:         mux.NewRouter(),
 		dockerProxy:    proxy.NewLocalProxy(),
@@ -27,6 +28,6 @@ func NewHandler(clusterService agent.ClusterService, agentTags map[string]string
 		agentTags:      agentTags,
 	}
 
-	h.PathPrefix("/").Handler(httperror.LoggerHandler(h.dockerOperation))
+	h.PathPrefix("/").Handler(notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.dockerOperation)))
 	return h
 }

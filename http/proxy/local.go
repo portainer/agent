@@ -4,8 +4,7 @@ import (
 	"io"
 	"net/http"
 
-	"bitbucket.org/portainer/agent"
-	httperror "bitbucket.org/portainer/agent/http/error"
+	httperror "github.com/portainer/libhttp/error"
 )
 
 // LocalProxy is a service used to proxy requests to a Unix socket (Linux) or named pipe (Windows).
@@ -35,7 +34,6 @@ func (proxy *LocalProxy) ServeHTTP(rw http.ResponseWriter, request *http.Request
 			rw.Header().Add(k, v)
 		}
 	}
-	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
 
 	rw.WriteHeader(res.StatusCode)
 

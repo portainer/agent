@@ -3,58 +3,56 @@ package browse
 import (
 	"net/http"
 
-	"bitbucket.org/portainer/agent"
-	httperror "bitbucket.org/portainer/agent/http/error"
-	"bitbucket.org/portainer/agent/http/proxy"
 	"github.com/gorilla/mux"
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/http/proxy"
+	"github.com/portainer/agent/http/security"
+	httperror "github.com/portainer/libhttp/error"
 )
 
 // Handler is the HTTP handler used to handle volume browsing operations.
 type Handler struct {
 	*mux.Router
-	clusterService agent.ClusterService
-	agentTags      map[string]string
+	*agent.AgentOptions
 }
 
 // NewHandler returns a pointer to an Handler
 // It sets the associated handle functions for all the Browse related HTTP endpoints.
-func NewHandler(clusterService agent.ClusterService, agentTags map[string]string) *Handler {
+func NewHandler(agentProxy *proxy.AgentProxy, notaryService *security.NotaryService, agentOptions *agent.AgentOptions) *Handler {
 	h := &Handler{
-		Router:         mux.NewRouter(),
-		clusterService: clusterService,
-		agentTags:      agentTags,
+		Router:       mux.NewRouter(),
+		AgentOptions: agentOptions,
 	}
 
-	h.Handle("/browse/{id}/ls",
-		h.agentProxy(httperror.LoggerHandler(h.browseList))).Methods(http.MethodGet)
-	h.Handle("/browse/{id}/get",
-		h.agentProxy(httperror.LoggerHandler(h.browseGet))).Methods(http.MethodGet)
-	h.Handle("/browse/{id}/delete",
-		h.agentProxy(httperror.LoggerHandler(h.browseDelete))).Methods(http.MethodDelete)
-	h.Handle("/browse/{id}/rename",
-		h.agentProxy(httperror.LoggerHandler(h.browseRename))).Methods(http.MethodPut)
+	h.Handle("/browse/ls",
+		notaryService.DigitalSignatureVerification(agentProxy.Redirect(httperror.LoggerHandler(h.browseList)))).Methods(http.MethodGet)
+	h.Handle("/browse/get",
+		notaryService.DigitalSignatureVerification(agentProxy.Redirect(httperror.LoggerHandler(h.browseGet)))).Methods(http.MethodGet)
+	h.Handle("/browse/delete",
+		notaryService.DigitalSignatureVerification(agentProxy.Redirect(httperror.LoggerHandler(h.browseDelete)))).Methods(http.MethodDelete)
+	h.Handle("/browse/rename",
+		notaryService.DigitalSignatureVerification(agentProxy.Redirect(httperror.LoggerHandler(h.browseRename)))).Methods(http.MethodPut)
+	h.Handle("/browse/put",
+		notaryService.DigitalSignatureVerification(agentProxy.Redirect(httperror.LoggerHandler(h.browsePut)))).Methods(http.MethodPost)
 	return h
 }
 
-func (handler *Handler) agentProxy(next http.Handler) http.Handler {
-	return httperror.LoggerHandler(func(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+// NewHandlerV1 returns a pointer to an Handler
+// It sets the associated handle functions for all the Browse related HTTP endpoints.
+func NewHandlerV1(agentProxy *proxy.AgentProxy, notaryService *security.NotaryService) *Handler {
+	h := &Handler{
+		Router: mux.NewRouter(),
+	}
 
-		if handler.clusterService == nil {
-			next.ServeHTTP(rw, r)
-			return nil
-		}
-
-		agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
-
-		if agentTargetHeader == handler.agentTags[agent.MemberTagKeyNodeName] || agentTargetHeader == "" {
-			next.ServeHTTP(rw, r)
-		} else {
-			targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
-			if targetMember == nil {
-				return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", agent.ErrAgentNotFound}
-			}
-			proxy.AgentHTTPRequest(rw, r, targetMember)
-		}
-		return nil
-	})
+	h.Handle("/browse/{id}/ls",
+		notaryService.DigitalSignatureVerification(agentProxy.Redirect(httperror.LoggerHandler(h.browseListV1)))).Methods(http.MethodGet)
+	h.Handle("/browse/{id}/get",
+		notaryService.DigitalSignatureVerification(agentProxy.Redirect(httperror.LoggerHandler(h.browseGetV1)))).Methods(http.MethodGet)
+	h.Handle("/browse/{id}/delete",
+		notaryService.DigitalSignatureVerification(agentProxy.Redirect(httperror.LoggerHandler(h.browseDeleteV1)))).Methods(http.MethodDelete)
+	h.Handle("/browse/{id}/rename",
+		notaryService.DigitalSignatureVerification(agentProxy.Redirect(httperror.LoggerHandler(h.browseRenameV1)))).Methods(http.MethodPut)
+	h.Handle("/browse/{id}/put",
+		notaryService.DigitalSignatureVerification(agentProxy.Redirect(httperror.LoggerHandler(h.browsePutV1)))).Methods(http.MethodPost)
+	return h
 }

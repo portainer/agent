@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"bitbucket.org/portainer/agent"
+	"github.com/portainer/agent"
 )
 
 // ClusterProxy is a service used to execute the same requests on multiple targets.

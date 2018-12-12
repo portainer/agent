@@ -10,12 +10,12 @@ import (
 	"net/http/httputil"
 	"time"
 
-	"bitbucket.org/portainer/agent"
-	httperror "bitbucket.org/portainer/agent/http/error"
-	"bitbucket.org/portainer/agent/http/proxy"
-	"bitbucket.org/portainer/agent/http/request"
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/websocket"
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/http/proxy"
+	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/request"
 )
 
 func (handler *Handler) websocketExec(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
@@ -164,7 +164,7 @@ func streamFromWebsocketConnToTCPConn(websocketConn *websocket.Conn, tcpConn net
 
 func streamFromTCPConnToWebsocketConn(websocketConn *websocket.Conn, br *bufio.Reader, errorChan chan error) {
 	for {
-		out := make([]byte, 1024)
+		out := make([]byte, 2048)
 		_, err := br.Read(out)
 		if err != nil {
 			errorChan <- err

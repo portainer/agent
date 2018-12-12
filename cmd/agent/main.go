@@ -1,4 +1,4 @@
-package main // import "bitbucket.org/portainer/agent"
+package main
 
 import (
 	"log"
@@ -10,17 +10,19 @@ import (
 	"strings"
 	"time"
 
-	"bitbucket.org/portainer/agent"
-	"bitbucket.org/portainer/agent/crypto"
-	"bitbucket.org/portainer/agent/docker"
-	"bitbucket.org/portainer/agent/http"
-	cluster "bitbucket.org/portainer/agent/serf"
 	"github.com/hashicorp/logutils"
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/crypto"
+	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/ghw"
+	"github.com/portainer/agent/http"
+	cluster "github.com/portainer/agent/serf"
 )
 
 func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 	options := &agent.AgentOptions{
 		Port: agent.DefaultAgentPort,
+		HostManagementEnabled: false,
 	}
 
 	clusterAddressEnv := os.Getenv("AGENT_CLUSTER_ADDR")
@@ -37,6 +39,12 @@ func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 		}
 		options.Port = agentPortEnv
 	}
+
+	if os.Getenv("CAP_HOST_MANAGEMENT") == "1" {
+		options.HostManagementEnabled = true
+	}
+
+	options.SharedSecret = os.Getenv("AGENT_SECRET")
 
 	return options, nil
 }
@@ -144,7 +152,7 @@ func main() {
 	log.Println("[DEBUG] - Generating TLS files...")
 	TLSService.GenerateCertsForHost(advertiseAddr)
 
-	signatureService := crypto.NewECDSAService()
+	signatureService := crypto.NewECDSAService(options.SharedSecret)
 
 	log.Printf("[DEBUG] - Using agent port: %s\n", options.Port)
 
@@ -163,8 +171,10 @@ func main() {
 		defer clusterService.Leave()
 	}
 
+	systemService := ghw.NewSystemService("/host")
+
 	listenAddr := agent.DefaultListenAddr + ":" + options.Port
 	log.Printf("[INFO] - Starting Portainer agent version %s on %s (cluster mode: %t)", agent.AgentVersion, listenAddr, clusterMode)
-	server := http.NewServer(clusterService, signatureService, agentTags)
+	server := http.NewServer(systemService, clusterService, signatureService, agentTags, options)
 	server.Start(listenAddr)
 }

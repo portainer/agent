@@ -62,66 +62,109 @@ The fact that the agent final proxy target is always the Docker API means that w
 
 ### Agent specific API
 
-The agent exposes the following endpoints:
+The agent also exposes the following endpoints:
 
-* `/agents` (*GET*): Returns the list of all the available agents in the cluster
+* `/agents` (*GET*): List all the available agents in the cluster
+* `/browse/ls` (*GET*): List the files available under a specific path on the filesystem
+* `/browse/get` (*GET*): Retrieve a file available under a specific path on the filesytem
+* `/browse/delete` (*DELETE*): Delete an existing file under a specific path on the filesytem
+* `/browse/rename` (*PUT*): Rename an existing file under a specific path on the filesytem
+* `/browse/put` (*POST*): Upload a file under a specific path on the filesytem
+* `/host/info` (*GET*): Get information about the underlying host system
+* `/ping` (*GET*): Returns a 204. Public endpoint that do not require any form of authentication
+
+Note: The `/browse/*` endpoints can be used to manage a filesystem. By default, it allows manipulation of files in Docker volumes (available under `/var/run/docker/volumes` when bind-mounted in the agent container) but can also manipulate files anywhere on the filesystem. To enable global
+filesystem manipulation support for these endpoints, the `CAP_HOST_MANAGEMENT` environment variable must be set to `1`.
+
+### Agent API version
+
+The agent API version is exposed via the `Portainer-Agent-API-Version` in each response of the agent.
 
 ## Security
 
 ### Encryption
 
-By default, each node will automatically generate its own set of TLS certificate and key. It will then use these to start the web
+By default, an agent will automatically generate its own set of TLS certificate and key. It will then use these to start the web
 server where the agent API is exposed. By using self-signed certificates, each agent client and proxy will skip the TLS server verification when executing a request against another agent.
 
 ### Authentication
 
-Each request to an agent must include a digital signature in the `X-PortainerAgent-Signature` header encoded using the `base64` format (without the padding characters). The signature is generated using a private key in the Portainer instance and included in each request. The agent uses the public key of the Portainer instance to verify if the signature is valid.
+Each request to an agent must include a digital signature in the `X-PortainerAgent-Signature` header encoded using the `base64` format (without the padding characters).
 
-For convenience, the Portainer public key is always included inside the `X-PortainerAgent-PublicKey` header in each request to the agent. The first time the agent will
-find the `X-PortainerAgent-PublicKey` header in a request, it will automatically register the public key contained in the header and will stop looking at this header.
+![public key cryptography wikipedia](https://user-images.githubusercontent.com/5485061/48817100-ac410b80-eda9-11e8-8d72-ef668e8278df.png)
 
-If no public key is registered and the agent cannot find the `X-PortainerAgent-PublicKey` header in a request, it will return a 403. If a public key is registered and
-the agent cannot find the `X-PortainerAgent-Signature` header or that the header contains an invalid signature, it will return a 403.
+The following protocol is used between a Portainer instance and an agent:
 
-## Deployment
+For each HTTP request made from the Portainer instance to the agent:
 
-*This setup will assume that you're executing the following instructions on a Swarm manager node*
+1. The Portainer instance generates a signature using its private key. It encodes this signature in base64 and add it to the `X-PortainerAgent-Signature` header of the request
+2. The Portainer instance encodes its public key in hexadecimal and adds it the `X-PortainerAgent-PublicKey` header of the request
 
-First thing to do, create an overlay network in which the agent will be deployed:
+
+For each HTTP request received from the agent:
+
+1. The agent will check that the `X-PortainerAgent-PublicKey` and `X-PortainerAgent-Signature` headers are available in the request otherwise it returns a 403
+2. The agent will then trigger the signature verification process. If the signature is not valid it returns a 403
+
+#### Signature verification
+
+The signature verification process can follow two different paths based on how the agent was deployed.
+
+##### Default mode
+
+By default, the agent will wait for a valid request from a Portainer instance and automatically associate the first Portainer instance that communicates with it by registering the public key found in the `X-PortainerAgent-PublicKey` header inside memory.
+
+During the association process, the agent will first decode the specified public key from hexadecimal and then parse the public key. Only if these steps are successfull then the key will be associated to the agent.
+
+Once a Portainer instance is registered by the agent, the agent will not try to decode/parse the public key associated to a request anymore and will assume that only signatures associated to this public key are authorized (preventing any other Portainer instance to communicate with this agent).
+
+Finally, the agent uses the associated public key and a default message that is known by both entities to verify the signature available in the `X-PortainerAgent-Signature` header.
+
+##### Secret mode
+
+When the `AGENT_SECRET` environment variable is set in the execution context of the agent (`-e AGENT_SECRET=mysecret` when started as a container for example), the digital signature verification process will be slightly different.
+
+In secret mode, the agent will not register a Portainer public key in memory anymore. Instead, it will **ALWAYS** decode and parse the public key available in the `X-PortainerAgent-PublicKey` and will then trigger the signature verification using key.
+
+The signature verification is slightly altered as well, it now uses the public key sent in the request to verify the signature as well as the secret specified at startup in the `AGENT_SECRET` environment variable.
+
+This mode will allow multiple instances of Portainer to connect to a single agent.
+
+Note: Due to the fact that the agent will now decode and parse the public key associated to each request, this mode might be less performant than the default mode.
+
+
+## Deployment options
+
+The behavior of the agent can be tuned via a set of mandatory and optional options available as environment variables:
+
+* AGENT_CLUSTER_ADDR (*mandatory*): address (in the IP:PORT format) of an existing agent to join the agent cluster. When deploying the agent as a Docker Swarm service,
+we can leverage the internal Docker DNS to automatically join existing agents or form a cluster by using `tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT>` as the address.
+* AGENT_PORT (*optional*): port on which the agent web server will listen (default to `9001`).
+* CAP_HOST_MANAGEMENT (*optional*): enable advanced filesystem management features. Disabled by default, set to `1` to enable it.
+* AGENT_SECRET (*optional*): shared secret used in the signature verification process
+* LOG_LEVEL (*optional*): defines the log output verbosity (default to `INFO`)
+
+For more information about deployment scenarios, see: https://portainer.readthedocs.io/en/stable/agent.html
+
+## Development
+
+1. Install go >= 1.11.2
+2. Install dep: https://golang.github.io/dep/docs/installation.html
+
+If you want to add any extra dependency:
 
 ```
-$ docker network create --driver overlay --attachable portainer_agent_network
+dep ensure -add github.com/foo/bar
 ```
 
-Then, deploy the agent as a global service inside the previously created network:
+3. Run a local agent container:
 
 ```
-$ docker service create --name portainer_agent \
---network portainer_agent_network \
--e AGENT_CLUSTER_ADDR=tasks.portainer_agent \
---mode global \
---mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
---constraint node.platform.os==linux \
-portainer/agent:latest
+./dev.sh local
 ```
 
+4. Run the agent container inside a Swarm cluster (requires https://github.com/deviantony/vagrant-swarm-cluster)
+
 ```
-docker run -d --name portainer_agent `
---restart always --network portainer_agent_network `
---label com.docker.stack.namespace=portainer `
--e AGENT_CLUSTER_ADDR=tasks.agent `
---mount type=npipe,source=\\.\pipe\docker_engine,target=\\.\pipe\docker_engine `
-portainer/agent:latest
+./dev.sh swarm
 ```
-
-The last step is to connect Portainer to the agent.
-
-If the Portainer instance is deployed inside the same overlay network as the agent then
-Portainer can leverages the internal Docker DNS to automatically join any agent using `tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT>`.
-
-For example, based on the previous service deployment, `tasks.portainer_agent:9001` can be used as endpoint URL.
-
-**IMPORTANT NOTE**: The agent is using HTTPS communication with self-signed certificates, any endpoint created inside the UI must
-enable the `TLS` switch and use the `TLS only` option.
-
-When creating the endpoint on the CLI using the `-H` Portainer flag, the `--tlsskipverify` flag must be specified, example: `-H tcp://tasks.portainer_agent:9001 --tlsskipverify`.

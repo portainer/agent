@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"bitbucket.org/portainer/agent"
+	"github.com/portainer/agent"
 )
 
 // TLSService is a service used to generate TLS cert and key files

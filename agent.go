@@ -3,8 +3,10 @@ package agent
 type (
 	// AgentOptions are the options used to start an agent.
 	AgentOptions struct {
-		Port           string
-		ClusterAddress string
+		Port                  string
+		ClusterAddress        string
+		HostManagementEnabled bool
+		SharedSecret          string
 	}
 
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -23,6 +25,24 @@ type (
 		} `json:"Agent"`
 	}
 
+	// PciDevice is the representation of a physical pci device on a host
+	PciDevice struct {
+		Vendor string
+		Name   string
+	}
+
+	// PhysicalDisk is the representation of a physical disk on a host
+	PhysicalDisk struct {
+		Vendor string
+		Size   uint64
+	}
+
+	// HostInfo is the representation of the collection of host information
+	HostInfo struct {
+		PCIDevices    []PciDevice
+		PhysicalDisks []PhysicalDisk
+	}
+
 	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
 		Create(advertiseAddr, joinAddr string, tags map[string]string) error
@@ -34,9 +54,7 @@ type (
 
 	// DigitalSignatureService is used to validate digital signatures.
 	DigitalSignatureService interface {
-		RequiresPublicKey() bool
-		ParsePublicKey(key string) error
-		ValidSignature(signature string) bool
+		VerifySignature(signature, key string) (bool, error)
 	}
 
 	// InfoService is used to retrieve information from a Docker environment.
@@ -48,11 +66,19 @@ type (
 	TLSService interface {
 		GenerateCertsForHost(host string) error
 	}
+
+	// SystemService is used to get info about the host
+	SystemService interface {
+		GetDiskInfo() ([]PhysicalDisk, error)
+		GetPciDevices() ([]PciDevice, error)
+	}
 )
 
 const (
 	// AgentVersion represents the version of the agent.
-	AgentVersion = "1.1.2"
+	AgentVersion = "1.2.0"
+	// APIVersion represents the version of the agent's API.
+	APIVersion = "2"
 	// DefaultListenAddr is the default address used by the web server.
 	DefaultListenAddr = "0.0.0.0"
 	// DefaultAgentPort is the default port exposed by the web server.
@@ -75,6 +101,9 @@ const (
 	// HTTPResponseAgentHeaderName is the name of the header that is automatically added
 	// to each agent response.
 	HTTPResponseAgentHeaderName = "Portainer-Agent"
+	// HTTPResponseAgentApiVersion is the name of the header that will have the
+	// Portainer Agent API Version.
+	HTTPResponseAgentApiVersion = "Portainer-Agent-API-Version"
 	// PortainerAgentSignatureMessage is the unhashed content that is signed by the Portainer instance.
 	// It is used by the agent during the signature verification process.
 	PortainerAgentSignatureMessage = "Portainer-App"

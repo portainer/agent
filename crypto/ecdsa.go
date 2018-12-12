@@ -8,67 +8,91 @@ import (
 	"encoding/hex"
 	"math/big"
 
-	"bitbucket.org/portainer/agent"
+	"github.com/portainer/agent"
 )
 
 // ECDSAService is a service used to validate a digital signature.
-// Use NewECDSAService to create a new service and ParsePublicKey to parse and
-// associate the Portainer public key.
+// An optional secret can be associated to this service
 type ECDSAService struct {
 	publicKey *ecdsa.PublicKey
+	secret    string
 }
 
 // NewECDSAService returns a pointer to a ECDSAService.
-func NewECDSAService() *ECDSAService {
-	return &ECDSAService{}
-}
-
-// RequiresPublicKey returns true if a public key has not been associated to
-// the service yet. It returns false if the service has a public key associated
-// and therefore can be used to verify digital signatures.
-func (service *ECDSAService) RequiresPublicKey() bool {
-	if service.publicKey == nil {
-		return true
+// An optional secret can be specified
+func NewECDSAService(secret string) *ECDSAService {
+	return &ECDSAService{
+		secret: secret,
 	}
-	return false
 }
 
-// ParsePublicKey decodes a hexadecimal encoded public key, parse the
-// decoded DER data and associate the public key to the service.
-func (service *ECDSAService) ParsePublicKey(key string) error {
+// VerifySignature is used to verify a digital signature using a specified public
+// key. The public key specified as a parameter must be hexadecimal encoded.
+// The public key will be decoded and parsed as DER data. If the service is not
+// using a secret, the public key will be associated to the service so that
+// only signatures associated to this key will be considered valid.
+// When a secret is associated to the service, the specified key will be
+// decoded and parsed each time.
+// NOTE: this could have an impact on performance.
+// After parsing the public key, it will decode the signature (base64 encoded)
+// and verify the signature based on the secret associated to the service
+// or using the default signature if no secret is specified.
+func (service *ECDSAService) VerifySignature(signature, key string) (bool, error) {
+	publicKey, err := service.decodeAndParsePublicKey(key)
+	if err != nil {
+		return false, err
+	}
+
+	return service.decodeAndVerifySignature(signature, publicKey)
+}
+
+func (service *ECDSAService) decodeAndParsePublicKey(key string) (*ecdsa.PublicKey, error) {
+	if service.publicKey != nil {
+		return service.publicKey, nil
+	}
+
 	decodedKey, err := hex.DecodeString(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	publicKey, err := x509.ParsePKIXPublicKey(decodedKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	service.publicKey = publicKey.(*ecdsa.PublicKey)
-	return nil
+	if service.secret == "" {
+		service.publicKey = publicKey.(*ecdsa.PublicKey)
+	}
+
+	return publicKey.(*ecdsa.PublicKey), nil
 }
 
-// ValidSignature returns true if the signature is valid.
-func (service *ECDSAService) ValidSignature(signature string) bool {
+func (service *ECDSAService) decodeAndVerifySignature(signature string, publicKey *ecdsa.PublicKey) (bool, error) {
 	decodedSignature, err := base64.RawStdEncoding.DecodeString(signature)
 	if err != nil {
-		return false
+		return false, err
 	}
 
-	keySize := service.publicKey.Params().BitSize / 8
+	keySize := publicKey.Params().BitSize / 8
 
 	if len(decodedSignature) != 2*keySize {
-		return false
+		return false, nil
 	}
 
 	r := big.NewInt(0).SetBytes(decodedSignature[:keySize])
 	s := big.NewInt(0).SetBytes(decodedSignature[keySize:])
 
+	validSignature := agent.PortainerAgentSignatureMessage
+	if service.secret != "" {
+		validSignature = service.secret
+	}
+
 	digest := md5.New()
-	digest.Write([]byte(agent.PortainerAgentSignatureMessage))
+	digest.Write([]byte(validSignature))
 	hash := digest.Sum(nil)
 
-	return ecdsa.Verify(service.publicKey, []byte(hash), r, s)
+	valid := ecdsa.Verify(publicKey, []byte(hash), r, s)
+
+	return valid, nil
 }

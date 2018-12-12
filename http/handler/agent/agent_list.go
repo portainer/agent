@@ -3,8 +3,8 @@ package agent
 import (
 	"net/http"
 
-	httperror "bitbucket.org/portainer/agent/http/error"
-	"bitbucket.org/portainer/agent/http/response"
+	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/response"
 )
 
 func (handler *Handler) agentList(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {

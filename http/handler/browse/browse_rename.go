@@ -3,12 +3,12 @@ package browse
 import (
 	"net/http"
 
-	"bitbucket.org/portainer/agent"
-	"bitbucket.org/portainer/agent/filesystem"
-	httperror "bitbucket.org/portainer/agent/http/error"
-	"bitbucket.org/portainer/agent/http/request"
-	"bitbucket.org/portainer/agent/http/response"
 	"github.com/asaskevich/govalidator"
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/filesystem"
+	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/request"
+	"github.com/portainer/libhttp/response"
 )
 
 type browseRenamePayload struct {
@@ -26,7 +26,40 @@ func (payload *browseRenamePayload) Validate(r *http.Request) error {
 	return nil
 }
 
+// PUT request on /browse/rename?id=:id
 func (handler *Handler) browseRename(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
+	if volumeID == "" && !handler.AgentOptions.HostManagementEnabled {
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
+	}
+
+	var payload browseRenamePayload
+	err := request.DecodeAndValidateJSONPayload(r, &payload)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
+	}
+
+	if volumeID != "" {
+		payload.CurrentFilePath, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.CurrentFilePath)
+		if err != nil {
+			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+		}
+		payload.NewFilePath, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.NewFilePath)
+		if err != nil {
+			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+		}
+	}
+
+	err = filesystem.RenameFile(payload.CurrentFilePath, payload.NewFilePath)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to rename file", err}
+	}
+
+	return response.Empty(rw)
+}
+
+// PUT request on /v1/browse/rename?id=:id
+func (handler *Handler) browseRenameV1(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
 	if err != nil {
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
@@ -38,7 +71,16 @@ func (handler *Handler) browseRename(rw http.ResponseWriter, r *http.Request) *h
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
 	}
 
-	err = filesystem.RenameFileInsideVolume(volumeID, payload.CurrentFilePath, payload.NewFilePath)
+	payload.CurrentFilePath, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.CurrentFilePath)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+	}
+	payload.NewFilePath, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.NewFilePath)
+	if err != nil {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+	}
+
+	err = filesystem.RenameFile(payload.CurrentFilePath, payload.NewFilePath)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to rename file", err}
 	}

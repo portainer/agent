@@ -4,9 +4,9 @@ import (
 	"log"
 	"os"
 
-	"bitbucket.org/portainer/agent"
 	"github.com/hashicorp/logutils"
 	"github.com/hashicorp/serf/serf"
+	"github.com/portainer/agent"
 )
 
 // ClusterService is a service used to manage cluster related actions such as joining
