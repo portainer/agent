@@ -38,6 +38,7 @@ func proxyWebsocketRequest(rw http.ResponseWriter, request *http.Request, target
 	proxy := websocketproxy.NewProxy(target)
 	proxy.Director = func(incoming *http.Request, out http.Header) {
 		out.Set(agent.HTTPSignatureHeaderName, request.Header.Get(agent.HTTPSignatureHeaderName))
+		out.Set(agent.HTTPPublicKeyHeaderName, request.Header.Get(agent.HTTPPublicKeyHeaderName))
 		out.Set(agent.HTTPTargetHeaderName, targetNode)
 	}
 	proxy.Dialer = &websocket.Dialer{
