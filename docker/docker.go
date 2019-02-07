@@ -39,3 +39,27 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 
 	return info, nil
 }
+
+func (service *InfoService) GetContainerIpFromDockerEngine(hostname string) (string, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	if err != nil {
+		return "", err
+	}
+	defer cli.Close()
+
+    containerInspect, err := cli.ContainerInspect(context.Background(), hostname)
+    if err != nil {
+        panic (err)
+	}
+
+	var containerNetworks = containerInspect.NetworkSettings.Networks
+
+    for key := range containerNetworks {
+		var advertiseAddr = containerNetworks[key].IPAddress
+		if advertiseAddr != "" {
+			return advertiseAddr, nil
+		}
+    }
+
+	return "", agent.ErrRetrievingAdvertiseAddr	
+}

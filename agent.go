@@ -60,6 +60,7 @@ type (
 	// InfoService is used to retrieve information from a Docker environment.
 	InfoService interface {
 		GetInformationFromDockerEngine() (map[string]string, error)
+		GetContainerIpFromDockerEngine(hostname string) (string, error)
 	}
 
 	// TLSService is used to create TLS certificates to use enable HTTPS.

@@ -2,10 +2,10 @@ package main
 
 import (
 	"log"
-	"net"
+	//"net"
 	"os"
-	"regexp"
-	"runtime"
+	//"regexp"
+	//"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -76,45 +76,15 @@ func retrieveInformationFromDockerEnvironment() (map[string]string, error) {
 }
 
 func retrieveAdvertiseAddress() (string, error) {
-	// TODO: determine a cleaner way to retrieve the container IP that will be used
-	// to communicate with other agents.
-	// This IP address is also used in the self-signed TLS certificates generation process.
-	// Must match the container IP in the overlay network when used inside a Swarm.
-	ifaces, err := net.Interfaces()
+	hostname, err := os.Hostname()
+    if err != nil {
+        panic(err)
+    }
+
+	infoService := docker.InfoService{}
+	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(hostname)
 	if err != nil {
 		return "", err
-	}
-
-	var advertiseAddr string
-	for _, i := range ifaces {
-		if matched, _ := regexp.MatchString(`^(eth0)$|^(vEthernet) \(.*\)$`, i.Name); matched {
-			addrs, err := i.Addrs()
-			if err != nil {
-				return "", err
-			}
-
-			j := 0
-			// On Windows first IP address is link-local IPv6
-			if runtime.GOOS == "windows" {
-				j = 1
-			}
-
-			var ip net.IP
-			switch v := addrs[j].(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
-			}
-			if ip.String() != `127.0.0.1` {
-				advertiseAddr = ip.String()
-				break
-			}
-		}
-	}
-
-	if advertiseAddr == "" {
-		return "", agent.ErrRetrievingAdvertiseAddr
 	}
 
 	return advertiseAddr, nil
