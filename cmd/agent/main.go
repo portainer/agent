@@ -2,10 +2,7 @@ package main
 
 import (
 	"log"
-	//"net"
 	"os"
-	//"regexp"
-	//"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -21,7 +18,7 @@ import (
 
 func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 	options := &agent.AgentOptions{
-		Port:                  agent.DefaultAgentPort,
+		Port: agent.DefaultAgentPort,
 		HostManagementEnabled: false,
 	}
 
