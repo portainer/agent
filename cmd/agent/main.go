@@ -21,7 +21,7 @@ import (
 
 func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 	options := &agent.AgentOptions{
-		Port: agent.DefaultAgentPort,
+		Port:                  agent.DefaultAgentPort,
 		HostManagementEnabled: false,
 	}
 
@@ -77,9 +77,9 @@ func retrieveInformationFromDockerEnvironment() (map[string]string, error) {
 
 func retrieveAdvertiseAddress() (string, error) {
 	hostname, err := os.Hostname()
-    if err != nil {
-        panic(err)
-    }
+	if err != nil {
+		panic(err)
+	}
 
 	infoService := docker.InfoService{}
 	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(hostname)

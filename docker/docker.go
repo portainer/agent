@@ -47,19 +47,19 @@ func (service *InfoService) GetContainerIpFromDockerEngine(hostname string) (str
 	}
 	defer cli.Close()
 
-    containerInspect, err := cli.ContainerInspect(context.Background(), hostname)
-    if err != nil {
-        panic (err)
+	containerInspect, err := cli.ContainerInspect(context.Background(), hostname)
+	if err != nil {
+		panic(err)
 	}
 
 	var containerNetworks = containerInspect.NetworkSettings.Networks
 
-    for key := range containerNetworks {
+	for key := range containerNetworks {
 		var advertiseAddr = containerNetworks[key].IPAddress
 		if advertiseAddr != "" {
 			return advertiseAddr, nil
 		}
-    }
+	}
 
-	return "", agent.ErrRetrievingAdvertiseAddr	
+	return "", agent.ErrRetrievingAdvertiseAddr
 }
