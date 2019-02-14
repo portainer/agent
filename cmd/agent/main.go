@@ -1,12 +1,6 @@
 package main
 
 import (
-	"log"
-	"os"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/hashicorp/logutils"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
@@ -14,6 +8,11 @@ import (
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
 	cluster "github.com/portainer/agent/serf"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
@@ -62,8 +61,7 @@ func setupLogging() {
 	log.SetOutput(filter)
 }
 
-func retrieveInformationFromDockerEnvironment() (map[string]string, error) {
-	infoService := docker.InfoService{}
+func retrieveInformationFromDockerEnvironment(infoService agent.InfoService) (map[string]string, error) {
 	agentTags, err := infoService.GetInformationFromDockerEngine()
 	if err != nil {
 		return nil, err
@@ -72,14 +70,13 @@ func retrieveInformationFromDockerEnvironment() (map[string]string, error) {
 	return agentTags, nil
 }
 
-func retrieveAdvertiseAddress() (string, error) {
-	hostname, err := os.Hostname()
+func retrieveAdvertiseAddress(infoService agent.InfoService) (string, error) {
+	containerName, err := os.Hostname()
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	infoService := docker.InfoService{}
-	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(hostname)
+	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName)
 	if err != nil {
 		return "", err
 	}
@@ -90,7 +87,8 @@ func retrieveAdvertiseAddress() (string, error) {
 func main() {
 	setupLogging()
 
-	agentTags, err := retrieveInformationFromDockerEnvironment()
+	infoService := docker.InfoService{}
+	agentTags, err := retrieveInformationFromDockerEnvironment(&infoService)
 	if err != nil {
 		log.Fatalf("[ERROR] - Unable to retrieve information from Docker: %s", err)
 	}
@@ -108,7 +106,7 @@ func main() {
 
 	log.Printf("[DEBUG] - Agent details: %v\n", agentTags)
 
-	advertiseAddr, err := retrieveAdvertiseAddress()
+	advertiseAddr, err := retrieveAdvertiseAddress(&infoService)
 	if err != nil {
 		log.Fatalf("[ERROR] - Unable to retrieve advertise address: %s", err)
 	}

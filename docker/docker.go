@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-
 	"github.com/docker/docker/client"
 	"github.com/portainer/agent"
 )
@@ -40,24 +39,21 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 	return info, nil
 }
 
-func (service *InfoService) GetContainerIpFromDockerEngine(hostname string) (string, error) {
+func (service *InfoService) GetContainerIpFromDockerEngine(containerName string) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 	if err != nil {
 		return "", err
 	}
 	defer cli.Close()
 
-	containerInspect, err := cli.ContainerInspect(context.Background(), hostname)
+	containerInspect, err := cli.ContainerInspect(context.Background(), containerName)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	var containerNetworks = containerInspect.NetworkSettings.Networks
-
-	for key := range containerNetworks {
-		var advertiseAddr = containerNetworks[key].IPAddress
-		if advertiseAddr != "" {
-			return advertiseAddr, nil
+	for _, network := range containerInspect.NetworkSettings.Networks {
+		if network.IPAddress != "" {
+			return network.IPAddress, nil
 		}
 	}
 
