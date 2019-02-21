@@ -64,7 +64,7 @@
 
 [[constraint]]
   name = "github.com/hashicorp/serf"
-  version = "0.8.1"
+  version = "0.8.2"
 
 [[constraint]]
   name = "github.com/jaypipes/ghw"
