@@ -66,6 +66,13 @@
   name = "github.com/hashicorp/serf"
   version = "0.8.2"
 
+# It seems that with the recent introduction of gomods to hashicorp/serf, dep is not correctly picking the required
+# version of the memberlist dependency.
+[[override]]
+  name = "github.com/hashicorp/memberlist"
+  version = "v0.1.3"
+
+
 [[constraint]]
   name = "github.com/jaypipes/ghw"
   version = "0.2"
