@@ -37,6 +37,7 @@ function deploy_local() {
   docker run -d --name portainer-agent-dev \
   -e LOG_LEVEL=${LOG_LEVEL} \
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
+  -e DOCKER_CLIENT_TIMEOUT=30 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /var/lib/docker/volumes:/var/lib/docker/volumes \
   -v /:/host \

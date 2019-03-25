@@ -18,14 +18,14 @@ type ClusterProxy struct {
 
 // NewClusterProxy returns a pointer to a ClusterProxy.
 // It also sets the default values used in the underlying http.Client.
-func NewClusterProxy() *ClusterProxy {
+func NewClusterProxy(timeout int) *ClusterProxy {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
 	}
 
 	return &ClusterProxy{
 		client: &http.Client{
-			Timeout: time.Second * 10,
+			Timeout: time.Second * time.Duration(timeout),
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,
 			},

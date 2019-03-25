@@ -7,6 +7,7 @@ type (
 		ClusterAddress        string
 		HostManagementEnabled bool
 		SharedSecret          string
+		DockerClientTimeout   int
 	}
 
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -86,6 +87,8 @@ const (
 	DefaultAgentPort = "9001"
 	// DefaultLogLevel is the default logging level.
 	DefaultLogLevel = "INFO"
+	// DefaultDockerClientTimeout is the default timeout in seconds for Docker client requests.
+	DefaultDockerClientTimeout = 10
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.

@@ -15,9 +15,10 @@ const (
 
 // Agent setup errors.
 const (
-	ErrInvalidEnvPortFormat      = Error("Invalid port format in AGENT_PORT environment variable")
-	ErrEnvClusterAddressRequired = Error("AGENT_CLUSTER_ADDR environment variable is required")
-	ErrRetrievingAdvertiseAddr   = Error("Unable to retrieve the address on which the agent can advertise. Check your network settings")
+	ErrInvalidEnvPortFormat                = Error("Invalid port format in AGENT_PORT environment variable")
+	ErrInvalidEnvDockerClientTimeoutFormat = Error("Invalid timeout format in DOCKER_CLIENT_TIMEOUT environment variable")
+	ErrEnvClusterAddressRequired           = Error("AGENT_CLUSTER_ADDR environment variable is required")
+	ErrRetrievingAdvertiseAddr             = Error("Unable to retrieve the address on which the agent can advertise. Check your network settings")
 )
 
 // Agent runtime errors.

@@ -42,7 +42,7 @@ func NewHandler(systemService agent.SystemService, cs agent.ClusterService, sign
 		agentHandler:       httpagenthandler.NewHandler(cs, notaryService),
 		browseHandler:      browse.NewHandler(agentProxy, notaryService, agentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
-		dockerProxyHandler: docker.NewHandler(cs, agentTags, notaryService),
+		dockerProxyHandler: docker.NewHandler(cs, agentTags, notaryService, agentOptions.DockerClientTimeout),
 		webSocketHandler:   websocket.NewHandler(cs, agentTags, notaryService),
 		hostHandler:        host.NewHandler(systemService, agentProxy, notaryService),
 		pingHandler:        ping.NewHandler(),

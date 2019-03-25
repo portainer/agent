@@ -1,6 +1,12 @@
 package main
 
 import (
+	"log"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/logutils"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
@@ -8,17 +14,13 @@ import (
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
 	cluster "github.com/portainer/agent/serf"
-	"log"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 	options := &agent.AgentOptions{
-		Port: agent.DefaultAgentPort,
+		Port:                  agent.DefaultAgentPort,
 		HostManagementEnabled: false,
+		DockerClientTimeout:   agent.DefaultDockerClientTimeout,
 	}
 
 	clusterAddressEnv := os.Getenv("AGENT_CLUSTER_ADDR")
@@ -34,6 +36,15 @@ func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 			return nil, agent.ErrInvalidEnvPortFormat
 		}
 		options.Port = agentPortEnv
+	}
+
+	dockerClientTimeoutEnv := os.Getenv("DOCKER_CLIENT_TIMEOUT")
+	if dockerClientTimeoutEnv != "" {
+		clientTimeout, err := strconv.Atoi(dockerClientTimeoutEnv)
+		if err != nil {
+			return nil, agent.ErrInvalidEnvDockerClientTimeoutFormat
+		}
+		options.DockerClientTimeout = clientTimeout
 	}
 
 	if os.Getenv("CAP_HOST_MANAGEMENT") == "1" {
@@ -102,8 +113,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("[ERROR] - Error during agent initialization: %s", err)
 	}
-	agentTags[agent.MemberTagKeyAgentPort] = options.Port
+	log.Printf("[DEBUG] - Agent options: %+v\n", options)
 
+	agentTags[agent.MemberTagKeyAgentPort] = options.Port
 	log.Printf("[DEBUG] - Agent details: %v\n", agentTags)
 
 	advertiseAddr, err := retrieveAdvertiseAddress(&infoService)
