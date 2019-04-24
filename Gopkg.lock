@@ -82,6 +82,14 @@
   version = "v0.3.3"
 
 [[projects]]
+  digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
+  name = "github.com/fsnotify/fsnotify"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  version = "v1.4.7"
+
+[[projects]]
   digest = "1:bbadccf3d3317ea03c0dac0b45b673b4b397c8f91a1d2eff550a3c51c4ad770e"
   name = "github.com/gogo/protobuf"
   packages = ["proto"]
@@ -205,6 +213,33 @@
   version = "0.3"
 
 [[projects]]
+  digest = "1:b6bbd2f9e0724bd81890c8644259f920c6d61c08453978faff0bebd25f3e7d3e"
+  name = "github.com/jpillora/backoff"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8eab2debe79d12b7bd3d10653910df25fa9552ba"
+  version = "1.0.0"
+
+[[projects]]
+  digest = "1:846f9082539fb049964f26178abf5f1fa3bc4b22edd35ff751ae03dae5c79f63"
+  name = "github.com/jpillora/chisel"
+  packages = [
+    "client",
+    "share",
+  ]
+  pruneopts = "UT"
+  revision = "ee6601a6bbdeef3e634a06a6a9e73b8389c6777f"
+  version = "1.3.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:e8b3ff985a03d6bdf859f88ab38e9d3619658ec26524ceb6e70597ff117a28b9"
+  name = "github.com/jpillora/sizestr"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e2ea2fa42fb952f895ab2029f26d3a73b0d56eb3"
+
+[[projects]]
   branch = "master"
   digest = "1:73405a734b6495d7ff09ff24a86633b56bc13917ea9adef16f3d8cccaea176c2"
   name = "github.com/koding/websocketproxy"
@@ -277,11 +312,16 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d5891c5bca9c62e5d394ca26491d2b710a1dc08cedeb0ca8f9ac4c3305120b02"
+  digest = "1:b166c998eb589cd6da3aa24901f328e2d14cfe17cda0957129f880723ee9384b"
   name = "golang.org/x/crypto"
   packages = [
+    "curve25519",
     "ed25519",
     "ed25519/internal/edwards25519",
+    "internal/chacha20",
+    "internal/subtle",
+    "poly1305",
+    "ssh",
   ]
   pruneopts = "UT"
   revision = "7c1a557ab941a71c619514f229f0b27ccb0c27cf"
@@ -327,6 +367,7 @@
     "github.com/hashicorp/logutils",
     "github.com/hashicorp/serf/serf",
     "github.com/jaypipes/ghw",
+    "github.com/jpillora/chisel/client",
     "github.com/koding/websocketproxy",
     "github.com/portainer/libhttp/error",
     "github.com/portainer/libhttp/request",

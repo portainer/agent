@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
-IMAGE_NAME=portainer/agent:local
+IMAGE_NAME=portainer/pagent:intel
 LOG_LEVEL=DEBUG
 CAP_HOST_MANAGEMENT=1 #Enabled by default. Change this to anything else to disable this feature
+TUNNELLING_MODE=1
+TUNNEL_SERVER=172.31.3.171
+AGENT_SECRET="bG9jYWxob3N0Ojk5OTk6Nzc3NzpyYW5kb21fc2VjcmV0"
 VAGRANT=true
 TMP="/tmp"
+
 
 if [[ $# -ne 1 ]] ; then
   echo "Usage: $(basename $0) <MODE:local/swarm>"
@@ -25,6 +29,16 @@ function compile() {
 
 }
 
+function build_iot() {
+    echo "Building..."
+
+    echo "Building image locally and exporting to Vagrant node..."
+    docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
+    docker push "${IMAGE_NAME}"
+#    docker save "${IMAGE_NAME}" -o "${TMP}/portainer-agent.tar"
+#    docker -H "10.0.10.11:2375" load -i "${TMP}/portainer-agent.tar"
+}
+
 function deploy_local() {
   echo "Cleanup previous settings..."
   docker rm -f portainer-agent-dev
@@ -37,11 +51,14 @@ function deploy_local() {
   docker run -d --name portainer-agent-dev \
   -e LOG_LEVEL=${LOG_LEVEL} \
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
+  -e TUNNELLING_MODE=${TUNNELLING_MODE} \
+  -e TUNNEL_SERVER=${TUNNEL_SERVER} \
+  -e AGENT_SECRET=${AGENT_SECRET} \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /var/lib/docker/volumes:/var/lib/docker/volumes \
   -v /:/host \
   -p 9001:9001 \
-  portainer/agent:local
+  "${IMAGE_NAME}"
 
   docker logs -f portainer-agent-dev
 }
@@ -90,9 +107,10 @@ function deploy_swarm() {
 function main() {
 
   compile
-  if [ "${MODE}" == 'local' ]
-  then
+  if [ "${MODE}" == 'local' ]; then
     deploy_local
+  elif [ "${MODE}" == 'iot' ]; then
+    build_iot
   else
     # Only to be used with deviantony/vagrant-swarm-cluster.git
     deploy_swarm

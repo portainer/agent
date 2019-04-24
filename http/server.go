@@ -30,5 +30,8 @@ func NewServer(systemService agent.SystemService, clusterService agent.ClusterSe
 // Start starts a new webserver by listening on the specified listenAddr.
 func (server *Server) Start(listenAddr string) error {
 	h := handler.NewHandler(server.systemService, server.clusterService, server.signatureService, server.agentTags, server.agentOptions)
+	if server.agentOptions.TunnelingMode {
+		return http.ListenAndServe(listenAddr, h)
+	}
 	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, h)
 }

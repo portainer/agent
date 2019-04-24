@@ -6,6 +6,8 @@ type (
 		Port                  string
 		ClusterAddress        string
 		HostManagementEnabled bool
+		TunnelingMode         bool
+		TunnelServer          string
 		SharedSecret          string
 	}
 

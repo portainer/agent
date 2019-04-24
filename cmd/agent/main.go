@@ -1,23 +1,27 @@
 package main
 
 import (
+	"context"
+	"encoding/base64"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/logutils"
+	"github.com/jpillora/chisel/client"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
 	cluster "github.com/portainer/agent/serf"
-	"log"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 	options := &agent.AgentOptions{
-		Port: agent.DefaultAgentPort,
+		Port:                  agent.DefaultAgentPort,
 		HostManagementEnabled: false,
 	}
 
@@ -39,6 +43,12 @@ func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
 	if os.Getenv("CAP_HOST_MANAGEMENT") == "1" {
 		options.HostManagementEnabled = true
 	}
+
+	if os.Getenv("TUNNELLING_MODE") == "1" {
+		options.TunnelingMode = true
+	}
+
+	options.TunnelServer = os.Getenv("TUNNEL_SERVER")
 
 	options.SharedSecret = os.Getenv("AGENT_SECRET")
 
@@ -137,6 +147,35 @@ func main() {
 	}
 
 	systemService := ghw.NewSystemService("/host")
+
+	if options.TunnelingMode {
+		decodedKey, err := base64.RawStdEncoding.DecodeString(options.SharedSecret)
+		if err != nil {
+			log.Fatalf("[ERROR] - Invalid AGENT_SECRET: %s", err)
+		}
+		log.Println(string(decodedKey))
+		keyInfo := strings.Split(string(decodedKey), ":")
+		tunnelServerAddr := keyInfo[0]
+		tunnelServerPort := keyInfo[1]
+		remotePort := keyInfo[2]
+
+		if tunnelServerAddr == "localhost" {
+			if options.TunnelServer == "" {
+				log.Fatal("[ERROR] - Tunnel server env var required")
+			}
+			tunnelServerAddr = options.TunnelServer
+		}
+
+		chiselClient, err := chclient.NewClient(&chclient.Config{
+			Server:  tunnelServerAddr + ":" + tunnelServerPort,
+			Remotes: []string{"R:" + remotePort + ":" + "localhost:9001"},
+		})
+
+		err = chiselClient.Start(context.Background())
+		if err != nil {
+			log.Fatalf("[ERROR] - Unable to start Chisel client: %s", err)
+		}
+	}
 
 	listenAddr := agent.DefaultListenAddr + ":" + options.Port
 	log.Printf("[INFO] - Starting Portainer agent version %s on %s (cluster mode: %t)", agent.AgentVersion, listenAddr, clusterMode)
