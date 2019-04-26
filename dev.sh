@@ -3,9 +3,9 @@
 IMAGE_NAME=portainer/pagent:intel
 LOG_LEVEL=DEBUG
 CAP_HOST_MANAGEMENT=1 #Enabled by default. Change this to anything else to disable this feature
-TUNNELLING_MODE=1
-TUNNEL_SERVER=172.31.3.171
-AGENT_SECRET="bG9jYWxob3N0Ojk5OTk6Nzc3NzpyYW5kb21fc2VjcmV0"
+#TUNNELLING_MODE=1
+#TUNNEL_SERVER=192.168.178.142
+#AGENT_SECRET="bG9jYWxob3N0Ojk5OTk6Nzc3NzpyYW5kb21fc2VjcmV0"
 VAGRANT=true
 TMP="/tmp"
 
