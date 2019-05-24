@@ -1,10 +1,8 @@
 package websocket
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -18,15 +16,15 @@ import (
 	"github.com/portainer/libhttp/request"
 )
 
-func (handler *Handler) websocketExec(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+func (handler *Handler) websocketExec(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	if handler.clusterService == nil {
-		return handler.handleRequest(rw, r)
+		return handler.handleExecRequest(w, r)
 	}
 
 	agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
 
 	if agentTargetHeader == handler.agentTags[agent.MemberTagKeyNodeName] {
-		return handler.handleRequest(rw, r)
+		return handler.handleExecRequest(w, r)
 	}
 
 	targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
@@ -34,11 +32,11 @@ func (handler *Handler) websocketExec(rw http.ResponseWriter, r *http.Request) *
 		return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", agent.ErrAgentNotFound}
 	}
 
-	proxy.WebsocketRequest(rw, r, targetMember)
+	proxy.WebsocketRequest(w, r, targetMember)
 	return nil
 }
 
-func (handler *Handler) handleRequest(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+func (handler *Handler) handleExecRequest(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	execID, err := request.RetrieveQueryParameter(r, "id", false)
 	if execID == "" {
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: id", err}
@@ -116,65 +114,4 @@ func createExecStartRequest(execID string) (*http.Request, error) {
 	request.Header.Set("Upgrade", "tcp")
 
 	return request, nil
-}
-
-func hijackRequest(websocketConn *websocket.Conn, httpConn *httputil.ClientConn, request *http.Request) error {
-	// Server hijacks the connection, error 'connection closed' expected
-	resp, err := httpConn.Do(request)
-	if err != httputil.ErrPersistEOF {
-		if err != nil {
-			return err
-		}
-		if resp.StatusCode != http.StatusSwitchingProtocols {
-			resp.Body.Close()
-			return fmt.Errorf("unable to upgrade to tcp, received %d", resp.StatusCode)
-		}
-	}
-
-	tcpConn, brw := httpConn.Hijack()
-	defer tcpConn.Close()
-
-	errorChan := make(chan error, 1)
-	go streamFromTCPConnToWebsocketConn(websocketConn, brw, errorChan)
-	go streamFromWebsocketConnToTCPConn(websocketConn, tcpConn, errorChan)
-
-	err = <-errorChan
-	if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
-		return err
-	}
-
-	return nil
-}
-
-func streamFromWebsocketConnToTCPConn(websocketConn *websocket.Conn, tcpConn net.Conn, errorChan chan error) {
-	for {
-		_, in, err := websocketConn.ReadMessage()
-		if err != nil {
-			errorChan <- err
-			break
-		}
-
-		_, err = tcpConn.Write(in)
-		if err != nil {
-			errorChan <- err
-			break
-		}
-	}
-}
-
-func streamFromTCPConnToWebsocketConn(websocketConn *websocket.Conn, br *bufio.Reader, errorChan chan error) {
-	for {
-		out := make([]byte, 2048)
-		_, err := br.Read(out)
-		if err != nil {
-			errorChan <- err
-			break
-		}
-
-		err = websocketConn.WriteMessage(websocket.TextMessage, out)
-		if err != nil {
-			errorChan <- err
-			break
-		}
-	}
 }

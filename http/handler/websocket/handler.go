@@ -32,6 +32,7 @@ func NewHandler(clusterService agent.ClusterService, agentTags map[string]string
 		agentTags:          agentTags,
 	}
 
+	h.Handle("/websocket/attach", notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.websocketAttach)))
 	h.Handle("/websocket/exec", notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.websocketExec)))
 	return h
 }
