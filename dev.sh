@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-IMAGE_NAME=portainer/pagent:intel
+IMAGE_NAME=portainer/pagent:edge
 LOG_LEVEL=DEBUG
 CAP_HOST_MANAGEMENT=1 #Enabled by default. Change this to anything else to disable this feature
 #TUNNELLING_MODE=1
@@ -29,7 +29,7 @@ function compile() {
 
 }
 
-function build_iot() {
+function build_edge() {
     echo "Building..."
 
     echo "Building image locally and exporting to Vagrant node..."
@@ -109,8 +109,8 @@ function main() {
   compile
   if [ "${MODE}" == 'local' ]; then
     deploy_local
-  elif [ "${MODE}" == 'iot' ]; then
-    build_iot
+  elif [ "${MODE}" == 'edge' ]; then
+    build_edge
   else
     # Only to be used with deviantony/vagrant-swarm-cluster.git
     deploy_swarm
