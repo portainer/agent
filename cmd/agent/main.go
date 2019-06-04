@@ -1,15 +1,6 @@
 package main
 
 import (
-	"log"
-	"net"
-	"os"
-	"regexp"
-	"runtime"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/hashicorp/logutils"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
@@ -17,6 +8,11 @@ import (
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
 	cluster "github.com/portainer/agent/serf"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
@@ -65,8 +61,7 @@ func setupLogging() {
 	log.SetOutput(filter)
 }
 
-func retrieveInformationFromDockerEnvironment() (map[string]string, error) {
-	infoService := docker.InfoService{}
+func retrieveInformationFromDockerEnvironment(infoService agent.InfoService) (map[string]string, error) {
 	agentTags, err := infoService.GetInformationFromDockerEngine()
 	if err != nil {
 		return nil, err
@@ -75,46 +70,15 @@ func retrieveInformationFromDockerEnvironment() (map[string]string, error) {
 	return agentTags, nil
 }
 
-func retrieveAdvertiseAddress() (string, error) {
-	// TODO: determine a cleaner way to retrieve the container IP that will be used
-	// to communicate with other agents.
-	// This IP address is also used in the self-signed TLS certificates generation process.
-	// Must match the container IP in the overlay network when used inside a Swarm.
-	ifaces, err := net.Interfaces()
+func retrieveAdvertiseAddress(infoService agent.InfoService) (string, error) {
+	containerName, err := os.Hostname()
 	if err != nil {
 		return "", err
 	}
 
-	var advertiseAddr string
-	for _, i := range ifaces {
-		if matched, _ := regexp.MatchString(`^(eth0)$|^(vEthernet) \(.*\)$`, i.Name); matched {
-			addrs, err := i.Addrs()
-			if err != nil {
-				return "", err
-			}
-
-			j := 0
-			// On Windows first IP address is link-local IPv6
-			if runtime.GOOS == "windows" {
-				j = 1
-			}
-
-			var ip net.IP
-			switch v := addrs[j].(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
-			}
-			if ip.String() != `127.0.0.1` {
-				advertiseAddr = ip.String()
-				break
-			}
-		}
-	}
-
-	if advertiseAddr == "" {
-		return "", agent.ErrRetrievingAdvertiseAddr
+	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName)
+	if err != nil {
+		return "", err
 	}
 
 	return advertiseAddr, nil
@@ -123,7 +87,8 @@ func retrieveAdvertiseAddress() (string, error) {
 func main() {
 	setupLogging()
 
-	agentTags, err := retrieveInformationFromDockerEnvironment()
+	infoService := docker.InfoService{}
+	agentTags, err := retrieveInformationFromDockerEnvironment(&infoService)
 	if err != nil {
 		log.Fatalf("[ERROR] - Unable to retrieve information from Docker: %s", err)
 	}
@@ -141,7 +106,7 @@ func main() {
 
 	log.Printf("[DEBUG] - Agent details: %v\n", agentTags)
 
-	advertiseAddr, err := retrieveAdvertiseAddress()
+	advertiseAddr, err := retrieveAdvertiseAddress(&infoService)
 	if err != nil {
 		log.Fatalf("[ERROR] - Unable to retrieve advertise address: %s", err)
 	}

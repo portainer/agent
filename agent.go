@@ -60,6 +60,7 @@ type (
 	// InfoService is used to retrieve information from a Docker environment.
 	InfoService interface {
 		GetInformationFromDockerEngine() (map[string]string, error)
+		GetContainerIpFromDockerEngine(containerName string) (string, error)
 	}
 
 	// TLSService is used to create TLS certificates to use enable HTTPS.
@@ -76,7 +77,7 @@ type (
 
 const (
 	// AgentVersion represents the version of the agent.
-	AgentVersion = "1.2.1"
+	AgentVersion = "1.3.0"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultListenAddr is the default address used by the web server.
