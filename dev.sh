@@ -3,9 +3,10 @@
 IMAGE_NAME=portainer/pagent:edge
 LOG_LEVEL=DEBUG
 CAP_HOST_MANAGEMENT=1 #Enabled by default. Change this to anything else to disable this feature
-#TUNNELLING_MODE=1
-#TUNNEL_SERVER=192.168.178.142
-#AGENT_SECRET="bG9jYWxob3N0Ojk5OTk6Nzc3NzpyYW5kb21fc2VjcmV0"
+EDGE=1
+EDGE_TUNNEL_SERVER="192.168.1.68"
+#AGENT_SECRET="bG9jYWxob3N0OjgwMDA6Nzc3NzpjZjplZDo0YTo3YzplOTo1YTpjMTphNzo4MTphOTpkNjoyNDpiMzoyMDphOTphMjphZ2VudEByYW5kb21zdHJpbmc"
+#AGENT_SECRET="bG9jYWxob3N0OjgwMDA6NjM0MTk6Y2Y6ZWQ6NGE6N2M6ZTk6NWE6YzE6YTc6ODE6YTk6ZDY6MjQ6YjM6MjA6YTk6YTI6YWdlbnRAcmFuZG9tc3RyaW5n"
 VAGRANT=true
 TMP="/tmp"
 
@@ -34,38 +35,41 @@ function build_edge() {
 
     echo "Building image locally and exporting to Vagrant node..."
     docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
-    docker push "${IMAGE_NAME}"
-#    docker save "${IMAGE_NAME}" -o "${TMP}/portainer-agent.tar"
-#    docker -H "10.0.10.11:2375" load -i "${TMP}/portainer-agent.tar"
+#    docker push "${IMAGE_NAME}"
+    docker save "${IMAGE_NAME}" -o "${TMP}/portainer-agent.tar"
+    docker -H "10.0.10.10:2375" rmi "${IMAGE_NAME}"
+    docker -H "10.0.10.10:2375" load -i "${TMP}/portainer-agent.tar"
+
+    deploy_local
 }
 
 function deploy_local() {
   echo "Cleanup previous settings..."
-  docker rm -f portainer-agent-dev
-  docker rmi "${IMAGE_NAME}"
+  docker -H "10.0.10.10:2375" rm -f portainer-agent-dev
 
   echo "Image build..."
-  docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
+#  docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
 
   echo "Deployment..."
-  docker run -d --name portainer-agent-dev \
+  docker -H "10.0.10.10:2375" run -d --name portainer-agent-dev \
   -e LOG_LEVEL=${LOG_LEVEL} \
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
-  -e TUNNELLING_MODE=${TUNNELLING_MODE} \
-  -e TUNNEL_SERVER=${TUNNEL_SERVER} \
-  -e AGENT_SECRET=${AGENT_SECRET} \
+  -e EDGE=${EDGE} \
+  -e EDGE_TUNNEL_SERVER=${EDGE_TUNNEL_SERVER} \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /var/lib/docker/volumes:/var/lib/docker/volumes \
   -v /:/host \
   -p 9001:9001 \
+  -p 80:80 \
   "${IMAGE_NAME}"
 
-  docker logs -f portainer-agent-dev
+  docker -H "10.0.10.10:2375" logs -f portainer-agent-dev
 }
 
 function deploy_swarm() {
   DOCKER_MANAGER=tcp://10.0.7.10
   DOCKER_NODE=tcp://10.0.7.11
+#  DOCKER_NODE2=tcp://10.0.7.12
 
   echo "Cleanup previous settings..."
 
@@ -75,12 +79,14 @@ function deploy_swarm() {
   docker -H "${DOCKER_MANAGER}:2375" network rm portainer-agent-dev-net
   docker -H "${DOCKER_MANAGER}:2375" rmi -f "${IMAGE_NAME}"
   docker -H "${DOCKER_NODE}:2375" rmi -f "${IMAGE_NAME}"
+#  docker -H "${DOCKER_NODE2}:2375" rmi -f "${IMAGE_NAME}"
 
   echo "Building image locally and exporting to Swarm cluster..."
   docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
   docker save "${IMAGE_NAME}" -o "${TMP}/portainer-agent.tar"
   docker -H "${DOCKER_MANAGER}:2375" load -i "${TMP}/portainer-agent.tar"
   docker -H "${DOCKER_NODE}:2375" load -i "${TMP}/portainer-agent.tar"
+#  docker -H "${DOCKER_NODE2}:2375" load -i "${TMP}/portainer-agent.tar"
 
   echo "Sleep..."
   sleep 5
@@ -92,12 +98,14 @@ function deploy_swarm() {
   --network portainer-agent-dev-net \
   -e LOG_LEVEL="${LOG_LEVEL}" \
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
+  -e EDGE=${EDGE} \
+  -e EDGE_TUNNEL_SERVER=${EDGE_TUNNEL_SERVER} \
   -e AGENT_CLUSTER_ADDR=tasks.portainer-agent-dev \
   --mode global \
   --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
   --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
   --mount type=bind,src=//,dst=/host \
-  --publish mode=host,target=9001,published=9001 \
+  --publish mode=host,target=80,published=80 \
   --restart-condition none \
   "${IMAGE_NAME}"
 

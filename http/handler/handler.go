@@ -35,7 +35,7 @@ const (
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
-func NewHandler(systemService agent.SystemService, cs agent.ClusterService, signatureService agent.DigitalSignatureService, agentTags map[string]string, agentOptions *agent.AgentOptions) *Handler {
+func NewHandler(systemService agent.SystemService, cs agent.ClusterService, signatureService agent.DigitalSignatureService, agentTags map[string]string, agentOptions *agent.Options) *Handler {
 	agentProxy := proxy.NewAgentProxy(cs, agentTags)
 	notaryService := security.NewNotaryService(signatureService)
 	return &Handler{
@@ -51,7 +51,7 @@ func NewHandler(systemService agent.SystemService, cs agent.ClusterService, sign
 
 func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
-	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
+	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
 
 	switch {

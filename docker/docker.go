@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+
 	"github.com/docker/docker/client"
 	"github.com/portainer/agent"
 )
@@ -39,6 +40,7 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 	return info, nil
 }
 
+// TODO: add DEBUG logs
 func (service *InfoService) GetContainerIpFromDockerEngine(containerName string) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 	if err != nil {

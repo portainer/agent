@@ -15,7 +15,9 @@ import (
 func AgentHTTPRequest(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
 	url := request.URL
 	url.Host = target.IPAddress + ":" + target.Port
-	url.Scheme = "https"
+	// TODO: http in edge mode
+	//url.Scheme = "https"
+	url.Scheme = "http"
 
 	proxyHTTPSRequest(rw, request, url, target.NodeName)
 }
@@ -24,7 +26,9 @@ func AgentHTTPRequest(rw http.ResponseWriter, request *http.Request, target *age
 func WebsocketRequest(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
 	url := request.URL
 	url.Host = target.IPAddress + ":" + target.Port
-	url.Scheme = "wss"
+	// TODO: ws in edge mode
+	//url.Scheme = "wss"
+	url.Scheme = "ws"
 
 	proxyWebsocketRequest(rw, request, url, target.NodeName)
 }

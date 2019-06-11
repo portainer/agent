@@ -28,8 +28,8 @@ func (service *ClusterService) Leave() {
 }
 
 // Create will create the agent configuration and automatically join the cluster.
-func (service *ClusterService) Create(advertiseAddr, joinAddr string, tags map[string]string) error {
-
+func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, tags map[string]string) (int, error) {
+	// TODO: pass global log level or logger
 	filter := &logutils.LevelFilter{
 		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
 		MinLevel: logutils.LogLevel("INFO"),
@@ -42,23 +42,22 @@ func (service *ClusterService) Create(advertiseAddr, joinAddr string, tags map[s
 	conf.MemberlistConfig.LogOutput = filter
 	conf.LogOutput = filter
 	conf.MemberlistConfig.AdvertiseAddr = advertiseAddr
-	log.Printf("[DEBUG] - Serf configured with AdvertiseAddr: %s\n", advertiseAddr)
+	log.Printf("[DEBUG] [cluster,serf] [advertise_address: %s] [join_address: %s]", advertiseAddr, joinAddr)
 
 	cluster, err := serf.Create(conf)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	log.Printf("[DEBUG] - Will join cluster via: %s\n", joinAddr)
-
-	_, err = cluster.Join([]string{joinAddr}, true)
+	nodeCount, err := cluster.Join(joinAddr, true)
 	if err != nil {
-		log.Printf("[DEBUG] - Couldn't join cluster, starting own: %v\n", err)
+		log.Printf("[DEBUG] [cluster,serf] [message: Unable to join cluster] [error: %s]", err)
 	}
+	log.Printf("[DEBUG] [cluster,serf] [contacted_nodes: %d]", nodeCount)
 
 	service.cluster = cluster
 
-	return nil
+	return nodeCount, nil
 }
 
 // Members returns the list of cluster members.
@@ -75,6 +74,7 @@ func (service *ClusterService) Members() []agent.ClusterMember {
 				NodeRole:  member.Tags[agent.MemberTagKeyNodeRole],
 				NodeName:  member.Tags[agent.MemberTagKeyNodeName],
 			}
+
 			clusterMembers = append(clusterMembers, clusterMember)
 		}
 	}

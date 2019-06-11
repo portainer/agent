@@ -1,5 +1,8 @@
 package agent
 
+// TODO: replace entire package usage with errors.New()
+// and remove this file
+
 // Error represents an application error.
 type Error string
 
@@ -22,6 +25,5 @@ const (
 
 // Agent runtime errors.
 const (
-	ErrPublicKeyUnavailable = Error("Portainer public key unavailable")
-	ErrFeatureDisabled      = Error("Agent feature is disabled")
+	ErrFeatureDisabled = Error("This agent feature is not enabled")
 )

@@ -13,7 +13,7 @@ import (
 // DELETE request on /browse/delete?id=:id&path=:path
 func (handler *Handler) browseDelete(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
-	if volumeID == "" && !handler.AgentOptions.HostManagementEnabled {
+	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
 		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
 	}
 

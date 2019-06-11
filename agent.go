@@ -2,13 +2,17 @@ package agent
 
 type (
 	// AgentOptions are the options used to start an agent.
-	AgentOptions struct {
-		Port                  string
+	Options struct {
+		AgentServerAddr       string
+		AgentServerPort       string
 		ClusterAddress        string
 		HostManagementEnabled bool
-		TunnelingMode         bool
-		TunnelServer          string
 		SharedSecret          string
+		EdgeMode              bool
+		EdgeKey               string
+		EdgeTunnelServerAddr  string
+		EdgeServerAddr        string
+		EdgeServerPort        string
 	}
 
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -20,8 +24,8 @@ type (
 	}
 
 	// AgentMetadata is the representation of the metadata object used to decorate
-	// all the objects in an aggregated response.
-	AgentMetadata struct {
+	// all the objects in the response of a Docker aggregated resource request.
+	Metadata struct {
 		Agent struct {
 			NodeName string `json:"NodeName"`
 		} `json:"Agent"`
@@ -47,11 +51,18 @@ type (
 
 	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
-		Create(advertiseAddr, joinAddr string, tags map[string]string) error
+		Create(advertiseAddr string, joinAddr []string, tags map[string]string) (int, error)
 		Members() []ClusterMember
 		Leave()
 		GetMemberByRole(role string) *ClusterMember
 		GetMemberByNodeName(nodeName string) *ClusterMember
+	}
+
+	// ReverseTunnelClient is used to create a reverse proxy tunnel when
+	// the agent is started in Edge mode.
+	ReverseTunnelClient interface {
+		CreateTunnel(key string) error
+		IsKeySet() bool
 	}
 
 	// DigitalSignatureService is used to validate digital signatures.
@@ -78,16 +89,22 @@ type (
 )
 
 const (
-	// AgentVersion represents the version of the agent.
-	AgentVersion = "1.3.0"
+	// Version represents the version of the agent.
+	Version = "1.3.0"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
-	// DefaultListenAddr is the default address used by the web server.
-	DefaultListenAddr = "0.0.0.0"
-	// DefaultAgentPort is the default port exposed by the web server.
+	// DefaultAgentAddr is the default address used by the Agent API server.
+	DefaultAgentAddr = "0.0.0.0"
+	// DefaultAgentPort is the default port exposed by the Agent API server.
 	DefaultAgentPort = "9001"
 	// DefaultLogLevel is the default logging level.
 	DefaultLogLevel = "INFO"
+	// DefaultEdgeSecurityShutdown is the default time after which the Edge server will shutdown if no key is specified
+	DefaultEdgeSecurityShutdown = 15
+	// DefaultEdgeServerAddr is the default address used by the Edge server.
+	DefaultEdgeServerAddr = "0.0.0.0"
+	// DefaultEdgeServerPort is the default port exposed by the Edge server.
+	DefaultEdgeServerPort = "80"
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.

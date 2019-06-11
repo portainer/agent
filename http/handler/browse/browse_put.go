@@ -36,7 +36,7 @@ func (payload *browsePutPayload) Validate(r *http.Request) error {
 // POST request on /browse/put?id=:id
 func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
-	if volumeID == "" && !handler.AgentOptions.HostManagementEnabled {
+	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
 		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
 	}
 
