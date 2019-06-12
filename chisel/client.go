@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"log"
 	"strings"
 
 	chclient "github.com/jpillora/chisel/client"
@@ -38,35 +39,33 @@ func NewClient(tunnelServerAddr string) *Client {
 	}
 }
 
-// TODO: change key delimiter ":" to something else, fingerprint uses ":"
-
 // parseEdgeKey decodes a base64 encoded key and extract the decoded information from the following
-// format: tunnel_server_addr:tunnel_server_port:tunnel_server_fingerprint:tunnel_port:credentials
-// credentials are expected in the user@password format
+// format: tunnel_server_addr|tunnel_server_port|tunnel_server_fingerprint|tunnel_port|credentials
+// credentials are expected in the user:password format
 func parseEdgeKey(key string) (*keyInformation, error) {
 	decodedKey, err := base64.RawStdEncoding.DecodeString(key)
 	if err != nil {
 		return nil, err
 	}
 
-	keyInfo := strings.Split(string(decodedKey), ":")
+	keyInfo := strings.Split(string(decodedKey), "|")
 
-	// TODO: re-enable after changing delimiter
-	//if len(keyInfo) != 5 {
-	//	return nil, errors.New("invalid key format")
-	//}
+	if len(keyInfo) != 5 {
+		return nil, errors.New("invalid key format")
+	}
 
 	keyInformation := &keyInformation{
 		TunnelServerAddr:        keyInfo[0],
 		TunnelServerPort:        keyInfo[1],
-		TunnelServerFingerprint: keyInfo[3],
-		TunnelPort:              keyInfo[2],
-		Credentials:             strings.Replace(keyInfo[4], "@", ":", -1),
+		TunnelServerFingerprint: keyInfo[2],
+		TunnelPort:              keyInfo[3],
+		Credentials:             keyInfo[4],
 	}
 
 	return keyInformation, nil
 }
 
+// IsKeySet returns true if a key has been associated with this client.
 func (client *Client) IsKeySet() bool {
 	if client.key == nil {
 		return false
@@ -74,6 +73,9 @@ func (client *Client) IsKeySet() bool {
 	return true
 }
 
+// CreateTunnel will parse the encoded key to retrieve the information
+// required to create a tunnel.
+// This function also associates the key to the client.
 func (client *Client) CreateTunnel(key string) error {
 	keyInformation, err := parseEdgeKey(key)
 	if err != nil {
@@ -85,6 +87,7 @@ func (client *Client) CreateTunnel(key string) error {
 			return errors.New("cannot use localhost as tunnel server address")
 		}
 		keyInformation.TunnelServerAddr = client.tunnelServerAddress
+		log.Printf("[DEBUG] [edge,rtunnel] [tunnel_server_addr: %s] [message: overriding tunnel server address]", keyInformation.TunnelServerAddr)
 	}
 
 	client.key = keyInformation
@@ -100,55 +103,11 @@ func (client *Client) CreateTunnel(key string) error {
 	chiselClient, err := chclient.NewClient(config)
 	if err != nil {
 		return err
-		//log.Fatalf("[ERROR] [edge] [message: Unable to create tunnel client] [error: %s]", err)
 	}
 
 	err = chiselClient.Start(context.Background())
 	if err != nil {
 		return err
-		//log.Fatalf("[ERROR] [edge] [message: Unable to start tunnel client] [error: %s]", err)
 	}
 	return nil
 }
-
-//// TODO: should use another options EDGE_KEY and be validated in options parsing
-//decodedKey, err := base64.RawStdEncoding.DecodeString(key)
-//if err != nil {
-//log.Fatalf("[ERROR] - Invalid AGENT_SECRET: %s", err)
-//}
-//
-//keyInfo := strings.Split(string(decodedKey), ":")
-//tunnelServerAddr := keyInfo[0]
-//tunnelServerPort := keyInfo[1]
-//remotePort := keyInfo[2]
-//fingerprint := keyInfo[3]
-//credentials := strings.Replace(keyInfo[4], "@", ":", -1)
-//
-//log.Printf("[DEBUG] [edge] [tunnel_server_addr: %s] [tunnel_server_port: %d] [remote_port: %s] [server_fingerprint: %s]", tunnelServerAddr, tunnelServerPort, remotePort, fingerprint)
-//
-//// TODO: validation must be done somewhere
-////or options must be injected
-//if tunnelServerAddr == "localhost" {
-//if server == "" {
-//log.Fatal("[ERROR] - Tunnel server env var required")
-//}
-//tunnelServerAddr = server
-//}
-//
-//// TODO: manage timeout
-//chiselClient, err := chclient.NewClient(&chclient.Config{
-//Server:      tunnelServerAddr + ":" + tunnelServerPort,
-//Remotes:     []string{"R:" + remotePort + ":" + "localhost:9001"},
-//Fingerprint: fingerprint,
-//Auth:        credentials,
-//})
-//if err != nil {
-//log.Fatalf("[ERROR] [edge] [message: Unable to create tunnel client] [error: %s]", err)
-//}
-//
-//err = chiselClient.Start(context.Background())
-//if err != nil {
-//log.Fatalf("[ERROR] [edge] [message: Unable to start tunnel client] [error: %s]", err)
-//}
-//
-//return nil

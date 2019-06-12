@@ -13,6 +13,7 @@ type (
 		EdgeTunnelServerAddr  string
 		EdgeServerAddr        string
 		EdgeServerPort        string
+		LogLevel              string
 	}
 
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -47,6 +48,11 @@ type (
 	HostInfo struct {
 		PCIDevices    []PciDevice
 		PhysicalDisks []PhysicalDisk
+	}
+
+	// OptionParser is used to parse options.
+	OptionParser interface {
+		Options() (*Options, error)
 	}
 
 	// ClusterService is used to manage a cluster of agents.

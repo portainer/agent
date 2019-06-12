@@ -2,144 +2,44 @@ package main
 
 import (
 	"log"
-	"os"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/portainer/agent/chisel"
-
-	"github.com/hashicorp/logutils"
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/chisel"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
+	"github.com/portainer/agent/logutils"
 	"github.com/portainer/agent/net"
+	"github.com/portainer/agent/os"
 	cluster "github.com/portainer/agent/serf"
 )
 
-// TODO: should be externalised as OptionParser
-func initOptionsFromEnvironment(clusterMode bool) (*agent.Options, error) {
-	options := &agent.Options{
-		AgentServerAddr:       agent.DefaultAgentAddr,
-		AgentServerPort:       agent.DefaultAgentPort,
-		HostManagementEnabled: false,
-		SharedSecret:          os.Getenv("AGENT_SECRET"),
-		EdgeServerAddr:        agent.DefaultEdgeServerAddr,
-		EdgeServerPort:        agent.DefaultEdgeServerPort,
-		EdgeTunnelServerAddr:  os.Getenv("EDGE_TUNNEL_SERVER"),
-	}
-
-	if os.Getenv("CAP_HOST_MANAGEMENT") == "1" {
-		options.HostManagementEnabled = true
-	}
-
-	if os.Getenv("EDGE") == "1" {
-		options.EdgeMode = true
-	}
-
-	clusterAddressEnv := os.Getenv("AGENT_CLUSTER_ADDR")
-	if clusterAddressEnv == "" && clusterMode {
-		return nil, agent.ErrEnvClusterAddressRequired
-	}
-	options.ClusterAddress = clusterAddressEnv
-
-	agentAddrEnv := os.Getenv("AGENT_ADDR")
-	if agentAddrEnv != "" {
-		options.AgentServerAddr = agentAddrEnv
-	}
-
-	agentPortEnv := os.Getenv("AGENT_PORT")
-	if agentPortEnv != "" {
-		_, err := strconv.Atoi(agentPortEnv)
-		if err != nil {
-			return nil, agent.ErrInvalidEnvPortFormat
-		}
-		options.AgentServerPort = agentPortEnv
-	}
-
-	edgeAddrEnv := os.Getenv("EDGE_SERVER_ADDR")
-	if edgeAddrEnv != "" {
-		options.EdgeServerAddr = edgeAddrEnv
-	}
-
-	edgePortEnv := os.Getenv("EDGE_SERVER_PORT")
-	if edgePortEnv != "" {
-		_, err := strconv.Atoi(edgePortEnv)
-		if err != nil {
-			return nil, agent.ErrInvalidEnvPortFormat
-		}
-		options.EdgeServerPort = edgePortEnv
-	}
-
-	edgeKeyEnv := os.Getenv("EDGE_KEY")
-	if edgeKeyEnv != "" {
-		options.EdgeKey = edgeKeyEnv
-	}
-
-	return options, nil
-}
-
-func setupLogging() {
-	logLevel := agent.DefaultLogLevel
-	logLevelEnv := os.Getenv("LOG_LEVEL")
-	if logLevelEnv != "" {
-		logLevel = logLevelEnv
-	}
-
-	filter := &logutils.LevelFilter{
-		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
-		MinLevel: logutils.LogLevel(strings.ToUpper(logLevel)),
-		Writer:   os.Stderr,
-	}
-	log.SetOutput(filter)
-}
-
-func retrieveInformationFromDockerEnvironment(infoService agent.InfoService) (map[string]string, error) {
-	agentTags, err := infoService.GetInformationFromDockerEngine()
-	if err != nil {
-		return nil, err
-	}
-
-	return agentTags, nil
-}
-
-func retrieveAdvertiseAddress(infoService agent.InfoService) (string, error) {
-	containerName, err := os.Hostname()
-	if err != nil {
-		return "", err
-	}
-
-	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName)
-	if err != nil {
-		return "", err
-	}
-
-	return advertiseAddr, nil
-}
-
 func main() {
-	setupLogging()
+	options, err := parseOptions()
+	if err != nil {
+		log.Fatalf("[ERROR] [main,configuration] [message: Invalid agent configuration] [error: %s]", err)
+	}
+
+	logutils.SetupLogger(options.LogLevel)
 
 	infoService := docker.InfoService{}
 	agentTags, err := retrieveInformationFromDockerEnvironment(&infoService)
 	if err != nil {
 		log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve information from Docker] [error: %s]", err)
 	}
+	agentTags[agent.MemberTagKeyAgentPort] = options.AgentServerPort
+	log.Printf("[DEBUG] [main,configuration] [Member tags: %+v]", agentTags)
 
 	clusterMode := false
 	if agentTags[agent.ApplicationTagMode] == "swarm" {
 		clusterMode = true
 	}
 
-	options, err := initOptionsFromEnvironment(clusterMode)
-	if err != nil {
-		log.Fatalf("[ERROR] [main,configuration] [message: Invalid agent configuration] [error: %s]", err)
+	if options.ClusterAddress == "" && clusterMode {
+		log.Fatalf("[ERROR] [main,configuration] [message: AGENT_CLUSTER_ADDR environment variable is required when deploying the agent inside a Swarm cluster]")
 	}
-	agentTags[agent.MemberTagKeyAgentPort] = options.AgentServerPort
-
-	log.Printf("[DEBUG] [main,configuration] [Member tags: %+v]", agentTags)
 
 	advertiseAddr, err := retrieveAdvertiseAddress(&infoService)
 	if err != nil {
@@ -196,7 +96,6 @@ func main() {
 
 		if options.EdgeKey == "" {
 			edgeServer := http.NewEdgeServer(reverseTunnelClient)
-			//edgeServer := http.NewFileServer(options.EdgeServerAddr, options.EdgeServerPort, startChiselClient, options.EdgeTunnelServerAddr)
 
 			go func() {
 				log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
@@ -213,7 +112,6 @@ func main() {
 				timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
 				<-timer1.C
 
-				// TODO: use getter?
 				if !reverseTunnelClient.IsKeySet() {
 					log.Printf("[INFO] [main,edge,http] - [message: Shutting down file server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
 					// TODO: error handling?
@@ -240,47 +138,30 @@ func main() {
 	}
 }
 
-// TODO: error management
-func startChiselClient(key, server string) error {
-	//// TODO: should use another options EDGE_KEY and be validated in options parsing
-	//decodedKey, err := base64.RawStdEncoding.DecodeString(key)
-	//if err != nil {
-	//	log.Fatalf("[ERROR] - Invalid AGENT_SECRET: %s", err)
-	//}
-	//
-	//keyInfo := strings.Split(string(decodedKey), ":")
-	//tunnelServerAddr := keyInfo[0]
-	//tunnelServerPort := keyInfo[1]
-	//remotePort := keyInfo[2]
-	//fingerprint := keyInfo[3]
-	//credentials := strings.Replace(keyInfo[4], "@", ":", -1)
-	//
-	//log.Printf("[DEBUG] [edge] [tunnel_server_addr: %s] [tunnel_server_port: %d] [remote_port: %s] [server_fingerprint: %s]", tunnelServerAddr, tunnelServerPort, remotePort, fingerprint)
-	//
-	//// TODO: validation must be done somewhere
-	////or options must be injected
-	//if tunnelServerAddr == "localhost" {
-	//	if server == "" {
-	//		log.Fatal("[ERROR] - Tunnel server env var required")
-	//	}
-	//	tunnelServerAddr = server
-	//}
-	//
-	//// TODO: manage timeout
-	//chiselClient, err := chclient.NewClient(&chclient.Config{
-	//	Server:      tunnelServerAddr + ":" + tunnelServerPort,
-	//	Remotes:     []string{"R:" + remotePort + ":" + "localhost:9001"},
-	//	Fingerprint: fingerprint,
-	//	Auth:        credentials,
-	//})
-	//if err != nil {
-	//	log.Fatalf("[ERROR] [edge] [message: Unable to create tunnel client] [error: %s]", err)
-	//}
-	//
-	//err = chiselClient.Start(context.Background())
-	//if err != nil {
-	//	log.Fatalf("[ERROR] [edge] [message: Unable to start tunnel client] [error: %s]", err)
-	//}
+func parseOptions() (*agent.Options, error) {
+	optionParser := os.NewEnvOptionParser()
+	return optionParser.Options()
+}
 
-	return nil
+func retrieveInformationFromDockerEnvironment(infoService agent.InfoService) (map[string]string, error) {
+	agentTags, err := infoService.GetInformationFromDockerEngine()
+	if err != nil {
+		return nil, err
+	}
+
+	return agentTags, nil
+}
+
+func retrieveAdvertiseAddress(infoService agent.InfoService) (string, error) {
+	containerName, err := os.GetHostName()
+	if err != nil {
+		return "", err
+	}
+
+	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName)
+	if err != nil {
+		return "", err
+	}
+
+	return advertiseAddr, nil
 }
