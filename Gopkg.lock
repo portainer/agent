@@ -6,8 +6,8 @@
   name = "github.com/Microsoft/go-winio"
   packages = ["."]
   pruneopts = "UT"
-  revision = "1a8911d1ed007260465c3bfbbc785ac6915a0bb8"
-  version = "v0.4.12"
+  revision = "97e4973ce50b2ff5f09635a57e2b88a037aae829"
+  version = "v0.4.11"
 
 [[projects]]
   branch = "master"
@@ -106,12 +106,20 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:3af6be4fee7c08f81f13d36f04ffb63ad4b6b5aaba12cce96095c7c2863d4912"
+  digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
+  name = "github.com/gorilla/context"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
+  version = "v1.1.1"
+
+[[projects]]
+  digest = "1:e73f5b0152105f18bc131fba127d9949305c8693f8a762588a82a48f61756f5f"
   name = "github.com/gorilla/mux"
   packages = ["."]
   pruneopts = "UT"
-  revision = "ed099d42384823742bba0bf9a72b53b55c9e2e38"
-  version = "v1.7.2"
+  revision = "e3702bed27f0d39777b0b37b664b6280e8ef8fbf"
+  version = "v1.6.2"
 
 [[projects]]
   digest = "1:7b5c6e2eeaa9ae5907c391a91c132abfd5c9e8a784a341b5625e750c67e6825d"
@@ -186,15 +194,15 @@
   version = "v0.1.4"
 
 [[projects]]
-  digest = "1:56f92ad6e3432c53f4912c9d7c0b9a66cc19338f6a98f100d3b4557a32f1a33a"
+  digest = "1:20f41e776c1279d709957e9946c53f3922fa1cffd098860515ad5b55a5a91dac"
   name = "github.com/hashicorp/serf"
   packages = [
     "coordinate",
     "serf",
   ]
   pruneopts = "UT"
-  revision = "15cfd05de3dffb3664aa37b06e91f970b825e380"
-  version = "v0.8.3"
+  revision = "d6574a5bb1226678d7010325fb6c985db20ee458"
+  version = "v0.8.1"
 
 [[projects]]
   digest = "1:07b0c269ddc472197b0796a34761d707d1c71a8fa651bf6421282ad756f9c494"
@@ -248,12 +256,12 @@
   revision = "7ed82d81a28c9ba1ed6fd1157ce714760f214c98"
 
 [[projects]]
-  digest = "1:bb576d748d34ebc8f2598cd29cd00b0d8dd959c54bfbbc2cef2feb5f8a235846"
+  digest = "1:7c572c76f914b3d3f7d75ce752c3a6ac5ba03be1f775e4602a3f18d7b08ddbbb"
   name = "github.com/miekg/dns"
   packages = ["."]
   pruneopts = "UT"
-  revision = "d16ecb693e3f8d524769fefce2192a4c92207ff9"
-  version = "v1.1.13"
+  revision = "9cfcfb2209aecb663673bd44b11f71c215186b80"
+  version = "v1.1.14"
 
 [[projects]]
   digest = "1:5d231480e1c64a726869bc4142d270184c419749d34f167646baa21008eb0a79"
@@ -320,7 +328,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9aba49bc9bf2db945f04cf18262f2d9ce45496ddbaa6d1c2e8295eedabd6979c"
+  digest = "1:455256a34ce27873a41036fb08fab403cf4ea73364525229c757502ac145430d"
   name = "golang.org/x/crypto"
   packages = [
     "curve25519",
@@ -332,11 +340,11 @@
     "ssh",
   ]
   pruneopts = "UT"
-  revision = "f99c8df09eb5bff426315721bfa5f16a99cad32c"
+  revision = "5c40567a22f818bd14a1ea7245dad9f8ef0691aa"
 
 [[projects]]
   branch = "master"
-  digest = "1:f3d76405fc4c8eea6ee0e65c80a63b612afce336dbd064f0472b0aadb4e4e318"
+  digest = "1:cc8eb289fb98b239002d1104e6e92ad45567e1157803c1987e074c0371471c2a"
   name = "golang.org/x/net"
   packages = [
     "bpf",
@@ -350,11 +358,11 @@
     "proxy",
   ]
   pruneopts = "UT"
-  revision = "461777fb6f67e8cb9d70cda16573678d085a74cf"
+  revision = "3f473d35a33aa6fdd203e306dc439b797820e3f1"
 
 [[projects]]
   branch = "master"
-  digest = "1:77cb5c6f7f9a645ebd9cb28853266fffc4c1a9cf39de1e64ddfe28acf1601cc2"
+  digest = "1:8ea0513faaf49c2491a6aa1c4962261295ed140478e3e84b5c699f42af0a3936"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -362,7 +370,7 @@
     "windows",
   ]
   pruneopts = "UT"
-  revision = "301114b31cced3624480dfb114ca1b495ec69aa5"
+  revision = "93c9922d18aeb82498a065f07aec7ad7fa60dfb7"
 
 [solve-meta]
   analyzer-name = "dep"

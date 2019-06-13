@@ -16,9 +16,6 @@ func (b *broadcast) Invalidates(other memberlist.Broadcast) bool {
 	return false
 }
 
-// implements memberlist.UniqueBroadcast
-func (b *broadcast) UniqueBroadcast() {}
-
 func (b *broadcast) Message() []byte {
 	return b.msg
 }

@@ -10,10 +10,8 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"os"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -75,7 +73,7 @@ type Serf struct {
 
 	eventBroadcasts *memberlist.TransmitLimitedQueue
 	eventBuffer     []*userEvents
-	eventJoinIgnore atomic.Value
+	eventJoinIgnore bool
 	eventMinTime    LamportTime
 	eventLock       sync.RWMutex
 
@@ -223,8 +221,8 @@ type queries struct {
 }
 
 const (
-	snapshotSizeLimit = 128 * 1024 // Maximum 128 KB snapshot
-	UserEventSizeLimit = 9 * 1024  // Maximum 9KB for event name and payload
+	UserEventSizeLimit = 512        // Maximum byte size for event name and payload
+	snapshotSizeLimit  = 128 * 1024 // Maximum 128 KB snapshot
 )
 
 // Create creates a new Serf instance, starting all the background tasks
@@ -242,28 +240,14 @@ func Create(conf *Config) (*Serf, error) {
 			conf.ProtocolVersion, ProtocolVersionMin, ProtocolVersionMax)
 	}
 
-	if conf.UserEventSizeLimit > UserEventSizeLimit {
-		return nil, fmt.Errorf("user event size limit exceeds limit of %d bytes", UserEventSizeLimit)
-	}
-
-	logger := conf.Logger
-	if logger == nil {
-		logOutput := conf.LogOutput
-		if logOutput == nil {
-			logOutput = os.Stderr
-		}
-		logger = log.New(logOutput, "", log.LstdFlags)
-	}
-
 	serf := &Serf{
 		config:        conf,
-		logger:        logger,
+		logger:        log.New(conf.LogOutput, "", log.LstdFlags),
 		members:       make(map[string]*memberState),
 		queryResponse: make(map[LamportTime]*QueryResponse),
 		shutdownCh:    make(chan struct{}),
 		state:         SerfAlive,
 	}
-	serf.eventJoinIgnore.Store(false)
 
 	// Check that the meta data length is okay
 	if len(serf.encodeTags(conf.Tags)) > memberlist.MetaMaxSize {
@@ -318,6 +302,7 @@ func Create(conf *Config) (*Serf, error) {
 			conf.RejoinAfterLeave,
 			serf.logger,
 			&serf.clock,
+			serf.coordClient,
 			conf.EventCh,
 			serf.shutdownCh)
 		if err != nil {
@@ -343,15 +328,21 @@ func Create(conf *Config) (*Serf, error) {
 	// Setup the various broadcast queues, which we use to send our own
 	// custom broadcasts along the gossip channel.
 	serf.broadcasts = &memberlist.TransmitLimitedQueue{
-		NumNodes:       serf.NumNodes,
+		NumNodes: func() int {
+			return len(serf.members)
+		},
 		RetransmitMult: conf.MemberlistConfig.RetransmitMult,
 	}
 	serf.eventBroadcasts = &memberlist.TransmitLimitedQueue{
-		NumNodes:       serf.NumNodes,
+		NumNodes: func() int {
+			return len(serf.members)
+		},
 		RetransmitMult: conf.MemberlistConfig.RetransmitMult,
 	}
 	serf.queryBroadcasts = &memberlist.TransmitLimitedQueue{
-		NumNodes:       serf.NumNodes,
+		NumNodes: func() int {
+			return len(serf.members)
+		},
 		RetransmitMult: conf.MemberlistConfig.RetransmitMult,
 	}
 
@@ -441,25 +432,14 @@ func (s *Serf) KeyManager() *KeyManager {
 }
 
 // UserEvent is used to broadcast a custom user event with a given
-// name and payload. If the configured size limit is exceeded and error will be returned.
-// If coalesce is enabled, nodes are allowed to coalesce this event.
-// Coalescing is only available starting in v0.2
+// name and payload. The events must be fairly small, and if the
+// size limit is exceeded and error will be returned. If coalesce is enabled,
+// nodes are allowed to coalesce this event. Coalescing is only available
+// starting in v0.2
 func (s *Serf) UserEvent(name string, payload []byte, coalesce bool) error {
-	payloadSizeBeforeEncoding := len(name)+len(payload)
-
-	// Check size before encoding to prevent needless encoding and return early if it's over the specified limit.
-	if payloadSizeBeforeEncoding > s.config.UserEventSizeLimit {
-		return fmt.Errorf(
-			"user event exceeds configured limit of %d bytes before encoding",
-			s.config.UserEventSizeLimit,
-		)
-	}
-
-	if payloadSizeBeforeEncoding > UserEventSizeLimit {
-		return fmt.Errorf(
-			"user event exceeds sane limit of %d bytes before encoding",
-			UserEventSizeLimit,
-		)
+	// Check the size limit
+	if len(name)+len(payload) > UserEventSizeLimit {
+		return fmt.Errorf("user event exceeds limit of %d bytes", UserEventSizeLimit)
 	}
 
 	// Create a message
@@ -469,34 +449,16 @@ func (s *Serf) UserEvent(name string, payload []byte, coalesce bool) error {
 		Payload: payload,
 		CC:      coalesce,
 	}
+	s.eventClock.Increment()
+
+	// Process update locally
+	s.handleUserEvent(&msg)
 
 	// Start broadcasting the event
 	raw, err := encodeMessage(messageUserEventType, &msg)
 	if err != nil {
 		return err
 	}
-
-	// Check the size after encoding to be sure again that
-	// we're not attempting to send over the specified size limit.
-	if len(raw) > s.config.UserEventSizeLimit {
-		return fmt.Errorf(
-			"encoded user event exceeds configured limit of %d bytes after encoding",
-			s.config.UserEventSizeLimit,
-		)
-	}
-
-	if len(raw) > UserEventSizeLimit {
-		return fmt.Errorf(
-			"encoded user event exceeds sane limit of %d bytes before encoding",
-			UserEventSizeLimit,
-		)
-	}
-
-	s.eventClock.Increment()
-
-	// Process update locally
-	s.handleUserEvent(&msg)
-
 	s.eventBroadcasts.QueueBroadcast(&broadcast{
 		msg: raw,
 	})
@@ -627,9 +589,9 @@ func (s *Serf) Join(existing []string, ignoreOld bool) (int, error) {
 	// Ignore any events from a potential join. This is safe since we hold
 	// the joinLock and nobody else can be doing a Join
 	if ignoreOld {
-		s.eventJoinIgnore.Store(true)
+		s.eventJoinIgnore = true
 		defer func() {
-			s.eventJoinIgnore.Store(false)
+			s.eventJoinIgnore = false
 		}()
 	}
 
@@ -723,13 +685,6 @@ func (s *Serf) Leave() error {
 	if err != nil {
 		return err
 	}
-
-	// Wait for the leave to propagate through the cluster. The broadcast
-	// timeout is how long we wait for the message to go out from our own
-	// queue, but this wait is for that message to propagate through the
-	// cluster. In particular, we want to stay up long enough to service
-	// any probes from other nodes before they learn about us leaving.
-	time.Sleep(s.config.LeavePropagateDelay)
 
 	// Transition to Left only if we not already shutdown
 	s.stateLock.Lock()
@@ -837,15 +792,13 @@ func (s *Serf) Shutdown() error {
 		s.logger.Printf("[WARN] serf: Shutdown without a Leave")
 	}
 
-	// Wait to close the shutdown channel until after we've shut down the
-	// memberlist and its associated network resources, since the shutdown
-	// channel signals that we are cleaned up outside of Serf.
 	s.state = SerfShutdown
+	close(s.shutdownCh)
+
 	err := s.memberlist.Shutdown()
 	if err != nil {
 		return err
 	}
-	close(s.shutdownCh)
 
 	// Wait for the snapshoter to finish if we have one
 	if s.snapshotter != nil {
@@ -1355,16 +1308,18 @@ func (s *Serf) handleQueryResponse(resp *messageQueryResponse) {
 		}
 
 		metrics.IncrCounter([]string{"serf", "query_responses"}, 1)
-		err := query.sendResponse(NodeResponse{From: resp.From, Payload: resp.Payload})
-		if err != nil {
-			s.logger.Printf("[WARN] %v", err)
+		select {
+		case query.respCh <- NodeResponse{From: resp.From, Payload: resp.Payload}:
+			query.responses[resp.From] = struct{}{}
+		default:
+			s.logger.Printf("[WARN] serf: Failed to deliver query response, dropping")
 		}
 	}
 }
 
 // handleNodeConflict is invoked when a join detects a conflict over a name.
 // This means two different nodes (IP/Port) are claiming the same name. Memberlist
-// will reject the "new" node mapping, but we can still be notified.
+// will reject the "new" node mapping, but we can still be notified
 func (s *Serf) handleNodeConflict(existing, other *memberlist.Node) {
 	// Log a basic warning if the node is not us...
 	if existing.Name != s.config.NodeName {
@@ -1417,7 +1372,7 @@ func (s *Serf) resolveNodeConflict() {
 
 		// Update the counters
 		responses++
-		if member.Addr.Equal(local.Addr) && member.Port == local.Port {
+		if bytes.Equal(member.Addr, local.Addr) && member.Port == local.Port {
 			matching++
 		}
 	}
@@ -1555,37 +1510,21 @@ func (s *Serf) reconnect() {
 	s.memberlist.Join([]string{addr.String()})
 }
 
-// getQueueMax will get the maximum queue depth, which might be dynamic depending
-// on how Serf is configured.
-func (s *Serf) getQueueMax() int {
-	max := s.config.MaxQueueDepth
-	if s.config.MinQueueDepth > 0 {
-		s.memberLock.RLock()
-		max = 2 * len(s.members)
-		s.memberLock.RUnlock()
-
-		if max < s.config.MinQueueDepth {
-			max = s.config.MinQueueDepth
-		}
-	}
-	return max
-}
-
 // checkQueueDepth periodically checks the size of a queue to see if
 // it is too large
 func (s *Serf) checkQueueDepth(name string, queue *memberlist.TransmitLimitedQueue) {
 	for {
 		select {
-		case <-time.After(s.config.QueueCheckInterval):
+		case <-time.After(time.Second):
 			numq := queue.NumQueued()
 			metrics.AddSample([]string{"serf", "queue", name}, float32(numq))
 			if numq >= s.config.QueueDepthWarning {
 				s.logger.Printf("[WARN] serf: %s queue depth: %d", name, numq)
 			}
-			if max := s.getQueueMax(); numq > max {
+			if numq > s.config.MaxQueueDepth {
 				s.logger.Printf("[WARN] serf: %s queue depth (%d) exceeds limit (%d), dropping messages!",
-					name, numq, max)
-				queue.Prune(max)
+					name, numq, s.config.MaxQueueDepth)
+				queue.Prune(s.config.MaxQueueDepth)
 			}
 		case <-s.shutdownCh:
 			return
@@ -1709,18 +1648,11 @@ func (s *Serf) Stats() map[string]string {
 	toString := func(v uint64) string {
 		return strconv.FormatUint(v, 10)
 	}
-	s.memberLock.RLock()
-	members := toString(uint64(len(s.members)))
-	failed := toString(uint64(len(s.failedMembers)))
-	left := toString(uint64(len(s.leftMembers)))
-	health_score := toString(uint64(s.memberlist.GetHealthScore()))
-
-	s.memberLock.RUnlock()
 	stats := map[string]string{
-		"members":      members,
-		"failed":       failed,
-		"left":         left,
-		"health_score": health_score,
+		"members":      toString(uint64(len(s.members))),
+		"failed":       toString(uint64(len(s.failedMembers))),
+		"left":         toString(uint64(len(s.leftMembers))),
+		"health_score": toString(uint64(s.memberlist.GetHealthScore())),
 		"member_time":  toString(uint64(s.clock.Time())),
 		"event_time":   toString(uint64(s.eventClock.Time())),
 		"query_time":   toString(uint64(s.queryClock.Time())),
@@ -1728,9 +1660,6 @@ func (s *Serf) Stats() map[string]string {
 		"event_queue":  toString(uint64(s.eventBroadcasts.NumQueued())),
 		"query_queue":  toString(uint64(s.queryBroadcasts.NumQueued())),
 		"encrypted":    fmt.Sprintf("%v", s.EncryptionEnabled()),
-	}
-	if !s.config.DisableCoordinates {
-		stats["coordinate_resets"] = toString(uint64(s.coordClient.Stats().Resets))
 	}
 	return stats
 }
