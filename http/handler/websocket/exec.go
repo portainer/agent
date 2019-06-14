@@ -3,6 +3,7 @@ package websocket
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -29,7 +30,7 @@ func (handler *Handler) websocketExec(w http.ResponseWriter, r *http.Request) *h
 
 	targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
 	if targetMember == nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", agent.ErrAgentNotFound}
+		return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
 	}
 
 	proxy.WebsocketRequest(w, r, targetMember)
@@ -54,7 +55,7 @@ func (handler *Handler) handleExecRequest(rw http.ResponseWriter, r *http.Reques
 
 	err = hijackExecStartOperation(websocketConn, execID)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "An error occured during websocket exec operation", err}
+		return &httperror.HandlerError{http.StatusInternalServerError, "An error occured during websocket exec hijack operation", err}
 	}
 
 	return nil

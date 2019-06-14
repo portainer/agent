@@ -9,6 +9,8 @@ import (
 
 // Server is the web server exposing the API of an agent.
 type Server struct {
+	addr             string
+	port             string
 	systemService    agent.SystemService
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
@@ -16,29 +18,59 @@ type Server struct {
 	agentOptions     *agent.Options
 }
 
+// ServerConfig represents a server configuration
+// used to create a new configuration
+type ServerConfig struct {
+	Addr             string
+	Port             string
+	SystemService    agent.SystemService
+	ClusterService   agent.ClusterService
+	SignatureService agent.DigitalSignatureService
+	AgentTags        map[string]string
+	AgentOptions     *agent.Options
+	Secured          bool
+}
+
 // NewServer returns a pointer to a Server.
-func NewServer(systemService agent.SystemService, clusterService agent.ClusterService, signatureService agent.DigitalSignatureService, agentTags map[string]string, agentOptions *agent.Options) *Server {
+func NewServer(config *ServerConfig) *Server {
 	return &Server{
-		systemService:    systemService,
-		clusterService:   clusterService,
-		signatureService: signatureService,
-		agentTags:        agentTags,
-		agentOptions:     agentOptions,
+		addr:             config.Addr,
+		port:             config.Port,
+		systemService:    config.SystemService,
+		clusterService:   config.ClusterService,
+		signatureService: config.SignatureService,
+		agentTags:        config.AgentTags,
+		agentOptions:     config.AgentOptions,
 	}
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
-func (server *Server) Start(addr, port string) error {
-	h := handler.NewHandler(server.systemService, server.clusterService, server.signatureService, server.agentTags, server.agentOptions)
-
-	// TODO: better management of HTTP/HTTPS as the agent must be able to talk with the other agents
-	// using the same protocol
-	// if started in edge, all requests to other agents must use http/ws
-	// if not, use https/wss
-
-	listenAddr := addr + ":" + port
-	if server.agentOptions.EdgeMode {
-		return http.ListenAndServe(listenAddr, h)
+func (server *Server) StartUnsecured() error {
+	config := &handler.Config{
+		SystemService:  server.systemService,
+		ClusterService: server.clusterService,
+		AgentTags:      server.agentTags,
+		AgentOptions:   server.agentOptions,
+		Secured:        false,
 	}
+	h := handler.NewHandler(config)
+
+	listenAddr := server.addr + ":" + server.port
+	return http.ListenAndServe(listenAddr, h)
+}
+
+// Start starts a new web server by listening on the specified listenAddr.
+func (server *Server) StartSecured() error {
+	config := &handler.Config{
+		SystemService:    server.systemService,
+		ClusterService:   server.clusterService,
+		SignatureService: server.signatureService,
+		AgentTags:        server.agentTags,
+		AgentOptions:     server.agentOptions,
+		Secured:          true,
+	}
+	h := handler.NewHandler(config)
+
+	listenAddr := server.addr + ":" + server.port
 	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, h)
 }

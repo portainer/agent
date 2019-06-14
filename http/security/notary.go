@@ -1,6 +1,7 @@
 package security
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/portainer/agent"
@@ -8,33 +9,32 @@ import (
 )
 
 type NotaryService struct {
-	signatureService agent.DigitalSignatureService
-	signatureEnabled bool
+	signatureService      agent.DigitalSignatureService
+	signatureVerification bool
 }
 
-func NewNotaryService(signatureService agent.DigitalSignatureService) *NotaryService {
+func NewNotaryService(signatureService agent.DigitalSignatureService, signatureVerification bool) *NotaryService {
 	return &NotaryService{
-		signatureService: signatureService,
-		signatureEnabled: false,
+		signatureVerification: signatureVerification,
+		signatureService:      signatureService,
 	}
 }
 
 func (service *NotaryService) DigitalSignatureVerification(next http.Handler) http.Handler {
 	return httperror.LoggerHandler(func(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-
-		if service.signatureEnabled {
+		if service.signatureVerification {
 			publicKeyHeaderValue := r.Header.Get(agent.HTTPPublicKeyHeaderName)
 			signatureHeaderValue := r.Header.Get(agent.HTTPSignatureHeaderName)
 
 			if publicKeyHeaderValue == "" || signatureHeaderValue == "" {
-				return &httperror.HandlerError{http.StatusForbidden, "Missing request signature headers", agent.ErrUnauthorized}
+				return &httperror.HandlerError{http.StatusForbidden, "Missing request signature headers", errors.New("Unauthorized")}
 			}
 
 			valid, err := service.signatureService.VerifySignature(signatureHeaderValue, publicKeyHeaderValue)
 			if err != nil {
 				return &httperror.HandlerError{http.StatusForbidden, "Invalid request signature", err}
 			} else if !valid {
-				return &httperror.HandlerError{http.StatusForbidden, "Invalid request signature", agent.ErrUnauthorized}
+				return &httperror.HandlerError{http.StatusForbidden, "Invalid request signature", errors.New("Unauthorized")}
 			}
 		}
 

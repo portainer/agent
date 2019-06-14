@@ -29,7 +29,6 @@ func (service *ClusterService) Leave() {
 
 // Create will create the agent configuration and automatically join the cluster.
 func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, tags map[string]string) (int, error) {
-	// TODO: pass global log level or logger
 	filter := &logutils.LevelFilter{
 		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
 		MinLevel: logutils.LogLevel("INFO"),

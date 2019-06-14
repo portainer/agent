@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -62,7 +63,7 @@ func (handler *Handler) executeOperationOnManagerNode(rw http.ResponseWriter, re
 	} else {
 		targetMember := handler.clusterService.GetMemberByRole(agent.NodeRoleManager)
 		if targetMember == nil {
-			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent located on a manager node", agent.ErrManagerAgentNotFound}
+			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent located on a manager node", errors.New("Unable to find an agent on any manager node")}
 		}
 		proxy.AgentHTTPRequest(rw, request, targetMember)
 	}
@@ -77,7 +78,7 @@ func (handler *Handler) executeOperationOnNode(rw http.ResponseWriter, request *
 	} else {
 		targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
 		if targetMember == nil {
-			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", agent.ErrAgentNotFound}
+			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
 		}
 
 		proxy.AgentHTTPRequest(rw, request, targetMember)

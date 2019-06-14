@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 
-IMAGE_NAME=portainer/pagent:edge
+IMAGE_NAME=portainer/agent:dev
 LOG_LEVEL=DEBUG
 CAP_HOST_MANAGEMENT=1 #Enabled by default. Change this to anything else to disable this feature
 EDGE=1
-EDGE_TUNNEL_SERVER="172.31.3.137"
-#AGENT_SECRET="bG9jYWxob3N0OjgwMDA6Nzc3NzpjZjplZDo0YTo3YzplOTo1YTpjMTphNzo4MTphOTpkNjoyNDpiMzoyMDphOTphMjphZ2VudEByYW5kb21zdHJpbmc"
-#AGENT_SECRET="bG9jYWxob3N0OjgwMDA6NjM0MTk6Y2Y6ZWQ6NGE6N2M6ZTk6NWE6YzE6YTc6ODE6YTk6ZDY6MjQ6YjM6MjA6YTk6YTI6YWdlbnRAcmFuZG9tc3RyaW5n"
+EDGE_TUNNEL_SERVER="192.168.1.68"
 VAGRANT=true
 TMP="/tmp"
 
@@ -30,28 +28,16 @@ function compile() {
 
 }
 
-function build_edge() {
-    echo "Building..."
-
-    echo "Building image locally and exporting to Vagrant node..."
-    docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
-#    docker push "${IMAGE_NAME}"
-    docker save "${IMAGE_NAME}" -o "${TMP}/portainer-agent.tar"
-    docker -H "10.0.10.10:2375" rmi "${IMAGE_NAME}"
-    docker -H "10.0.10.10:2375" load -i "${TMP}/portainer-agent.tar"
-
-    deploy_local
-}
-
 function deploy_local() {
   echo "Cleanup previous settings..."
-  docker -H "10.0.10.10:2375" rm -f portainer-agent-dev
+  docker rm -f portainer-agent-dev
+  docker rmi "${IMAGE_NAME}"
 
   echo "Image build..."
-#  docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
+  docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
 
   echo "Deployment..."
-  docker -H "10.0.10.10:2375" run -d --name portainer-agent-dev \
+  docker run -d --name portainer-agent-dev \
   -e LOG_LEVEL=${LOG_LEVEL} \
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -e EDGE=${EDGE} \
@@ -63,7 +49,7 @@ function deploy_local() {
   -p 80:80 \
   "${IMAGE_NAME}"
 
-  docker -H "10.0.10.10:2375" logs -f portainer-agent-dev
+  docker logs -f portainer-agent-dev
 }
 
 function deploy_swarm() {
@@ -105,6 +91,7 @@ function deploy_swarm() {
   --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
   --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
   --mount type=bind,src=//,dst=/host \
+  --publish mode=host,target=9001,published=9001 \
   --publish mode=host,target=80,published=80 \
   --restart-condition none \
   "${IMAGE_NAME}"
@@ -113,12 +100,10 @@ function deploy_swarm() {
 }
 
 function main() {
-
   compile
-  if [ "${MODE}" == 'local' ]; then
+
+  if [[ "${MODE}" == 'local' ]]; then
     deploy_local
-  elif [ "${MODE}" == 'edge' ]; then
-    build_edge
   else
     # Only to be used with deviantony/vagrant-swarm-cluster.git
     deploy_swarm

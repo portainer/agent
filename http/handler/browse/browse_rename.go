@@ -1,10 +1,10 @@
 package browse
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
 	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/request"
@@ -18,10 +18,10 @@ type browseRenamePayload struct {
 
 func (payload *browseRenamePayload) Validate(r *http.Request) error {
 	if govalidator.IsNull(payload.CurrentFilePath) {
-		return agent.Error("Current file path is invalid")
+		return errors.New("Current file path is invalid")
 	}
 	if govalidator.IsNull(payload.NewFilePath) {
-		return agent.Error("New file path is invalid")
+		return errors.New("New file path is invalid")
 	}
 	return nil
 }
@@ -30,7 +30,7 @@ func (payload *browseRenamePayload) Validate(r *http.Request) error {
 func (handler *Handler) browseRename(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
-		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", errors.New("This agent feature is not enabled")}
 	}
 
 	var payload browseRenamePayload

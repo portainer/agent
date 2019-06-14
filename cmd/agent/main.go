@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"time"
 
 	"github.com/portainer/agent"
@@ -43,32 +44,22 @@ func main() {
 
 	advertiseAddr, err := retrieveAdvertiseAddress(&infoService)
 	if err != nil {
-		log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve IP address used to form the agent cluster] [error: %s]", err)
+		log.Fatalf("[ERROR] [main,docker,os] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 	}
 
-	// TODO: not necessary in Edge mode
-	TLSService := crypto.TLSService{}
-	err = TLSService.GenerateCertsForHost(advertiseAddr)
-	if err != nil {
-		log.Fatalf("[ERROR] [main,tls] [message: Unable to generate self-signed certificates] [error: %s]", err)
-	}
-
-	// TODO: not necessary in Edge mode
-	signatureService := crypto.NewECDSAService(options.SharedSecret)
-
-	log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, options.ClusterAddress, advertiseAddr)
-
-	triggerEdgeStartup := options.EdgeMode
-
+	startEdgeProcess := options.EdgeMode
 	var clusterService agent.ClusterService
 	if clusterMode {
-		triggerEdgeStartup = false
 
 		clusterService = cluster.NewClusterService()
+		startEdgeProcess = false
 
 		// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
 		// sometimes... Waiting a bit before starting the discovery seems to solve the problem.
-		time.Sleep(3 * time.Second)
+		// This is also randomize to potentially prevent multiple agents started in Edge mode to discover
+		// themselves at the same time, preventing one to being elected as the cluster initiator.
+		// Should be replaced by a proper way to select a single node inside the cluster.
+		sleep(3, 6)
 
 		joinAddr, err := net.LookupIPAddresses(options.ClusterAddress)
 		if err != nil {
@@ -81,61 +72,105 @@ func main() {
 		}
 
 		if contactedNodeCount == 1 && options.EdgeMode {
-			log.Println("[DEBUG] - [main,cluster,edge] - Cluster initiator. Will manage Edge startup.")
-			triggerEdgeStartup = true
+			log.Println("[DEBUG] [main,edge] [message: Cluster initiator. Will manage Edge startup]")
+			startEdgeProcess = true
 		}
 
 		defer clusterService.Leave()
 	}
 
-	systemService := ghw.NewSystemService("/host")
+	log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, options.ClusterAddress, advertiseAddr)
 
-	// TODO: review this multiple conditions, make it clearer
-	if triggerEdgeStartup {
-		reverseTunnelClient := chisel.NewClient(options.EdgeTunnelServerAddr)
-
-		if options.EdgeKey == "" {
-			edgeServer := http.NewEdgeServer(reverseTunnelClient)
-
-			go func() {
-				log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
-
-				err := edgeServer.Start(options.EdgeServerAddr, options.EdgeServerPort)
-				if err != nil {
-					log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
-				}
-
-				log.Println("[INFO] [main,edge,http] - [message: Edge server shutdown]")
-			}()
-
-			go func() {
-				timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
-				<-timer1.C
-
-				if !reverseTunnelClient.IsKeySet() {
-					log.Printf("[INFO] [main,edge,http] - [message: Shutting down file server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
-					// TODO: error handling?
-					edgeServer.Shutdown()
-				}
-
-			}()
-		} else {
-			err = reverseTunnelClient.CreateTunnel(options.EdgeKey)
-			if err != nil {
-				log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create reverse tunnel] [error: %s]", err)
-			}
+	if startEdgeProcess {
+		err := enableEdgeMode(options)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
 		}
-
 	}
 
-	// TODO: if started in Edge mode and no key specified and UI shutdown, should be disabled?
-	log.Printf("[INFO] [main,http] [server_addr: %s] [server_port: %s] [cluster_mode: %t] [version: %s]  [message: Starting Agent API server]", options.AgentServerAddr, options.AgentServerPort, clusterMode, agent.Version)
+	systemService := ghw.NewSystemService("/host")
 
-	server := http.NewServer(systemService, clusterService, signatureService, agentTags, options)
-	err = server.Start(options.AgentServerAddr, options.AgentServerPort)
+	var signatureService agent.DigitalSignatureService
+	if !options.EdgeMode {
+		signatureService = crypto.NewECDSAService(options.SharedSecret)
+		tlsService := crypto.TLSService{}
+
+		err := tlsService.GenerateCertsForHost(advertiseAddr)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,tls] [message: Unable to generate self-signed certificates] [error: %s]", err)
+		}
+	}
+
+	config := &http.ServerConfig{
+		Addr:             options.AgentServerAddr,
+		Port:             options.AgentServerPort,
+		SystemService:    systemService,
+		ClusterService:   clusterService,
+		SignatureService: signatureService,
+		AgentTags:        agentTags,
+		AgentOptions:     options,
+		Secured:          !options.EdgeMode,
+	}
+
+	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [cluster_mode: %t] [version: %s] [message: Starting Agent API server]", config.Addr, config.Port, config.Secured, clusterMode, agent.Version)
+
+	err = startAPIServer(config)
 	if err != nil {
 		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
 	}
+}
+
+func startAPIServer(config *http.ServerConfig) error {
+	server := http.NewServer(config)
+
+	if !config.Secured {
+		return server.StartUnsecured()
+	}
+
+	return server.StartSecured()
+}
+
+func enableEdgeMode(options *agent.Options) error {
+	reverseTunnelClient := chisel.NewClient(options.EdgeTunnelServerAddr)
+
+	if options.EdgeKey != "" {
+		log.Println("[DEBUG] [main,edge] [message: Edge key specified. Will create reverse tunnel]")
+		return reverseTunnelClient.CreateTunnel(options.EdgeKey)
+	}
+
+	log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
+	edgeServer := http.NewEdgeServer(reverseTunnelClient)
+
+	go func() {
+		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
+
+		err := edgeServer.Start(options.EdgeServerAddr, options.EdgeServerPort)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
+		}
+
+		log.Println("[INFO] [main,edge,http] [message: Edge server shutdown]")
+	}()
+
+	go func() {
+		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
+		<-timer1.C
+
+		if !reverseTunnelClient.IsKeySet() {
+			log.Printf("[INFO] [main,edge,http] [message: Shutting down file server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
+			edgeServer.Shutdown()
+		}
+
+		// TODO: if started in Edge mode and no key specified and UI shutdown, should we disable the API server?
+	}()
+
+	return nil
+}
+
+func sleep(min, max int) {
+	sleepDuration := rand.Intn(max-min) + min
+	log.Printf("[DEBUG] [main] [sleep: %d]", sleepDuration)
+	time.Sleep(time.Duration(sleepDuration) * time.Second)
 }
 
 func parseOptions() (*agent.Options, error) {

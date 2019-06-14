@@ -1,9 +1,9 @@
 package browse
 
 import (
+	"errors"
 	"net/http"
 
-	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
 	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/request"
@@ -14,7 +14,7 @@ import (
 func (handler *Handler) browseDelete(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
-		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", errors.New("This agent feature is not enabled")}
 	}
 
 	path, err := request.RetrieveQueryParameter(r, "path", false)

@@ -1,18 +1,14 @@
 package filesystem
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path"
 	"strings"
 	"time"
 
-	"github.com/portainer/agent"
 	"github.com/portainer/agent/constants"
-)
-
-const (
-	errInvalidFilePath = agent.Error("Invalid path. Ensure that the path do not contain '..' elements")
 )
 
 // FileInfo represents information about a file on the filesystem
@@ -104,7 +100,7 @@ func WriteFile(uploadedFilePath, filename string, file []byte, mode uint32) erro
 // BuildPathToFileInsideVolume will take a volumeID and path, and build a full path on the host
 func BuildPathToFileInsideVolume(volumeID, filePath string) (string, error) {
 	if !isValidPath(filePath) {
-		return "", errInvalidFilePath
+		return "", errors.New("Invalid path. Ensure that the path do not contain '..' elements")
 	}
 
 	return path.Join(constants.SystemVolumePath, volumeID, "_data", filePath), nil

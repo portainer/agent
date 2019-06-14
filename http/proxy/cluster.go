@@ -115,9 +115,11 @@ func copyRequest(request *http.Request, member *agent.ClusterMember) (*http.Requ
 
 	url := request.URL
 	url.Host = member.IPAddress + ":" + member.Port
-	//url.Scheme = "https"
-	// TODO: http in edge mode
+
 	url.Scheme = "http"
+	if request.TLS != nil {
+		url.Scheme = "https"
+	}
 
 	requestCopy, err := http.NewRequest(request.Method, url.String(), bytes.NewReader(body))
 	if err != nil {

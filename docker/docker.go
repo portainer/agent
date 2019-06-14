@@ -2,6 +2,8 @@ package docker
 
 import (
 	"context"
+	"errors"
+	"log"
 
 	"github.com/docker/docker/client"
 	"github.com/portainer/agent"
@@ -40,7 +42,6 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 	return info, nil
 }
 
-// TODO: add DEBUG logs
 func (service *InfoService) GetContainerIpFromDockerEngine(containerName string) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 	if err != nil {
@@ -53,11 +54,13 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string)
 		return "", err
 	}
 
+	log.Printf("[DEBUG] [docker] [network_count: %d] [Selecting IP address from container networks]", len(containerInspect.NetworkSettings.Networks))
+
 	for _, network := range containerInspect.NetworkSettings.Networks {
 		if network.IPAddress != "" {
 			return network.IPAddress, nil
 		}
 	}
 
-	return "", agent.ErrRetrievingAdvertiseAddr
+	return "", errors.New("Unable to retrieve the address on which the agent can advertise. Check your network settings")
 }

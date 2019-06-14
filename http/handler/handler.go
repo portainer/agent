@@ -28,23 +28,31 @@ type Handler struct {
 	pingHandler        *ping.Handler
 }
 
-const (
-	errInvalidQueryParameters = agent.Error("Invalid query parameters")
-)
+// Config represents a server handler configuration
+// used to create a new handler
+type Config struct {
+	SystemService    agent.SystemService
+	ClusterService   agent.ClusterService
+	SignatureService agent.DigitalSignatureService
+	AgentTags        map[string]string
+	AgentOptions     *agent.Options
+	Secured          bool
+}
 
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
-func NewHandler(systemService agent.SystemService, cs agent.ClusterService, signatureService agent.DigitalSignatureService, agentTags map[string]string, agentOptions *agent.Options) *Handler {
-	agentProxy := proxy.NewAgentProxy(cs, agentTags)
-	notaryService := security.NewNotaryService(signatureService)
+func NewHandler(config *Config) *Handler {
+	agentProxy := proxy.NewAgentProxy(config.ClusterService, config.AgentTags)
+	notaryService := security.NewNotaryService(config.SignatureService, config.Secured)
+
 	return &Handler{
-		agentHandler:       httpagenthandler.NewHandler(cs, notaryService),
-		browseHandler:      browse.NewHandler(agentProxy, notaryService, agentOptions),
+		agentHandler:       httpagenthandler.NewHandler(config.ClusterService, notaryService),
+		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
-		dockerProxyHandler: docker.NewHandler(cs, agentTags, notaryService),
-		webSocketHandler:   websocket.NewHandler(cs, agentTags, notaryService),
-		hostHandler:        host.NewHandler(systemService, agentProxy, notaryService),
+		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService),
+		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
+		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:        ping.NewHandler(),
 	}
 }

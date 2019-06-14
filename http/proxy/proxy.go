@@ -13,27 +13,31 @@ import (
 
 // AgentHTTPRequest redirects a HTTP request to another agent.
 func AgentHTTPRequest(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
-	url := request.URL
-	url.Host = target.IPAddress + ":" + target.Port
-	// TODO: http in edge mode
-	//url.Scheme = "https"
-	url.Scheme = "http"
+	urlCopy := request.URL
+	urlCopy.Host = target.IPAddress + ":" + target.Port
 
-	proxyHTTPSRequest(rw, request, url, target.NodeName)
+	urlCopy.Scheme = "http"
+	if request.TLS != nil {
+		urlCopy.Scheme = "https"
+	}
+
+	proxyHTTPRequest(rw, request, urlCopy, target.NodeName)
 }
 
 // WebsocketRequest redirects a websocket request to another agent.
 func WebsocketRequest(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
-	url := request.URL
-	url.Host = target.IPAddress + ":" + target.Port
-	// TODO: ws in edge mode
-	//url.Scheme = "wss"
-	url.Scheme = "ws"
+	urlCopy := request.URL
+	urlCopy.Host = target.IPAddress + ":" + target.Port
 
-	proxyWebsocketRequest(rw, request, url, target.NodeName)
+	urlCopy.Scheme = "ws"
+	if request.TLS != nil {
+		urlCopy.Scheme = "wss"
+	}
+
+	proxyWebsocketRequest(rw, request, urlCopy, target.NodeName)
 }
 
-func proxyHTTPSRequest(rw http.ResponseWriter, request *http.Request, target *url.URL, targetNode string) {
+func proxyHTTPRequest(rw http.ResponseWriter, request *http.Request, target *url.URL, targetNode string) {
 	proxy := newAgentReverseProxy(target, targetNode)
 	proxy.ServeHTTP(rw, request)
 }

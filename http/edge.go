@@ -56,14 +56,15 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 			return
 		}
 
-		// TODO: error handling?
+		w.Write([]byte("Agent setup OK. You can close this page."))
 		server.Shutdown()
 	}
 }
 
-// TODO: investigate whether this is the best way to shutdown a web server
-// Use another context? Is timeout required?
 func (server *EdgeServer) Shutdown() error {
-	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	server.httpServer.SetKeepAlivesEnabled(false)
 	return server.httpServer.Shutdown(ctx)
 }

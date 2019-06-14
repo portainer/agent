@@ -1,6 +1,7 @@
 package os
 
 import (
+	"errors"
 	"os"
 	"strconv"
 
@@ -57,7 +58,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	if agentPortEnv != "" {
 		_, err := strconv.Atoi(agentPortEnv)
 		if err != nil {
-			return nil, agent.ErrInvalidEnvPortFormat
+			return nil, errors.New("Invalid port format in " + EnvKeyAgentPort + " environment variable")
 		}
 		options.AgentServerPort = agentPortEnv
 	}
@@ -71,7 +72,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	if edgePortEnv != "" {
 		_, err := strconv.Atoi(edgePortEnv)
 		if err != nil {
-			return nil, agent.ErrInvalidEnvPortFormat
+			return nil, errors.New("Invalid port format in " + EnvKeyEdgeServerPort + " environment variable")
 		}
 		options.EdgeServerPort = edgePortEnv
 	}
