@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/portainer/agent"
 )
@@ -19,6 +20,7 @@ const (
 	EnvKeyEdgeTunnelServer  = "EDGE_TUNNEL_SERVER"
 	EnvKeyEdgeServerAddr    = "EDGE_SERVER_ADDR"
 	EnvKeyEdgeServerPort    = "EDGE_SERVER_PORT"
+	EnvKeyEdgePollInterval  = "EDGE_POLL_INTERVAL"
 	EnvKeyLogLevel          = "LOG_LEVEL"
 )
 
@@ -38,6 +40,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeServerAddr:        agent.DefaultEdgeServerAddr,
 		EdgeServerPort:        agent.DefaultEdgeServerPort,
 		EdgeTunnelServerAddr:  os.Getenv(EnvKeyEdgeTunnelServer),
+		EdgePollInterval:      agent.DefaultEdgePollInterval,
 		LogLevel:              agent.DefaultLogLevel,
 	}
 
@@ -58,7 +61,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	if agentPortEnv != "" {
 		_, err := strconv.Atoi(agentPortEnv)
 		if err != nil {
-			return nil, errors.New("Invalid port format in " + EnvKeyAgentPort + " environment variable")
+			return nil, errors.New("invalid port format in " + EnvKeyAgentPort + " environment variable")
 		}
 		options.AgentServerPort = agentPortEnv
 	}
@@ -72,7 +75,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	if edgePortEnv != "" {
 		_, err := strconv.Atoi(edgePortEnv)
 		if err != nil {
-			return nil, errors.New("Invalid port format in " + EnvKeyEdgeServerPort + " environment variable")
+			return nil, errors.New("invalid port format in " + EnvKeyEdgeServerPort + " environment variable")
 		}
 		options.EdgeServerPort = edgePortEnv
 	}
@@ -80,6 +83,15 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	edgeKeyEnv := os.Getenv(EnvKeyEdgeKey)
 	if edgeKeyEnv != "" {
 		options.EdgeKey = edgeKeyEnv
+	}
+
+	edgePollIntervalEnv := os.Getenv(EnvKeyEdgePollInterval)
+	if edgePollIntervalEnv != "" {
+		_, err := time.ParseDuration(edgePollIntervalEnv)
+		if err != nil {
+			return nil, errors.New("invalid time duration format in " + EnvKeyEdgePollInterval + " environment variable")
+		}
+		options.EdgePollInterval = edgePollIntervalEnv
 	}
 
 	logLevelEnv := os.Getenv(EnvKeyLogLevel)

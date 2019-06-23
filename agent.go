@@ -13,6 +13,7 @@ type (
 		EdgeTunnelServerAddr  string
 		EdgeServerAddr        string
 		EdgeServerPort        string
+		EdgePollInterval      string
 		LogLevel              string
 	}
 
@@ -64,11 +65,20 @@ type (
 		GetMemberByNodeName(nodeName string) *ClusterMember
 	}
 
+	// TODO: doc
+	TunnelConfig struct {
+		ServerAddr       string
+		ServerFingerpint string
+		RemotePort       string
+		Credentials      string
+	}
+
 	// ReverseTunnelClient is used to create a reverse proxy tunnel when
 	// the agent is started in Edge mode.
 	ReverseTunnelClient interface {
-		CreateTunnel(key string) error
-		IsKeySet() bool
+		CreateTunnel(config TunnelConfig) error
+		CloseTunnel() error
+		IsTunnelOpen() bool
 	}
 
 	// DigitalSignatureService is used to validate digital signatures.
@@ -92,6 +102,14 @@ type (
 		GetDiskInfo() ([]PhysicalDisk, error)
 		GetPciDevices() ([]PciDevice, error)
 	}
+
+	// TODO: rename/document
+	TunnelOperator interface {
+		Start() error
+		SetKey(key string) error
+		IsKeySet() bool
+		CloseTunnel() error
+	}
 )
 
 const (
@@ -111,6 +129,8 @@ const (
 	DefaultEdgeServerAddr = "0.0.0.0"
 	// DefaultEdgeServerPort is the default port exposed by the Edge server.
 	DefaultEdgeServerPort = "80"
+	// DefaultEdgePollInterval is the default interval used by to poll Edge information from a Portainer instance.
+	DefaultEdgePollInterval = "5s"
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.

@@ -5,8 +5,9 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/portainer/agent/http/client"
+
 	"github.com/portainer/agent"
-	"github.com/portainer/agent/chisel"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/ghw"
@@ -131,15 +132,21 @@ func startAPIServer(config *http.ServerConfig) error {
 }
 
 func enableEdgeMode(options *agent.Options) error {
-	reverseTunnelClient := chisel.NewClient(options.EdgeTunnelServerAddr)
+	tunnelOperator := client.NewTunnelOperator(options.EdgeTunnelServerAddr, options.EdgePollInterval)
 
 	if options.EdgeKey != "" {
-		log.Println("[DEBUG] [main,edge] [message: Edge key specified. Will create reverse tunnel]")
-		return reverseTunnelClient.CreateTunnel(options.EdgeKey)
+		log.Println("[DEBUG] [main,edge] [message: Edge key specified. Starting tunnel operator.]")
+
+		err := tunnelOperator.SetKey(options.EdgeKey)
+		if err != nil {
+			return err
+		}
+
+		return tunnelOperator.Start()
 	}
 
 	log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
-	edgeServer := http.NewEdgeServer(reverseTunnelClient)
+	edgeServer := http.NewEdgeServer(tunnelOperator)
 
 	go func() {
 		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
@@ -156,7 +163,7 @@ func enableEdgeMode(options *agent.Options) error {
 		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
 		<-timer1.C
 
-		if !reverseTunnelClient.IsKeySet() {
+		if !tunnelOperator.IsKeySet() {
 			log.Printf("[INFO] [main,edge,http] [message: Shutting down file server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
 			edgeServer.Shutdown()
 		}

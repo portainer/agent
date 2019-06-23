@@ -10,13 +10,13 @@ import (
 )
 
 type EdgeServer struct {
-	client     agent.ReverseTunnelClient
-	httpServer *http.Server
+	httpServer     *http.Server
+	tunnelOperator agent.TunnelOperator
 }
 
-func NewEdgeServer(client agent.ReverseTunnelClient) *EdgeServer {
+func NewEdgeServer(tunnelOperator agent.TunnelOperator) *EdgeServer {
 	return &EdgeServer{
-		client: client,
+		tunnelOperator: tunnelOperator,
 	}
 }
 
@@ -50,11 +50,13 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 			return
 		}
 
-		err = server.client.CreateTunnel(key)
+		err = server.tunnelOperator.SetKey(key)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		go server.tunnelOperator.Start()
 
 		w.Write([]byte("Agent setup OK. You can close this page."))
 		server.Shutdown()
