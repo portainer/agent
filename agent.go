@@ -13,6 +13,7 @@ type (
 		EdgeServerAddr        string
 		EdgeServerPort        string
 		EdgePollInterval      string
+		EdgeSleepInterval     string
 		LogLevel              string
 	}
 
@@ -108,6 +109,7 @@ type (
 		SetKey(key string) error
 		IsKeySet() bool
 		CloseTunnel() error
+		ResetActivityTimer()
 	}
 )
 
@@ -128,8 +130,10 @@ const (
 	DefaultEdgeServerAddr = "0.0.0.0"
 	// DefaultEdgeServerPort is the default port exposed by the Edge server.
 	DefaultEdgeServerPort = "80"
-	// DefaultEdgePollInterval is the default interval used by to poll Edge information from a Portainer instance.
+	// DefaultEdgePollInterval is the default interval used to poll Edge information from a Portainer instance.
 	DefaultEdgePollInterval = "5s"
+	// DefaultEdgeSleepInterval is the default interval after which the agent will close the tunnel if no activity.
+	DefaultEdgeSleepInterval = "2m"
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.

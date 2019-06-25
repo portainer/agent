@@ -82,8 +82,14 @@ func main() {
 
 	log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, options.ClusterAddress, advertiseAddr)
 
+	var tunnelOperator agent.TunnelOperator
 	if startEdgeProcess {
-		err := enableEdgeMode(options)
+		tunnelOperator, err = client.NewTunnelOperator(options.EdgePollInterval, options.EdgeSleepInterval)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
+		}
+
+		err := enableEdgeMode(tunnelOperator, options)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
 		}
@@ -108,6 +114,7 @@ func main() {
 		SystemService:    systemService,
 		ClusterService:   clusterService,
 		SignatureService: signatureService,
+		TunnelOperator:   tunnelOperator,
 		AgentTags:        agentTags,
 		AgentOptions:     options,
 		Secured:          !options.EdgeMode,
@@ -131,8 +138,7 @@ func startAPIServer(config *http.ServerConfig) error {
 	return server.StartSecured()
 }
 
-func enableEdgeMode(options *agent.Options) error {
-	tunnelOperator := client.NewTunnelOperator(options.EdgePollInterval)
+func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options) error {
 
 	if options.EdgeKey != "" {
 		log.Println("[DEBUG] [main,edge] [message: Edge key specified. Starting tunnel operator.]")

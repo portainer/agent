@@ -20,6 +20,7 @@ const (
 	EnvKeyEdgeServerHost    = "EDGE_SERVER_HOST"
 	EnvKeyEdgeServerPort    = "EDGE_SERVER_PORT"
 	EnvKeyEdgePollInterval  = "EDGE_POLL_INTERVAL"
+	EnvKeyEdgeSleepInterval = "EDGE_SLEEP_INTERVAL"
 	EnvKeyLogLevel          = "LOG_LEVEL"
 )
 
@@ -39,6 +40,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeServerAddr:        agent.DefaultEdgeServerAddr,
 		EdgeServerPort:        agent.DefaultEdgeServerPort,
 		EdgePollInterval:      agent.DefaultEdgePollInterval,
+		EdgeSleepInterval:     agent.DefaultEdgeSleepInterval,
 		LogLevel:              agent.DefaultLogLevel,
 	}
 
@@ -90,6 +92,15 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 			return nil, errors.New("invalid time duration format in " + EnvKeyEdgePollInterval + " environment variable")
 		}
 		options.EdgePollInterval = edgePollIntervalEnv
+	}
+
+	edgeSleepIntervalEnv := os.Getenv(EnvKeyEdgeSleepInterval)
+	if edgeSleepIntervalEnv != "" {
+		_, err := time.ParseDuration(edgeSleepIntervalEnv)
+		if err != nil {
+			return nil, errors.New("invalid time duration format in " + EnvKeyEdgeSleepInterval + " environment variable")
+		}
+		options.EdgeSleepInterval = edgeSleepIntervalEnv
 	}
 
 	logLevelEnv := os.Getenv(EnvKeyLogLevel)

@@ -14,6 +14,7 @@ type Server struct {
 	systemService    agent.SystemService
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
+	tunnelOperator   agent.TunnelOperator
 	agentTags        map[string]string
 	agentOptions     *agent.Options
 }
@@ -26,6 +27,7 @@ type ServerConfig struct {
 	SystemService    agent.SystemService
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
+	TunnelOperator   agent.TunnelOperator
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
 	Secured          bool
@@ -39,6 +41,7 @@ func NewServer(config *ServerConfig) *Server {
 		systemService:    config.SystemService,
 		clusterService:   config.ClusterService,
 		signatureService: config.SignatureService,
+		tunnelOperator:   config.TunnelOperator,
 		agentTags:        config.AgentTags,
 		agentOptions:     config.AgentOptions,
 	}
@@ -49,6 +52,7 @@ func (server *Server) StartUnsecured() error {
 	config := &handler.Config{
 		SystemService:  server.systemService,
 		ClusterService: server.clusterService,
+		TunnelOperator: server.tunnelOperator,
 		AgentTags:      server.agentTags,
 		AgentOptions:   server.agentOptions,
 		Secured:        false,
@@ -65,6 +69,7 @@ func (server *Server) StartSecured() error {
 		SystemService:    server.systemService,
 		ClusterService:   server.clusterService,
 		SignatureService: server.signatureService,
+		TunnelOperator:   server.tunnelOperator,
 		AgentTags:        server.agentTags,
 		AgentOptions:     server.agentOptions,
 		Secured:          true,

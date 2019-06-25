@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/portainer/agent"
 	httpagenthandler "github.com/portainer/agent/http/handler/agent"
 	"github.com/portainer/agent/http/handler/browse"
@@ -14,6 +16,7 @@ import (
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
+	httperror "github.com/portainer/libhttp/error"
 )
 
 // Handler is the main handler of the application.
@@ -26,6 +29,8 @@ type Handler struct {
 	webSocketHandler   *websocket.Handler
 	hostHandler        *host.Handler
 	pingHandler        *ping.Handler
+	securedProtocol    bool
+	tunnelOperator     agent.TunnelOperator
 }
 
 // Config represents a server handler configuration
@@ -34,6 +39,7 @@ type Config struct {
 	SystemService    agent.SystemService
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
+	TunnelOperator   agent.TunnelOperator
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
 	Secured          bool
@@ -54,10 +60,22 @@ func NewHandler(config *Config) *Handler {
 		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
 		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:        ping.NewHandler(),
+		securedProtocol:    config.Secured,
+		tunnelOperator:     config.TunnelOperator,
 	}
 }
 
 func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
+	// TODO: validate that this is working
+	if !h.securedProtocol && !h.tunnelOperator.IsKeySet() {
+		httperror.WriteError(rw, http.StatusServiceUnavailable, "Unable to use agent API", errors.New("Edge key not set"))
+		return
+	}
+
+	if !h.securedProtocol {
+		h.tunnelOperator.ResetActivityTimer()
+	}
+
 	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
 	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
