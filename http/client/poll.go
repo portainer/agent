@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/portainer/agent"
@@ -45,6 +46,8 @@ func (operator *TunnelOperator) poll() error {
 			Credentials:      operator.key.Credentials,
 			RemotePort:       strconv.Itoa(respData.Port),
 		}
+
+		log.Printf("[DEBUG] [http,edge,poll] [status: %s] [port: %d] [message: active status, will create tunnel]", respData.Status, respData.Port)
 
 		err = operator.tunnelClient.CreateTunnel(tunnelConfig)
 		if err != nil {

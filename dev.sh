@@ -41,7 +41,6 @@ function deploy_local() {
   -e LOG_LEVEL=${LOG_LEVEL} \
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -e EDGE=${EDGE} \
-  -e EDGE_TUNNEL_SERVER=${EDGE_TUNNEL_SERVER} \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /var/lib/docker/volumes:/var/lib/docker/volumes \
   -v /:/host \
@@ -85,7 +84,6 @@ function deploy_swarm() {
   -e LOG_LEVEL="${LOG_LEVEL}" \
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -e EDGE=${EDGE} \
-  -e EDGE_TUNNEL_SERVER=${EDGE_TUNNEL_SERVER} \
   -e AGENT_CLUSTER_ADDR=tasks.portainer-agent-dev \
   --mode global \
   --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \

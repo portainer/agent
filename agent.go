@@ -10,7 +10,6 @@ type (
 		SharedSecret          string
 		EdgeMode              bool
 		EdgeKey               string
-		EdgeTunnelServerAddr  string
 		EdgeServerAddr        string
 		EdgeServerPort        string
 		EdgePollInterval      string

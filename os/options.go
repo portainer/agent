@@ -10,15 +10,14 @@ import (
 )
 
 const (
-	EnvKeyAgentAddr         = "AGENT_ADDR"
+	EnvKeyAgentHost         = "AGENT_HOST"
 	EnvKeyAgentPort         = "AGENT_PORT"
 	EnvKeyClusterAddr       = "AGENT_CLUSTER_ADDR"
 	EnvKeyAgentSecret       = "AGENT_SECRET"
 	EnvKeyCapHostManagement = "CAP_HOST_MANAGEMENT"
 	EnvKeyEdge              = "EDGE"
 	EnvKeyEdgeKey           = "EDGE_KEY"
-	EnvKeyEdgeTunnelServer  = "EDGE_TUNNEL_SERVER"
-	EnvKeyEdgeServerAddr    = "EDGE_SERVER_ADDR"
+	EnvKeyEdgeServerHost    = "EDGE_SERVER_HOST"
 	EnvKeyEdgeServerPort    = "EDGE_SERVER_PORT"
 	EnvKeyEdgePollInterval  = "EDGE_POLL_INTERVAL"
 	EnvKeyLogLevel          = "LOG_LEVEL"
@@ -39,7 +38,6 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		SharedSecret:          os.Getenv(EnvKeyAgentSecret),
 		EdgeServerAddr:        agent.DefaultEdgeServerAddr,
 		EdgeServerPort:        agent.DefaultEdgeServerPort,
-		EdgeTunnelServerAddr:  os.Getenv(EnvKeyEdgeTunnelServer),
 		EdgePollInterval:      agent.DefaultEdgePollInterval,
 		LogLevel:              agent.DefaultLogLevel,
 	}
@@ -52,7 +50,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		options.EdgeMode = true
 	}
 
-	agentAddrEnv := os.Getenv(EnvKeyAgentAddr)
+	agentAddrEnv := os.Getenv(EnvKeyAgentHost)
 	if agentAddrEnv != "" {
 		options.AgentServerAddr = agentAddrEnv
 	}
@@ -66,7 +64,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		options.AgentServerPort = agentPortEnv
 	}
 
-	edgeAddrEnv := os.Getenv(EnvKeyEdgeServerAddr)
+	edgeAddrEnv := os.Getenv(EnvKeyEdgeServerHost)
 	if edgeAddrEnv != "" {
 		options.EdgeServerAddr = edgeAddrEnv
 	}

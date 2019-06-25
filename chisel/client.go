@@ -25,7 +25,7 @@ func NewClient() *Client {
 func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 
 	// TODO: Should be relocated inside another function, otherwise we re-create client
-	// each time we need to open a tunnel
+	// each time we need to open a tunnel. Client could be initiated in Operator Start() function
 	config := &chclient.Config{
 		Server:      tunnelConfig.ServerAddr,
 		Remotes:     []string{"R:" + tunnelConfig.RemotePort + ":" + "localhost:9001"},
@@ -34,6 +34,7 @@ func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 	}
 
 	// TODO: timeout? should stop and error if cannot connect after timeout?
+	// Maybe related to context.Background() call below? Should use timeout context?
 	chiselClient, err := chclient.NewClient(config)
 	if err != nil {
 		return err

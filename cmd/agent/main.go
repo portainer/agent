@@ -132,7 +132,7 @@ func startAPIServer(config *http.ServerConfig) error {
 }
 
 func enableEdgeMode(options *agent.Options) error {
-	tunnelOperator := client.NewTunnelOperator(options.EdgeTunnelServerAddr, options.EdgePollInterval)
+	tunnelOperator := client.NewTunnelOperator(options.EdgePollInterval)
 
 	if options.EdgeKey != "" {
 		log.Println("[DEBUG] [main,edge] [message: Edge key specified. Starting tunnel operator.]")
@@ -168,7 +168,9 @@ func enableEdgeMode(options *agent.Options) error {
 			edgeServer.Shutdown()
 		}
 
-		// TODO: if started in Edge mode and no key specified and UI shutdown, should we disable the API server?
+		// TODO: It should not be possible to use the Agent API if the agent is in that state.
+		// Either shutdown the program (might be problematic with Docker restart policies)
+		// Or return a dummy response to all Agent API requests (ServiceNotAvailable or equivalent)
 	}()
 
 	return nil

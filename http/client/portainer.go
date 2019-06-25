@@ -20,26 +20,16 @@ type edgeKey struct {
 }
 
 type TunnelOperator struct {
-	pollInterval        string
-	key                 *edgeKey
-	tunnelServerAddress string
-
+	pollInterval string
+	key          *edgeKey
 	httpClient   *http.Client
 	tunnelClient agent.ReverseTunnelClient
 }
 
 // NewTunnelOperator creates a new reverse tunnel operator
-// It stores the specified tunnel server address and uses it
-// if the server address specified in the key equals to localhost
-// TODO: this tunnel server address override is a work-around for a problem on Portainer side.
-// The server address is currently retrieved from the browser host when creating an endpoint inside Portainer
-// and can be equal to localhost when using a local deployment of Portainer (http://localhost:9000)
-// This override can be set via the EDGE_TUNNEL_SERVER env var.
-// This should be documented in the README or simply prevent the use of Edge when connected to a localhost instance.
-func NewTunnelOperator(tunnelServerAddr, pollInterval string) *TunnelOperator {
+func NewTunnelOperator(pollInterval string) *TunnelOperator {
 	return &TunnelOperator{
-		tunnelServerAddress: tunnelServerAddr,
-		pollInterval:        pollInterval,
+		pollInterval: pollInterval,
 		httpClient: &http.Client{
 			Timeout: time.Second * clientPollTimeout,
 		},
@@ -53,7 +43,7 @@ func (operator *TunnelOperator) Start() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("[DEBUG] [http,edge] [poll_interval: %s] [message: Starting Portainer short-polling client]", pollInterval.String())
+	log.Printf("[DEBUG] [http,edge] [poll_interval: %s] [server_url: %s] [message: Starting Portainer short-polling client]", pollInterval.String(), operator.key.PortainerInstanceURL)
 
 	// TODO: ping before starting poll loop?
 
@@ -70,7 +60,6 @@ func (operator *TunnelOperator) Start() error {
 				err = operator.poll()
 				if err != nil {
 					log.Printf("[ERROR] [edge,http] [message: An error occured during short poll] [error: %s]", err)
-
 				}
 
 			case <-quit:
@@ -88,7 +77,7 @@ func (operator *TunnelOperator) Start() error {
 // SetKey parses and associate a key to the operator
 // TODO: key should be persisted
 func (operator *TunnelOperator) SetKey(key string) error {
-	edgeKey, err := parseEdgeKey(key, operator.tunnelServerAddress)
+	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
 		return err
 	}
