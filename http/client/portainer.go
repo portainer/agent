@@ -25,7 +25,7 @@ type TunnelOperator struct {
 	key           *edgeKey
 	httpClient    *http.Client
 	tunnelClient  agent.ReverseTunnelClient
-	activityTimer *time.Timer
+	lastActivity  time.Time
 }
 
 // NewTunnelOperator creates a new reverse tunnel operator
@@ -51,6 +51,7 @@ func NewTunnelOperator(pollInterval, sleepInterval string) (*TunnelOperator, err
 }
 
 // TODO: doc
+// + refactor
 func (operator *TunnelOperator) Start() error {
 	log.Printf("[DEBUG] [http,edge] [poll_interval: %s] [server_url: %s] [sleep_interval: %s] [message: Starting Portainer short-polling client]", operator.pollInterval.String(), operator.key.PortainerInstanceURL, operator.sleepInterval.String())
 
@@ -81,15 +82,59 @@ func (operator *TunnelOperator) Start() error {
 	// TODO: required?
 	// close(quit) to exit
 
-	// TODO: put this in a goroutine and poll loop not in go routine?
-	operator.activityTimer = time.NewTimer(operator.sleepInterval)
-	<-operator.activityTimer.C
+	// TODO: other ticker value?
+	ticker2 := time.NewTicker(10 * time.Second)
+	quit2 := make(chan struct{})
 
-	log.Println("[INFO] [http,edge,rtunnel] [message: Shutting down tunnel after inactivity period]")
-	err := operator.tunnelClient.CloseTunnel()
-	if err != nil {
-		return err
-	}
+	go func() {
+		for {
+			select {
+			case <-ticker2.C:
+				elapsed := time.Since(operator.lastActivity)
+				if operator.tunnelClient.IsTunnelOpen() && !operator.lastActivity.IsZero() && elapsed.Seconds() > operator.sleepInterval.Seconds() {
+					log.Println("[INFO] [http,edge,rtunnel] [message: Shutting down tunnel after inactivity period]")
+					err := operator.tunnelClient.CloseTunnel()
+					if err != nil {
+						log.Printf("[ERROR] [http,edge,rtunnel] [message: Unable to shut down tunnel] [error: %s]", err)
+					}
+				}
+
+			// do something
+			case <-quit2:
+				ticker2.Stop()
+				return
+			}
+		}
+	}()
+
+	// TODO: required?
+	// close(quit2) to exit
+
+	// TODO: put this in a goroutine and poll loop not in go routine?
+	//operator.activityTimer = time.NewTimer(operator.sleepInterval)
+	//cancel := make(chan struct{})
+
+	//go func() {
+	//	for {
+	//		select {
+	//		case <-operator.activityTimer.C:
+	//			// TODO: will only do this once, must implement sleep/wake loop
+	//			if operator.tunnelClient.IsTunnelOpen() {
+	//				log.Println("[INFO] [http,edge,rtunnel] [message: Shutting down tunnel after inactivity period]")
+	//				err := operator.tunnelClient.CloseTunnel()
+	//				if err != nil {
+	//					log.Printf("[ERROR] [http,edge,rtunnel] [message: Unable to shut down tunnel] [error: %s]", err)
+	//					// TODO: log
+	//					//return err
+	//				}
+	//			}
+	//
+	//			operator.ResetActivityTimer()
+	//		case <-cancel:
+	//			return
+	//		}
+	//	}
+	//}()
 
 	return nil
 }
@@ -121,8 +166,10 @@ func (operator *TunnelOperator) CloseTunnel() error {
 }
 
 func (operator *TunnelOperator) ResetActivityTimer() {
-	if !operator.activityTimer.Stop() {
-		<-operator.activityTimer.C
-	}
-	operator.activityTimer.Reset(operator.sleepInterval)
+	//if !operator.activityTimer.Stop() {
+	//	<-operator.activityTimer.C
+	//}
+	//operator.activityTimer.Reset(operator.sleepInterval)
+
+	operator.lastActivity = time.Now()
 }
