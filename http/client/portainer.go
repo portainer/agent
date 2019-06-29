@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/portainer/agent/filesystem"
+
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
 )
@@ -25,6 +27,7 @@ type TunnelOperator struct {
 	key           *edgeKey
 	httpClient    *http.Client
 	tunnelClient  agent.ReverseTunnelClient
+	cronManager   agent.CronManager
 	lastActivity  time.Time
 }
 
@@ -47,6 +50,7 @@ func NewTunnelOperator(pollInterval, sleepInterval string) (*TunnelOperator, err
 			Timeout: time.Second * clientPollTimeout,
 		},
 		tunnelClient: chisel.NewClient(),
+		cronManager:  filesystem.NewManager(),
 	}, nil
 }
 
@@ -140,8 +144,13 @@ func (operator *TunnelOperator) Start() error {
 }
 
 // SetKey parses and associate a key to the operator
-// TODO: key should be persisted
 func (operator *TunnelOperator) SetKey(key string) error {
+	// TODO: create constants
+	err := filesystem.WriteFile("/etc/portainer", "agent_edge_key", []byte(key), 0444)
+	if err != nil {
+		return err
+	}
+
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
 		return err

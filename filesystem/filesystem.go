@@ -26,6 +26,20 @@ type FileDetails struct {
 	BasePath string
 }
 
+func ReadFromFile(filePath string) ([]byte, error) {
+	return ioutil.ReadFile(filePath)
+}
+
+func FileExists(filePath string) (bool, error) {
+	if _, err := os.Stat(filePath); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 // OpenFile will open a file and return a FileDetails pointer
 // with information about this file.
 // The returned FileDetails contains a pointer to the File that must be closed manually
@@ -86,10 +100,14 @@ func RenameFile(oldPath, newPath string) error {
 // WriteFile takes a path, filename, a file and the mode that should be associated
 // to the file and writes it to disk
 func WriteFile(uploadedFilePath, filename string, file []byte, mode uint32) error {
-	os.MkdirAll(uploadedFilePath, 0755)
+	err := os.MkdirAll(uploadedFilePath, 0755)
+	if err != nil {
+		return err
+	}
+
 	filePath := path.Join(uploadedFilePath, filename)
 
-	err := ioutil.WriteFile(filePath, file, os.FileMode(mode))
+	err = ioutil.WriteFile(filePath, file, os.FileMode(mode))
 	if err != nil {
 		return err
 	}

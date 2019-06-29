@@ -48,6 +48,9 @@ func NewServer(config *ServerConfig) *Server {
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
+// TODO: investigate potential security issues with running agent API in unsecured mode (container access in container network etc...)
+// The agent API should not be exposed when running in unsecured mode. Still, a user could expose port 9000 and expose the Docker socket
+// without any security.
 func (server *Server) StartUnsecured() error {
 	config := &handler.Config{
 		SystemService:  server.systemService,

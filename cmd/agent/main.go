@@ -10,6 +10,7 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
 	"github.com/portainer/agent/logutils"
@@ -95,7 +96,7 @@ func main() {
 		}
 	}
 
-	systemService := ghw.NewSystemService("/host")
+	systemService := ghw.NewSystemService(agent.HostRoot)
 
 	var signatureService agent.DigitalSignatureService
 	if !options.EdgeMode {
@@ -140,10 +141,32 @@ func startAPIServer(config *http.ServerConfig) error {
 
 func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options) error {
 
-	if options.EdgeKey != "" {
-		log.Println("[DEBUG] [main,edge] [message: Edge key specified. Starting tunnel operator.]")
+	var edgeKey string
 
-		err := tunnelOperator.SetKey(options.EdgeKey)
+	// TODO: add DEBUG entries
+	if options.EdgeKey == "" {
+		// TODO: use constants
+
+		keyFileExists, err := filesystem.FileExists("/etc/portainer/agent_edge_key")
+		if err != nil {
+			return err
+		}
+
+		if keyFileExists {
+			filesystemKey, err := filesystem.ReadFromFile("/etc/portainer/agent_edge_key")
+			if err != nil {
+				return err
+			}
+			edgeKey = string(filesystemKey)
+		}
+	} else {
+		edgeKey = options.EdgeKey
+	}
+
+	if edgeKey != "" {
+		log.Println("[DEBUG] [main,edge] [message: Edge key available. Starting tunnel operator.]")
+
+		err := tunnelOperator.SetKey(edgeKey)
 		if err != nil {
 			return err
 		}

@@ -8,13 +8,23 @@ import (
 	"strconv"
 
 	"github.com/portainer/agent"
+	portainer "github.com/portainer/portainer/api"
 )
 
 type portainerResponse struct {
-	Status string `json:"status"`
-	Port   int    `json:"port"`
+	Status    string                   `json:"status"`
+	Port      int                      `json:"port"`
+	Schedules []portainer.EdgeSchedule `json:"Schedules"`
 }
 
+// TODO: scheduling thoughts
+// In order to run on each node inside a Swarm cluster
+// poll() must run on each agent, not only on the one that manages the Edge startup
+//
+// this implementation is gonna leverage cron which might not be available on all the systems
+// e.g. windows
+
+// TODO: refactor/rewrite
 func (operator *TunnelOperator) poll() error {
 
 	if operator.key == nil {
@@ -34,10 +44,25 @@ func (operator *TunnelOperator) poll() error {
 		return err
 	}
 
-	// if responsecode != 200 { log message }
-	// if status == IDLE { do nothing }
-	// if status == REQUIRED and tunnel closed { create tunnel }
-	// if status == ACTIVE and tunnel closed { create tunnel }
+	log.Printf("[DEBUG] [http,edge,poll] [portainer_poll_response: %+v]", respData)
+
+	schedules := make([]agent.CronSchedule, 0)
+	for _, edgeSchedule := range respData.Schedules {
+
+		schedule := agent.CronSchedule{
+			ID:             int(edgeSchedule.ID),
+			CronExpression: edgeSchedule.CronExpression,
+			Script:         edgeSchedule.Script,
+			//ScriptHash:     edgeSchedule.ScriptHash,
+		}
+
+		schedules = append(schedules, schedule)
+	}
+
+	err = operator.cronManager.Schedule(schedules)
+	if err != nil {
+		log.Printf("[ERROR] [http,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
+	}
 
 	if respData.Status != "IDLE" && !operator.tunnelClient.IsTunnelOpen() {
 		tunnelConfig := agent.TunnelConfig{

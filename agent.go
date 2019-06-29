@@ -111,6 +111,19 @@ type (
 		CloseTunnel() error
 		ResetActivityTimer()
 	}
+
+	// TODO: doc
+	CronSchedule struct {
+		ID             int
+		CronExpression string
+		Script         string
+		//ScriptHash     []byte
+	}
+
+	// TODO: rename/document
+	CronManager interface {
+		Schedule(schedules []CronSchedule) error
+	}
 )
 
 const (
@@ -179,4 +192,10 @@ const (
 	TLSCertPath = "cert.pem"
 	// TLSKeyPath is the default path to the TLS key file.
 	TLSKeyPath = "key.pem"
+	// TODO: document
+	HostRoot                = "/host"
+	CronDirectory           = "/etc/cron.d"
+	CronFile                = "portainer_agent"
+	CronUser                = "root"
+	ScheduleScriptDirectory = "/opt/portainer/scripts"
 )

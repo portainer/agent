@@ -5,8 +5,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/portainer/agent"
 	httpagenthandler "github.com/portainer/agent/http/handler/agent"
 	"github.com/portainer/agent/http/handler/browse"
@@ -16,7 +14,6 @@ import (
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
-	httperror "github.com/portainer/libhttp/error"
 )
 
 // Handler is the main handler of the application.
@@ -66,13 +63,16 @@ func NewHandler(config *Config) *Handler {
 }
 
 func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
-	// TODO: validate that this is working
-	if !h.securedProtocol && !h.tunnelOperator.IsKeySet() {
-		httperror.WriteError(rw, http.StatusServiceUnavailable, "Unable to use agent API", errors.New("Edge key not set"))
-		return
-	}
+	// TODO: Not working in a Swarm with >= 2 nodes (as the tunnel operator is only created on the node managing the Edge startup process)
+	// causing a panic
+	//if !h.securedProtocol && !h.tunnelOperator.IsKeySet() {
+	//	httperror.WriteError(rw, http.StatusServiceUnavailable, "Unable to use agent API", errors.New("Edge key not set"))
+	//	return
+	//}
 
-	if !h.securedProtocol {
+	// TODO: will trigger chaotic behavior on Swarm as it will reset timer only if activity is detected on
+	// the node managing the Edge startup process. MUST BE REVIEWED
+	if !h.securedProtocol && h.tunnelOperator != nil {
 		h.tunnelOperator.ResetActivityTimer()
 	}
 
