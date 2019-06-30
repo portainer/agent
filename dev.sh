@@ -35,6 +35,7 @@ function deploy_local() {
 
   echo "Image build..."
   docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
+  docker push "${IMAGE_NAME}"
 
   echo "Deployment..."
   docker run -d --name portainer-agent-dev \

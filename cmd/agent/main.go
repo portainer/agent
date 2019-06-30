@@ -147,13 +147,13 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options)
 	// TODO: add DEBUG entries
 	if options.EdgeKey == "" {
 		// TODO: use constants (constants.go)
-		keyFileExists, err := filesystem.FileExists("/etc/portainer/agent_edge_key")
+		keyFileExists, err := filesystem.FileExists("/data/agent_edge_key")
 		if err != nil {
 			return err
 		}
 
 		if keyFileExists {
-			filesystemKey, err := filesystem.ReadFromFile("/etc/portainer/agent_edge_key")
+			filesystemKey, err := filesystem.ReadFromFile("/data/agent_edge_key")
 			if err != nil {
 				return err
 			}
@@ -173,7 +173,9 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options)
 
 		// TODO: create constants (constants.go)
 		// TODO: won't be persisted in Swarm as the service will recreate a container on reboot
-		err = filesystem.WriteFile("/etc/portainer", "agent_edge_key", []byte(edgeKey), 0444)
+		// We can assume that the agent will always be deployed as a GLOBAL service and as such using a volume
+		// to persist the data folder would solve the issue. Must be documented.
+		err = filesystem.WriteFile("/data", "agent_edge_key", []byte(edgeKey), 0444)
 		if err != nil {
 			return err
 		}
