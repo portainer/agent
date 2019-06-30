@@ -118,9 +118,6 @@ func (operator *TunnelOperator) Start() error {
 }
 
 // SetKey parses and associate a key to the operator
-// TODO: once the key is set, should talk to all nodes in the cluster to share the key
-// either in this service or after the call
-// @@SWARM_SUPPORT
 func (operator *TunnelOperator) SetKey(key string) error {
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {

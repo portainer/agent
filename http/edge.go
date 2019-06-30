@@ -60,6 +60,8 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 			return
 		}
 
+		// TODO: create constants (constants.go)
+		// TODO: won't be persisted in Swarm as the service will recreate a container on reboot
 		err = filesystem.WriteFile("/etc/portainer", "agent_edge_key", []byte(key), 0444)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

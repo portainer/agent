@@ -66,6 +66,7 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	// TODO: Not working in a Swarm with >= 2 nodes (as the tunnel operator is only created on the node managing the Edge startup process)
 	// causing a panic
 	// Each node in the cluster must be aware of the key existence (similar to TunnelOperator) if we want to implement such as solution
+	// TunnelOperator should be created on all nodes anyway, but started only when a key is available
 	// @@SWARM_SUPPORT
 
 	//if !h.securedProtocol && !h.tunnelOperator.IsKeySet() {
@@ -76,6 +77,9 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	// TODO: will trigger chaotic behavior on Swarm as it will reset timer only if activity is detected on
 	// the node managing the Edge startup process.
 	// ResetActivityTimer must be a cluster operation
+	// EDIT: as the request will always be served first on the node where the tunnel is
+	// created it is fine, it should only be associated to the local tunnel
+	// To be confirmed
 	if !h.securedProtocol && h.tunnelOperator != nil {
 		h.tunnelOperator.ResetActivityTimer()
 	}

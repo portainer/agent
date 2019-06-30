@@ -147,7 +147,6 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options)
 	// TODO: add DEBUG entries
 	if options.EdgeKey == "" {
 		// TODO: use constants (constants.go)
-
 		keyFileExists, err := filesystem.FileExists("/etc/portainer/agent_edge_key")
 		if err != nil {
 			return err
