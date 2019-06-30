@@ -62,6 +62,8 @@ func (server *Server) StartUnsecured() error {
 	}
 	h := handler.NewHandler(config)
 
+	// TODO: only use localhost:9001? this would prevent containers inside the same network to reach it?
+	// See issue above
 	listenAddr := server.addr + ":" + server.port
 	return http.ListenAndServe(listenAddr, h)
 }

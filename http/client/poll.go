@@ -11,6 +11,8 @@ import (
 	portainer "github.com/portainer/portainer/api"
 )
 
+// TODO: dependency on Portainer
+// remove by re-creating struct with required fields only?
 type portainerResponse struct {
 	Status    string                   `json:"status"`
 	Port      int                      `json:"port"`
@@ -22,7 +24,7 @@ type portainerResponse struct {
 // poll() must run on each agent, not only on the one that manages the Edge startup
 //
 // this implementation is gonna leverage cron which might not be available on all the systems
-// e.g. windows
+// e.g. windows. Schedule management should be skipped on Windows platforms.
 
 // TODO: refactor/rewrite
 func (operator *TunnelOperator) poll() error {
@@ -44,27 +46,10 @@ func (operator *TunnelOperator) poll() error {
 		return err
 	}
 
+	// TODO: better DEBUG messages
 	log.Printf("[DEBUG] [http,edge,poll] [portainer_poll_response: %+v]", respData)
 
-	schedules := make([]agent.CronSchedule, 0)
-	for _, edgeSchedule := range respData.Schedules {
-
-		schedule := agent.CronSchedule{
-			ID:             int(edgeSchedule.ID),
-			CronExpression: edgeSchedule.CronExpression,
-			Script:         edgeSchedule.Script,
-			//ScriptHash:     edgeSchedule.ScriptHash,
-		}
-
-		schedules = append(schedules, schedule)
-	}
-
-	err = operator.cronManager.Schedule(schedules)
-	if err != nil {
-		log.Printf("[ERROR] [http,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
-	}
-
-	if respData.Status != "IDLE" && !operator.tunnelClient.IsTunnelOpen() {
+	if respData.Status == "REQUIRED" && !operator.tunnelClient.IsTunnelOpen() {
 		tunnelConfig := agent.TunnelConfig{
 			ServerAddr:       operator.key.TunnelServerAddr,
 			ServerFingerpint: operator.key.TunnelServerFingerprint,
@@ -78,6 +63,26 @@ func (operator *TunnelOperator) poll() error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// TODO: ignore on Windows platform
+	schedules := make([]agent.CronSchedule, 0)
+	for _, edgeSchedule := range respData.Schedules {
+
+		schedule := agent.CronSchedule{
+			ID:             int(edgeSchedule.ID),
+			CronExpression: edgeSchedule.CronExpression,
+			Script:         edgeSchedule.Script,
+			//ScriptHash:     edgeSchedule.ScriptHash,
+		}
+
+		schedules = append(schedules, schedule)
+	}
+
+	// TODO: maybe make cronManager_linux.go and cronManger_windows.go (empty schedule function)
+	err = operator.cronManager.Schedule(schedules)
+	if err != nil {
+		log.Printf("[ERROR] [http,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
 	}
 
 	return nil

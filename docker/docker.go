@@ -62,5 +62,5 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string)
 		}
 	}
 
-	return "", errors.New("Unable to retrieve the address on which the agent can advertise. Check your network settings")
+	return "", errors.New("unable to retrieve the address on which the agent can advertise. Check your network settings")
 }

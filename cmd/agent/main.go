@@ -57,10 +57,11 @@ func main() {
 		startEdgeProcess = false
 
 		// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
-		// sometimes... Waiting a bit before starting the discovery seems to solve the problem.
+		// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
 		// This is also randomize to potentially prevent multiple agents started in Edge mode to discover
 		// themselves at the same time, preventing one to being elected as the cluster initiator.
 		// Should be replaced by a proper way to select a single node inside the cluster.
+		// @@SWARM_SUPPORT
 		sleep(3, 6)
 
 		joinAddr, err := net.LookupIPAddresses(options.ClusterAddress)
@@ -145,7 +146,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options)
 
 	// TODO: add DEBUG entries
 	if options.EdgeKey == "" {
-		// TODO: use constants
+		// TODO: use constants (constants.go)
 
 		keyFileExists, err := filesystem.FileExists("/etc/portainer/agent_edge_key")
 		if err != nil {
@@ -171,6 +172,19 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options)
 			return err
 		}
 
+		// TODO: create constants (constants.go)
+		// TODO: won't be persisted in Swarm as the service will recreate a container on reboot
+		err = filesystem.WriteFile("/etc/portainer", "agent_edge_key", []byte(edgeKey), 0444)
+		if err != nil {
+			return err
+		}
+
+		// TODO: tunnel operator is the service used to short-poll Portainer instance
+		// at the moment, it is only started on the node where the key was specified (edge cluster initiator)
+		// if we want schedules to be executed/scheduled on each node inside the cluster, then all the nodes must be
+		// able to poll the Portainer instance to retrieve schedules.
+		// Note: only one of the nodes should create the reverse tunnel.
+		// @@SWARM_SUPPORT
 		return tunnelOperator.Start()
 	}
 
@@ -200,6 +214,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options)
 		// TODO: It should not be possible to use the Agent API if the agent is in that state.
 		// Either shutdown the program (might be problematic with Docker restart policies)
 		// Or return a dummy response to all Agent API requests (ServiceNotAvailable or equivalent)
+		// @@SWARM_SUPPORT
 	}()
 
 	return nil

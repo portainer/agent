@@ -12,11 +12,9 @@ import (
 type AgentProxy struct {
 	clusterService agent.ClusterService
 	agentTags      map[string]string
-	secured        bool
 }
 
 // NewAgentProxy returns a pointer to a new AgentProxy object
-// If secured is set to true, proxy will use https scheme
 func NewAgentProxy(clusterService agent.ClusterService, agentTags map[string]string) *AgentProxy {
 	return &AgentProxy{
 		clusterService: clusterService,

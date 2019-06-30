@@ -26,10 +26,12 @@ type FileDetails struct {
 	BasePath string
 }
 
+// ReadFromFile returns the content of a file.
 func ReadFromFile(filePath string) ([]byte, error) {
 	return ioutil.ReadFile(filePath)
 }
 
+// FileExists will verify that a file exists under the specified file path.
 func FileExists(filePath string) (bool, error) {
 	if _, err := os.Stat(filePath); err != nil {
 		if os.IsNotExist(err) {

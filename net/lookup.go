@@ -13,7 +13,6 @@ func LookupIPAddresses(host string) ([]string, error) {
 	ips, err := net.LookupIP(host)
 	if err != nil {
 		return ipAddresses, err
-		//log.Fatalf("[ERROR] [main,net] [host: %s] [message: Unable to resolve host] [error: %s]", options.ClusterAddress, err)
 	}
 
 	for idx, ip := range ips {

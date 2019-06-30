@@ -65,13 +65,17 @@ func NewHandler(config *Config) *Handler {
 func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	// TODO: Not working in a Swarm with >= 2 nodes (as the tunnel operator is only created on the node managing the Edge startup process)
 	// causing a panic
+	// Each node in the cluster must be aware of the key existence (similar to TunnelOperator) if we want to implement such as solution
+	// @@SWARM_SUPPORT
+
 	//if !h.securedProtocol && !h.tunnelOperator.IsKeySet() {
 	//	httperror.WriteError(rw, http.StatusServiceUnavailable, "Unable to use agent API", errors.New("Edge key not set"))
 	//	return
 	//}
 
 	// TODO: will trigger chaotic behavior on Swarm as it will reset timer only if activity is detected on
-	// the node managing the Edge startup process. MUST BE REVIEWED
+	// the node managing the Edge startup process.
+	// ResetActivityTimer must be a cluster operation
 	if !h.securedProtocol && h.tunnelOperator != nil {
 		h.tunnelOperator.ResetActivityTimer()
 	}

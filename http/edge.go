@@ -5,9 +5,13 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/portainer/agent/filesystem"
+
 	"github.com/gorilla/mux"
 	"github.com/portainer/agent"
 )
+
+// TODO: document functions
 
 type EdgeServer struct {
 	httpServer     *http.Server
@@ -56,6 +60,20 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 			return
 		}
 
+		err = filesystem.WriteFile("/etc/portainer", "agent_edge_key", []byte(key), 0444)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// TODO: tunnel operator is the service used to short-poll Portainer instance
+		// at the moment, it is only started on the node where the key was specified (edge cluster initiator)
+		// if we want schedules to be executed/scheduled on each node inside the cluster, then all the nodes must be
+		// able to poll the Portainer instance to retrieve schedules.
+		// Note: only one of the nodes should create the reverse tunnel.
+		// Start() is usually trigger after the SetKey function which makes me think that there should be a cluster
+		// notification in between.
+		// @@SWARM_SUPPORT
 		go server.tunnelOperator.Start()
 
 		w.Write([]byte("Agent setup OK. You can close this page."))

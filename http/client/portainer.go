@@ -114,43 +114,14 @@ func (operator *TunnelOperator) Start() error {
 	// TODO: required?
 	// close(quit2) to exit
 
-	// TODO: put this in a goroutine and poll loop not in go routine?
-	//operator.activityTimer = time.NewTimer(operator.sleepInterval)
-	//cancel := make(chan struct{})
-
-	//go func() {
-	//	for {
-	//		select {
-	//		case <-operator.activityTimer.C:
-	//			// TODO: will only do this once, must implement sleep/wake loop
-	//			if operator.tunnelClient.IsTunnelOpen() {
-	//				log.Println("[INFO] [http,edge,rtunnel] [message: Shutting down tunnel after inactivity period]")
-	//				err := operator.tunnelClient.CloseTunnel()
-	//				if err != nil {
-	//					log.Printf("[ERROR] [http,edge,rtunnel] [message: Unable to shut down tunnel] [error: %s]", err)
-	//					// TODO: log
-	//					//return err
-	//				}
-	//			}
-	//
-	//			operator.ResetActivityTimer()
-	//		case <-cancel:
-	//			return
-	//		}
-	//	}
-	//}()
-
 	return nil
 }
 
 // SetKey parses and associate a key to the operator
+// TODO: once the key is set, should talk to all nodes in the cluster to share the key
+// either in this service or after the call
+// @@SWARM_SUPPORT
 func (operator *TunnelOperator) SetKey(key string) error {
-	// TODO: create constants
-	err := filesystem.WriteFile("/etc/portainer", "agent_edge_key", []byte(key), 0444)
-	if err != nil {
-		return err
-	}
-
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
 		return err
@@ -175,10 +146,5 @@ func (operator *TunnelOperator) CloseTunnel() error {
 }
 
 func (operator *TunnelOperator) ResetActivityTimer() {
-	//if !operator.activityTimer.Stop() {
-	//	<-operator.activityTimer.C
-	//}
-	//operator.activityTimer.Reset(operator.sleepInterval)
-
 	operator.lastActivity = time.Now()
 }
