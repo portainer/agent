@@ -8,7 +8,7 @@ VAGRANT=true
 TMP="/tmp"
 GIT_COMMIT_HASH=`git rev-parse --short HEAD`
 GIT_BRANCH_NAME=`git rev-parse --abbrev-ref HEAD`
-IMAGE_NAME="portainer/agent:${GIT_BRANCH_NAME}-${GIT_COMMIT_HASH}"
+IMAGE_NAME="portainer/pagent:${GIT_BRANCH_NAME}-${GIT_COMMIT_HASH}"
 
 
 if [[ $# -ne 1 ]] ; then
@@ -94,7 +94,7 @@ function deploy_swarm() {
   --mount type=bind,src=//,dst=/host \
   --mount type=volume,src=portainer_agent_data,dst=/data \
   --publish mode=host,target=9001,published=9001 \
-  --publish mode=host,target=80,published=80 \
+  --publish mode=host,published=80,target=80 \
   --restart-condition none \
   "${IMAGE_NAME}"
 

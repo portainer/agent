@@ -2,10 +2,12 @@ package http
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"time"
 
-	"github.com/portainer/agent/filesystem"
+	"github.com/portainer/agent/http/client"
 
 	"github.com/gorilla/mux"
 	"github.com/portainer/agent"
@@ -16,11 +18,13 @@ import (
 type EdgeServer struct {
 	httpServer     *http.Server
 	tunnelOperator agent.TunnelOperator
+	clusterService agent.ClusterService
 }
 
-func NewEdgeServer(tunnelOperator agent.TunnelOperator) *EdgeServer {
+func NewEdgeServer(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService) *EdgeServer {
 	return &EdgeServer{
 		tunnelOperator: tunnelOperator,
+		clusterService: clusterService,
 	}
 }
 
@@ -60,26 +64,41 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 			return
 		}
 
-		// TODO: create constants (constants.go)
-		// TODO: won't be persisted in Swarm as the service will recreate a container on reboot
-		err = filesystem.WriteFile("/data", "agent_edge_key", []byte(key), 0444)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		if server.clusterService != nil {
+			tags := server.clusterService.GetTags()
+			tags[agent.MemberTagEdgeKeySet] = "set"
+			err = server.clusterService.UpdateTags(tags)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			go server.propagateKeyInCluster(tags[agent.MemberTagKeyNodeName], key)
 		}
 
-		// TODO: tunnel operator is the service used to short-poll Portainer instance
-		// at the moment, it is only started on the node where the key was specified (edge cluster initiator)
-		// if we want schedules to be executed/scheduled on each node inside the cluster, then all the nodes must be
-		// able to poll the Portainer instance to retrieve schedules.
-		// Note: only one of the nodes should create the reverse tunnel.
-		// Start() is usually trigger after the SetKey function which makes me think that there should be a cluster
-		// notification in between.
-		// @@SWARM_SUPPORT
 		go server.tunnelOperator.Start()
 
 		w.Write([]byte("Agent setup OK. You can close this page."))
 		server.Shutdown()
+	}
+}
+
+func (server *EdgeServer) propagateKeyInCluster(currentNodeName, key string) {
+	httpCli := client.NewClient()
+
+	members := server.clusterService.Members()
+	for _, member := range members {
+
+		if member.NodeName == currentNodeName {
+			continue
+		}
+
+		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
+
+		err := httpCli.SetEdgeKey(memberAddr, key)
+		if err != nil {
+			log.Printf("[ERROR] [edge,http] [member_address: %s] [message: Unable to propagate key to cluster member] [err: %s]", memberAddr, err)
+		}
 	}
 }
 

@@ -19,10 +19,11 @@ type (
 
 	// ClusterMember is the representation of an agent inside a cluster.
 	ClusterMember struct {
-		IPAddress string
-		Port      string
-		NodeName  string
-		NodeRole  string
+		IPAddress  string
+		Port       string
+		NodeName   string
+		NodeRole   string
+		EdgeKeySet bool
 	}
 
 	// AgentMetadata is the representation of the metadata object used to decorate
@@ -58,11 +59,14 @@ type (
 
 	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
-		Create(advertiseAddr string, joinAddr []string, tags map[string]string) (int, error)
+		Create(advertiseAddr string, joinAddr []string) error
 		Members() []ClusterMember
 		Leave()
 		GetMemberByRole(role string) *ClusterMember
 		GetMemberByNodeName(nodeName string) *ClusterMember
+		GetMemberWithEdgeKeySet() *ClusterMember
+		GetTags() map[string]string
+		UpdateTags(tags map[string]string) error
 	}
 
 	// TODO: doc
@@ -106,8 +110,9 @@ type (
 	// TODO: rename/document
 	TunnelOperator interface {
 		Start() error
-		SetKey(key string) error
 		IsKeySet() bool
+		SetKey(key string) error
+		GetKey() string
 		CloseTunnel() error
 		ResetActivityTimer()
 	}
@@ -181,9 +186,11 @@ const (
 	// MemberTagKeyNodeRole is the name of the label storing information about the role of the
 	// node where the agent is running.
 	MemberTagKeyNodeRole = "NodeRole"
-	// ApplicationTagMode is the name of the label storing information about the mode of the application, either
-	// "standalone" or "swarm".
-	ApplicationTagMode = "Mode"
+	// MemberTagEngineStatus is the name of the label storing information about the status of the Docker engine where
+	// the agent is running. Possible values are "standalone" or "swarm".
+	MemberTagEngineStatus = "EngineStatus"
+	// MemberTagEdgeKeySet is the name of the label storing information regarding the association of an Edge key.
+	MemberTagEdgeKeySet = "EdgeKeySet"
 	// NodeRoleManager represents a manager node.
 	NodeRoleManager = "manager"
 	// NodeRoleWorker represents a worker node.
@@ -192,7 +199,7 @@ const (
 	TLSCertPath = "cert.pem"
 	// TLSKeyPath is the default path to the TLS key file.
 	TLSKeyPath = "key.pem"
-	// TODO: document
+	// TODO: document and relocate platform specific constants to constants.go
 	HostRoot                = "/host"
 	CronDirectory           = "/etc/cron.d"
 	CronFile                = "portainer_agent"

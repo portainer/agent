@@ -5,10 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/portainer/agent/filesystem"
-
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
+	"github.com/portainer/agent/filesystem"
 )
 
 const clientPollTimeout = 3
@@ -124,9 +123,28 @@ func (operator *TunnelOperator) SetKey(key string) error {
 		return err
 	}
 
+	// @@DOCUMENTATION
+	// Add documentation about key persistence
+	// TODO: create constants (constants.go)
+	err = filesystem.WriteFile("/data", "agent_edge_key", []byte(key), 0444)
+	if err != nil {
+		return err
+	}
+
 	operator.key = edgeKey
 
 	return nil
+}
+
+// GetKey returns the key associated to the operator
+func (operator *TunnelOperator) GetKey() string {
+	var encodedKey string
+
+	if operator.key != nil {
+		encodedKey = encodeKey(operator.key)
+	}
+
+	return encodedKey
 }
 
 // IsKeySet checks if a key is associated to the operator
@@ -143,5 +161,9 @@ func (operator *TunnelOperator) CloseTunnel() error {
 }
 
 func (operator *TunnelOperator) ResetActivityTimer() {
+	// TODO: add IsTunnelOpen condition?
+	//if operator.tunnelClient.IsTunnelOpen() {
+	//
+	//}
 	operator.lastActivity = time.Now()
 }

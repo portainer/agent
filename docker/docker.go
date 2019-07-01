@@ -30,9 +30,9 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 	info[agent.MemberTagKeyNodeName] = dockerInfo.Name
 
 	if dockerInfo.Swarm.NodeID == "" {
-		info[agent.ApplicationTagMode] = "standalone"
+		info[agent.MemberTagEngineStatus] = "standalone"
 	} else {
-		info[agent.ApplicationTagMode] = "swarm"
+		info[agent.MemberTagEngineStatus] = "swarm"
 		info[agent.MemberTagKeyNodeRole] = agent.NodeRoleWorker
 		if dockerInfo.Swarm.ControlAvailable {
 			info[agent.MemberTagKeyNodeRole] = agent.NodeRoleManager
@@ -42,6 +42,11 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 	return info, nil
 }
 
+// TODO: have to be careful with this implementation. If the container is not using host mode port
+// when publishing ports it will be automatically added to the ingress network.
+// This implementation might return the IP address used in the ingress network and cause network issues
+// when trying to form the cluster.
+// Must be documented.
 func (service *InfoService) GetContainerIpFromDockerEngine(containerName string) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 	if err != nil {

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/portainer/agent"
@@ -17,6 +18,7 @@ type Server struct {
 	tunnelOperator   agent.TunnelOperator
 	agentTags        map[string]string
 	agentOptions     *agent.Options
+	edgeMode         bool
 }
 
 // ServerConfig represents a server configuration
@@ -30,7 +32,7 @@ type ServerConfig struct {
 	TunnelOperator   agent.TunnelOperator
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
-	Secured          bool
+	EdgeMode         bool
 }
 
 // NewServer returns a pointer to a Server.
@@ -44,6 +46,7 @@ func NewServer(config *ServerConfig) *Server {
 		tunnelOperator:   config.TunnelOperator,
 		agentTags:        config.AgentTags,
 		agentOptions:     config.AgentOptions,
+		edgeMode:         config.EdgeMode,
 	}
 }
 
@@ -58,13 +61,16 @@ func (server *Server) StartUnsecured() error {
 		TunnelOperator: server.tunnelOperator,
 		AgentTags:      server.agentTags,
 		AgentOptions:   server.agentOptions,
+		EdgeMode:       server.edgeMode,
 		Secured:        false,
 	}
-	h := handler.NewHandler(config)
 
+	h := handler.NewHandler(config)
 	// TODO: only use localhost:9001? this would prevent containers inside the same network to reach it?
 	// See issue above
 	listenAddr := server.addr + ":" + server.port
+
+	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 	return http.ListenAndServe(listenAddr, h)
 }
 
@@ -77,10 +83,13 @@ func (server *Server) StartSecured() error {
 		TunnelOperator:   server.tunnelOperator,
 		AgentTags:        server.agentTags,
 		AgentOptions:     server.agentOptions,
+		EdgeMode:         server.edgeMode,
 		Secured:          true,
 	}
-	h := handler.NewHandler(config)
 
+	h := handler.NewHandler(config)
 	listenAddr := server.addr + ":" + server.port
+
+	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, h)
 }

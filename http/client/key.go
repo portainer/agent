@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -30,4 +31,10 @@ func parseEdgeKey(key string) (*edgeKey, error) {
 	}
 
 	return edgeKey, nil
+}
+
+func encodeKey(edgeKey *edgeKey) string {
+	keyInfo := fmt.Sprintf("%s|%s|%s|%s|%s", edgeKey.PortainerInstanceURL, edgeKey.TunnelServerAddr, edgeKey.TunnelServerFingerprint, edgeKey.EndpointID, edgeKey.Credentials)
+	encodedKey := base64.RawStdEncoding.EncodeToString([]byte(keyInfo))
+	return encodedKey
 }

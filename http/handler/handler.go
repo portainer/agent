@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/portainer/agent/http/handler/key"
 
 	"github.com/portainer/agent"
 	httpagenthandler "github.com/portainer/agent/http/handler/agent"
@@ -14,6 +17,7 @@ import (
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
+	httperror "github.com/portainer/libhttp/error"
 )
 
 // Handler is the main handler of the application.
@@ -23,6 +27,7 @@ type Handler struct {
 	browseHandler      *browse.Handler
 	browseHandlerV1    *browse.Handler
 	dockerProxyHandler *docker.Handler
+	keyHandler         *key.Handler
 	webSocketHandler   *websocket.Handler
 	hostHandler        *host.Handler
 	pingHandler        *ping.Handler
@@ -40,6 +45,7 @@ type Config struct {
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
 	Secured          bool
+	EdgeMode         bool
 }
 
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
@@ -54,6 +60,7 @@ func NewHandler(config *Config) *Handler {
 		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService),
+		keyHandler:         key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeMode),
 		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
 		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:        ping.NewHandler(),
@@ -63,16 +70,15 @@ func NewHandler(config *Config) *Handler {
 }
 
 func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
-	// TODO: Not working in a Swarm with >= 2 nodes (as the tunnel operator is only created on the node managing the Edge startup process)
-	// causing a panic
-	// Each node in the cluster must be aware of the key existence (similar to TunnelOperator) if we want to implement such as solution
-	// TunnelOperator should be created on all nodes anyway, but started only when a key is available
-	// @@SWARM_SUPPORT
+	if strings.HasPrefix(request.URL.Path, "/key") {
+		h.keyHandler.ServeHTTP(rw, request)
+		return
+	}
 
-	//if !h.securedProtocol && !h.tunnelOperator.IsKeySet() {
-	//	httperror.WriteError(rw, http.StatusServiceUnavailable, "Unable to use agent API", errors.New("Edge key not set"))
-	//	return
-	//}
+	if !h.securedProtocol && !h.tunnelOperator.IsKeySet() {
+		httperror.WriteError(rw, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
+		return
+	}
 
 	// TODO: will trigger chaotic behavior on Swarm as it will reset timer only if activity is detected on
 	// the node managing the Edge startup process.
@@ -80,7 +86,7 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	// EDIT: as the request will always be served first on the node where the tunnel is
 	// created it is fine, it should only be associated to the local tunnel
 	// To be confirmed
-	if !h.securedProtocol && h.tunnelOperator != nil {
+	if h.tunnelOperator != nil {
 		h.tunnelOperator.ResetActivityTimer()
 	}
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -36,8 +37,9 @@ func main() {
 	log.Printf("[DEBUG] [main,configuration] [Member tags: %+v]", agentTags)
 
 	clusterMode := false
-	if agentTags[agent.ApplicationTagMode] == "swarm" {
+	if agentTags[agent.MemberTagEngineStatus] == "swarm" {
 		clusterMode = true
+		log.Println("[INFO] [main] [message: Agent running on a Swarm cluster node. Running in cluster mode]")
 	}
 
 	if options.ClusterAddress == "" && clusterMode {
@@ -49,15 +51,14 @@ func main() {
 		log.Fatalf("[ERROR] [main,docker,os] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 	}
 
-	startEdgeProcess := options.EdgeMode
 	var clusterService agent.ClusterService
 	if clusterMode {
-
-		clusterService = cluster.NewClusterService()
-		startEdgeProcess = false
+		clusterService = cluster.NewClusterService(agentTags)
 
 		// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
 		// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
+
+		// TODO: remove and simply use sleep 3 as we did before?
 		// This is also randomize to potentially prevent multiple agents started in Edge mode to discover
 		// themselves at the same time, preventing one to being elected as the cluster initiator.
 		// Should be replaced by a proper way to select a single node inside the cluster.
@@ -69,14 +70,9 @@ func main() {
 			log.Fatalf("[ERROR] [main,net] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", options.ClusterAddress, err)
 		}
 
-		contactedNodeCount, err := clusterService.Create(advertiseAddr, joinAddr, agentTags)
+		err = clusterService.Create(advertiseAddr, joinAddr)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,cluster] [message: Unable to create cluster] [error: %s]", err)
-		}
-
-		if contactedNodeCount == 1 && options.EdgeMode {
-			log.Println("[DEBUG] [main,edge] [message: Cluster initiator. Will manage Edge startup]")
-			startEdgeProcess = true
 		}
 
 		defer clusterService.Leave()
@@ -85,13 +81,13 @@ func main() {
 	log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, options.ClusterAddress, advertiseAddr)
 
 	var tunnelOperator agent.TunnelOperator
-	if startEdgeProcess {
+	if options.EdgeMode {
 		tunnelOperator, err = client.NewTunnelOperator(options.EdgePollInterval, options.EdgeSleepInterval)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}
 
-		err := enableEdgeMode(tunnelOperator, options)
+		err := enableEdgeMode(tunnelOperator, clusterService, options)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
 		}
@@ -119,10 +115,8 @@ func main() {
 		TunnelOperator:   tunnelOperator,
 		AgentTags:        agentTags,
 		AgentOptions:     options,
-		Secured:          !options.EdgeMode,
+		EdgeMode:         options.EdgeMode,
 	}
-
-	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [cluster_mode: %t] [version: %s] [message: Starting Agent API server]", config.Addr, config.Port, config.Secured, clusterMode, agent.Version)
 
 	err = startAPIServer(config)
 	if err != nil {
@@ -133,19 +127,24 @@ func main() {
 func startAPIServer(config *http.ServerConfig) error {
 	server := http.NewServer(config)
 
-	if !config.Secured {
+	if config.EdgeMode {
 		return server.StartUnsecured()
 	}
 
 	return server.StartSecured()
 }
 
-func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options) error {
+// TODO: refactor
+func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, options *agent.Options) error {
 
-	var edgeKey string
+	edgeKey := options.EdgeKey
 
-	// TODO: add DEBUG entries
-	if options.EdgeKey == "" {
+	if options.EdgeKey != "" {
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from options]")
+		edgeKey = options.EdgeKey
+	}
+
+	if edgeKey == "" {
 		// TODO: use constants (constants.go)
 		keyFileExists, err := filesystem.FileExists("/data/agent_edge_key")
 		if err != nil {
@@ -153,16 +152,33 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options)
 		}
 
 		if keyFileExists {
-			log.Println("[INFO] [main,edge] [message: Edge key found on the filesystem]")
-
 			filesystemKey, err := filesystem.ReadFromFile("/data/agent_edge_key")
 			if err != nil {
 				return err
 			}
+
+			log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
 			edgeKey = string(filesystemKey)
 		}
-	} else {
-		edgeKey = options.EdgeKey
+
+		if edgeKey == "" && clusterService != nil {
+
+			member := clusterService.GetMemberWithEdgeKeySet()
+			if member != nil {
+				httpCli := client.NewClient()
+
+				memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
+				memberKey, err := httpCli.GetEdgeKey(memberAddr)
+				if err != nil {
+					log.Fatalf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
+				}
+
+				log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
+				edgeKey = memberKey
+			}
+
+		}
+
 	}
 
 	if edgeKey != "" {
@@ -173,26 +189,22 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options)
 			return err
 		}
 
-		// TODO: create constants (constants.go)
-		// TODO: won't be persisted in Swarm as the service will recreate a container on reboot
-		// We can assume that the agent will always be deployed as a GLOBAL service and as such using a volume
-		// to persist the data folder would solve the issue. Must be documented.
-		err = filesystem.WriteFile("/data", "agent_edge_key", []byte(edgeKey), 0444)
-		if err != nil {
-			return err
+		if clusterService != nil {
+			tags := clusterService.GetTags()
+			tags[agent.MemberTagEdgeKeySet] = "set"
+			err = clusterService.UpdateTags(tags)
+			if err != nil {
+				return err
+			}
 		}
 
-		// TODO: tunnel operator is the service used to short-poll Portainer instance
-		// at the moment, it is only started on the node where the key was specified (edge cluster initiator)
-		// if we want schedules to be executed/scheduled on each node inside the cluster, then all the nodes must be
-		// able to poll the Portainer instance to retrieve schedules.
-		// Note: only one of the nodes should create the reverse tunnel.
-		// @@SWARM_SUPPORT
+		// TODO: propagate key? or propagation via UI only?
+
 		return tunnelOperator.Start()
 	}
 
 	log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
-	edgeServer := http.NewEdgeServer(tunnelOperator)
+	edgeServer := http.NewEdgeServer(tunnelOperator, clusterService)
 
 	go func() {
 		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
@@ -213,11 +225,6 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options)
 			log.Printf("[INFO] [main,edge,http] [message: Shutting down file server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
 			edgeServer.Shutdown()
 		}
-
-		// TODO: It should not be possible to use the Agent API if the agent is in that state.
-		// Either shutdown the program (might be problematic with Docker restart policies)
-		// Or return a dummy response to all Agent API requests (ServiceNotAvailable or equivalent)
-		// @@SWARM_SUPPORT
 	}()
 
 	return nil
