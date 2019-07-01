@@ -153,6 +153,8 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, options *agent.Options)
 		}
 
 		if keyFileExists {
+			log.Println("[INFO] [main,edge] [message: Edge key found on the filesystem]")
+
 			filesystemKey, err := filesystem.ReadFromFile("/data/agent_edge_key")
 			if err != nil {
 				return err
