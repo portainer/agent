@@ -9,11 +9,12 @@ import (
 	"github.com/portainer/agent"
 )
 
-type Manager struct {
+// TODO: Document
+type CronManager struct {
 }
 
-func NewManager() *Manager {
-	return &Manager{}
+func NewCronManager() *CronManager {
+	return &CronManager{}
 }
 
 // TODO: DOC
@@ -23,7 +24,7 @@ func NewManager() *Manager {
 // ## This file is managed by Portainer agent. DO NOT EDIT MANUALLY.
 // SHELL=/bin/sh
 // PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-func (manager *Manager) Schedule(schedules []agent.CronSchedule) error {
+func (manager *CronManager) Schedule(schedules []agent.CronSchedule) error {
 	if len(schedules) == 0 {
 		// TODO: deliberately skip error to avoid "remove /host/etc/cron.d/portainer_agent: no such file or directory"
 		// for optimization purposes manager should have a variable to keep track of an existing file

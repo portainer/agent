@@ -21,17 +21,18 @@ type edgeKey struct {
 }
 
 type TunnelOperator struct {
-	pollInterval  time.Duration
-	sleepInterval time.Duration
-	key           *edgeKey
-	httpClient    *http.Client
-	tunnelClient  agent.ReverseTunnelClient
-	cronManager   agent.CronManager
-	lastActivity  time.Time
+	pollInterval    time.Duration
+	sleepInterval   time.Duration
+	edgeID          string
+	key             *edgeKey
+	httpClient      *http.Client
+	tunnelClient    agent.ReverseTunnelClient
+	scheduleManager agent.CronManager
+	lastActivity    time.Time
 }
 
 // NewTunnelOperator creates a new reverse tunnel operator
-func NewTunnelOperator(pollInterval, sleepInterval string) (*TunnelOperator, error) {
+func NewTunnelOperator(edgeID, pollInterval, sleepInterval string) (*TunnelOperator, error) {
 	pollDuration, err := time.ParseDuration(pollInterval)
 	if err != nil {
 		return nil, err
@@ -43,13 +44,14 @@ func NewTunnelOperator(pollInterval, sleepInterval string) (*TunnelOperator, err
 	}
 
 	return &TunnelOperator{
+		edgeID:        edgeID,
 		pollInterval:  pollDuration,
 		sleepInterval: sleepDuration,
 		httpClient: &http.Client{
 			Timeout: time.Second * clientPollTimeout,
 		},
-		tunnelClient: chisel.NewClient(),
-		cronManager:  filesystem.NewManager(),
+		tunnelClient:    chisel.NewClient(),
+		scheduleManager: filesystem.NewCronManager(),
 	}, nil
 }
 
@@ -123,7 +125,7 @@ func (operator *TunnelOperator) SetKey(key string) error {
 		return err
 	}
 
-	// @@DOCUMENTATION
+	// TODO: @@DOCUMENTATION
 	// Add documentation about key persistence
 	// TODO: create constants (constants.go)
 	err = filesystem.WriteFile("/data", "agent_edge_key", []byte(key), 0444)

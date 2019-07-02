@@ -10,6 +10,7 @@ type (
 		SharedSecret          string
 		EdgeMode              bool
 		EdgeKey               string
+		EdgeID                string
 		EdgeServerAddr        string
 		EdgeServerPort        string
 		EdgePollInterval      string
@@ -156,6 +157,9 @@ const (
 	SupportedDockerAPIVersion = "1.24"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.
 	HTTPTargetHeaderName = "X-PortainerAgent-Target"
+	// HTTPEdgeIdentifierHeaderName is the name of the header used to specify the Docker identifier associated to
+	// an Edge agent.
+	HTTPEdgeIdentifierHeaderName = "X-PortainerAgent-EdgeID"
 	// HTTPManagerOperationHeaderName is the name of the header used to specify that
 	// a request must target a manager node.
 	HTTPManagerOperationHeaderName = "X-PortainerAgent-ManagerOperation"
@@ -191,6 +195,9 @@ const (
 	MemberTagEngineStatus = "EngineStatus"
 	// MemberTagEdgeKeySet is the name of the label storing information regarding the association of an Edge key.
 	MemberTagEdgeKeySet = "EdgeKeySet"
+	// MemberTagDockerIdentifier is the name of the label storing information about the unique identifier associated to the Docker
+	// environment the agent is running on.
+	MemberTagDockerIdentifier = "DockerIdentifier"
 	// NodeRoleManager represents a manager node.
 	NodeRoleManager = "manager"
 	// NodeRoleWorker represents a worker node.

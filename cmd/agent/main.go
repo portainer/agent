@@ -82,7 +82,7 @@ func main() {
 
 	var tunnelOperator agent.TunnelOperator
 	if options.EdgeMode {
-		tunnelOperator, err = client.NewTunnelOperator(options.EdgePollInterval, options.EdgeSleepInterval)
+		tunnelOperator, err = client.NewTunnelOperator(options.EdgeID, options.EdgePollInterval, options.EdgeSleepInterval)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}
@@ -198,7 +198,12 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 			}
 		}
 
-		// TODO: propagate key? or propagation via UI only?
+		// TODO: give some thoughts about trigger a key propagation
+		// We're in this case when:
+		// a. a key is specified through the CLI (EDGE_KEY=xxx)
+		// b. a key is found on the filesystem
+		// c. a key is retrieved from the cluster (asking another member)
+		// Do we need key propagation?
 
 		return tunnelOperator.Start()
 	}

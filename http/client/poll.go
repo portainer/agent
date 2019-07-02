@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 
 	"github.com/portainer/agent"
@@ -19,13 +20,6 @@ type portainerResponse struct {
 	Schedules []portainer.EdgeSchedule `json:"Schedules"`
 }
 
-// TODO: scheduling thoughts
-// In order to run on each node inside a Swarm cluster
-// poll() must run on each agent, not only on the one that manages the Edge startup
-//
-// this implementation is gonna leverage cron which might not be available on all the systems
-// e.g. windows. Schedule management should be skipped on Windows platforms.
-
 // TODO: refactor/rewrite
 func (operator *TunnelOperator) poll() error {
 
@@ -34,11 +28,25 @@ func (operator *TunnelOperator) poll() error {
 	}
 
 	portainerURL := fmt.Sprintf("%s/api/endpoints/%s/status", operator.key.PortainerInstanceURL, operator.key.EndpointID)
-	resp, err := operator.httpClient.Get(portainerURL)
+
+	req, err := http.NewRequest("GET", portainerURL, nil)
+	if err != nil {
+		return err
+	}
+
+	// TODO: @@DOCUMENTATION: document the extra security layer added by the Edge ID
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, operator.edgeID)
+
+	resp, err := operator.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[DEBUG] [http,edge,poll] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
+		return errors.New("short poll request failed")
+	}
 
 	var respData portainerResponse
 	err = json.NewDecoder(resp.Body).Decode(&respData)
@@ -79,8 +87,8 @@ func (operator *TunnelOperator) poll() error {
 		schedules = append(schedules, schedule)
 	}
 
-	// TODO: maybe make cronManager_linux.go and cronManger_windows.go (empty schedule function)
-	err = operator.cronManager.Schedule(schedules)
+	// TODO: maybe make schedule_linux.go and schedule_windows.go (empty schedule function)
+	err = operator.scheduleManager.Schedule(schedules)
 	if err != nil {
 		log.Printf("[ERROR] [http,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
 	}

@@ -17,6 +17,7 @@ const (
 	EnvKeyCapHostManagement = "CAP_HOST_MANAGEMENT"
 	EnvKeyEdge              = "EDGE"
 	EnvKeyEdgeKey           = "EDGE_KEY"
+	EnvKeyEdgeID            = "EDGE_ID"
 	EnvKeyEdgeServerHost    = "EDGE_SERVER_HOST"
 	EnvKeyEdgeServerPort    = "EDGE_SERVER_PORT"
 	EnvKeyEdgePollInterval  = "EDGE_POLL_INTERVAL"
@@ -37,6 +38,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		ClusterAddress:        os.Getenv(EnvKeyClusterAddr),
 		HostManagementEnabled: false,
 		SharedSecret:          os.Getenv(EnvKeyAgentSecret),
+		EdgeID:                os.Getenv(EnvKeyEdgeID),
 		EdgeServerAddr:        agent.DefaultEdgeServerAddr,
 		EdgeServerPort:        agent.DefaultEdgeServerPort,
 		EdgePollInterval:      agent.DefaultEdgePollInterval,
@@ -50,6 +52,10 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 
 	if os.Getenv(EnvKeyEdge) == "1" {
 		options.EdgeMode = true
+	}
+
+	if options.EdgeMode && options.EdgeID == "" {
+		return nil, errors.New("missing mandatory " + EnvKeyEdgeID + " environment variable")
 	}
 
 	agentAddrEnv := os.Getenv(EnvKeyAgentHost)
