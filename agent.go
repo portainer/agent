@@ -152,7 +152,7 @@ const (
 	// DefaultEdgePollInterval is the default interval used to poll Edge information from a Portainer instance.
 	DefaultEdgePollInterval = "5s"
 	// DefaultEdgeSleepInterval is the default interval after which the agent will close the tunnel if no activity.
-	DefaultEdgeSleepInterval = "1m"
+	DefaultEdgeSleepInterval = "5m"
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.
