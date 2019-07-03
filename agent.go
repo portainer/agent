@@ -53,12 +53,7 @@ type (
 		PhysicalDisks []PhysicalDisk
 	}
 
-	// OptionParser is used to parse options.
-	OptionParser interface {
-		Options() (*Options, error)
-	}
-
-	// TODO: doc
+	// Schedule represents a script that can be scheduled on the underlying host
 	Schedule struct {
 		ID             int
 		CronExpression string
@@ -66,12 +61,18 @@ type (
 		Version        int
 	}
 
-	// TODO: doc
+	// TunnelConfig contains all the required information for the agent to establish
+	// a reverse tunnel to a Portainer instance
 	TunnelConfig struct {
 		ServerAddr       string
 		ServerFingerpint string
 		RemotePort       string
 		Credentials      string
+	}
+
+	// OptionParser is used to parse options.
+	OptionParser interface {
+		Options() (*Options, error)
 	}
 
 	// ClusterService is used to manage a cluster of agents.
@@ -116,7 +117,8 @@ type (
 		GetPciDevices() ([]PciDevice, error)
 	}
 
-	// TODO: rename/document
+	// TunnelOperator is a service that is used to communicate with a Portainer instance and create a reverse tunnel
+	// when required.
 	TunnelOperator interface {
 		Start() error
 		IsKeySet() bool
@@ -126,7 +128,7 @@ type (
 		ResetActivityTimer()
 	}
 
-	// TODO: rename/document
+	// Scheduler is used to manage schedules
 	Scheduler interface {
 		Schedule(schedules []Schedule) error
 	}
@@ -203,10 +205,6 @@ const (
 	TLSCertPath = "cert.pem"
 	// TLSKeyPath is the default path to the TLS key file.
 	TLSKeyPath = "key.pem"
-	// TODO: document and relocate platform specific constants to constants.go
-	HostRoot                = "/host"
-	CronDirectory           = "/etc/cron.d"
-	CronFile                = "portainer_agent"
-	CronUser                = "root"
-	ScheduleScriptDirectory = "/opt/portainer/scripts"
+	// HostRoot is the folder mapping to the underlying host filesystem that is mounted inside the container.
+	HostRoot = "/host"
 )
