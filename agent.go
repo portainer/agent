@@ -63,6 +63,7 @@ type (
 		ID             int
 		CronExpression string
 		Script         string
+		Version        int
 	}
 
 	// TODO: doc

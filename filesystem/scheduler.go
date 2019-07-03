@@ -11,48 +11,61 @@ import (
 	"github.com/portainer/agent"
 )
 
-// TODO: Document
+// CronManager is a service that manage schedules by creating a new entry inside the host filesystem under
+// the /etc/cron.d folder.
 type CronManager struct {
+	cronFileExists   bool
+	managedSchedules []agent.Schedule
 }
 
+// NewCronManager returns a pointer to a new instance of CronManager.
 func NewCronManager() *CronManager {
-	return &CronManager{}
+	return &CronManager{
+		cronFileExists:   false,
+		managedSchedules: make([]agent.Schedule, 0),
+	}
 }
 
-// TODO: DOC
-// Note that this implementation do not clean-up scripts related to old schedules
-// This implementation should be optimized too, it will always write file on disks every time it is called
-// Will create a file in cron directory with the following header
-// ## This file is managed by Portainer agent. DO NOT EDIT MANUALLY.
-// SHELL=/bin/sh
-// PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+// Schedule takes care of writing schedules on disk inside a cron file.
+// It also creates/updates the script associated to each schedule on the filesystem.
+// It keeps track of managed schedules and will flush the content of the cron file only if it detects any change.
+// Note that this implementation do not clean-up scripts located on the filesystem that are related to old schedules.
 func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 	if len(schedules) == 0 {
-		// TODO: deliberately skip error to avoid "remove /host/etc/cron.d/portainer_agent: no such file or directory"
-		// for optimization purposes manager should have a variable to keep track of an existing file
-		RemoveFile(fmt.Sprintf("%s%s/%s", agent.HostRoot, agent.CronDirectory, agent.CronFile))
+		if manager.cronFileExists {
+			log.Println("[DEBUG] [filesystem,cron] [message: no schedules available, removing cron file]")
+			manager.cronFileExists = false
+			return RemoveFile(fmt.Sprintf("%s%s/%s", agent.HostRoot, agent.CronDirectory, agent.CronFile))
+		}
 		return nil
 	}
 
-	cronEntries := []string{
-		"## This file is managed by Portainer agent. DO NOT EDIT MANUALLY.",
-		"SHELL=/bin/sh",
-		"PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin",
-		"",
+	if len(manager.managedSchedules) != len(schedules) {
+		manager.managedSchedules = schedules
+		return manager.flushEntries()
 	}
 
+	updateRequired := false
 	for _, schedule := range schedules {
-		cronEntry, err := createCronEntry(&schedule)
-		if err != nil {
-			log.Printf("[ERROR] [filesystem,cron] [schedule_id: %d] [message: Unable to create cron entry] [err: %s]", schedule.ID, err)
-			continue
+		for _, managed := range manager.managedSchedules {
+			if schedule.ID == managed.ID && schedule.Version != managed.Version {
+				log.Printf("[DEBUG] [filesystem,cron] [schedule_id: %d] [version: %d] [message: Found schedule with new version]", schedule.ID, schedule.Version)
+				updateRequired = true
+				break
+			}
 		}
-		cronEntries = append(cronEntries, cronEntry)
+
+		if updateRequired {
+			break
+		}
 	}
 
-	cronEntries = append(cronEntries, "")
-	cronFileContent := strings.Join(cronEntries, "\n")
-	return WriteFile(fmt.Sprintf("%s%s", agent.HostRoot, agent.CronDirectory), agent.CronFile, []byte(cronFileContent), 0644)
+	if updateRequired {
+		manager.managedSchedules = schedules
+		return manager.flushEntries()
+	}
+
+	return nil
 }
 
 func createCronEntry(schedule *agent.Schedule) (string, error) {
@@ -71,4 +84,39 @@ func createCronEntry(schedule *agent.Schedule) (string, error) {
 	logFile := fmt.Sprintf("%s/schedule_%d.log", agent.ScheduleScriptDirectory, schedule.ID)
 
 	return fmt.Sprintf("%s %s %s > %s 2>&1", cronExpression, agent.CronUser, command, logFile), nil
+}
+
+func (manager *CronManager) flushEntries() error {
+	cronEntries := make([]string, 0)
+
+	header := []string{
+		"## This file is managed by Portainer agent. DO NOT EDIT MANUALLY ALL YOUR CHANGES WILL BE OVERWRITTEN.",
+		"SHELL=/bin/sh",
+		"PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin",
+		"",
+	}
+
+	cronEntries = append(cronEntries, header...)
+
+	for _, schedule := range manager.managedSchedules {
+		cronEntry, err := createCronEntry(&schedule)
+		if err != nil {
+			log.Printf("[ERROR] [filesystem,cron] [schedule_id: %d] [message: Unable to create cron entry] [err: %s]", schedule.ID, err)
+			continue
+		}
+		cronEntries = append(cronEntries, cronEntry)
+	}
+
+	log.Printf("[DEBUG] [filesystem,cron] [schedule_count: %d] [message: Writing cron file on disk]", len(manager.managedSchedules))
+
+	cronEntries = append(cronEntries, "")
+	cronFileContent := strings.Join(cronEntries, "\n")
+	err := WriteFile(fmt.Sprintf("%s%s", agent.HostRoot, agent.CronDirectory), agent.CronFile, []byte(cronFileContent), 0644)
+	if err != nil {
+		return err
+	}
+
+	manager.cronFileExists = true
+
+	return nil
 }
