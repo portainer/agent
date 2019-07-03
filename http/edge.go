@@ -89,7 +89,7 @@ func (server *EdgeServer) propagateKeyInCluster(currentNodeName, key string) {
 	members := server.clusterService.Members()
 	for _, member := range members {
 
-		if member.NodeName == currentNodeName {
+		if member.NodeName == currentNodeName || member.EdgeKeySet {
 			continue
 		}
 
