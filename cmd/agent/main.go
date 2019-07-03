@@ -136,51 +136,11 @@ func startAPIServer(config *http.APIServerConfig) error {
 	return server.StartSecured()
 }
 
-// TODO: refactor
 func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, options *agent.Options) error {
 
-	edgeKey := options.EdgeKey
-
-	if options.EdgeKey != "" {
-		log.Println("[INFO] [main,edge] [message: Edge key loaded from options]")
-		edgeKey = options.EdgeKey
-	}
-
-	if edgeKey == "" {
-		edgeKeyFilePath := fmt.Sprintf("%s/%s", agent.DataDirectory, agent.EdgeKeyFile)
-		keyFileExists, err := filesystem.FileExists(edgeKeyFilePath)
-		if err != nil {
-			return err
-		}
-
-		if keyFileExists {
-			filesystemKey, err := filesystem.ReadFromFile(edgeKeyFilePath)
-			if err != nil {
-				return err
-			}
-
-			log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
-			edgeKey = string(filesystemKey)
-		}
-
-		if edgeKey == "" && clusterService != nil {
-
-			member := clusterService.GetMemberWithEdgeKeySet()
-			if member != nil {
-				httpCli := client.NewAPIClient()
-
-				memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
-				memberKey, err := httpCli.GetEdgeKey(memberAddr)
-				if err != nil {
-					log.Fatalf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
-				}
-
-				log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
-				edgeKey = memberKey
-			}
-
-		}
-
+	edgeKey, err := retrieveEdgeKey(options, clusterService)
+	if err != nil {
+		return err
 	}
 
 	if edgeKey != "" {
@@ -228,6 +188,82 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 	}()
 
 	return nil
+}
+
+// TODO: @@DOCUMENTATION
+// Document edge key retrieval process
+// 1. from options
+// 2. from filesystem
+// 3. from cluster
+func retrieveEdgeKey(options *agent.Options, clusterService agent.ClusterService) (string, error) {
+	edgeKey := options.EdgeKey
+
+	if options.EdgeKey != "" {
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from options]")
+		edgeKey = options.EdgeKey
+	}
+
+	if edgeKey == "" {
+		var keyRetrievalError error
+
+		edgeKey, keyRetrievalError = retrieveEdgeKeyFromFilesystem()
+		if keyRetrievalError != nil {
+			return "", keyRetrievalError
+		}
+
+		if edgeKey == "" && clusterService != nil {
+			edgeKey, keyRetrievalError = retrieveEdgeKeyFromCluster(clusterService)
+			if keyRetrievalError != nil {
+				return "", keyRetrievalError
+			}
+		}
+	}
+
+	return edgeKey, nil
+}
+
+func retrieveEdgeKeyFromFilesystem() (string, error) {
+	var edgeKey string
+
+	edgeKeyFilePath := fmt.Sprintf("%s/%s", agent.DataDirectory, agent.EdgeKeyFile)
+
+	keyFileExists, err := filesystem.FileExists(edgeKeyFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	if keyFileExists {
+		filesystemKey, err := filesystem.ReadFromFile(edgeKeyFilePath)
+		if err != nil {
+			return "", err
+		}
+
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
+		edgeKey = string(filesystemKey)
+	}
+
+	return edgeKey, nil
+}
+
+func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, error) {
+	var edgeKey string
+
+	member := clusterService.GetMemberWithEdgeKeySet()
+	if member != nil {
+		httpCli := client.NewAPIClient()
+
+		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
+		memberKey, err := httpCli.GetEdgeKey(memberAddr)
+		if err != nil {
+			log.Printf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
+			return "", err
+		}
+
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
+		edgeKey = memberKey
+	}
+
+	return edgeKey, nil
 }
 
 func parseOptions() (*agent.Options, error) {
