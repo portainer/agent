@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"time"
 
 	"github.com/portainer/agent"
@@ -57,13 +56,7 @@ func main() {
 
 		// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
 		// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
-
-		// TODO: remove and simply use sleep 3 as we did before?
-		// This is also randomize to potentially prevent multiple agents started in Edge mode to discover
-		// themselves at the same time, preventing one to being elected as the cluster initiator.
-		// Should be replaced by a proper way to select a single node inside the cluster.
-		// @@SWARM_SUPPORT
-		sleep(3, 6)
+		time.Sleep(3 * time.Second)
 
 		joinAddr, err := net.LookupIPAddresses(options.ClusterAddress)
 		if err != nil {
@@ -226,12 +219,6 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 	}()
 
 	return nil
-}
-
-func sleep(min, max int) {
-	sleepDuration := rand.Intn(max-min) + min
-	log.Printf("[DEBUG] [main] [sleep: %d]", sleepDuration)
-	time.Sleep(time.Duration(sleepDuration) * time.Second)
 }
 
 func parseOptions() (*agent.Options, error) {
