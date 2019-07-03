@@ -207,4 +207,8 @@ const (
 	TLSKeyPath = "key.pem"
 	// HostRoot is the folder mapping to the underlying host filesystem that is mounted inside the container.
 	HostRoot = "/host"
+	// DataDirectory is the folder where the data associated to the agent is persisted.
+	DataDirectory = "/data"
+	// EdgeKeyFile is the name of the file used to persist the Edge key associated to the agent.
+	EdgeKeyFile = "agent_edge_key"
 )

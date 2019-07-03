@@ -145,14 +145,14 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 	}
 
 	if edgeKey == "" {
-		// TODO: use constants (constants.go)
-		keyFileExists, err := filesystem.FileExists("/data/agent_edge_key")
+		edgeKeyFilePath := fmt.Sprintf("%s/%s", agent.DataDirectory, agent.EdgeKeyFile)
+		keyFileExists, err := filesystem.FileExists(edgeKeyFilePath)
 		if err != nil {
 			return err
 		}
 
 		if keyFileExists {
-			filesystemKey, err := filesystem.ReadFromFile("/data/agent_edge_key")
+			filesystemKey, err := filesystem.ReadFromFile(edgeKeyFilePath)
 			if err != nil {
 				return err
 			}

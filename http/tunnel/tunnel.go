@@ -68,8 +68,7 @@ func (operator *Operator) SetKey(key string) error {
 
 	// TODO: @@DOCUMENTATION
 	// Add documentation about key persistence
-	// TODO: create constants (constants.go)
-	err = filesystem.WriteFile("/data", "agent_edge_key", []byte(key), 0444)
+	err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
 	if err != nil {
 		return err
 	}
