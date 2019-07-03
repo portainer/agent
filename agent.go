@@ -67,6 +67,7 @@ type (
 		ServerAddr       string
 		ServerFingerpint string
 		RemotePort       string
+		LocalAddr        string
 		Credentials      string
 	}
 

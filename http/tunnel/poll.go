@@ -52,6 +52,7 @@ func (operator *Operator) poll() error {
 			ServerFingerpint: operator.key.TunnelServerFingerprint,
 			Credentials:      operator.key.Credentials,
 			RemotePort:       strconv.Itoa(responseData.Port),
+			LocalAddr:        operator.apiServerAddr,
 		}
 
 		log.Printf("[DEBUG] [http,edge,poll] [status: %s] [port: %d] [message: active status, will create tunnel]", responseData.Status, responseData.Port)

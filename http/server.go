@@ -8,8 +8,8 @@ import (
 	"github.com/portainer/agent/http/handler"
 )
 
-// Server is the web server exposing the API of an agent.
-type Server struct {
+// APIServer is the web server exposing the API of an agent.
+type APIServer struct {
 	addr             string
 	port             string
 	systemService    agent.SystemService
@@ -21,9 +21,9 @@ type Server struct {
 	edgeMode         bool
 }
 
-// ServerConfig represents a server configuration
-// used to create a new configuration
-type ServerConfig struct {
+// APIServerConfig represents a server configuration
+// used to create a new API server
+type APIServerConfig struct {
 	Addr             string
 	Port             string
 	SystemService    agent.SystemService
@@ -35,9 +35,9 @@ type ServerConfig struct {
 	EdgeMode         bool
 }
 
-// NewServer returns a pointer to a Server.
-func NewServer(config *ServerConfig) *Server {
-	return &Server{
+// NewAPIServer returns a pointer to a APIServer.
+func NewAPIServer(config *APIServerConfig) *APIServer {
+	return &APIServer{
 		addr:             config.Addr,
 		port:             config.Port,
 		systemService:    config.SystemService,
@@ -51,10 +51,7 @@ func NewServer(config *ServerConfig) *Server {
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
-// TODO: investigate potential security issues with running agent API in unsecured mode (container access in container network etc...)
-// The agent API should not be exposed when running in unsecured mode. Still, a user could expose port 9000 and expose the Docker socket
-// without any security.
-func (server *Server) StartUnsecured() error {
+func (server *APIServer) StartUnsecured() error {
 	config := &handler.Config{
 		SystemService:  server.systemService,
 		ClusterService: server.clusterService,
@@ -66,8 +63,6 @@ func (server *Server) StartUnsecured() error {
 	}
 
 	h := handler.NewHandler(config)
-	// TODO: only use localhost:9001? this would prevent containers inside the same network to reach it?
-	// See issue above
 	listenAddr := server.addr + ":" + server.port
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
@@ -75,7 +70,7 @@ func (server *Server) StartUnsecured() error {
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
-func (server *Server) StartSecured() error {
+func (server *APIServer) StartSecured() error {
 	config := &handler.Config{
 		SystemService:    server.systemService,
 		ClusterService:   server.clusterService,

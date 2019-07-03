@@ -25,6 +25,7 @@ type edgeKey struct {
 // Operator is used to poll a Portainer instance and to establish a reverse tunnel if needed.
 // It also takes care of closing the tunnel after a set period of inactivity.
 type Operator struct {
+	apiServerAddr   string
 	pollInterval    time.Duration
 	sleepInterval   time.Duration
 	edgeID          string
@@ -36,7 +37,7 @@ type Operator struct {
 }
 
 // NewTunnelOperator creates a new reverse tunnel operator
-func NewTunnelOperator(edgeID, pollInterval, sleepInterval string) (*Operator, error) {
+func NewTunnelOperator(apiServerAddr, edgeID, pollInterval, sleepInterval string) (*Operator, error) {
 	pollDuration, err := time.ParseDuration(pollInterval)
 	if err != nil {
 		return nil, err
@@ -48,6 +49,7 @@ func NewTunnelOperator(edgeID, pollInterval, sleepInterval string) (*Operator, e
 	}
 
 	return &Operator{
+		apiServerAddr: apiServerAddr,
 		edgeID:        edgeID,
 		pollInterval:  pollDuration,
 		sleepInterval: sleepDuration,

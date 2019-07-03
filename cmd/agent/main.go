@@ -75,7 +75,8 @@ func main() {
 
 	var tunnelOperator agent.TunnelOperator
 	if options.EdgeMode {
-		tunnelOperator, err = tunnel.NewTunnelOperator(options.EdgeID, options.EdgePollInterval, options.EdgeSleepInterval)
+		apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
+		tunnelOperator, err = tunnel.NewTunnelOperator(apiServerAddr, options.EdgeID, options.EdgePollInterval, options.EdgeSleepInterval)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}
@@ -99,7 +100,7 @@ func main() {
 		}
 	}
 
-	config := &http.ServerConfig{
+	config := &http.APIServerConfig{
 		Addr:             options.AgentServerAddr,
 		Port:             options.AgentServerPort,
 		SystemService:    systemService,
@@ -111,14 +112,22 @@ func main() {
 		EdgeMode:         options.EdgeMode,
 	}
 
+	// TODO: @@DOCUMENTATION
+	// Add some documentation about the fact that when started in Edge mode, the agent API will listen
+	// on the advertiseAddr retrieved earlier (typically the container IP inside the container network)
+	// to prevent any unsecured communication with the API if the port was to be exposed.
+	if options.EdgeMode {
+		config.Addr = advertiseAddr
+	}
+
 	err = startAPIServer(config)
 	if err != nil {
 		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
 	}
 }
 
-func startAPIServer(config *http.ServerConfig) error {
-	server := http.NewServer(config)
+func startAPIServer(config *http.APIServerConfig) error {
+	server := http.NewAPIServer(config)
 
 	if config.EdgeMode {
 		return server.StartUnsecured()

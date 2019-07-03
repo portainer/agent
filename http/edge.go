@@ -13,14 +13,14 @@ import (
 	"github.com/portainer/agent"
 )
 
-// TODO: document functions
-
+// EdgeServer expose an UI to associate an Edge key with the agent.
 type EdgeServer struct {
 	httpServer     *http.Server
 	tunnelOperator agent.TunnelOperator
 	clusterService agent.ClusterService
 }
 
+// NewEdgeServer returns a pointer to a new instance of EdgeServer.
 func NewEdgeServer(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService) *EdgeServer {
 	return &EdgeServer{
 		tunnelOperator: tunnelOperator,
@@ -28,6 +28,7 @@ func NewEdgeServer(tunnelOperator agent.TunnelOperator, clusterService agent.Clu
 	}
 }
 
+// Start starts a new web server by listening on the specified addr and port.
 func (server *EdgeServer) Start(addr, port string) error {
 	router := mux.NewRouter()
 	router.HandleFunc("/init", server.handleKeySetup()).Methods(http.MethodPost)
@@ -102,6 +103,7 @@ func (server *EdgeServer) propagateKeyInCluster(currentNodeName, key string) {
 	}
 }
 
+// Shutdown is used to shutdown the server.
 func (server *EdgeServer) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()

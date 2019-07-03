@@ -2,6 +2,8 @@ package chisel
 
 import (
 	"context"
+	"fmt"
+	"log"
 
 	"github.com/portainer/agent"
 
@@ -26,9 +28,13 @@ func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 	// TODO: investigate the addition of a timeout via a context timeout instead
 	// of using context.Background()
 
+	remote := fmt.Sprintf("R:%s:%s", tunnelConfig.RemotePort, tunnelConfig.LocalAddr)
+
+	log.Printf("[DEBUG] [edge,chisel] [remote_port: %s] [local_addr: %s] [server: %s] [server_fingerprint: %s] [message: Creating reverse tunnel client]", tunnelConfig.RemotePort, tunnelConfig.LocalAddr, tunnelConfig.ServerAddr, tunnelConfig.ServerFingerpint)
+
 	config := &chclient.Config{
 		Server:      tunnelConfig.ServerAddr,
-		Remotes:     []string{"R:" + tunnelConfig.RemotePort + ":" + "localhost:9001"},
+		Remotes:     []string{remote},
 		Fingerprint: tunnelConfig.ServerFingerpint,
 		Auth:        tunnelConfig.Credentials,
 	}
