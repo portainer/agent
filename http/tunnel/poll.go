@@ -17,12 +17,7 @@ type pollStatusResponse struct {
 	Schedules []agent.Schedule `json:"Schedules"`
 }
 
-// TODO: refactor/rewrite
 func (operator *Operator) poll() error {
-	if operator.key == nil {
-		return errors.New("missing Edge key")
-	}
-
 	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", operator.key.PortainerInstanceURL, operator.key.EndpointID)
 	req, err := http.NewRequest("GET", pollURL, nil)
 	if err != nil {

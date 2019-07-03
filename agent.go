@@ -87,14 +87,6 @@ type (
 		UpdateTags(tags map[string]string) error
 	}
 
-	// ReverseTunnelClient is used to create a reverse proxy tunnel when
-	// the agent is started in Edge mode.
-	ReverseTunnelClient interface {
-		CreateTunnel(config TunnelConfig) error
-		CloseTunnel() error
-		IsTunnelOpen() bool
-	}
-
 	// DigitalSignatureService is used to validate digital signatures.
 	DigitalSignatureService interface {
 		VerifySignature(signature, key string) (bool, error)
@@ -117,8 +109,16 @@ type (
 		GetPciDevices() ([]PciDevice, error)
 	}
 
-	// TunnelOperator is a service that is used to communicate with a Portainer instance and create a reverse tunnel
-	// when required.
+	// ReverseTunnelClient is used to create a reverse proxy tunnel when
+	// the agent is started in Edge mode.
+	ReverseTunnelClient interface {
+		CreateTunnel(config TunnelConfig) error
+		CloseTunnel() error
+		IsTunnelOpen() bool
+	}
+
+	// TunnelOperator is a service that is used to communicate with a Portainer instance and to manage
+	// the reverse tunnel.
 	TunnelOperator interface {
 		Start() error
 		IsKeySet() bool

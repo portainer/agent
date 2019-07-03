@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -11,7 +12,7 @@ import (
 )
 
 const clientPollTimeout = 3
-const tunnelActivityCheckInterval = 10 * time.Second
+const tunnelActivityCheckInterval = 30 * time.Second
 
 type edgeKey struct {
 	PortainerInstanceURL    string
@@ -21,6 +22,8 @@ type edgeKey struct {
 	Credentials             string
 }
 
+// Operator is used to poll a Portainer instance and to establish a reverse tunnel if needed.
+// It also takes care of closing the tunnel after a set period of inactivity.
 type Operator struct {
 	pollInterval    time.Duration
 	sleepInterval   time.Duration
@@ -54,74 +57,6 @@ func NewTunnelOperator(edgeID, pollInterval, sleepInterval string) (*Operator, e
 		tunnelClient:    chisel.NewClient(),
 		scheduleManager: filesystem.NewCronManager(),
 	}, nil
-}
-
-// TODO: doc
-// + refactor
-func (operator *Operator) Start() error {
-	log.Printf("[DEBUG] [http,edge] [poll_interval: %s] [server_url: %s] [sleep_interval: %s] [message: Starting Portainer short-polling client]", operator.pollInterval.String(), operator.key.PortainerInstanceURL, operator.sleepInterval.String())
-
-	ticker := time.NewTicker(operator.pollInterval)
-	quit := make(chan struct{})
-
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				// TODO: start in a go routine?
-				// If not, can delay other task executions based on the time spent in last exec
-				// https://stackoverflow.com/questions/16466320/is-there-a-way-to-do-repetitive-tasks-at-intervals-in-golang#comment52389800_16466581
-				err := operator.poll()
-				if err != nil {
-					log.Printf("[ERROR] [edge,http] [message: An error occured during short poll] [error: %s]", err)
-				}
-
-			case <-quit:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-
-	// TODO: required?
-	// close(quit) to exit
-
-	// TODO: other ticker value?
-	ticker2 := time.NewTicker(tunnelActivityCheckInterval)
-	quit2 := make(chan struct{})
-
-	go func() {
-		for {
-			select {
-			case <-ticker2.C:
-
-				if operator.lastActivity.IsZero() {
-					continue
-				}
-
-				elapsed := time.Since(operator.lastActivity)
-				log.Printf("[DEBUG] [http,edge,rtunnel] [tunnel_last_activity_seconds: %f] [message: tunnel activity check]", elapsed.Seconds())
-
-				if operator.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > operator.sleepInterval.Seconds() {
-					log.Println("[INFO] [http,edge,rtunnel] [message: Shutting down tunnel after inactivity period]")
-					err := operator.tunnelClient.CloseTunnel()
-					if err != nil {
-						log.Printf("[ERROR] [http,edge,rtunnel] [message: Unable to shut down tunnel] [error: %s]", err)
-					}
-				}
-
-			// do something
-			case <-quit2:
-				ticker2.Stop()
-				return
-			}
-		}
-	}()
-
-	// TODO: required?
-	// close(quit2) to exit
-
-	return nil
 }
 
 // SetKey parses and associate a key to the operator
@@ -173,4 +108,79 @@ func (operator *Operator) ResetActivityTimer() {
 	if operator.tunnelClient.IsTunnelOpen() {
 		operator.lastActivity = time.Now()
 	}
+}
+
+// Start will start two loops in go routines
+// The first loop will poll the Portainer instance for the status of the associated endpoint and create a reverse tunnel
+// if needed as well as manage schedules.
+// The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
+// inactivity duration.
+func (operator *Operator) Start() error {
+	if operator.key == nil {
+		return errors.New("missing Edge key")
+	}
+
+	operator.startStatusPollLoop()
+	operator.startActivityMonitoringLoop()
+
+	return nil
+}
+
+func (operator *Operator) startStatusPollLoop() {
+	ticker := time.NewTicker(operator.pollInterval)
+	quit := make(chan struct{})
+
+	log.Printf("[DEBUG] [http,edge,poll] [poll_interval: %s] [server_url: %s] [message: Starting Portainer short-polling client]", operator.pollInterval.String(), operator.key.PortainerInstanceURL)
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				err := operator.poll()
+				if err != nil {
+					log.Printf("[ERROR] [edge,http,poll] [message: An error occured during short poll] [error: %s]", err)
+				}
+
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (operator *Operator) startActivityMonitoringLoop() {
+	ticker := time.NewTicker(tunnelActivityCheckInterval)
+	quit := make(chan struct{})
+
+	log.Printf("[DEBUG] [http,edge,monitoring] [monitoring_interval_seconds: %f] [inactivity_timeout: %s] [message: Starting activity monitoring loop]", tunnelActivityCheckInterval.Seconds(), operator.sleepInterval.String())
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+
+				if operator.lastActivity.IsZero() {
+					continue
+				}
+
+				elapsed := time.Since(operator.lastActivity)
+				log.Printf("[DEBUG] [http,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: tunnel activity monitoring]", elapsed.Seconds())
+
+				if operator.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > operator.sleepInterval.Seconds() {
+
+					log.Printf("[INFO] [http,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: Shutting down tunnel after inactivity period]", elapsed.Seconds())
+
+					err := operator.tunnelClient.CloseTunnel()
+					if err != nil {
+						log.Printf("[ERROR] [http,edge,monitoring] [message: Unable to shutdown tunnel] [error: %s]", err)
+					}
+				}
+
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 }

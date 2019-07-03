@@ -8,24 +8,24 @@ import (
 	chclient "github.com/jpillora/chisel/client"
 )
 
-// APIClient is used to create a reverse proxy tunnel connected to a Portainer instance.
+// Client is used to create a reverse proxy tunnel connected to a Portainer instance.
 type Client struct {
 	chiselClient *chclient.Client
 	tunnelOpen   bool
 }
 
-// NewAPIClient creates a new reverse tunnel client
+// NewClient creates a new reverse tunnel client
 func NewClient() *Client {
 	return &Client{
 		tunnelOpen: false,
 	}
 }
 
-// TODO: doc
+// CreateTunnel will create a reverse tunnel
 func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
+	// TODO: investigate the addition of a timeout via a context timeout instead
+	// of using context.Background()
 
-	// TODO: Should be relocated inside another function, otherwise we re-create client
-	// each time we need to open a tunnel. APIClient could be initiated in Operator Start() function
 	config := &chclient.Config{
 		Server:      tunnelConfig.ServerAddr,
 		Remotes:     []string{"R:" + tunnelConfig.RemotePort + ":" + "localhost:9001"},
@@ -33,16 +33,21 @@ func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 		Auth:        tunnelConfig.Credentials,
 	}
 
-	// TODO: timeout? should stop and error if cannot connect after timeout?
-	// Maybe related to context.Background() call below? Should use timeout context?
 	chiselClient, err := chclient.NewClient(config)
 	if err != nil {
 		return err
 	}
+
 	client.chiselClient = chiselClient
 
+	err = chiselClient.Start(context.Background())
+	if err != nil {
+		return err
+	}
+
 	client.tunnelOpen = true
-	return chiselClient.Start(context.Background())
+
+	return nil
 }
 
 // CloseTunnel will close the associated chisel client
