@@ -80,12 +80,6 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// TODO: will trigger chaotic behavior on Swarm as it will reset timer only if activity is detected on
-	// the node managing the Edge startup process.
-	// ResetActivityTimer must be a cluster operation
-	// EDIT: as the request will always be served first on the node where the tunnel is
-	// created it is fine, it should only be associated to the local tunnel
-	// To be confirmed
 	if h.tunnelOperator != nil {
 		h.tunnelOperator.ResetActivityTimer()
 	}

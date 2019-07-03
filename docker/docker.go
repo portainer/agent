@@ -42,7 +42,7 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 	return info, nil
 }
 
-// TODO: have to be careful with this implementation. If the container is not using host mode port
+// TODO: @@DOCUMENTATION have to be careful with this implementation. If the container is not using host mode port
 // when publishing ports it will be automatically added to the ingress network.
 // This implementation might return the IP address used in the ingress network and cause network issues
 // when trying to form the cluster.
@@ -59,10 +59,9 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string)
 		return "", err
 	}
 
-	log.Printf("[DEBUG] [docker] [network_count: %d] [Selecting IP address from container networks]", len(containerInspect.NetworkSettings.Networks))
-
 	for _, network := range containerInspect.NetworkSettings.Networks {
 		if network.IPAddress != "" {
+			log.Printf("[DEBUG] [docker] [network_count: %d] [ip_address: %s] [message: Retrieving IP address from container networks]", len(containerInspect.NetworkSettings.Networks), network.IPAddress)
 			return network.IPAddress, nil
 		}
 	}

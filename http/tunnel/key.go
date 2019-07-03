@@ -1,4 +1,4 @@
-package client
+package tunnel
 
 import (
 	"encoding/base64"

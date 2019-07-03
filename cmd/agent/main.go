@@ -6,14 +6,14 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/portainer/agent/http/client"
-
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
+	"github.com/portainer/agent/http/client"
+	"github.com/portainer/agent/http/tunnel"
 	"github.com/portainer/agent/logutils"
 	"github.com/portainer/agent/net"
 	"github.com/portainer/agent/os"
@@ -82,7 +82,7 @@ func main() {
 
 	var tunnelOperator agent.TunnelOperator
 	if options.EdgeMode {
-		tunnelOperator, err = client.NewTunnelOperator(options.EdgeID, options.EdgePollInterval, options.EdgeSleepInterval)
+		tunnelOperator, err = tunnel.NewTunnelOperator(options.EdgeID, options.EdgePollInterval, options.EdgeSleepInterval)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}
@@ -165,7 +165,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 
 			member := clusterService.GetMemberWithEdgeKeySet()
 			if member != nil {
-				httpCli := client.NewClient()
+				httpCli := client.NewAPIClient()
 
 				memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
 				memberKey, err := httpCli.GetEdgeKey(memberAddr)
@@ -198,13 +198,6 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 			}
 		}
 
-		// TODO: give some thoughts about trigger a key propagation
-		// We're in this case when:
-		// a. a key is specified through the CLI (EDGE_KEY=xxx)
-		// b. a key is found on the filesystem
-		// c. a key is retrieved from the cluster (asking another member)
-		// Do we need key propagation?
-
 		return tunnelOperator.Start()
 	}
 
@@ -227,7 +220,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 		<-timer1.C
 
 		if !tunnelOperator.IsKeySet() {
-			log.Printf("[INFO] [main,edge,http] [message: Shutting down file server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
+			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
 			edgeServer.Shutdown()
 		}
 	}()

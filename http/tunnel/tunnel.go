@@ -1,4 +1,4 @@
-package client
+package tunnel
 
 import (
 	"log"
@@ -11,6 +11,7 @@ import (
 )
 
 const clientPollTimeout = 3
+const tunnelActivityCheckInterval = 10 * time.Second
 
 type edgeKey struct {
 	PortainerInstanceURL    string
@@ -20,7 +21,7 @@ type edgeKey struct {
 	Credentials             string
 }
 
-type TunnelOperator struct {
+type Operator struct {
 	pollInterval    time.Duration
 	sleepInterval   time.Duration
 	edgeID          string
@@ -32,7 +33,7 @@ type TunnelOperator struct {
 }
 
 // NewTunnelOperator creates a new reverse tunnel operator
-func NewTunnelOperator(edgeID, pollInterval, sleepInterval string) (*TunnelOperator, error) {
+func NewTunnelOperator(edgeID, pollInterval, sleepInterval string) (*Operator, error) {
 	pollDuration, err := time.ParseDuration(pollInterval)
 	if err != nil {
 		return nil, err
@@ -43,7 +44,7 @@ func NewTunnelOperator(edgeID, pollInterval, sleepInterval string) (*TunnelOpera
 		return nil, err
 	}
 
-	return &TunnelOperator{
+	return &Operator{
 		edgeID:        edgeID,
 		pollInterval:  pollDuration,
 		sleepInterval: sleepDuration,
@@ -57,10 +58,8 @@ func NewTunnelOperator(edgeID, pollInterval, sleepInterval string) (*TunnelOpera
 
 // TODO: doc
 // + refactor
-func (operator *TunnelOperator) Start() error {
+func (operator *Operator) Start() error {
 	log.Printf("[DEBUG] [http,edge] [poll_interval: %s] [server_url: %s] [sleep_interval: %s] [message: Starting Portainer short-polling client]", operator.pollInterval.String(), operator.key.PortainerInstanceURL, operator.sleepInterval.String())
-
-	// TODO: ping before starting poll loop?
 
 	ticker := time.NewTicker(operator.pollInterval)
 	quit := make(chan struct{})
@@ -88,16 +87,22 @@ func (operator *TunnelOperator) Start() error {
 	// close(quit) to exit
 
 	// TODO: other ticker value?
-	ticker2 := time.NewTicker(10 * time.Second)
+	ticker2 := time.NewTicker(tunnelActivityCheckInterval)
 	quit2 := make(chan struct{})
 
 	go func() {
 		for {
 			select {
 			case <-ticker2.C:
+
+				if operator.lastActivity.IsZero() {
+					continue
+				}
+
 				elapsed := time.Since(operator.lastActivity)
-				log.Printf("[DEBUG] [http,edge,rtunnel] [activity_timer_seconds: %f] [message: tunnel activity check]", elapsed.Seconds())
-				if operator.tunnelClient.IsTunnelOpen() && !operator.lastActivity.IsZero() && elapsed.Seconds() > operator.sleepInterval.Seconds() {
+				log.Printf("[DEBUG] [http,edge,rtunnel] [tunnel_last_activity_seconds: %f] [message: tunnel activity check]", elapsed.Seconds())
+
+				if operator.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > operator.sleepInterval.Seconds() {
 					log.Println("[INFO] [http,edge,rtunnel] [message: Shutting down tunnel after inactivity period]")
 					err := operator.tunnelClient.CloseTunnel()
 					if err != nil {
@@ -120,7 +125,7 @@ func (operator *TunnelOperator) Start() error {
 }
 
 // SetKey parses and associate a key to the operator
-func (operator *TunnelOperator) SetKey(key string) error {
+func (operator *Operator) SetKey(key string) error {
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
 		return err
@@ -140,7 +145,7 @@ func (operator *TunnelOperator) SetKey(key string) error {
 }
 
 // GetKey returns the key associated to the operator
-func (operator *TunnelOperator) GetKey() string {
+func (operator *Operator) GetKey() string {
 	var encodedKey string
 
 	if operator.key != nil {
@@ -151,7 +156,7 @@ func (operator *TunnelOperator) GetKey() string {
 }
 
 // IsKeySet checks if a key is associated to the operator
-func (operator *TunnelOperator) IsKeySet() bool {
+func (operator *Operator) IsKeySet() bool {
 	if operator.key == nil {
 		return false
 	}
@@ -159,14 +164,13 @@ func (operator *TunnelOperator) IsKeySet() bool {
 }
 
 // CloseTunnel closes the reverse tunnel managed by the operator
-func (operator *TunnelOperator) CloseTunnel() error {
+func (operator *Operator) CloseTunnel() error {
 	return operator.tunnelClient.CloseTunnel()
 }
 
-func (operator *TunnelOperator) ResetActivityTimer() {
-	// TODO: add IsTunnelOpen condition?
-	//if operator.tunnelClient.IsTunnelOpen() {
-	//
-	//}
-	operator.lastActivity = time.Now()
+// ResetActivityTimer will reset the last activity time timer
+func (operator *Operator) ResetActivityTimer() {
+	if operator.tunnelClient.IsTunnelOpen() {
+		operator.lastActivity = time.Now()
+	}
 }

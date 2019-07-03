@@ -84,7 +84,7 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 }
 
 func (server *EdgeServer) propagateKeyInCluster(currentNodeName, key string) {
-	httpCli := client.NewClient()
+	httpCli := client.NewAPIClient()
 
 	members := server.clusterService.Members()
 	for _, member := range members {

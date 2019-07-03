@@ -8,13 +8,13 @@ import (
 	chclient "github.com/jpillora/chisel/client"
 )
 
-// Client is used to create a reverse proxy tunnel connected to a Portainer instance.
+// APIClient is used to create a reverse proxy tunnel connected to a Portainer instance.
 type Client struct {
 	chiselClient *chclient.Client
 	tunnelOpen   bool
 }
 
-// NewClient creates a new reverse tunnel client
+// NewAPIClient creates a new reverse tunnel client
 func NewClient() *Client {
 	return &Client{
 		tunnelOpen: false,
@@ -25,7 +25,7 @@ func NewClient() *Client {
 func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 
 	// TODO: Should be relocated inside another function, otherwise we re-create client
-	// each time we need to open a tunnel. Client could be initiated in Operator Start() function
+	// each time we need to open a tunnel. APIClient could be initiated in Operator Start() function
 	config := &chclient.Config{
 		Server:      tunnelConfig.ServerAddr,
 		Remotes:     []string{"R:" + tunnelConfig.RemotePort + ":" + "localhost:9001"},

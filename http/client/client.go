@@ -11,14 +11,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Client is used to execute HTTP requests against the agent API
-type Client struct {
+// APIClient is used to execute HTTP requests against the agent API
+type APIClient struct {
 	httpClient *http.Client
 }
 
-// NewClient returns a pointer to a new Client instance
-func NewClient() *Client {
-	return &Client{
+// NewAPIClient returns a pointer to a new APIClient instance
+func NewAPIClient() *APIClient {
+	return &APIClient{
 		httpClient: &http.Client{
 			Timeout: time.Second * 3,
 		},
@@ -29,8 +29,8 @@ type getEdgeKeyResponse struct {
 	Key string `json:"key"`
 }
 
-// TODO: doc
-func (client *Client) GetEdgeKey(serverAddr string) (string, error) {
+// GetEdgeKey executes a KeyInspect operation against the specified server
+func (client *APIClient) GetEdgeKey(serverAddr string) (string, error) {
 	requestURL := fmt.Sprintf("http://%s/key", serverAddr)
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
@@ -62,8 +62,8 @@ type setEdgeKeyPayload struct {
 	Key string
 }
 
-// TODO: doc
-func (client *Client) SetEdgeKey(serverAddr, key string) error {
+// SetEdgeKey executes a KeyCreate operation against the specified server
+func (client *APIClient) SetEdgeKey(serverAddr, key string) error {
 	payload := setEdgeKeyPayload{
 		Key: key,
 	}

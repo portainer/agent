@@ -194,9 +194,6 @@ const (
 	MemberTagEngineStatus = "EngineStatus"
 	// MemberTagEdgeKeySet is the name of the label storing information regarding the association of an Edge key.
 	MemberTagEdgeKeySet = "EdgeKeySet"
-	// MemberTagDockerIdentifier is the name of the label storing information about the unique identifier associated to the Docker
-	// environment the agent is running on.
-	MemberTagDockerIdentifier = "DockerIdentifier"
 	// NodeRoleManager represents a manager node.
 	NodeRoleManager = "manager"
 	// NodeRoleWorker represents a worker node.
