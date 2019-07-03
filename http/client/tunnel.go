@@ -96,6 +96,7 @@ func (operator *TunnelOperator) Start() error {
 			select {
 			case <-ticker2.C:
 				elapsed := time.Since(operator.lastActivity)
+				log.Printf("[DEBUG] [http,edge,rtunnel] [activity_timer_seconds: %f] [message: tunnel activity check]", elapsed.Seconds())
 				if operator.tunnelClient.IsTunnelOpen() && !operator.lastActivity.IsZero() && elapsed.Seconds() > operator.sleepInterval.Seconds() {
 					log.Println("[INFO] [http,edge,rtunnel] [message: Shutting down tunnel after inactivity period]")
 					err := operator.tunnelClient.CloseTunnel()

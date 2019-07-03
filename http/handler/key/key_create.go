@@ -30,7 +30,7 @@ func (handler *Handler) keyCreate(w http.ResponseWriter, r *http.Request) *httpe
 	}
 
 	if handler.tunnelOperator.IsKeySet() {
-		return &httperror.HandlerError{http.StatusForbidden, "An Edge key is already associated to this agent", errors.New("Edge key already associated")}
+		return &httperror.HandlerError{http.StatusConflict, "An Edge key is already associated to this agent", errors.New("Edge key already associated")}
 	}
 
 	log.Println("[INFO] [http,api] [message: Received Edge key association request]")
