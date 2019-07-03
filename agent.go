@@ -58,6 +58,21 @@ type (
 		Options() (*Options, error)
 	}
 
+	// TODO: doc
+	Schedule struct {
+		ID             int
+		CronExpression string
+		Script         string
+	}
+
+	// TODO: doc
+	TunnelConfig struct {
+		ServerAddr       string
+		ServerFingerpint string
+		RemotePort       string
+		Credentials      string
+	}
+
 	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
 		Create(advertiseAddr string, joinAddr []string) error
@@ -68,14 +83,6 @@ type (
 		GetMemberWithEdgeKeySet() *ClusterMember
 		GetTags() map[string]string
 		UpdateTags(tags map[string]string) error
-	}
-
-	// TODO: doc
-	TunnelConfig struct {
-		ServerAddr       string
-		ServerFingerpint string
-		RemotePort       string
-		Credentials      string
 	}
 
 	// ReverseTunnelClient is used to create a reverse proxy tunnel when
@@ -118,17 +125,9 @@ type (
 		ResetActivityTimer()
 	}
 
-	// TODO: doc
-	CronSchedule struct {
-		ID             int
-		CronExpression string
-		Script         string
-		//ScriptHash     []byte
-	}
-
 	// TODO: rename/document
-	CronManager interface {
-		Schedule(schedules []CronSchedule) error
+	Scheduler interface {
+		Schedule(schedules []Schedule) error
 	}
 )
 

@@ -24,7 +24,7 @@ func NewCronManager() *CronManager {
 // ## This file is managed by Portainer agent. DO NOT EDIT MANUALLY.
 // SHELL=/bin/sh
 // PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-func (manager *CronManager) Schedule(schedules []agent.CronSchedule) error {
+func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 	if len(schedules) == 0 {
 		// TODO: deliberately skip error to avoid "remove /host/etc/cron.d/portainer_agent: no such file or directory"
 		// for optimization purposes manager should have a variable to keep track of an existing file
@@ -53,7 +53,7 @@ func (manager *CronManager) Schedule(schedules []agent.CronSchedule) error {
 	return WriteFile(fmt.Sprintf("%s%s", agent.HostRoot, agent.CronDirectory), agent.CronFile, []byte(cronFileContent), 0644)
 }
 
-func createCronEntry(schedule *agent.CronSchedule) (string, error) {
+func createCronEntry(schedule *agent.Schedule) (string, error) {
 	decodedScript, err := base64.RawStdEncoding.DecodeString(schedule.Script)
 	if err != nil {
 		return "", err

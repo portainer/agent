@@ -27,7 +27,7 @@ type TunnelOperator struct {
 	key             *edgeKey
 	httpClient      *http.Client
 	tunnelClient    agent.ReverseTunnelClient
-	scheduleManager agent.CronManager
+	scheduleManager agent.Scheduler
 	lastActivity    time.Time
 }
 

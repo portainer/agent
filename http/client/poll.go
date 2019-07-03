@@ -74,10 +74,10 @@ func (operator *TunnelOperator) poll() error {
 	}
 
 	// TODO: ignore on Windows platform
-	schedules := make([]agent.CronSchedule, 0)
+	schedules := make([]agent.Schedule, 0)
 	for _, edgeSchedule := range respData.Schedules {
 
-		schedule := agent.CronSchedule{
+		schedule := agent.Schedule{
 			ID:             int(edgeSchedule.ID),
 			CronExpression: edgeSchedule.CronExpression,
 			Script:         edgeSchedule.Script,
