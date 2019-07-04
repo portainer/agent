@@ -47,7 +47,7 @@ func (operator *Operator) poll() error {
 	log.Printf("[DEBUG] [http,edge,poll] [status: %s] [port: %d] [schedule_count: %d]", responseData.Status, responseData.Port, len(responseData.Schedules))
 
 	if responseData.Status == "IDLE" && operator.tunnelClient.IsTunnelOpen() {
-		log.Printf("[DEBUG] [http,edge,poll] [status: %s] [message: Idle status detected and reverse tunnel, shutting down tunnel]", responseData.Status)
+		log.Printf("[DEBUG] [http,edge,poll] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
 
 		err := operator.tunnelClient.CloseTunnel()
 		if err != nil {
