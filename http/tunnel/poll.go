@@ -46,6 +46,15 @@ func (operator *Operator) poll() error {
 
 	log.Printf("[DEBUG] [http,edge,poll] [status: %s] [port: %d] [schedule_count: %d]", responseData.Status, responseData.Port, len(responseData.Schedules))
 
+	if responseData.Status == "IDLE" && operator.tunnelClient.IsTunnelOpen() {
+		log.Printf("[DEBUG] [http,edge,poll] [status: %s] [message: Idle status detected and reverse tunnel, shutting down tunnel]", responseData.Status)
+
+		err := operator.tunnelClient.CloseTunnel()
+		if err != nil {
+			log.Printf("[ERROR] [http,edge,poll] [message: Unable to shutdown tunnel] [error: %s]", err)
+		}
+	}
+
 	if responseData.Status == "REQUIRED" && !operator.tunnelClient.IsTunnelOpen() {
 		tunnelConfig := agent.TunnelConfig{
 			ServerAddr:       operator.key.TunnelServerAddr,
@@ -55,7 +64,7 @@ func (operator *Operator) poll() error {
 			LocalAddr:        operator.apiServerAddr,
 		}
 
-		log.Printf("[DEBUG] [http,edge,poll] [status: %s] [port: %d] [message: active status, will create tunnel]", responseData.Status, responseData.Port)
+		log.Printf("[DEBUG] [http,edge,poll] [status: %s] [port: %d] [message: Required status detected, creating reverse tunnel]", responseData.Status, responseData.Port)
 
 		err = operator.tunnelClient.CreateTunnel(tunnelConfig)
 		if err != nil {
