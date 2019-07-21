@@ -9,7 +9,7 @@ TMP="/tmp"
 GIT_COMMIT_HASH=`git rev-parse --short HEAD`
 GIT_BRANCH_NAME=`git rev-parse --abbrev-ref HEAD`
 IMAGE_NAME="portainer/pagent:${GIT_BRANCH_NAME}-${GIT_COMMIT_HASH}"
-
+#IMAGE_NAME="portainer/agent:edge"
 
 if [[ $# -ne 1 ]] ; then
   echo "Usage: $(basename $0) <MODE:local/swarm>"
@@ -39,7 +39,7 @@ function deploy_local() {
 
   echo "Image build..."
   docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
-#  docker push "${IMAGE_NAME}"
+ # docker push "${IMAGE_NAME}"
 
 
   echo "Deployment..."

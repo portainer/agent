@@ -12,9 +12,10 @@ import (
 )
 
 type pollStatusResponse struct {
-	Status    string           `json:"status"`
-	Port      int              `json:"port"`
-	Schedules []agent.Schedule `json:"Schedules"`
+	Status          string           `json:"status"`
+	Port            int              `json:"port"`
+	Schedules       []agent.Schedule `json:"schedules"`
+	CheckinInterval float64          `json:"checkin"`
 }
 
 func (operator *Operator) poll() error {
@@ -44,7 +45,7 @@ func (operator *Operator) poll() error {
 		return err
 	}
 
-	log.Printf("[DEBUG] [http,edge,poll] [status: %s] [port: %d] [schedule_count: %d]", responseData.Status, responseData.Port, len(responseData.Schedules))
+	log.Printf("[DEBUG] [http,edge,poll] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", responseData.Status, responseData.Port, len(responseData.Schedules), responseData.CheckinInterval)
 
 	if responseData.Status == "IDLE" && operator.tunnelClient.IsTunnelOpen() {
 		log.Printf("[DEBUG] [http,edge,poll] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
@@ -77,6 +78,12 @@ func (operator *Operator) poll() error {
 	err = operator.scheduleManager.Schedule(responseData.Schedules)
 	if err != nil {
 		log.Printf("[ERROR] [http,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
+	}
+
+	if responseData.CheckinInterval != operator.pollIntervalInSeconds {
+		log.Printf("[DEBUG] [http,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating checkin interval]", operator.pollIntervalInSeconds, responseData.CheckinInterval)
+		operator.pollIntervalInSeconds = responseData.CheckinInterval
+		go operator.restartStatusPollLoop()
 	}
 
 	return nil
