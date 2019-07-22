@@ -18,7 +18,7 @@ func parseEdgeKey(key string) (*edgeKey, error) {
 
 	keyInfo := strings.Split(string(decodedKey), "|")
 
-	if len(keyInfo) != 5 {
+	if len(keyInfo) != 4 {
 		return nil, errors.New("invalid key format")
 	}
 
