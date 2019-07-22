@@ -11,7 +11,6 @@ import (
 	"github.com/portainer/agent/filesystem"
 )
 
-const clientPollTimeout = 5
 const tunnelActivityCheckInterval = 30 * time.Second
 
 type edgeKey struct {
@@ -53,12 +52,9 @@ func NewTunnelOperator(apiServerAddr, edgeID, pollInterval, sleepInterval string
 		edgeID:                edgeID,
 		pollIntervalInSeconds: pollFrequency.Seconds(),
 		inactivityTimeout:     sleepDuration,
-		httpClient: &http.Client{
-			Timeout: time.Second * clientPollTimeout,
-		},
-		tunnelClient:    chisel.NewClient(),
-		scheduleManager: filesystem.NewCronManager(),
-		refreshSignal:   make(chan struct{}),
+		tunnelClient:          chisel.NewClient(),
+		scheduleManager:       filesystem.NewCronManager(),
+		refreshSignal:         make(chan struct{}),
 	}, nil
 }
 

@@ -7,9 +7,12 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/portainer/agent"
 )
+
+const clientDefaultPollTimeout = 5
 
 type pollStatusResponse struct {
 	Status          string           `json:"status"`
@@ -17,6 +20,21 @@ type pollStatusResponse struct {
 	Schedules       []agent.Schedule `json:"schedules"`
 	CheckinInterval float64          `json:"checkin"`
 	Credentials     string           `json:"credentials"`
+}
+
+func (operator *Operator) createHTTPClient(timeout float64) {
+	operator.httpClient = &http.Client{
+		Timeout: time.Duration(timeout) * time.Second,
+
+		// TODO: only enable this if we want to support self-signed TLS protected Portainer instances
+		// without having to pass the CA or cert that need to be trusted to the agent (extra deployment parameters)
+		// this is basically removing any TLS validation (not checking for the certificate)
+		//Transport: &http.Transport{
+		//	TLSClientConfig: &tls.Config{
+		//		InsecureSkipVerify: true,
+		//	},
+		//},
+	}
 }
 
 func (operator *Operator) poll() error {
@@ -28,6 +46,10 @@ func (operator *Operator) poll() error {
 
 	// TODO: @@DOCUMENTATION: document the extra security layer added by the Edge ID
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, operator.edgeID)
+
+	if operator.httpClient == nil {
+		operator.createHTTPClient(clientDefaultPollTimeout)
+	}
 
 	resp, err := operator.httpClient.Do(req)
 	if err != nil {
@@ -84,6 +106,7 @@ func (operator *Operator) poll() error {
 	if responseData.CheckinInterval != operator.pollIntervalInSeconds {
 		log.Printf("[DEBUG] [http,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating checkin interval]", operator.pollIntervalInSeconds, responseData.CheckinInterval)
 		operator.pollIntervalInSeconds = responseData.CheckinInterval
+		operator.createHTTPClient(responseData.CheckinInterval)
 		go operator.restartStatusPollLoop()
 	}
 
