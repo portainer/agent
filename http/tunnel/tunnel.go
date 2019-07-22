@@ -26,7 +26,7 @@ type edgeKey struct {
 type Operator struct {
 	apiServerAddr         string
 	pollIntervalInSeconds float64
-	sleepInterval         time.Duration
+	inactivityTimeout     time.Duration
 	edgeID                string
 	key                   *edgeKey
 	httpClient            *http.Client
@@ -38,7 +38,7 @@ type Operator struct {
 
 // NewTunnelOperator creates a new reverse tunnel operator
 func NewTunnelOperator(apiServerAddr, edgeID, pollInterval, sleepInterval string) (*Operator, error) {
-	pollDuration, err := time.ParseDuration(pollInterval)
+	pollFrequency, err := time.ParseDuration(pollInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -51,8 +51,8 @@ func NewTunnelOperator(apiServerAddr, edgeID, pollInterval, sleepInterval string
 	return &Operator{
 		apiServerAddr:         apiServerAddr,
 		edgeID:                edgeID,
-		pollIntervalInSeconds: pollDuration.Seconds(),
-		sleepInterval:         sleepDuration,
+		pollIntervalInSeconds: pollFrequency.Seconds(),
+		inactivityTimeout:     sleepDuration,
 		httpClient: &http.Client{
 			Timeout: time.Second * clientPollTimeout,
 		},
@@ -160,7 +160,7 @@ func (operator *Operator) startActivityMonitoringLoop() {
 	ticker := time.NewTicker(tunnelActivityCheckInterval)
 	quit := make(chan struct{})
 
-	log.Printf("[DEBUG] [http,edge,monitoring] [monitoring_interval_seconds: %f] [inactivity_timeout: %s] [message: starting activity monitoring loop]", tunnelActivityCheckInterval.Seconds(), operator.sleepInterval.String())
+	log.Printf("[DEBUG] [http,edge,monitoring] [monitoring_interval_seconds: %f] [inactivity_timeout: %s] [message: starting activity monitoring loop]", tunnelActivityCheckInterval.Seconds(), operator.inactivityTimeout.String())
 
 	go func() {
 		for {
@@ -174,7 +174,7 @@ func (operator *Operator) startActivityMonitoringLoop() {
 				elapsed := time.Since(operator.lastActivity)
 				log.Printf("[DEBUG] [http,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: tunnel activity monitoring]", elapsed.Seconds())
 
-				if operator.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > operator.sleepInterval.Seconds() {
+				if operator.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > operator.inactivityTimeout.Seconds() {
 
 					log.Printf("[INFO] [http,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: shutting down tunnel after inactivity period]", elapsed.Seconds())
 
