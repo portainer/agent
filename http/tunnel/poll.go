@@ -16,6 +16,7 @@ type pollStatusResponse struct {
 	Port            int              `json:"port"`
 	Schedules       []agent.Schedule `json:"schedules"`
 	CheckinInterval float64          `json:"checkin"`
+	Credentials     string           `json:"credentials"`
 }
 
 func (operator *Operator) poll() error {
@@ -60,7 +61,7 @@ func (operator *Operator) poll() error {
 		tunnelConfig := agent.TunnelConfig{
 			ServerAddr:       operator.key.TunnelServerAddr,
 			ServerFingerpint: operator.key.TunnelServerFingerprint,
-			Credentials:      operator.key.Credentials,
+			Credentials:      responseData.Credentials,
 			RemotePort:       strconv.Itoa(responseData.Port),
 			LocalAddr:        operator.apiServerAddr,
 		}

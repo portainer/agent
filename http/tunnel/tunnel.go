@@ -19,7 +19,6 @@ type edgeKey struct {
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
 	EndpointID              string
-	Credentials             string
 }
 
 // Operator is used to poll a Portainer instance and to establish a reverse tunnel if needed.
