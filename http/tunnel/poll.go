@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/libcrypto"
 )
 
 const clientDefaultPollTimeout = 5
@@ -80,22 +82,13 @@ func (operator *Operator) poll() error {
 	}
 
 	if responseData.Status == "REQUIRED" && !operator.tunnelClient.IsTunnelOpen() {
-		tunnelConfig := agent.TunnelConfig{
-			ServerAddr:       operator.key.TunnelServerAddr,
-			ServerFingerpint: operator.key.TunnelServerFingerprint,
-			Credentials:      responseData.Credentials,
-			RemotePort:       strconv.Itoa(responseData.Port),
-			LocalAddr:        operator.apiServerAddr,
-		}
+		log.Println("[DEBUG] [http,edge,poll] [message: Required status detected, creating reverse tunnel]")
 
-		log.Printf("[DEBUG] [http,edge,poll] [status: %s] [port: %d] [message: Required status detected, creating reverse tunnel]", responseData.Status, responseData.Port)
-
-		err = operator.tunnelClient.CreateTunnel(tunnelConfig)
+		err := operator.createTunnel(responseData.Credentials, responseData.Port)
 		if err != nil {
+			log.Printf("[ERROR] [http,edge,poll] [message: Unable to create tunnel] [error: %s]", err)
 			return err
 		}
-
-		operator.ResetActivityTimer()
 	}
 
 	err = operator.scheduleManager.Schedule(responseData.Schedules)
@@ -110,5 +103,33 @@ func (operator *Operator) poll() error {
 		go operator.restartStatusPollLoop()
 	}
 
+	return nil
+}
+
+func (operator *Operator) createTunnel(encodedCredentials string, remotePort int) error {
+	decodedCredentials, err := base64.RawStdEncoding.DecodeString(encodedCredentials)
+	if err != nil {
+		return err
+	}
+
+	credentials, err := libcrypto.Decrypt(decodedCredentials, []byte(operator.edgeID))
+	if err != nil {
+		return err
+	}
+
+	tunnelConfig := agent.TunnelConfig{
+		ServerAddr:       operator.key.TunnelServerAddr,
+		ServerFingerpint: operator.key.TunnelServerFingerprint,
+		Credentials:      string(credentials),
+		RemotePort:       strconv.Itoa(remotePort),
+		LocalAddr:        operator.apiServerAddr,
+	}
+
+	err = operator.tunnelClient.CreateTunnel(tunnelConfig)
+	if err != nil {
+		return err
+	}
+
+	operator.ResetActivityTimer()
 	return nil
 }
