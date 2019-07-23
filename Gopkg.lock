@@ -307,6 +307,14 @@
   version = "v0.8.1"
 
 [[projects]]
+  digest = "1:b7f5df80795af5e9be8b0edcf03452e9aca0f53481edfbd1365975680423f82f"
+  name = "github.com/portainer/libcrypto"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "2cfe5519d14f4024aea654de001e1159ecef08fd"
+  version = "1.0.0"
+
+[[projects]]
   digest = "1:d8d777ffc4d14552fd69f7d01a7193834817a0b0e93081947e3c17e5a37b689a"
   name = "github.com/portainer/libhttp"
   packages = [
@@ -386,6 +394,8 @@
     "github.com/jaypipes/ghw",
     "github.com/jpillora/chisel/client",
     "github.com/koding/websocketproxy",
+    "github.com/pkg/errors",
+    "github.com/portainer/libcrypto",
     "github.com/portainer/libhttp/error",
     "github.com/portainer/libhttp/request",
     "github.com/portainer/libhttp/response",
