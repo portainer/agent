@@ -99,7 +99,7 @@ func (operator *Operator) poll() error {
 	}
 
 	if responseData.CheckinInterval != operator.pollIntervalInSeconds {
-		log.Printf("[DEBUG] [http,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating checkin interval]", operator.pollIntervalInSeconds, responseData.CheckinInterval)
+		log.Printf("[DEBUG] [http,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", operator.pollIntervalInSeconds, responseData.CheckinInterval)
 		operator.pollIntervalInSeconds = responseData.CheckinInterval
 		operator.createHTTPClient(responseData.CheckinInterval)
 		go operator.restartStatusPollLoop()
