@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/portainer/agent"
 
 	chclient "github.com/jpillora/chisel/client"
 )
+
+const tunnelClientTimeout = 10 * time.Second
 
 // Client is used to create a reverse proxy tunnel connected to a Portainer instance.
 type Client struct {
@@ -25,9 +28,6 @@ func NewClient() *Client {
 
 // CreateTunnel will create a reverse tunnel
 func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
-	// TODO: investigate the addition of a timeout via a context timeout instead
-	// of using context.Background()
-
 	remote := fmt.Sprintf("R:%s:%s", tunnelConfig.RemotePort, tunnelConfig.LocalAddr)
 
 	log.Printf("[DEBUG] [edge,chisel] [remote_port: %s] [local_addr: %s] [server: %s] [server_fingerprint: %s] [message: Creating reverse tunnel client]", tunnelConfig.RemotePort, tunnelConfig.LocalAddr, tunnelConfig.ServerAddr, tunnelConfig.ServerFingerpint)
@@ -46,7 +46,10 @@ func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 
 	client.chiselClient = chiselClient
 
-	err = chiselClient.Start(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), tunnelClientTimeout)
+	defer cancel()
+
+	err = chiselClient.Start(ctx)
 	if err != nil {
 		return err
 	}
