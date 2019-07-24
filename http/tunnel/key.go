@@ -33,7 +33,7 @@ func parseEdgeKey(key string) (*edgeKey, error) {
 }
 
 func encodeKey(edgeKey *edgeKey) string {
-	keyInfo := fmt.Sprintf("%s|%s|%s|%s|%s", edgeKey.PortainerInstanceURL, edgeKey.TunnelServerAddr, edgeKey.TunnelServerFingerprint, edgeKey.EndpointID)
+	keyInfo := fmt.Sprintf("%s|%s|%s|%s", edgeKey.PortainerInstanceURL, edgeKey.TunnelServerAddr, edgeKey.TunnelServerFingerprint, edgeKey.EndpointID)
 	encodedKey := base64.RawStdEncoding.EncodeToString([]byte(keyInfo))
 	return encodedKey
 }
