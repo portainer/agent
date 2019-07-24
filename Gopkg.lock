@@ -194,15 +194,15 @@
   version = "v0.1.4"
 
 [[projects]]
-  digest = "1:20f41e776c1279d709957e9946c53f3922fa1cffd098860515ad5b55a5a91dac"
+  digest = "1:56f92ad6e3432c53f4912c9d7c0b9a66cc19338f6a98f100d3b4557a32f1a33a"
   name = "github.com/hashicorp/serf"
   packages = [
     "coordinate",
     "serf",
   ]
   pruneopts = "UT"
-  revision = "d6574a5bb1226678d7010325fb6c985db20ee458"
-  version = "v0.8.1"
+  revision = "15cfd05de3dffb3664aa37b06e91f970b825e380"
+  version = "v0.8.3"
 
 [[projects]]
   digest = "1:07b0c269ddc472197b0796a34761d707d1c71a8fa651bf6421282ad756f9c494"
