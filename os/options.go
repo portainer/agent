@@ -22,6 +22,7 @@ const (
 	EnvKeyEdgeServerPort    = "EDGE_SERVER_PORT"
 	EnvKeyEdgePollInterval  = "EDGE_POLL_INTERVAL"
 	EnvKeyEdgeSleepInterval = "EDGE_SLEEP_INTERVAL"
+	EnvKeyEdgeInsecurePoll  = "EDGE_INSECURE_POLL"
 	EnvKeyLogLevel          = "LOG_LEVEL"
 )
 
@@ -43,6 +44,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeServerPort:        agent.DefaultEdgeServerPort,
 		EdgePollInterval:      agent.DefaultEdgePollInterval,
 		EdgeSleepInterval:     agent.DefaultEdgeSleepInterval,
+		EdgeInsecurePoll:      false,
 		LogLevel:              agent.DefaultLogLevel,
 	}
 
@@ -52,6 +54,10 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 
 	if os.Getenv(EnvKeyEdge) == "1" {
 		options.EdgeMode = true
+	}
+
+	if os.Getenv(EnvKeyEdgeInsecurePoll) == "1" {
+		options.EdgeInsecurePoll = true
 	}
 
 	if options.EdgeMode && options.EdgeID == "" {

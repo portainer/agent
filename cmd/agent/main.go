@@ -76,7 +76,18 @@ func main() {
 	var tunnelOperator agent.TunnelOperator
 	if options.EdgeMode {
 		apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
-		tunnelOperator, err = tunnel.NewTunnelOperator(apiServerAddr, options.EdgeID, options.EdgePollInterval, options.EdgeSleepInterval)
+
+		operatorConfig := &tunnel.OperatorConfig{
+			APIServerAddr:     apiServerAddr,
+			EdgeID:            options.EdgeID,
+			PollFrequency:     options.EdgePollInterval,
+			InactivityTimeout: options.EdgeSleepInterval,
+			InsecurePoll:      options.EdgeInsecurePoll,
+		}
+
+		log.Printf("[DEBUG] [main,edge,configuration] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", operatorConfig.APIServerAddr, operatorConfig.EdgeID, operatorConfig.PollFrequency, operatorConfig.InactivityTimeout, operatorConfig.InsecurePoll)
+
+		tunnelOperator, err = tunnel.NewTunnelOperator(operatorConfig)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}

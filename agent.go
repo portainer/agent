@@ -15,6 +15,7 @@ type (
 		EdgeServerPort        string
 		EdgePollInterval      string
 		EdgeSleepInterval     string
+		EdgeInsecurePoll      bool
 		LogLevel              string
 	}
 

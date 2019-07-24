@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -25,18 +26,19 @@ type pollStatusResponse struct {
 }
 
 func (operator *Operator) createHTTPClient(timeout float64) {
-	operator.httpClient = &http.Client{
+	httpCli := &http.Client{
 		Timeout: time.Duration(timeout) * time.Second,
-
-		// TODO: only enable this if we want to support self-signed TLS protected Portainer instances
-		// without having to pass the CA or cert that need to be trusted to the agent (extra deployment parameters)
-		// this is basically removing any TLS validation (not checking for the certificate)
-		//Transport: &http.Transport{
-		//	TLSClientConfig: &tls.Config{
-		//		InsecureSkipVerify: true,
-		//	},
-		//},
 	}
+
+	if operator.insecurePoll {
+		httpCli.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+
+	operator.httpClient = httpCli
 }
 
 func (operator *Operator) poll() error {

@@ -25,6 +25,7 @@ type edgeKey struct {
 type Operator struct {
 	apiServerAddr         string
 	pollIntervalInSeconds float64
+	insecurePoll          bool
 	inactivityTimeout     time.Duration
 	edgeID                string
 	key                   *edgeKey
@@ -35,23 +36,33 @@ type Operator struct {
 	refreshSignal         chan struct{}
 }
 
+// OperatorConfig represents the configuration used to create a new Operator.
+type OperatorConfig struct {
+	APIServerAddr     string
+	EdgeID            string
+	InactivityTimeout string
+	PollFrequency     string
+	InsecurePoll      bool
+}
+
 // NewTunnelOperator creates a new reverse tunnel operator
-func NewTunnelOperator(apiServerAddr, edgeID, pollInterval, sleepInterval string) (*Operator, error) {
-	pollFrequency, err := time.ParseDuration(pollInterval)
+func NewTunnelOperator(config *OperatorConfig) (*Operator, error) {
+	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
 	}
 
-	sleepDuration, err := time.ParseDuration(sleepInterval)
+	inactivityTimeout, err := time.ParseDuration(config.InactivityTimeout)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Operator{
-		apiServerAddr:         apiServerAddr,
-		edgeID:                edgeID,
+		apiServerAddr:         config.APIServerAddr,
+		edgeID:                config.EdgeID,
 		pollIntervalInSeconds: pollFrequency.Seconds(),
-		inactivityTimeout:     sleepDuration,
+		insecurePoll:          config.InsecurePoll,
+		inactivityTimeout:     inactivityTimeout,
 		tunnelClient:          chisel.NewClient(),
 		scheduleManager:       filesystem.NewCronManager(),
 		refreshSignal:         make(chan struct{}),
