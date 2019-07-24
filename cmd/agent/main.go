@@ -80,8 +80,8 @@ func main() {
 		operatorConfig := &tunnel.OperatorConfig{
 			APIServerAddr:     apiServerAddr,
 			EdgeID:            options.EdgeID,
-			PollFrequency:     options.EdgePollInterval,
-			InactivityTimeout: options.EdgeSleepInterval,
+			PollFrequency:     options.EdgePollFrequency,
+			InactivityTimeout: options.EdgeInactivityTimeout,
 			InsecurePoll:      options.EdgeInsecurePoll,
 		}
 

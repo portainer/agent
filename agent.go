@@ -13,8 +13,8 @@ type (
 		EdgeID                string
 		EdgeServerAddr        string
 		EdgeServerPort        string
-		EdgePollInterval      string
-		EdgeSleepInterval     string
+		EdgeInactivityTimeout string
+		EdgePollFrequency     string
 		EdgeInsecurePoll      bool
 		LogLevel              string
 	}
