@@ -9,10 +9,6 @@ import (
 	httperror "github.com/portainer/libhttp/error"
 )
 
-const (
-	errAgentManagementDisabled = agent.Error("Agent management is disabled")
-)
-
 // Handler is the HTTP handler used to handle agent operations.
 type Handler struct {
 	*mux.Router

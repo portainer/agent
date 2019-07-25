@@ -1,6 +1,7 @@
 package security
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/portainer/agent"
@@ -8,30 +9,33 @@ import (
 )
 
 type NotaryService struct {
-	signatureService agent.DigitalSignatureService
+	signatureService      agent.DigitalSignatureService
+	signatureVerification bool
 }
 
-func NewNotaryService(signatureService agent.DigitalSignatureService) *NotaryService {
+func NewNotaryService(signatureService agent.DigitalSignatureService, signatureVerification bool) *NotaryService {
 	return &NotaryService{
-		signatureService: signatureService,
+		signatureVerification: signatureVerification,
+		signatureService:      signatureService,
 	}
 }
 
 func (service *NotaryService) DigitalSignatureVerification(next http.Handler) http.Handler {
 	return httperror.LoggerHandler(func(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+		if service.signatureVerification {
+			publicKeyHeaderValue := r.Header.Get(agent.HTTPPublicKeyHeaderName)
+			signatureHeaderValue := r.Header.Get(agent.HTTPSignatureHeaderName)
 
-		publicKeyHeaderValue := r.Header.Get(agent.HTTPPublicKeyHeaderName)
-		signatureHeaderValue := r.Header.Get(agent.HTTPSignatureHeaderName)
+			if publicKeyHeaderValue == "" || signatureHeaderValue == "" {
+				return &httperror.HandlerError{http.StatusForbidden, "Missing request signature headers", errors.New("Unauthorized")}
+			}
 
-		if publicKeyHeaderValue == "" || signatureHeaderValue == "" {
-			return &httperror.HandlerError{http.StatusForbidden, "Missing request signature headers", agent.ErrUnauthorized}
-		}
-
-		valid, err := service.signatureService.VerifySignature(signatureHeaderValue, publicKeyHeaderValue)
-		if err != nil {
-			return &httperror.HandlerError{http.StatusForbidden, "Invalid request signature", err}
-		} else if !valid {
-			return &httperror.HandlerError{http.StatusForbidden, "Invalid request signature", agent.ErrUnauthorized}
+			valid, err := service.signatureService.VerifySignature(signatureHeaderValue, publicKeyHeaderValue)
+			if err != nil {
+				return &httperror.HandlerError{http.StatusForbidden, "Invalid request signature", err}
+			} else if !valid {
+				return &httperror.HandlerError{http.StatusForbidden, "Invalid request signature", errors.New("Unauthorized")}
+			}
 		}
 
 		next.ServeHTTP(rw, r)

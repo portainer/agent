@@ -1,9 +1,9 @@
 package browse
 
 import (
+	"errors"
 	"net/http"
 
-	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
 	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/request"
@@ -19,13 +19,13 @@ type browsePutPayload struct {
 func (payload *browsePutPayload) Validate(r *http.Request) error {
 	path, err := request.RetrieveMultiPartFormValue(r, "Path", false)
 	if err != nil {
-		return agent.Error("Invalid file path")
+		return errors.New("Invalid file path")
 	}
 	payload.Path = path
 
 	file, filename, err := request.RetrieveMultiPartFormFile(r, "file")
 	if err != nil {
-		return agent.Error("Invalid uploaded file")
+		return errors.New("Invalid uploaded file")
 	}
 	payload.File = file
 	payload.Filename = filename
@@ -36,8 +36,8 @@ func (payload *browsePutPayload) Validate(r *http.Request) error {
 // POST request on /browse/put?id=:id
 func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
-	if volumeID == "" && !handler.AgentOptions.HostManagementEnabled {
-		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", agent.ErrFeatureDisabled}
+	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
+		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", errors.New("This agent feature is not enabled")}
 	}
 
 	var payload browsePutPayload

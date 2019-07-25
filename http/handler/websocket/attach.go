@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -28,7 +29,7 @@ func (handler *Handler) websocketAttach(w http.ResponseWriter, r *http.Request) 
 
 	targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
 	if targetMember == nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", agent.ErrAgentNotFound}
+		return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
 	}
 
 	proxy.WebsocketRequest(w, r, targetMember)
