@@ -42,11 +42,10 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 	return info, nil
 }
 
-// TODO: @@DOCUMENTATION have to be careful with this implementation. If the container is not using host mode port
-// when publishing ports it will be automatically added to the ingress network.
-// This implementation might return the IP address used in the ingress network and cause network issues
-// when trying to form the cluster.
-// Must be documented.
+// GetContainerIpFromDockerEngine is used to retrieve the IP address of the container through Docker.
+// It will inspect the container to retrieve the networks associated to the container and returns the first IP associated
+// to the first network found.
+// This might cause some problem if the agent is part of the ingress network.
 func (service *InfoService) GetContainerIpFromDockerEngine(containerName string) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 	if err != nil {

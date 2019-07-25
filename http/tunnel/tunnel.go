@@ -76,8 +76,6 @@ func (operator *Operator) SetKey(key string) error {
 		return err
 	}
 
-	// TODO: @@DOCUMENTATION
-	// Add documentation about key persistence
 	err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
 	if err != nil {
 		return err

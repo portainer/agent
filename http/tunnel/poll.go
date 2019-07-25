@@ -48,7 +48,6 @@ func (operator *Operator) poll() error {
 		return err
 	}
 
-	// TODO: @@DOCUMENTATION: document the extra security layer added by the Edge ID
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, operator.edgeID)
 
 	if operator.httpClient == nil {

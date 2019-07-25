@@ -123,10 +123,6 @@ func main() {
 		EdgeMode:         options.EdgeMode,
 	}
 
-	// TODO: @@DOCUMENTATION
-	// Add some documentation about the fact that when started in Edge mode, the agent API will listen
-	// on the advertiseAddr retrieved earlier (typically the container IP inside the container network)
-	// to prevent any unsecured communication with the API if the port was to be exposed.
 	if options.EdgeMode {
 		config.Addr = advertiseAddr
 	}
@@ -201,11 +197,6 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 	return nil
 }
 
-// TODO: @@DOCUMENTATION
-// Document edge key retrieval process
-// 1. from options
-// 2. from filesystem
-// 3. from cluster
 func retrieveEdgeKey(options *agent.Options, clusterService agent.ClusterService) (string, error) {
 	edgeKey := options.EdgeKey
 
