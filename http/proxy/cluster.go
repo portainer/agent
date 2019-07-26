@@ -11,7 +11,7 @@ import (
 	"github.com/portainer/agent"
 )
 
-const defaultClusterRequestTimeout = 60
+const defaultClusterRequestTimeout = 120
 
 // ClusterProxy is a service used to execute the same requests on multiple targets.
 type ClusterProxy struct {
