@@ -1,18 +1,14 @@
 package filesystem
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path"
 	"strings"
 	"time"
 
-	"github.com/portainer/agent"
 	"github.com/portainer/agent/constants"
-)
-
-const (
-	errInvalidFilePath = agent.Error("Invalid path. Ensure that the path do not contain '..' elements")
 )
 
 // FileInfo represents information about a file on the filesystem
@@ -28,6 +24,22 @@ type FileDetails struct {
 	File     *os.File
 	ModTime  time.Time
 	BasePath string
+}
+
+// ReadFromFile returns the content of a file.
+func ReadFromFile(filePath string) ([]byte, error) {
+	return ioutil.ReadFile(filePath)
+}
+
+// FileExists will verify that a file exists under the specified file path.
+func FileExists(filePath string) (bool, error) {
+	if _, err := os.Stat(filePath); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // OpenFile will open a file and return a FileDetails pointer
@@ -90,10 +102,14 @@ func RenameFile(oldPath, newPath string) error {
 // WriteFile takes a path, filename, a file and the mode that should be associated
 // to the file and writes it to disk
 func WriteFile(uploadedFilePath, filename string, file []byte, mode uint32) error {
-	os.MkdirAll(uploadedFilePath, 0755)
+	err := os.MkdirAll(uploadedFilePath, 0755)
+	if err != nil {
+		return err
+	}
+
 	filePath := path.Join(uploadedFilePath, filename)
 
-	err := ioutil.WriteFile(filePath, file, os.FileMode(mode))
+	err = ioutil.WriteFile(filePath, file, os.FileMode(mode))
 	if err != nil {
 		return err
 	}
@@ -104,7 +120,7 @@ func WriteFile(uploadedFilePath, filename string, file []byte, mode uint32) erro
 // BuildPathToFileInsideVolume will take a volumeID and path, and build a full path on the host
 func BuildPathToFileInsideVolume(volumeID, filePath string) (string, error) {
 	if !isValidPath(filePath) {
-		return "", errInvalidFilePath
+		return "", errors.New("Invalid path. Ensure that the path do not contain '..' elements")
 	}
 
 	return path.Join(constants.SystemVolumePath, volumeID, "_data", filePath), nil

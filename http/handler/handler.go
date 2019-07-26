@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/portainer/agent/http/handler/key"
 
 	"github.com/portainer/agent"
 	httpagenthandler "github.com/portainer/agent/http/handler/agent"
@@ -14,6 +17,7 @@ import (
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
+	httperror "github.com/portainer/libhttp/error"
 )
 
 // Handler is the main handler of the application.
@@ -23,35 +27,65 @@ type Handler struct {
 	browseHandler      *browse.Handler
 	browseHandlerV1    *browse.Handler
 	dockerProxyHandler *docker.Handler
+	keyHandler         *key.Handler
 	webSocketHandler   *websocket.Handler
 	hostHandler        *host.Handler
 	pingHandler        *ping.Handler
+	securedProtocol    bool
+	tunnelOperator     agent.TunnelOperator
 }
 
-const (
-	errInvalidQueryParameters = agent.Error("Invalid query parameters")
-)
+// Config represents a server handler configuration
+// used to create a new handler
+type Config struct {
+	SystemService    agent.SystemService
+	ClusterService   agent.ClusterService
+	SignatureService agent.DigitalSignatureService
+	TunnelOperator   agent.TunnelOperator
+	AgentTags        map[string]string
+	AgentOptions     *agent.Options
+	Secured          bool
+	EdgeMode         bool
+}
 
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
-func NewHandler(systemService agent.SystemService, cs agent.ClusterService, signatureService agent.DigitalSignatureService, agentTags map[string]string, agentOptions *agent.AgentOptions) *Handler {
-	agentProxy := proxy.NewAgentProxy(cs, agentTags)
-	notaryService := security.NewNotaryService(signatureService)
+func NewHandler(config *Config) *Handler {
+	agentProxy := proxy.NewAgentProxy(config.ClusterService, config.AgentTags)
+	notaryService := security.NewNotaryService(config.SignatureService, config.Secured)
+
 	return &Handler{
-		agentHandler:       httpagenthandler.NewHandler(cs, notaryService),
-		browseHandler:      browse.NewHandler(agentProxy, notaryService, agentOptions),
+		agentHandler:       httpagenthandler.NewHandler(config.ClusterService, notaryService),
+		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
-		dockerProxyHandler: docker.NewHandler(cs, agentTags, notaryService),
-		webSocketHandler:   websocket.NewHandler(cs, agentTags, notaryService),
-		hostHandler:        host.NewHandler(systemService, agentProxy, notaryService),
+		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService),
+		keyHandler:         key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeMode),
+		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
+		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:        ping.NewHandler(),
+		securedProtocol:    config.Secured,
+		tunnelOperator:     config.TunnelOperator,
 	}
 }
 
 func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
+	if strings.HasPrefix(request.URL.Path, "/key") {
+		h.keyHandler.ServeHTTP(rw, request)
+		return
+	}
+
+	if !h.securedProtocol && !h.tunnelOperator.IsKeySet() {
+		httperror.WriteError(rw, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
+		return
+	}
+
+	if h.tunnelOperator != nil {
+		h.tunnelOperator.ResetActivityTimer()
+	}
+
 	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
-	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.AgentVersion)
+	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
 
 	switch {

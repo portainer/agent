@@ -1,34 +1,90 @@
 package http
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/handler"
 )
 
-// Server is the web server exposing the API of an agent.
-type Server struct {
+// APIServer is the web server exposing the API of an agent.
+type APIServer struct {
+	addr             string
+	port             string
 	systemService    agent.SystemService
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
+	tunnelOperator   agent.TunnelOperator
 	agentTags        map[string]string
-	agentOptions     *agent.AgentOptions
+	agentOptions     *agent.Options
+	edgeMode         bool
 }
 
-// NewServer returns a pointer to a Server.
-func NewServer(systemService agent.SystemService, clusterService agent.ClusterService, signatureService agent.DigitalSignatureService, agentTags map[string]string, agentOptions *agent.AgentOptions) *Server {
-	return &Server{
-		systemService:    systemService,
-		clusterService:   clusterService,
-		signatureService: signatureService,
-		agentTags:        agentTags,
-		agentOptions:     agentOptions,
+// APIServerConfig represents a server configuration
+// used to create a new API server
+type APIServerConfig struct {
+	Addr             string
+	Port             string
+	SystemService    agent.SystemService
+	ClusterService   agent.ClusterService
+	SignatureService agent.DigitalSignatureService
+	TunnelOperator   agent.TunnelOperator
+	AgentTags        map[string]string
+	AgentOptions     *agent.Options
+	EdgeMode         bool
+}
+
+// NewAPIServer returns a pointer to a APIServer.
+func NewAPIServer(config *APIServerConfig) *APIServer {
+	return &APIServer{
+		addr:             config.Addr,
+		port:             config.Port,
+		systemService:    config.SystemService,
+		clusterService:   config.ClusterService,
+		signatureService: config.SignatureService,
+		tunnelOperator:   config.TunnelOperator,
+		agentTags:        config.AgentTags,
+		agentOptions:     config.AgentOptions,
+		edgeMode:         config.EdgeMode,
 	}
 }
 
-// Start starts a new webserver by listening on the specified listenAddr.
-func (server *Server) Start(listenAddr string) error {
-	h := handler.NewHandler(server.systemService, server.clusterService, server.signatureService, server.agentTags, server.agentOptions)
+// Start starts a new web server by listening on the specified listenAddr.
+func (server *APIServer) StartUnsecured() error {
+	config := &handler.Config{
+		SystemService:  server.systemService,
+		ClusterService: server.clusterService,
+		TunnelOperator: server.tunnelOperator,
+		AgentTags:      server.agentTags,
+		AgentOptions:   server.agentOptions,
+		EdgeMode:       server.edgeMode,
+		Secured:        false,
+	}
+
+	h := handler.NewHandler(config)
+	listenAddr := server.addr + ":" + server.port
+
+	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
+	return http.ListenAndServe(listenAddr, h)
+}
+
+// Start starts a new web server by listening on the specified listenAddr.
+func (server *APIServer) StartSecured() error {
+	config := &handler.Config{
+		SystemService:    server.systemService,
+		ClusterService:   server.clusterService,
+		SignatureService: server.signatureService,
+		TunnelOperator:   server.tunnelOperator,
+		AgentTags:        server.agentTags,
+		AgentOptions:     server.agentOptions,
+		EdgeMode:         server.edgeMode,
+		Secured:          true,
+	}
+
+	h := handler.NewHandler(config)
+	listenAddr := server.addr + ":" + server.port
+
+	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, h)
 }

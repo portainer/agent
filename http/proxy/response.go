@@ -3,6 +3,7 @@ package proxy
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -44,7 +45,11 @@ func responseToJSONArray(response *http.Response, requestPath string) ([]interfa
 			responseData = make([]interface{}, 0)
 		}
 	} else {
-		responseData = responseObject.([]interface{})
+		responseData, ok = responseObject.([]interface{})
+		if !ok {
+			log.Printf("[ERROR] [http,proxy,cluster] [message: unexpected response from Docker daemon] [response: %+v]", responseData)
+			return nil, errors.New("invalid response from Docker daemon")
+		}
 	}
 
 	return responseData, nil

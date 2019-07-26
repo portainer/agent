@@ -27,11 +27,11 @@
 
 [[constraint]]
   name = "github.com/Microsoft/go-winio"
-  version = "0.4.11"
+  version = "=0.4.11"
 
 [[constraint]]
   name = "github.com/asaskevich/govalidator"
-  version = "9.0.0"
+  version = "=v9"
 
 # Unable to pin this package to a specific version as repository versions
 # are not valid semver: https://github.com/moby/moby/issues/37281
@@ -52,23 +52,23 @@
 
 [[constraint]]
   name = "github.com/gorilla/mux"
-  version = "1.6.2"
+  version = "=1.6.2"
 
 [[constraint]]
   name = "github.com/gorilla/websocket"
-  version = "1.4.0"
+  version = "=1.4.0"
 
 [[constraint]]
   name = "github.com/hashicorp/logutils"
-  version = "1.0.0"
+  version = "=1.0.0"
 
 [[constraint]]
   name = "github.com/hashicorp/serf"
-  version = "0.8.1"
+  version = "=0.8.3"
 
 [[constraint]]
   name = "github.com/jaypipes/ghw"
-  version = "0.2"
+  version = "=0.2"
 
 [[constraint]]
   branch = "master"
@@ -76,7 +76,15 @@
 
 [[constraint]]
   name = "github.com/portainer/libhttp"
-  version = "1.0.1"
+  version = "=1.0.1"
+
+[[constraint]]
+  name = "github.com/portainer/libcrypto"
+  version = "=1.0.0"
+
+[[constraint]]
+  name = "github.com/jpillora/chisel"
+  version = "=1.3.1"
 
 [prune]
   go-tests = true

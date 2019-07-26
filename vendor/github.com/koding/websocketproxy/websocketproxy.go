@@ -97,6 +97,9 @@ func (w *WebsocketProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	for _, cookie := range req.Header[http.CanonicalHeaderKey("Cookie")] {
 		requestHeader.Add("Cookie", cookie)
 	}
+	if req.Host != "" {
+		requestHeader.Set("Host", req.Host)
+	}
 
 	// Pass X-Forwarded-For headers too, code below is a part of
 	// httputil.ReverseProxy. See http://en.wikipedia.org/wiki/X-Forwarded-For

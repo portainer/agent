@@ -13,15 +13,15 @@ import (
 // Handler is the HTTP handler used to handle volume browsing operations.
 type Handler struct {
 	*mux.Router
-	*agent.AgentOptions
+	agentOptions *agent.Options
 }
 
 // NewHandler returns a pointer to an Handler
 // It sets the associated handle functions for all the Browse related HTTP endpoints.
-func NewHandler(agentProxy *proxy.AgentProxy, notaryService *security.NotaryService, agentOptions *agent.AgentOptions) *Handler {
+func NewHandler(agentProxy *proxy.AgentProxy, notaryService *security.NotaryService, agentOptions *agent.Options) *Handler {
 	h := &Handler{
 		Router:       mux.NewRouter(),
-		AgentOptions: agentOptions,
+		agentOptions: agentOptions,
 	}
 
 	h.Handle("/browse/ls",

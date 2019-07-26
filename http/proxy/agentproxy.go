@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/portainer/agent"
@@ -37,7 +38,7 @@ func (p *AgentProxy) Redirect(next http.Handler) http.Handler {
 		} else {
 			targetMember := p.clusterService.GetMemberByNodeName(agentTargetHeader)
 			if targetMember == nil {
-				return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", agent.ErrAgentNotFound}
+				return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
 			}
 			AgentHTTPRequest(rw, r, targetMember)
 		}

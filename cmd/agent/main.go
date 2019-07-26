@@ -1,64 +1,276 @@
 package main
 
 import (
-	"github.com/hashicorp/logutils"
+	"fmt"
+	"log"
+	"time"
+
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
+	"github.com/portainer/agent/http/client"
+	"github.com/portainer/agent/http/tunnel"
+	"github.com/portainer/agent/logutils"
+	"github.com/portainer/agent/net"
+	"github.com/portainer/agent/os"
 	cluster "github.com/portainer/agent/serf"
-	"log"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
-func initOptionsFromEnvironment(clusterMode bool) (*agent.AgentOptions, error) {
-	options := &agent.AgentOptions{
-		Port: agent.DefaultAgentPort,
-		HostManagementEnabled: false,
+func main() {
+	options, err := parseOptions()
+	if err != nil {
+		log.Fatalf("[ERROR] [main,configuration] [message: Invalid agent configuration] [error: %s]", err)
 	}
 
-	clusterAddressEnv := os.Getenv("AGENT_CLUSTER_ADDR")
-	if clusterAddressEnv == "" && clusterMode {
-		return nil, agent.ErrEnvClusterAddressRequired
-	}
-	options.ClusterAddress = clusterAddressEnv
+	logutils.SetupLogger(options.LogLevel)
 
-	agentPortEnv := os.Getenv("AGENT_PORT")
-	if agentPortEnv != "" {
-		_, err := strconv.Atoi(agentPortEnv)
+	infoService := docker.InfoService{}
+	agentTags, err := retrieveInformationFromDockerEnvironment(&infoService)
+	if err != nil {
+		log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve information from Docker] [error: %s]", err)
+	}
+	agentTags[agent.MemberTagKeyAgentPort] = options.AgentServerPort
+	log.Printf("[DEBUG] [main,configuration] [Member tags: %+v]", agentTags)
+
+	clusterMode := false
+	if agentTags[agent.MemberTagEngineStatus] == "swarm" {
+		clusterMode = true
+		log.Println("[INFO] [main] [message: Agent running on a Swarm cluster node. Running in cluster mode]")
+	}
+
+	if options.ClusterAddress == "" && clusterMode {
+		log.Fatalf("[ERROR] [main,configuration] [message: AGENT_CLUSTER_ADDR environment variable is required when deploying the agent inside a Swarm cluster]")
+	}
+
+	advertiseAddr, err := retrieveAdvertiseAddress(&infoService)
+	if err != nil {
+		log.Fatalf("[ERROR] [main,docker,os] [message: Unable to retrieve local agent IP address] [error: %s]", err)
+	}
+
+	var clusterService agent.ClusterService
+	if clusterMode {
+		clusterService = cluster.NewClusterService(agentTags)
+
+		// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
+		// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
+		time.Sleep(3 * time.Second)
+
+		joinAddr, err := net.LookupIPAddresses(options.ClusterAddress)
 		if err != nil {
-			return nil, agent.ErrInvalidEnvPortFormat
+			log.Fatalf("[ERROR] [main,net] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", options.ClusterAddress, err)
 		}
-		options.Port = agentPortEnv
+
+		err = clusterService.Create(advertiseAddr, joinAddr)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,cluster] [message: Unable to create cluster] [error: %s]", err)
+		}
+
+		defer clusterService.Leave()
 	}
 
-	if os.Getenv("CAP_HOST_MANAGEMENT") == "1" {
-		options.HostManagementEnabled = true
+	log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, options.ClusterAddress, advertiseAddr)
+
+	var tunnelOperator agent.TunnelOperator
+	if options.EdgeMode {
+		apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
+
+		operatorConfig := &tunnel.OperatorConfig{
+			APIServerAddr:     apiServerAddr,
+			EdgeID:            options.EdgeID,
+			PollFrequency:     options.EdgePollFrequency,
+			InactivityTimeout: options.EdgeInactivityTimeout,
+			InsecurePoll:      options.EdgeInsecurePoll,
+		}
+
+		log.Printf("[DEBUG] [main,edge,configuration] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", operatorConfig.APIServerAddr, operatorConfig.EdgeID, operatorConfig.PollFrequency, operatorConfig.InactivityTimeout, operatorConfig.InsecurePoll)
+
+		tunnelOperator, err = tunnel.NewTunnelOperator(operatorConfig)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
+		}
+
+		err := enableEdgeMode(tunnelOperator, clusterService, options)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
+		}
 	}
 
-	options.SharedSecret = os.Getenv("AGENT_SECRET")
+	systemService := ghw.NewSystemService(agent.HostRoot)
 
-	return options, nil
+	var signatureService agent.DigitalSignatureService
+	if !options.EdgeMode {
+		signatureService = crypto.NewECDSAService(options.SharedSecret)
+		tlsService := crypto.TLSService{}
+
+		err := tlsService.GenerateCertsForHost(advertiseAddr)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,tls] [message: Unable to generate self-signed certificates] [error: %s]", err)
+		}
+	}
+
+	config := &http.APIServerConfig{
+		Addr:             options.AgentServerAddr,
+		Port:             options.AgentServerPort,
+		SystemService:    systemService,
+		ClusterService:   clusterService,
+		SignatureService: signatureService,
+		TunnelOperator:   tunnelOperator,
+		AgentTags:        agentTags,
+		AgentOptions:     options,
+		EdgeMode:         options.EdgeMode,
+	}
+
+	if options.EdgeMode {
+		config.Addr = advertiseAddr
+	}
+
+	err = startAPIServer(config)
+	if err != nil {
+		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
+	}
 }
 
-func setupLogging() {
+func startAPIServer(config *http.APIServerConfig) error {
+	server := http.NewAPIServer(config)
 
-	logLevel := agent.DefaultLogLevel
-	logLevelEnv := os.Getenv("LOG_LEVEL")
-	if logLevelEnv != "" {
-		logLevel = logLevelEnv
+	if config.EdgeMode {
+		return server.StartUnsecured()
 	}
 
-	filter := &logutils.LevelFilter{
-		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
-		MinLevel: logutils.LogLevel(strings.ToUpper(logLevel)),
-		Writer:   os.Stderr,
+	return server.StartSecured()
+}
+
+func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, options *agent.Options) error {
+
+	edgeKey, err := retrieveEdgeKey(options, clusterService)
+	if err != nil {
+		return err
 	}
-	log.SetOutput(filter)
+
+	if edgeKey != "" {
+		log.Println("[DEBUG] [main,edge] [message: Edge key available. Starting tunnel operator.]")
+
+		err := tunnelOperator.SetKey(edgeKey)
+		if err != nil {
+			return err
+		}
+
+		if clusterService != nil {
+			tags := clusterService.GetTags()
+			tags[agent.MemberTagEdgeKeySet] = "set"
+			err = clusterService.UpdateTags(tags)
+			if err != nil {
+				return err
+			}
+		}
+
+		return tunnelOperator.Start()
+	}
+
+	log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
+	edgeServer := http.NewEdgeServer(tunnelOperator, clusterService)
+
+	go func() {
+		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
+
+		err := edgeServer.Start(options.EdgeServerAddr, options.EdgeServerPort)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
+		}
+
+		log.Println("[INFO] [main,edge,http] [message: Edge server shutdown]")
+	}()
+
+	go func() {
+		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
+		<-timer1.C
+
+		if !tunnelOperator.IsKeySet() {
+			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
+			edgeServer.Shutdown()
+		}
+	}()
+
+	return nil
+}
+
+func retrieveEdgeKey(options *agent.Options, clusterService agent.ClusterService) (string, error) {
+	edgeKey := options.EdgeKey
+
+	if options.EdgeKey != "" {
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from options]")
+		edgeKey = options.EdgeKey
+	}
+
+	if edgeKey == "" {
+		var keyRetrievalError error
+
+		edgeKey, keyRetrievalError = retrieveEdgeKeyFromFilesystem()
+		if keyRetrievalError != nil {
+			return "", keyRetrievalError
+		}
+
+		if edgeKey == "" && clusterService != nil {
+			edgeKey, keyRetrievalError = retrieveEdgeKeyFromCluster(clusterService)
+			if keyRetrievalError != nil {
+				return "", keyRetrievalError
+			}
+		}
+	}
+
+	return edgeKey, nil
+}
+
+func retrieveEdgeKeyFromFilesystem() (string, error) {
+	var edgeKey string
+
+	edgeKeyFilePath := fmt.Sprintf("%s/%s", agent.DataDirectory, agent.EdgeKeyFile)
+
+	keyFileExists, err := filesystem.FileExists(edgeKeyFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	if keyFileExists {
+		filesystemKey, err := filesystem.ReadFromFile(edgeKeyFilePath)
+		if err != nil {
+			return "", err
+		}
+
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
+		edgeKey = string(filesystemKey)
+	}
+
+	return edgeKey, nil
+}
+
+func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, error) {
+	var edgeKey string
+
+	member := clusterService.GetMemberWithEdgeKeySet()
+	if member != nil {
+		httpCli := client.NewAPIClient()
+
+		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
+		memberKey, err := httpCli.GetEdgeKey(memberAddr)
+		if err != nil {
+			log.Printf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
+			return "", err
+		}
+
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
+		edgeKey = memberKey
+	}
+
+	return edgeKey, nil
+}
+
+func parseOptions() (*agent.Options, error) {
+	optionParser := os.NewEnvOptionParser()
+	return optionParser.Options()
 }
 
 func retrieveInformationFromDockerEnvironment(infoService agent.InfoService) (map[string]string, error) {
@@ -71,7 +283,7 @@ func retrieveInformationFromDockerEnvironment(infoService agent.InfoService) (ma
 }
 
 func retrieveAdvertiseAddress(infoService agent.InfoService) (string, error) {
-	containerName, err := os.Hostname()
+	containerName, err := os.GetHostName()
 	if err != nil {
 		return "", err
 	}
@@ -82,64 +294,4 @@ func retrieveAdvertiseAddress(infoService agent.InfoService) (string, error) {
 	}
 
 	return advertiseAddr, nil
-}
-
-func main() {
-	setupLogging()
-
-	infoService := docker.InfoService{}
-	agentTags, err := retrieveInformationFromDockerEnvironment(&infoService)
-	if err != nil {
-		log.Fatalf("[ERROR] - Unable to retrieve information from Docker: %s", err)
-	}
-
-	clusterMode := false
-	if agentTags[agent.ApplicationTagMode] == "swarm" {
-		clusterMode = true
-	}
-
-	options, err := initOptionsFromEnvironment(clusterMode)
-	if err != nil {
-		log.Fatalf("[ERROR] - Error during agent initialization: %s", err)
-	}
-	agentTags[agent.MemberTagKeyAgentPort] = options.Port
-
-	log.Printf("[DEBUG] - Agent details: %v\n", agentTags)
-
-	advertiseAddr, err := retrieveAdvertiseAddress(&infoService)
-	if err != nil {
-		log.Fatalf("[ERROR] - Unable to retrieve advertise address: %s", err)
-	}
-	log.Printf("[DEBUG] - Using cluster address: %s\n", options.ClusterAddress)
-	log.Printf("[DEBUG] - Using advertiseAddr: %s\n", advertiseAddr)
-
-	TLSService := crypto.TLSService{}
-	log.Println("[DEBUG] - Generating TLS files...")
-	TLSService.GenerateCertsForHost(advertiseAddr)
-
-	signatureService := crypto.NewECDSAService(options.SharedSecret)
-
-	log.Printf("[DEBUG] - Using agent port: %s\n", options.Port)
-
-	var clusterService agent.ClusterService
-	if clusterMode {
-		clusterService = cluster.NewClusterService()
-
-		// TODO: looks like the Docker DNS cannot find any info on tasks.<service_name>
-		// sometimes... Waiting a bit before starting the discovery seems to solve the problem.
-		time.Sleep(3 * time.Second)
-
-		err = clusterService.Create(advertiseAddr, options.ClusterAddress, agentTags)
-		if err != nil {
-			log.Fatalf("[ERROR] - Unable to create cluster: %s", err)
-		}
-		defer clusterService.Leave()
-	}
-
-	systemService := ghw.NewSystemService("/host")
-
-	listenAddr := agent.DefaultListenAddr + ":" + options.Port
-	log.Printf("[INFO] - Starting Portainer agent version %s on %s (cluster mode: %t)", agent.AgentVersion, listenAddr, clusterMode)
-	server := http.NewServer(systemService, clusterService, signatureService, agentTags, options)
-	server.Start(listenAddr)
 }

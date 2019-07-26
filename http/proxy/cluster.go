@@ -11,6 +11,8 @@ import (
 	"github.com/portainer/agent"
 )
 
+const defaultClusterRequestTimeout = 120
+
 // ClusterProxy is a service used to execute the same requests on multiple targets.
 type ClusterProxy struct {
 	client *http.Client
@@ -25,7 +27,7 @@ func NewClusterProxy() *ClusterProxy {
 
 	return &ClusterProxy{
 		client: &http.Client{
-			Timeout: time.Second * 10,
+			Timeout: time.Second * defaultClusterRequestTimeout,
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,
 			},
@@ -115,7 +117,11 @@ func copyRequest(request *http.Request, member *agent.ClusterMember) (*http.Requ
 
 	url := request.URL
 	url.Host = member.IPAddress + ":" + member.Port
-	url.Scheme = "https"
+
+	url.Scheme = "http"
+	if request.TLS != nil {
+		url.Scheme = "https"
+	}
 
 	requestCopy, err := http.NewRequest(request.Method, url.String(), bytes.NewReader(body))
 	if err != nil {
@@ -138,7 +144,7 @@ func cloneHeader(h http.Header) http.Header {
 }
 
 func decorateObject(object interface{}, nodeName string) interface{} {
-	metadata := agent.AgentMetadata{}
+	metadata := agent.Metadata{}
 	metadata.Agent.NodeName = nodeName
 
 	JSONObject := object.(map[string]interface{})

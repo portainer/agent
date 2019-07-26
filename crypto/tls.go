@@ -36,6 +36,7 @@ func (service *TLSService) GenerateCertsForHost(host string) error {
 	}
 
 	ip := net.ParseIP(host)
+	template.DNSNames = append(template.DNSNames, "localhost")
 	template.IPAddresses = append(template.IPAddresses, ip)
 
 	keyPair, err := rsa.GenerateKey(rand.Reader, 2048)
