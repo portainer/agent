@@ -3,13 +3,10 @@
 LOG_LEVEL=DEBUG
 CAP_HOST_MANAGEMENT=1 #Enabled by default. Change this to anything else to disable this feature
 EDGE=1
-EDGE_TUNNEL_SERVER="192.168.1.68"
-VAGRANT=true
 TMP="/tmp"
 GIT_COMMIT_HASH=`git rev-parse --short HEAD`
 GIT_BRANCH_NAME=`git rev-parse --abbrev-ref HEAD`
- IMAGE_NAME="portainer/pagent:${GIT_BRANCH_NAME}-${GIT_COMMIT_HASH}"
-#IMAGE_NAME="portainer/agent:edge"
+IMAGE_NAME="portainer/agent:${GIT_BRANCH_NAME}-${GIT_COMMIT_HASH}"
 
 if [[ $# -ne 1 ]] ; then
   echo "Usage: $(basename $0) <MODE:local/swarm>"
@@ -39,7 +36,7 @@ function deploy_local() {
 
   echo "Image build..."
   docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
-# docker push "${IMAGE_NAME}"
+  docker push "${IMAGE_NAME}"
 
 
   echo "Deployment..."
