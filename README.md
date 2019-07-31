@@ -22,6 +22,11 @@ At startup, the agent will communicate with the Docker node it is deployed on vi
 This implementation is using *serf* to form a cluster over a network, each agent requires an address where it will advertise its
 ability to be part of a cluster and a join address where it will be able to reach other agents.
 
+The agent retrieves the IP address it can use to create
+a cluster by inspecting the Docker networks associated to the agent container. If multiple networks are available, it will pickup the first network available and retrieve the IP address inside this network.
+
+Note: Be careful when deploying the agent to not deploy it inside the Swarm ingress network (by not using `mode=host` when exposing ports). This could lead the agent to not be able to create a cluster correctly if picking the IP address inside the ingress network.
+
 ### Proxy
 
 The agent works as a proxy to the Docker API on which it is deployed as well as a proxy to the other agents inside the cluster.
@@ -72,6 +77,10 @@ The agent also exposes the following endpoints:
 * `/browse/put` (*POST*): Upload a file under a specific path on the filesytem
 * `/host/info` (*GET*): Get information about the underlying host system
 * `/ping` (*GET*): Returns a 204. Public endpoint that do not require any form of authentication
+* `/key` (*GET*): Returns the Edge key associated to the agent **only available when agent is started in Edge mode**
+* `/key` (*POST*): Set the Edge key on this agent **only available when agent is started in Edge mode**
+* `/websocket/attach` (*GET*): Websocket attach endpoint (for container console usage)
+* `/websocket/exec` (*GET*): Websocket exec endpoint (for container console usage)
 
 Note: The `/browse/*` endpoints can be used to manage a filesystem. By default, it allows manipulation of files in Docker volumes (available under `/var/run/docker/volumes` when bind-mounted in the agent container) but can also manipulate files anywhere on the filesystem. To enable global
 filesystem manipulation support for these endpoints, the `CAP_HOST_MANAGEMENT` environment variable must be set to `1`.
@@ -80,7 +89,55 @@ filesystem manipulation support for these endpoints, the `CAP_HOST_MANAGEMENT` e
 
 The agent API version is exposed via the `Portainer-Agent-API-Version` in each response of the agent.
 
-## Security
+## Using the agent in Edge mode
+
+The following information is only relevant for an Agent that was started in Edge mode.
+
+### Purpose
+
+The Edge mode is mainly used in the case of your remote environment being not in the same network as your Portainer instance. When started in Edge mode, the agent will reach out to the Portainer instance
+and will take care of creating a reverse tunnel allowing the Portainer instance to query it. It uses a token (Edge key) that contains the required information to connect to a specific Portainer instance.
+
+### Startup
+
+To start an agent in Edge mode, the `EDGE=1` environment variable must be set.
+
+Upon startup, the agent will try to retrieve an existing Edge key in the following order:
+
+* from the environment variables via the `EDGE_KEY` environment variable
+* from the filesystem
+* from the cluster (if joining an existing Edge agent cluster)
+
+If no Edge key was retrieved, the agent will start a HTTP server where it will expose a UI to associate an Edge key.
+
+For security reasons, the Edge server UI will shutdown after 15 minutes if no key has been specified. The agent will require a restart in order
+to access the Edge UI again.
+
+
+### Edge key
+
+The Edge key is used by the agent to connect to a specific Portainer instance. It is encoded using base64 and contains the following information:
+
+* Portainer instance API URL
+* Portainer instance tunnel server address
+* Portainer instance tunnel server fingerprint
+* Endpoint identifier
+
+This information is represented in the following format before encoding (single string using the `|` character as a separator):
+
+```
+portainer_instance_url|tunnel_server_addr|tunnel_server_fingerprint|endpoint_ID
+```
+
+The Edge key associated to an agent will be persisted on disk after association under `/data/agent_edge_key`.
+
+### Polling
+
+### Security
+
+## Using the agent (non Edge)
+
+The following information is only relevant for an Agent that was not started in Edge mode.
 
 ### Encryption
 
@@ -132,17 +189,26 @@ This mode will allow multiple instances of Portainer to connect to a single agen
 
 Note: Due to the fact that the agent will now decode and parse the public key associated to each request, this mode might be less performant than the default mode.
 
-
 ## Deployment options
 
 The behavior of the agent can be tuned via a set of mandatory and optional options available as environment variables:
 
 * AGENT_CLUSTER_ADDR (*mandatory*): address (in the IP:PORT format) of an existing agent to join the agent cluster. When deploying the agent as a Docker Swarm service,
 we can leverage the internal Docker DNS to automatically join existing agents or form a cluster by using `tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT>` as the address.
-* AGENT_PORT (*optional*): port on which the agent web server will listen (default to `9001`).
-* CAP_HOST_MANAGEMENT (*optional*): enable advanced filesystem management features. Disabled by default, set to `1` to enable it.
+* AGENT_HOST (*optional*): address on which the agent API will be exposed (default to `0.0.0.0`)
+* AGENT_PORT (*optional*): port on which the agent API will be exposed (default to `9001`)
+* CAP_HOST_MANAGEMENT (*optional*): enable advanced filesystem management features. Disabled by default, set to `1` to enable it
 * AGENT_SECRET (*optional*): shared secret used in the signature verification process
 * LOG_LEVEL (*optional*): defines the log output verbosity (default to `INFO`)
+* EDGE (*optional*): enable Edge mode. Disabled by default, set to `1` to enable it
+* EDGE_KEY (*optional*): specify an Edge key to use at startup
+* EDGE_ID (*mandatory when EDGE=1*): a unique identifier associated to this agent cluster
+* EDGE_SERVER_HOST (*optional*): address on which the Edge UI will be exposed (default to `0.0.0.0`)
+* EDGE_SERVER_PORT (*optional*): port on which the Edge UI will be exposed (default to `80`).
+* EDGE_POLL_FREQUENCY (*optional*): frequency that will be used by the agent to poll the Portainer instance (default to `5s`)
+* EDGE_INACTIVITY_TIMEOUT (*optional*): timeout used by the agent to close the reverse tunnel after inactivity (default to `5m`)
+* EDGE_INSECURE_POLL (*optional*): enable this option if you need the agent to poll a HTTPS Portainer instance with self-signed certificates. Disabled by default, set to `1` to enable it
+
 
 For more information about deployment scenarios, see: https://portainer.readthedocs.io/en/stable/agent.html
 
