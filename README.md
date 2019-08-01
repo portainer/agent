@@ -108,7 +108,7 @@ Upon startup, the agent will try to retrieve an existing Edge key in the followi
 * from the filesystem
 * from the cluster (if joining an existing Edge agent cluster)
 
-If no Edge key was retrieved, the agent will start a HTTP server where it will expose a UI to associate an Edge key.
+If no Edge key was retrieved, the agent will start a HTTP server where it will expose a UI to associate an Edge key. After associating a key via the UI, the UI server will shutdown.
 
 For security reasons, the Edge server UI will shutdown after 15 minutes if no key has been specified. The agent will require a restart in order
 to access the Edge UI again.
@@ -132,6 +132,10 @@ portainer_instance_url|tunnel_server_addr|tunnel_server_fingerprint|endpoint_ID
 The Edge key associated to an agent will be persisted on disk after association under `/data/agent_edge_key`.
 
 ### Polling
+
+After associating an Edge key to an agent, this one will start polling the associated Portainer instance.
+
+### Reverse tunnel
 
 ### Security
 
