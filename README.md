@@ -105,14 +105,13 @@ To start an agent in Edge mode, the `EDGE=1` environment variable must be set.
 Upon startup, the agent will try to retrieve an existing Edge key in the following order:
 
 * from the environment variables via the `EDGE_KEY` environment variable
-* from the filesystem
+* from the filesystem (see the Edge key section below for more information about key persistence on disk)
 * from the cluster (if joining an existing Edge agent cluster)
 
 If no Edge key was retrieved, the agent will start a HTTP server where it will expose a UI to associate an Edge key. After associating a key via the UI, the UI server will shutdown.
 
 For security reasons, the Edge server UI will shutdown after 15 minutes if no key has been specified. The agent will require a restart in order
 to access the Edge UI again.
-
 
 ### Edge key
 
@@ -134,6 +133,19 @@ The Edge key associated to an agent will be persisted on disk after association 
 ### Polling
 
 After associating an Edge key to an agent, this one will start polling the associated Portainer instance.
+
+It will use the Portainer instance API URL and the endpoint identifier available in the Edge key to build the poll request URL: `http(s)://API_URL/api/endpoints/ENDPOINT_ID/status`
+
+The response of the poll request contains the following information:
+
+* Tunnel status
+* Poll frequency
+* Tunnel port
+* Encrypted credentials
+* Schedules
+
+The tunnel status property can take one of the following values: `IDLE`, `REQUIRED`, `ACTIVE`. When this property is set to `REQUIRED`, the agent will
+create a reverse tunnel to the Portainer instance using the port specified in the response as well as the credentials.
 
 ### Reverse tunnel
 
