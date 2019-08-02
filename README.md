@@ -147,9 +147,25 @@ The response of the poll request contains the following information:
 The tunnel status property can take one of the following values: `IDLE`, `REQUIRED`, `ACTIVE`. When this property is set to `REQUIRED`, the agent will
 create a reverse tunnel to the Portainer instance using the port specified in the response as well as the credentials.
 
+Each poll request sent to the Portainer instance contains the `X-PortainerAgent-EdgeID` header (with the value set to the Edge ID associated to the agent). This is used by the Portainer instance to associate an Edge ID to an endpoint so that an agent won't be able to poll information and join an Edge cluster by re-using an existing key without knowing the Edge ID.
+
+To allow for pre-staged environments, this Edge ID is associated to an endpoint by Portainer after receiving the first poll request from an agent.
+
 ### Reverse tunnel
 
-### Security
+The reverse tunnel is established by the agent. The permissions associated to the credentials are set on the Portainer instance, the credentials are valid for a management session and can only be used
+to create a reverse tunnel on a specific port (the one that is specified in the poll response).
+
+The agent will monitor the usage of the tunnel. The tunnel will be closed in any of the following cases:
+
+1. The status of the tunnel specified in the poll response is equal to `IDLE`
+2. If no activity has been registered on the tunnel (no requests executed against the agent API) after a specific amount of time (can be configured via `EDGE_INACTIVITY_TIMEOUT`, default to 5 minutes)
+
+### API server
+
+When deployed in Edge mode, the agent API is not exposed over HTTPS anymore (see Using the agent non Edge section below) because we're using SSH to setup an encrypted tunnel. In order to avoid potential security issues with agent deployment exposing the API port on their host, the agent won't expose the API server under 0.0.0.0. Instead, it will expose the API server on the same IP address that is used to advertise the cluster (usually, the container IP in the overlay network).
+
+This means that only a container deployed in the same overlay network as the agent will be able to query it.  
 
 ## Using the agent (non Edge)
 
