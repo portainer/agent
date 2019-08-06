@@ -315,7 +315,7 @@
   version = "1.0.0"
 
 [[projects]]
-  digest = "1:d8d777ffc4d14552fd69f7d01a7193834817a0b0e93081947e3c17e5a37b689a"
+  digest = "1:5e1c756f27553794c01dfd0a925a8eeb5b70da7798f2a4f90b2cf4a52241b1f2"
   name = "github.com/portainer/libhttp"
   packages = [
     "error",
@@ -323,8 +323,8 @@
     "response",
   ]
   pruneopts = "UT"
-  revision = "b69b0bcbc8399f341f118e4668d36ca7f453dccf"
-  version = "1.0.1"
+  revision = "cde6e97fcd52778d2ec707c316212d6ec7689c19"
+  version = "1.1.0"
 
 [[projects]]
   branch = "master"
