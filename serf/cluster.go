@@ -1,6 +1,7 @@
 package serf
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -40,6 +41,7 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string) e
 
 	conf := serf.DefaultConfig()
 	conf.Init()
+	conf.NodeName = fmt.Sprintf("%s-%s", service.tags[agent.MemberTagKeyNodeName], conf.NodeName)
 	conf.Tags = service.tags
 	conf.MemberlistConfig.LogOutput = filter
 	conf.LogOutput = filter
