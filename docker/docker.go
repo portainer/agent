@@ -59,7 +59,7 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string)
 	}
 
 	if len(containerInspect.NetworkSettings.Networks) > 1 {
-		log.Printf("[WARN] [docker] [network_count: %d] [message: Agent container running in more than a single Docker network. This might cause communication issues.]", len(containerInspect.NetworkSettings.Networks))
+		log.Printf("[WARN] [docker] [network_count: %d] [message: Agent container running in more than a single Docker network. This might cause communication issues]", len(containerInspect.NetworkSettings.Networks))
 	}
 
 	for name, network := range containerInspect.NetworkSettings.Networks {
