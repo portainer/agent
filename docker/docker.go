@@ -58,9 +58,13 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string)
 		return "", err
 	}
 
-	for _, network := range containerInspect.NetworkSettings.Networks {
-		if network.IPAddress != "" {
-			log.Printf("[DEBUG] [docker] [network_count: %d] [ip_address: %s] [message: Retrieving IP address from container networks]", len(containerInspect.NetworkSettings.Networks), network.IPAddress)
+	if len(containerInspect.NetworkSettings.Networks) > 1 {
+		log.Printf("[WARN] [docker] [network_count: %d] [message: Agent container running in more than a single Docker network. This might cause communication issues.]", len(containerInspect.NetworkSettings.Networks))
+	}
+
+	for name, network := range containerInspect.NetworkSettings.Networks {
+		if name != "ingress" && network.IPAddress != "" {
+			log.Printf("[DEBUG] [docker] [ip_address: %s] [message: Retrieving IP address from container networks]", network.IPAddress)
 			return network.IPAddress, nil
 		}
 	}
