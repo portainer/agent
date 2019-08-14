@@ -25,7 +25,7 @@ ability to be part of a cluster and a join address where it will be able to reac
 The agent retrieves the IP address it can use to create
 a cluster by inspecting the Docker networks associated to the agent container. If multiple networks are available, it will pickup the first network available and retrieve the IP address inside this network.
 
-Note: Be careful when deploying the agent to not deploy it inside the Swarm ingress network (by not using `mode=host` when exposing ports). This could lead the agent to not be able to create a cluster correctly if picking the IP address inside the ingress network.
+Note: Be careful when deploying the agent to not deploy it inside the Swarm ingress network (by not using `mode=host` when exposing ports). This could lead to the agent being unable to create a cluster correctly, if picking the IP address inside the ingress network.
 
 ### Proxy
 
