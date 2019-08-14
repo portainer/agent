@@ -132,7 +132,7 @@ The Edge key associated to an agent will be persisted on disk after association 
 
 ### Polling
 
-After associating an Edge key to an agent, this one will start polling the associated Portainer instance.
+After associating an Edge key to an agent, the agent will start polling the associated Portainer instance.
 
 It will use the Portainer instance API URL and the endpoint identifier available in the Edge key to build the poll request URL: `http(s)://API_URL/api/endpoints/ENDPOINT_ID/status`
 
