@@ -14,7 +14,6 @@ type (
 		EdgeServerAddr        string
 		EdgeServerPort        string
 		EdgeInactivityTimeout string
-		EdgePollFrequency     string
 		EdgeInsecurePoll      bool
 		LogLevel              string
 	}
