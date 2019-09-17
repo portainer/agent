@@ -91,7 +91,6 @@ function deploy_swarm() {
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -e EDGE=${EDGE} \
   -e EDGE_ID=${EDGE_ID} \
-  -e AGENT_CLUSTER_ADDR=tasks.portainer-agent-dev \
   --mode global \
   --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
   --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \

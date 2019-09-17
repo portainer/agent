@@ -97,6 +97,7 @@ type (
 	InfoService interface {
 		GetInformationFromDockerEngine() (map[string]string, error)
 		GetContainerIpFromDockerEngine(containerName string) (string, error)
+		GetServiceNameFromDockerEngine(containerName string) (string, error)
 	}
 
 	// TLSService is used to create TLS certificates to use enable HTTPS.

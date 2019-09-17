@@ -41,26 +41,37 @@ func main() {
 		log.Println("[INFO] [main] [message: Agent running on a Swarm cluster node. Running in cluster mode]")
 	}
 
-	if options.ClusterAddress == "" && clusterMode {
-		log.Fatalf("[ERROR] [main,configuration] [message: AGENT_CLUSTER_ADDR environment variable is required when deploying the agent inside a Swarm cluster]")
+	containerName, err := os.GetHostName()
+	if err != nil {
+		log.Fatalf("[ERROR] [main,os] [message: Unable to retrieve container name] [error: %s]", err)
 	}
 
-	advertiseAddr, err := retrieveAdvertiseAddress(&infoService)
+	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName)
 	if err != nil {
-		log.Fatalf("[ERROR] [main,docker,os] [message: Unable to retrieve local agent IP address] [error: %s]", err)
+		log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 	}
 
 	var clusterService agent.ClusterService
 	if clusterMode {
 		clusterService = cluster.NewClusterService(agentTags)
 
+		clusterAddr := options.ClusterAddress
+		if clusterAddr == "" {
+			serviceName, err := infoService.GetServiceNameFromDockerEngine(containerName)
+			if err != nil {
+				log.Fatalf("[ERROR] [main,docker] [message: Unable to agent service name from Docker] [error: %s]", err)
+			}
+
+			clusterAddr = fmt.Sprintf("tasks.%s", serviceName)
+		}
+
 		// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
 		// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
 		time.Sleep(3 * time.Second)
 
-		joinAddr, err := net.LookupIPAddresses(options.ClusterAddress)
+		joinAddr, err := net.LookupIPAddresses(clusterAddr)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,net] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", options.ClusterAddress, err)
+			log.Fatalf("[ERROR] [main,net] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
 		}
 
 		err = clusterService.Create(advertiseAddr, joinAddr)
@@ -68,10 +79,10 @@ func main() {
 			log.Fatalf("[ERROR] [main,cluster] [message: Unable to create cluster] [error: %s]", err)
 		}
 
+		log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, clusterAddr, advertiseAddr)
+
 		defer clusterService.Leave()
 	}
-
-	log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, options.ClusterAddress, advertiseAddr)
 
 	var tunnelOperator agent.TunnelOperator
 	if options.EdgeMode {
@@ -280,18 +291,4 @@ func retrieveInformationFromDockerEnvironment(infoService agent.InfoService) (ma
 	}
 
 	return agentTags, nil
-}
-
-func retrieveAdvertiseAddress(infoService agent.InfoService) (string, error) {
-	containerName, err := os.GetHostName()
-	if err != nil {
-		return "", err
-	}
-
-	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName)
-	if err != nil {
-		return "", err
-	}
-
-	return advertiseAddr, nil
 }
