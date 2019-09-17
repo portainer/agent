@@ -10,6 +10,10 @@ import (
 	"github.com/portainer/agent"
 )
 
+const (
+	serviceNameLabel = "com.docker.swarm.service.name"
+)
+
 // InfoService is a service used to retrieve information from a Docker environment.
 type InfoService struct{}
 
@@ -81,4 +85,21 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string)
 	}
 
 	return "", errors.New("unable to retrieve the address on which the agent can advertise. Check your network settings")
+}
+
+// GetServiceNameFromDockerEngine is used to return the name of the Swarm service the agent is part of.
+// The service name is retrieved through container labels.
+func (service *InfoService) GetServiceNameFromDockerEngine(containerName string) (string, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	if err != nil {
+		return "", err
+	}
+	defer cli.Close()
+
+	containerInspect, err := cli.ContainerInspect(context.Background(), containerName)
+	if err != nil {
+		return "", err
+	}
+
+	return containerInspect.Config.Labels[serviceNameLabel], nil
 }
