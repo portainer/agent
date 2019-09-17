@@ -237,7 +237,6 @@ we can leverage the internal Docker DNS to automatically join existing agents or
 * EDGE_ID (*mandatory when EDGE=1*): a unique identifier associated to this agent cluster
 * EDGE_SERVER_HOST (*optional*): address on which the Edge UI will be exposed (default to `0.0.0.0`)
 * EDGE_SERVER_PORT (*optional*): port on which the Edge UI will be exposed (default to `80`).
-* EDGE_POLL_FREQUENCY (*optional*): frequency that will be used by the agent to poll the Portainer instance (default to `5s`)
 * EDGE_INACTIVITY_TIMEOUT (*optional*): timeout used by the agent to close the reverse tunnel after inactivity (default to `5m`)
 * EDGE_INSECURE_POLL (*optional*): enable this option if you need the agent to poll a HTTPS Portainer instance with self-signed certificates. Disabled by default, set to `1` to enable it
 
