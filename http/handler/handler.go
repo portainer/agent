@@ -52,14 +52,14 @@ var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
 func NewHandler(config *Config) *Handler {
-	agentProxy := proxy.NewAgentProxy(config.ClusterService, config.AgentTags)
+	agentProxy := proxy.NewAgentProxy(config.ClusterService, config.AgentTags, config.Secured)
 	notaryService := security.NewNotaryService(config.SignatureService, config.Secured)
 
 	return &Handler{
 		agentHandler:       httpagenthandler.NewHandler(config.ClusterService, notaryService),
 		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
-		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService),
+		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService, config.Secured),
 		keyHandler:         key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeMode),
 		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
 		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),

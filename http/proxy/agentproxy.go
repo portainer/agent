@@ -12,13 +12,15 @@ import (
 type AgentProxy struct {
 	clusterService agent.ClusterService
 	agentTags      map[string]string
+	useTLS         bool
 }
 
 // NewAgentProxy returns a pointer to a new AgentProxy object
-func NewAgentProxy(clusterService agent.ClusterService, agentTags map[string]string) *AgentProxy {
+func NewAgentProxy(clusterService agent.ClusterService, agentTags map[string]string, useTLS bool) *AgentProxy {
 	return &AgentProxy{
 		clusterService: clusterService,
 		agentTags:      agentTags,
+		useTLS:         useTLS,
 	}
 }
 
@@ -40,7 +42,7 @@ func (p *AgentProxy) Redirect(next http.Handler) http.Handler {
 			if targetMember == nil {
 				return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
 			}
-			AgentHTTPRequest(rw, r, targetMember)
+			AgentHTTPRequest(rw, r, targetMember, p.useTLS)
 		}
 		return nil
 	})
