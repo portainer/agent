@@ -38,7 +38,7 @@ func WebsocketRequest(rw http.ResponseWriter, request *http.Request, target *age
 }
 
 func proxyHTTPRequest(rw http.ResponseWriter, request *http.Request, target *url.URL, targetNode string) {
-	proxy := newAgentReverseProxy(target, targetNode)
+	proxy := newAgentReverseProxy(target, targetNode, request)
 	proxy.ServeHTTP(rw, request)
 }
 
@@ -58,7 +58,7 @@ func proxyWebsocketRequest(rw http.ResponseWriter, request *http.Request, target
 	proxy.ServeHTTP(rw, request)
 }
 
-func newAgentReverseProxy(target *url.URL, targetNode string) *httputil.ReverseProxy {
+func newAgentReverseProxy(target *url.URL, targetNode string, originalRequest *http.Request) *httputil.ReverseProxy {
 	targetQuery := target.RawQuery
 	director := func(req *http.Request) {
 		req.URL.Scheme = target.Scheme
@@ -71,6 +71,11 @@ func newAgentReverseProxy(target *url.URL, targetNode string) *httputil.ReverseP
 			req.URL.RawQuery = targetQuery + "&" + req.URL.RawQuery
 		}
 		req.Header.Set(agent.HTTPTargetHeaderName, targetNode)
+		if originalRequest.Header.Get("reqTrace-ID") != "" {
+			req.Header.Set("reqTrace-node", originalRequest.Header.Get("reqTrace-node"))
+			req.Header.Set("reqTrace-ID", originalRequest.Header.Get("reqTrace-ID"))
+			req.Header.Set("reqTrace-redirect", originalRequest.Header.Get("reqTrace-redirect"))
+		}
 	}
 
 	return &httputil.ReverseProxy{

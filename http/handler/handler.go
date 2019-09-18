@@ -2,10 +2,13 @@ package handler
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/portainer/agent/http/handler/key"
 
 	"github.com/portainer/agent"
@@ -33,6 +36,7 @@ type Handler struct {
 	pingHandler        *ping.Handler
 	securedProtocol    bool
 	tunnelOperator     agent.TunnelOperator
+	nodeDetails        string
 }
 
 // Config represents a server handler configuration
@@ -66,10 +70,45 @@ func NewHandler(config *Config) *Handler {
 		pingHandler:        ping.NewHandler(),
 		securedProtocol:    config.Secured,
 		tunnelOperator:     config.TunnelOperator,
+		nodeDetails:        fmt.Sprintf("%s:%s", config.AgentTags[agent.MemberTagKeyNodeRole], config.AgentTags[agent.MemberTagKeyNodeName]),
 	}
 }
 
+func printTrace(request *http.Request, nodeDetails string) {
+	traceID := request.Header.Get("reqTrace-ID")
+	traceNode := request.Header.Get("reqTrace-node")
+
+	redirect := false
+	if request.Header.Get("reqTrace-redirect") != "" {
+		redirect = true
+	}
+
+	if traceID == "" {
+		requestID, err := uuid.NewRandom()
+		if err != nil {
+			log.Printf("[DEBUG] [msg: trace ID generation failure] [err: %s]", err)
+			return
+		}
+
+		traceID = requestID.String()
+		traceNode = nodeDetails
+
+		request.Header.Set("reqTrace-ID", traceID)
+		request.Header.Set("reqTrace-node", traceNode)
+		request.Header.Set("reqTrace-redirect", "1")
+	}
+
+	if redirect {
+		log.Printf("[DEBUG] [url: %s] [origin_node: %s] [redirect: %t] [request_id: %s]", request.URL, traceNode, redirect, traceID)
+	} else {
+		log.Printf("[DEBUG] [url: %s] [node: %s] [request_id: %s]", request.URL, traceNode, traceID)
+	}
+
+}
+
 func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
+	printTrace(request, h.nodeDetails)
+
 	if strings.HasPrefix(request.URL.Path, "/key") {
 		h.keyHandler.ServeHTTP(rw, request)
 		return
