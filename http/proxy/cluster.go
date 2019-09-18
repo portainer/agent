@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -57,7 +58,8 @@ func (clusterProxy *ClusterProxy) ClusterOperation(request *http.Request, cluste
 
 	for result := range dataChannel {
 		if result.err != nil {
-			return nil, result.err
+			log.Printf("[WARN] [http,docker,cluster] [node: %s] [message: Unable to retrieve node resources for aggregation] [error: %s]", result.nodeName, result.err)
+			continue
 		}
 
 		for _, item := range result.responseContent {
@@ -89,20 +91,20 @@ func (clusterProxy *ClusterProxy) copyAndExecuteRequest(request *http.Request, m
 
 	requestCopy, err := copyRequest(request, member)
 	if err != nil {
-		ch <- agentRequestResult{err: err}
+		ch <- agentRequestResult{err: err, nodeName: member.NodeName}
 		return
 	}
 
 	response, err := clusterProxy.client.Do(requestCopy)
 	if err != nil {
-		ch <- agentRequestResult{err: err}
+		ch <- agentRequestResult{err: err, nodeName: member.NodeName}
 		return
 	}
 	defer response.Body.Close()
 
 	data, err := responseToJSONArray(response, request.URL.Path)
 	if err != nil {
-		ch <- agentRequestResult{err: err}
+		ch <- agentRequestResult{err: err, nodeName: member.NodeName}
 		return
 	}
 
