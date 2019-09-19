@@ -97,7 +97,6 @@ function deploy_swarm() {
   --mount type=bind,src=//,dst=/host \
   --publish target=9001,published=9001 \
   --publish mode=host,published=80,target=80 \
-  --restart-condition none \
   "${IMAGE_NAME}"
 
 #  --mount type=volume,src=portainer_agent_data,dst=/data \
