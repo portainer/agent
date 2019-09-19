@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/portainer/agent/http/handler/debug"
+
 	"github.com/portainer/agent/http/handler/key"
 
 	"github.com/portainer/agent"
@@ -27,6 +29,7 @@ type Handler struct {
 	browseHandler      *browse.Handler
 	browseHandlerV1    *browse.Handler
 	dockerProxyHandler *docker.Handler
+	debugHandler       *debug.Handler
 	keyHandler         *key.Handler
 	webSocketHandler   *websocket.Handler
 	hostHandler        *host.Handler
@@ -60,6 +63,7 @@ func NewHandler(config *Config) *Handler {
 		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService),
+		debugHandler:       debug.NewHandler(),
 		keyHandler:         key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeMode),
 		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
 		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
@@ -103,6 +107,8 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		h.browseHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/websocket"):
 		h.webSocketHandler.ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/debug"):
+		h.debugHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/"):
 		h.dockerProxyHandler.ServeHTTP(rw, request)
 	}
