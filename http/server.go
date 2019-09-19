@@ -3,6 +3,7 @@ package http
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/handler"
@@ -66,7 +67,15 @@ func (server *APIServer) StartUnsecured() error {
 	listenAddr := server.addr + ":" + server.port
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
-	return http.ListenAndServe(listenAddr, h)
+
+	httpServer := &http.Server{
+		Addr:         listenAddr,
+		Handler:      h,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 120 * time.Second,
+	}
+
+	return httpServer.ListenAndServe()
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
@@ -86,5 +95,13 @@ func (server *APIServer) StartSecured() error {
 	listenAddr := server.addr + ":" + server.port
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
-	return http.ListenAndServeTLS(listenAddr, agent.TLSCertPath, agent.TLSKeyPath, h)
+
+	httpServer := &http.Server{
+		Addr:         listenAddr,
+		Handler:      h,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 120 * time.Second,
+	}
+
+	return httpServer.ListenAndServeTLS(agent.TLSCertPath, agent.TLSKeyPath)
 }
