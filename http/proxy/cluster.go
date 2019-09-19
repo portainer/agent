@@ -38,7 +38,8 @@ func NewClusterProxy() *ClusterProxy {
 		pingClient: &http.Client{
 			Timeout: time.Second * 3,
 			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
+				TLSClientConfig:   tlsConfig,
+				DisableKeepAlives: true,
 			},
 		},
 	}
