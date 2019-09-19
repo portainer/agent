@@ -29,7 +29,8 @@ func NewClusterProxy() *ClusterProxy {
 		client: &http.Client{
 			Timeout: time.Second * defaultClusterRequestTimeout,
 			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
+				TLSClientConfig:   tlsConfig,
+				DisableKeepAlives: true,
 			},
 		},
 	}
