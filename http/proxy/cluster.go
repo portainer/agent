@@ -133,7 +133,7 @@ func (clusterProxy *ClusterProxy) copyAndExecuteRequest(request *http.Request, m
 		return
 	}
 
-	requestCopy, err := copyRequest(request, member)
+	requestCopy, err := copyRequest(request, member, clusterProxy.useTLS)
 	if err != nil {
 		ch <- agentRequestResult{err: err, nodeName: member.NodeName}
 		return
