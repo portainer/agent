@@ -12,12 +12,12 @@ import (
 )
 
 // AgentHTTPRequest redirects a HTTP request to another agent.
-func AgentHTTPRequest(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember) {
+func AgentHTTPRequest(rw http.ResponseWriter, request *http.Request, target *agent.ClusterMember, useTLS bool) {
 	urlCopy := request.URL
 	urlCopy.Host = target.IPAddress + ":" + target.Port
 
 	urlCopy.Scheme = "http"
-	if request.TLS != nil {
+	if useTLS {
 		urlCopy.Scheme = "https"
 	}
 

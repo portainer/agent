@@ -17,11 +17,12 @@ const defaultClusterRequestTimeout = 120
 // ClusterProxy is a service used to execute the same requests on multiple targets.
 type ClusterProxy struct {
 	client *http.Client
+	useTLS bool
 }
 
 // NewClusterProxy returns a pointer to a ClusterProxy.
 // It also sets the default values used in the underlying http.Client.
-func NewClusterProxy() *ClusterProxy {
+func NewClusterProxy(useTLS bool) *ClusterProxy {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
 	}
@@ -34,6 +35,7 @@ func NewClusterProxy() *ClusterProxy {
 				DisableKeepAlives: true,
 			},
 		},
+		useTLS: useTLS,
 	}
 }
 
@@ -90,7 +92,7 @@ func (clusterProxy *ClusterProxy) executeRequestOnCluster(request *http.Request,
 func (clusterProxy *ClusterProxy) copyAndExecuteRequest(request *http.Request, member *agent.ClusterMember, ch chan agentRequestResult, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	requestCopy, err := copyRequest(request, member)
+	requestCopy, err := copyRequest(request, member, clusterProxy.useTLS)
 	if err != nil {
 		ch <- agentRequestResult{err: err, nodeName: member.NodeName}
 		return
@@ -112,7 +114,7 @@ func (clusterProxy *ClusterProxy) copyAndExecuteRequest(request *http.Request, m
 	ch <- agentRequestResult{err: nil, responseContent: data, nodeName: member.NodeName}
 }
 
-func copyRequest(request *http.Request, member *agent.ClusterMember) (*http.Request, error) {
+func copyRequest(request *http.Request, member *agent.ClusterMember, useTLS bool) (*http.Request, error) {
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return nil, err
@@ -122,7 +124,7 @@ func copyRequest(request *http.Request, member *agent.ClusterMember) (*http.Requ
 	url.Host = member.IPAddress + ":" + member.Port
 
 	url.Scheme = "http"
-	if request.TLS != nil {
+	if useTLS {
 		url.Scheme = "https"
 	}
 

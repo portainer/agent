@@ -67,7 +67,7 @@ func (handler *Handler) executeOperationOnManagerNode(rw http.ResponseWriter, re
 			log.Printf("[ERROR] [http,docker,proxy] [request: %s] [message: unable to redirect request to a manager node: no manager node found]", request.URL)
 			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent located on a manager node", errors.New("Unable to find an agent on any manager node")}
 		}
-		proxy.AgentHTTPRequest(rw, request, targetMember)
+		proxy.AgentHTTPRequest(rw, request, targetMember, handler.useTLS)
 	}
 	return nil
 }
@@ -84,7 +84,7 @@ func (handler *Handler) executeOperationOnNode(rw http.ResponseWriter, request *
 			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
 		}
 
-		proxy.AgentHTTPRequest(rw, request, targetMember)
+		proxy.AgentHTTPRequest(rw, request, targetMember, handler.useTLS)
 	}
 	return nil
 }
