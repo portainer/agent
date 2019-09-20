@@ -27,6 +27,7 @@ func NewHandler(clusterService agent.ClusterService, agentTags map[string]string
 		clusterProxy:   proxy.NewClusterProxy(useTLS),
 		clusterService: clusterService,
 		agentTags:      agentTags,
+		useTLS:         useTLS,
 	}
 
 	h.PathPrefix("/").Handler(notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.dockerOperation)))
