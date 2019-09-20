@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -19,11 +20,12 @@ const defaultClusterRequestTimeout = 120
 type ClusterProxy struct {
 	client     *http.Client
 	pingClient *http.Client
+	useTLS     bool
 }
 
 // NewClusterProxy returns a pointer to a ClusterProxy.
 // It also sets the default values used in the underlying http.Client.
-func NewClusterProxy() *ClusterProxy {
+func NewClusterProxy(useTLS bool) *ClusterProxy {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
 	}
@@ -32,7 +34,8 @@ func NewClusterProxy() *ClusterProxy {
 		client: &http.Client{
 			Timeout: time.Second * defaultClusterRequestTimeout,
 			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
+				TLSClientConfig:   tlsConfig,
+				DisableKeepAlives: true,
 			},
 		},
 		pingClient: &http.Client{
@@ -42,6 +45,7 @@ func NewClusterProxy() *ClusterProxy {
 				DisableKeepAlives: true,
 			},
 		},
+		useTLS: useTLS,
 	}
 }
 
@@ -67,7 +71,8 @@ func (clusterProxy *ClusterProxy) ClusterOperation(request *http.Request, cluste
 
 	for result := range dataChannel {
 		if result.err != nil {
-			return nil, result.err
+			log.Printf("[WARN] [http,docker,cluster] [node: %s] [message: Unable to retrieve node resources for aggregation] [error: %s]", result.nodeName, result.err)
+			continue
 		}
 
 		for _, item := range result.responseContent {
@@ -130,27 +135,27 @@ func (clusterProxy *ClusterProxy) copyAndExecuteRequest(request *http.Request, m
 
 	requestCopy, err := copyRequest(request, member)
 	if err != nil {
-		ch <- agentRequestResult{err: err}
+		ch <- agentRequestResult{err: err, nodeName: member.NodeName}
 		return
 	}
 
 	response, err := clusterProxy.client.Do(requestCopy)
 	if err != nil {
-		ch <- agentRequestResult{err: err}
+		ch <- agentRequestResult{err: err, nodeName: member.NodeName}
 		return
 	}
 	defer response.Body.Close()
 
 	data, err := responseToJSONArray(response, request.URL.Path)
 	if err != nil {
-		ch <- agentRequestResult{err: err}
+		ch <- agentRequestResult{err: err, nodeName: member.NodeName}
 		return
 	}
 
 	ch <- agentRequestResult{err: nil, responseContent: data, nodeName: member.NodeName}
 }
 
-func copyRequest(request *http.Request, member *agent.ClusterMember) (*http.Request, error) {
+func copyRequest(request *http.Request, member *agent.ClusterMember, useTLS bool) (*http.Request, error) {
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return nil, err
@@ -160,7 +165,7 @@ func copyRequest(request *http.Request, member *agent.ClusterMember) (*http.Requ
 	url.Host = member.IPAddress + ":" + member.Port
 
 	url.Scheme = "http"
-	if request.TLS != nil {
+	if useTLS {
 		url.Scheme = "https"
 	}
 

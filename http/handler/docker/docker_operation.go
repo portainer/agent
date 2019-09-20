@@ -2,6 +2,7 @@ package docker
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -63,9 +64,10 @@ func (handler *Handler) executeOperationOnManagerNode(rw http.ResponseWriter, re
 	} else {
 		targetMember := handler.clusterService.GetMemberByRole(agent.NodeRoleManager)
 		if targetMember == nil {
+			log.Printf("[ERROR] [http,docker,proxy] [request: %s] [message: unable to redirect request to a manager node: no manager node found]", request.URL)
 			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent located on a manager node", errors.New("Unable to find an agent on any manager node")}
 		}
-		proxy.AgentHTTPRequest(rw, request, targetMember)
+		proxy.AgentHTTPRequest(rw, request, targetMember, handler.useTLS)
 	}
 	return nil
 }
@@ -78,10 +80,11 @@ func (handler *Handler) executeOperationOnNode(rw http.ResponseWriter, request *
 	} else {
 		targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
 		if targetMember == nil {
+			log.Printf("[ERROR] [http,docker,proxy] [target_node: %s] [request: %s] [message: unable to redirect request to specified node: agent not found in cluster]", agentTargetHeader, r.URL)
 			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
 		}
 
-		proxy.AgentHTTPRequest(rw, request, targetMember)
+		proxy.AgentHTTPRequest(rw, request, targetMember, handler.useTLS)
 	}
 	return nil
 }
