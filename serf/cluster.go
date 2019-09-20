@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/hashicorp/logutils"
 	"github.com/hashicorp/serf/serf"
@@ -46,6 +47,11 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string) e
 	conf.MemberlistConfig.LogOutput = filter
 	conf.LogOutput = filter
 	conf.MemberlistConfig.AdvertiseAddr = advertiseAddr
+
+	// Override default Serf configuration with Swarm/overlay sane defaults
+	conf.ReconnectInterval = 10 * time.Second
+	conf.ReconnectTimeout = 1 * time.Minute
+
 	log.Printf("[DEBUG] [cluster,serf] [advertise_address: %s] [join_address: %s]", advertiseAddr, joinAddr)
 
 	cluster, err := serf.Create(conf)

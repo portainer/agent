@@ -80,7 +80,7 @@ func (handler *Handler) executeOperationOnNode(rw http.ResponseWriter, request *
 	} else {
 		targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
 		if targetMember == nil {
-			log.Printf("[ERROR] [http,docker,proxy] [target_node: %s] [request: %s] [message: unable to redirect request to specified node: agent not found in cluster]", agentTargetHeader, r.URL)
+			log.Printf("[ERROR] [http,docker,proxy] [target_node: %s] [request: %s] [message: unable to redirect request to specified node: agent not found in cluster]", agentTargetHeader, request.URL)
 			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
 		}
 
