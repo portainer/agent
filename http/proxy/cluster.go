@@ -3,6 +3,8 @@ package proxy
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,8 +18,9 @@ const defaultClusterRequestTimeout = 120
 
 // ClusterProxy is a service used to execute the same requests on multiple targets.
 type ClusterProxy struct {
-	client *http.Client
-	useTLS bool
+	client     *http.Client
+	pingClient *http.Client
+	useTLS     bool
 }
 
 // NewClusterProxy returns a pointer to a ClusterProxy.
@@ -30,6 +33,13 @@ func NewClusterProxy(useTLS bool) *ClusterProxy {
 	return &ClusterProxy{
 		client: &http.Client{
 			Timeout: time.Second * defaultClusterRequestTimeout,
+			Transport: &http.Transport{
+				TLSClientConfig:   tlsConfig,
+				DisableKeepAlives: true,
+			},
+		},
+		pingClient: &http.Client{
+			Timeout: time.Second * 3,
 			Transport: &http.Transport{
 				TLSClientConfig:   tlsConfig,
 				DisableKeepAlives: true,
@@ -89,8 +99,39 @@ func (clusterProxy *ClusterProxy) executeRequestOnCluster(request *http.Request,
 	wg.Wait()
 }
 
+func (clusterProxy *ClusterProxy) pingAgent(request *http.Request, member *agent.ClusterMember) error {
+	agentScheme := "http"
+	if request.TLS != nil {
+		agentScheme = "https"
+	}
+
+	agentURL := fmt.Sprintf("%s://%s:%s/ping", agentScheme, member.IPAddress, member.Port)
+
+	pingRequest, err := http.NewRequest(http.MethodGet, agentURL, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := clusterProxy.pingClient.Do(pingRequest)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != http.StatusNoContent {
+		return errors.New("agent ping request failed")
+	}
+
+	return nil
+}
+
 func (clusterProxy *ClusterProxy) copyAndExecuteRequest(request *http.Request, member *agent.ClusterMember, ch chan agentRequestResult, wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	err := clusterProxy.pingAgent(request, member)
+	if err != nil {
+		ch <- agentRequestResult{err: err, nodeName: member.NodeName}
+		return
+	}
 
 	requestCopy, err := copyRequest(request, member, clusterProxy.useTLS)
 	if err != nil {
