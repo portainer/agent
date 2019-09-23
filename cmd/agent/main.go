@@ -122,17 +122,19 @@ func main() {
 		}
 	}
 
-	statusConfig := &http.StatusServerConfig{
-		Addr:           "0.0.0.0",
-		Port:           "9777",
-		ClusterService: clusterService,
-		EdgeMode:       options.EdgeMode,
-	}
+	go func() {
+		statusConfig := &http.StatusServerConfig{
+			Addr:           "0.0.0.0",
+			Port:           "9777",
+			ClusterService: clusterService,
+			EdgeMode:       options.EdgeMode,
+		}
 
-	err = startStatusServer(statusConfig)
-	if err != nil {
-		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent status server] [error: %s]", err)
-	}
+		err = startStatusServer(statusConfig)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent status server] [error: %s]", err)
+		}
+	}()
 
 	config := &http.APIServerConfig{
 		Addr:             options.AgentServerAddr,
