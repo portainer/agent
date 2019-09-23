@@ -36,7 +36,7 @@ function deploy_local() {
 
   echo "Image build..."
   docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
-  docker push "${IMAGE_NAME}"
+  #docker push "${IMAGE_NAME}"
 
 
   echo "Deployment..."
@@ -49,6 +49,7 @@ function deploy_local() {
   -v /var/lib/docker/volumes:/var/lib/docker/volumes \
   -v /:/host \
   -p 9001:9001 \
+  -p 9777:9777 \
   -p 80:80 \
   "${IMAGE_NAME}"
 
@@ -96,6 +97,7 @@ function deploy_swarm() {
   --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
   --mount type=bind,src=//,dst=/host \
   --publish target=9001,published=9001 \
+  --publish target=9777,published=9777 \
   --publish mode=host,published=80,target=80 \
   "${IMAGE_NAME}"
 
