@@ -20,12 +20,27 @@ import (
 )
 
 func main() {
+	// Generic
+
 	options, err := parseOptions()
 	if err != nil {
 		log.Fatalf("[ERROR] [main,configuration] [message: Invalid agent configuration] [error: %s]", err)
 	}
 
 	logutils.SetupLogger(options.LogLevel)
+
+	systemService := ghw.NewSystemService(agent.HostRoot)
+
+	// !Generic
+
+	containerPlatform := os.DetermineContainerPlatform()
+
+	switch containerPlatform {
+	case agent.PlatformKubernetes:
+	case agent.PlatformDocker:
+	}
+
+	// Docker
 
 	infoService := docker.InfoService{}
 	agentTags, err := retrieveInformationFromDockerEnvironment(&infoService)
@@ -84,6 +99,25 @@ func main() {
 		defer clusterService.Leave()
 	}
 
+	// !Docker
+
+	// Security
+
+	var signatureService agent.DigitalSignatureService
+	if !options.EdgeMode {
+		signatureService = crypto.NewECDSAService(options.SharedSecret)
+		tlsService := crypto.TLSService{}
+
+		err := tlsService.GenerateCertsForHost(advertiseAddr)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,tls] [message: Unable to generate self-signed certificates] [error: %s]", err)
+		}
+	}
+
+	// !Security
+
+	// Edge
+
 	var tunnelOperator agent.TunnelOperator
 	if options.EdgeMode {
 		apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
@@ -109,18 +143,9 @@ func main() {
 		}
 	}
 
-	systemService := ghw.NewSystemService(agent.HostRoot)
+	// !Edge
 
-	var signatureService agent.DigitalSignatureService
-	if !options.EdgeMode {
-		signatureService = crypto.NewECDSAService(options.SharedSecret)
-		tlsService := crypto.TLSService{}
-
-		err := tlsService.GenerateCertsForHost(advertiseAddr)
-		if err != nil {
-			log.Fatalf("[ERROR] [main,tls] [message: Unable to generate self-signed certificates] [error: %s]", err)
-		}
-	}
+	// API
 
 	config := &http.APIServerConfig{
 		Addr:             options.AgentServerAddr,
@@ -142,6 +167,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
 	}
+
+	// !API
 }
 
 func startAPIServer(config *http.APIServerConfig) error {

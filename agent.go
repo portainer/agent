@@ -71,6 +71,9 @@ type (
 		Credentials      string
 	}
 
+	// ContainerPlatform represent the platform on which the agent is running (Docker, Kubernetes)
+	ContainerPlatform int
+
 	// OptionParser is used to parse options.
 	OptionParser interface {
 		Options() (*Options, error)
@@ -213,4 +216,12 @@ const (
 	DataDirectory = "/data"
 	// EdgeKeyFile is the name of the file used to persist the Edge key associated to the agent.
 	EdgeKeyFile = "agent_edge_key"
+)
+
+const (
+	_ ContainerPlatform = iota
+	// PlatformDocker represent the Docker platform (Standalone/Swarm)
+	PlatformDocker
+	// PlatformKubernetes represent the Kubernetes platform
+	PlatformKubernetes
 )

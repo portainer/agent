@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/portainer/agent/http/handler/kubernetes"
+
 	"github.com/portainer/agent/http/handler/key"
 
 	"github.com/portainer/agent"
@@ -23,16 +25,17 @@ import (
 // Handler is the main handler of the application.
 // Redirection to sub handlers is done in the ServeHTTP function.
 type Handler struct {
-	agentHandler       *httpagenthandler.Handler
-	browseHandler      *browse.Handler
-	browseHandlerV1    *browse.Handler
-	dockerProxyHandler *docker.Handler
-	keyHandler         *key.Handler
-	webSocketHandler   *websocket.Handler
-	hostHandler        *host.Handler
-	pingHandler        *ping.Handler
-	securedProtocol    bool
-	tunnelOperator     agent.TunnelOperator
+	agentHandler           *httpagenthandler.Handler
+	browseHandler          *browse.Handler
+	browseHandlerV1        *browse.Handler
+	dockerProxyHandler     *docker.Handler
+	kubernetesProxyHandler *kubernetes.Handler
+	keyHandler             *key.Handler
+	webSocketHandler       *websocket.Handler
+	hostHandler            *host.Handler
+	pingHandler            *ping.Handler
+	securedProtocol        bool
+	tunnelOperator         agent.TunnelOperator
 }
 
 // Config represents a server handler configuration
@@ -56,16 +59,17 @@ func NewHandler(config *Config) *Handler {
 	notaryService := security.NewNotaryService(config.SignatureService, config.Secured)
 
 	return &Handler{
-		agentHandler:       httpagenthandler.NewHandler(config.ClusterService, notaryService),
-		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
-		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
-		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService, config.Secured),
-		keyHandler:         key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeMode),
-		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
-		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
-		pingHandler:        ping.NewHandler(),
-		securedProtocol:    config.Secured,
-		tunnelOperator:     config.TunnelOperator,
+		agentHandler:           httpagenthandler.NewHandler(config.ClusterService, notaryService),
+		browseHandler:          browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
+		browseHandlerV1:        browse.NewHandlerV1(agentProxy, notaryService),
+		dockerProxyHandler:     docker.NewHandler(config.ClusterService, config.AgentTags, notaryService, config.Secured),
+		kubernetesProxyHandler: kubernetes.NewHandler(notaryService),
+		keyHandler:             key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeMode),
+		webSocketHandler:       websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
+		hostHandler:            host.NewHandler(config.SystemService, agentProxy, notaryService),
+		pingHandler:            ping.NewHandler(),
+		securedProtocol:        config.Secured,
+		tunnelOperator:         config.TunnelOperator,
 	}
 }
 
@@ -105,5 +109,7 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		h.webSocketHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/"):
 		h.dockerProxyHandler.ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/kubernetes"):
+		h.kubernetesProxyHandler.ServeHTTP(rw, request)
 	}
 }
