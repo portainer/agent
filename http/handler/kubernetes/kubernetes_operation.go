@@ -15,6 +15,6 @@ func (handler *Handler) kubernetesOperation(rw http.ResponseWriter, request *htt
 	}
 	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	handler.kubernetesProxy.ServeHTTP(rw, request)
+	http.StripPrefix("/kubernetes", handler.kubernetesProxy).ServeHTTP(rw, request)
 	return nil
 }
