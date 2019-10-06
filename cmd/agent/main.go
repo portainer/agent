@@ -41,6 +41,7 @@ func main() {
 	}
 
 	// Docker
+	// TODO: this is probably useless for Kubernetes
 
 	infoService := docker.InfoService{}
 	agentTags, err := retrieveInformationFromDockerEnvironment(&infoService)
@@ -61,9 +62,15 @@ func main() {
 		log.Fatalf("[ERROR] [main,os] [message: Unable to retrieve container name] [error: %s]", err)
 	}
 
-	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName)
-	if err != nil {
-		log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
+	// TODO: advertiseAddr cannot be retrieved on Kubernetes as there is no way to guess the container name
+	// (not equivalent to os.HostName)
+	advertiseAddr := "127.0.0.1"
+	if containerPlatform == agent.PlatformDocker {
+
+		advertiseAddr, err = infoService.GetContainerIpFromDockerEngine(containerName)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
+		}
 	}
 
 	var clusterService agent.ClusterService
