@@ -107,9 +107,9 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		h.browseHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/websocket"):
 		h.webSocketHandler.ServeHTTP(rw, request)
-	case strings.HasPrefix(request.URL.Path, "/"):
-		h.dockerProxyHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/kubernetes"):
 		h.kubernetesProxyHandler.ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/"):
+		h.dockerProxyHandler.ServeHTTP(rw, request)
 	}
 }
