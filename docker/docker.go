@@ -58,6 +58,16 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string)
 	}
 	defer cli.Close()
 
+	containerList, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+	if err != nil {
+		return "", err
+	}
+
+	log.Println("[DEBUG] [docker] [Print list]")
+	for _, container := range containerList {
+		log.Printf("[DEBUG] [docker] [container_name: %s]", container.Names[0])
+	}
+
 	containerInspect, err := cli.ContainerInspect(context.Background(), containerName)
 	if err != nil {
 		return "", err
