@@ -20,7 +20,6 @@ const (
 	EnvKeyEdgeID                = "EDGE_ID"
 	EnvKeyEdgeServerHost        = "EDGE_SERVER_HOST"
 	EnvKeyEdgeServerPort        = "EDGE_SERVER_PORT"
-	EnvKeyEdgePollFrequency     = "EDGE_POLL_FREQUENCY"
 	EnvKeyEdgeInactivityTimeout = "EDGE_INACTIVITY_TIMEOUT"
 	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
 	EnvKeyLogLevel              = "LOG_LEVEL"
@@ -42,7 +41,6 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeID:                os.Getenv(EnvKeyEdgeID),
 		EdgeServerAddr:        agent.DefaultEdgeServerAddr,
 		EdgeServerPort:        agent.DefaultEdgeServerPort,
-		EdgePollFrequency:     agent.DefaultEdgePollInterval,
 		EdgeInactivityTimeout: agent.DefaultEdgeSleepInterval,
 		EdgeInsecurePoll:      false,
 		LogLevel:              agent.DefaultLogLevel,
@@ -95,15 +93,6 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	edgeKeyEnv := os.Getenv(EnvKeyEdgeKey)
 	if edgeKeyEnv != "" {
 		options.EdgeKey = edgeKeyEnv
-	}
-
-	edgePollIntervalEnv := os.Getenv(EnvKeyEdgePollFrequency)
-	if edgePollIntervalEnv != "" {
-		_, err := time.ParseDuration(edgePollIntervalEnv)
-		if err != nil {
-			return nil, errors.New("invalid time duration format in " + EnvKeyEdgePollFrequency + " environment variable")
-		}
-		options.EdgePollFrequency = edgePollIntervalEnv
 	}
 
 	edgeSleepIntervalEnv := os.Getenv(EnvKeyEdgeInactivityTimeout)

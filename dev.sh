@@ -2,7 +2,7 @@
 
 LOG_LEVEL=DEBUG
 CAP_HOST_MANAGEMENT=1 #Enabled by default. Change this to anything else to disable this feature
-EDGE=1
+EDGE=0
 TMP="/tmp"
 GIT_COMMIT_HASH=`git rev-parse --short HEAD`
 GIT_BRANCH_NAME=`git rev-parse --abbrev-ref HEAD`
@@ -84,21 +84,19 @@ function deploy_swarm() {
 
   echo "Deployment..."
 
-  docker -H "${DOCKER_MANAGER}:2375" network create --driver overlay --attachable portainer-agent-dev-net
+  docker -H "${DOCKER_MANAGER}:2375" network create --driver overlay portainer-agent-dev-net
   docker -H "${DOCKER_MANAGER}:2375" service create --name portainer-agent-dev \
   --network portainer-agent-dev-net \
   -e LOG_LEVEL="${LOG_LEVEL}" \
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -e EDGE=${EDGE} \
   -e EDGE_ID=${EDGE_ID} \
-  -e AGENT_CLUSTER_ADDR=tasks.portainer-agent-dev \
   --mode global \
   --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
   --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
   --mount type=bind,src=//,dst=/host \
-  --publish mode=host,target=9001,published=9001 \
+  --publish target=9001,published=9001 \
   --publish mode=host,published=80,target=80 \
-  --restart-condition none \
   "${IMAGE_NAME}"
 
 #  --mount type=volume,src=portainer_agent_data,dst=/data \

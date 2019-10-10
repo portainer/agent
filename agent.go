@@ -14,7 +14,6 @@ type (
 		EdgeServerAddr        string
 		EdgeServerPort        string
 		EdgeInactivityTimeout string
-		EdgePollFrequency     string
 		EdgeInsecurePoll      bool
 		LogLevel              string
 	}
@@ -98,6 +97,7 @@ type (
 	InfoService interface {
 		GetInformationFromDockerEngine() (map[string]string, error)
 		GetContainerIpFromDockerEngine(containerName string) (string, error)
+		GetServiceNameFromDockerEngine(containerName string) (string, error)
 	}
 
 	// TLSService is used to create TLS certificates to use enable HTTPS.
@@ -138,7 +138,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "1.4.0"
+	Version = "1.5.0"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.
