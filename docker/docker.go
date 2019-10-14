@@ -14,8 +14,14 @@ const (
 	serviceNameLabel = "com.docker.swarm.service.name"
 )
 
-// InfoService is a service used to retrieve information from a Docker environment.
+// InfoService is a service used to retrieve information from a Docker environment
+// using the Docker library.
 type InfoService struct{}
+
+// NewInfoService returns a pointer to an instance of InfoService
+func NewInfoService() *InfoService {
+	return &InfoService{}
+}
 
 // GetInformationFromDockerEngine retrieves information from a Docker environment
 // and returns a map of labels.
@@ -48,10 +54,10 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 }
 
 // GetContainerIpFromDockerEngine is used to retrieve the IP address of the container through Docker.
-// It will inspect the container to retrieve the networks associated to the container and returns the first IP associated
-// to the first network found.
-// This might cause some problem if the agent is part of the ingress network.
-func (service *InfoService) GetContainerIpFromDockerEngine(containerName string) (string, error) {
+// It will inspect the container to retrieve the networks associated to the container and returns the IP associated
+// to the first network found that is not an ingress network. If the ignoreNonSwarmNetworks parameter is specified,
+// it will also ignore non Swarm scoped networks.
+func (service *InfoService) GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 	if err != nil {
 		return "", err
@@ -73,7 +79,7 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string)
 			return "", err
 		}
 
-		if networkInspect.Ingress || networkInspect.Scope != "swarm" {
+		if networkInspect.Ingress || (ignoreNonSwarmNetworks && networkInspect.Scope != "swarm") {
 			log.Printf("[DEBUG] [docker] [network_name: %s] [scope: %s] [ingress: %t] [message: Skipping invalid container network]", networkInspect.Name, networkInspect.Scope, networkInspect.Ingress)
 			continue
 		}

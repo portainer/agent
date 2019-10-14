@@ -27,8 +27,8 @@ func main() {
 
 	logutils.SetupLogger(options.LogLevel)
 
-	infoService := docker.InfoService{}
-	agentTags, err := retrieveInformationFromDockerEnvironment(&infoService)
+	var infoService agent.InfoService = docker.NewInfoService()
+	agentTags, err := retrieveInformationFromDockerEnvironment(infoService)
 	if err != nil {
 		log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve information from Docker] [error: %s]", err)
 	}
@@ -46,7 +46,7 @@ func main() {
 		log.Fatalf("[ERROR] [main,os] [message: Unable to retrieve container name] [error: %s]", err)
 	}
 
-	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName)
+	advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 	if err != nil {
 		log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 	}
