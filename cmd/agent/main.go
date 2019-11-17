@@ -43,8 +43,8 @@ func main() {
 	// Docker
 	// TODO: this is probably useless for Kubernetes
 
-	infoService := docker.InfoService{}
-	agentTags, err := retrieveInformationFromDockerEnvironment(&infoService)
+	var infoService agent.InfoService = docker.NewInfoService()
+	agentTags, err := retrieveInformationFromDockerEnvironment(infoService)
 	if err != nil {
 		log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve information from Docker] [error: %s]", err)
 	}
@@ -67,7 +67,7 @@ func main() {
 	advertiseAddr := "127.0.0.1"
 	if containerPlatform == agent.PlatformDocker {
 
-		advertiseAddr, err = infoService.GetContainerIpFromDockerEngine(containerName)
+		advertiseAddr, err = infoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 		}

@@ -26,7 +26,7 @@ func (payload *browseRenamePayload) Validate(r *http.Request) error {
 	return nil
 }
 
-// PUT request on /browse/rename?id=:id
+// PUT request on /browse/rename?volumeID=:id
 func (handler *Handler) browseRename(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
@@ -58,7 +58,7 @@ func (handler *Handler) browseRename(rw http.ResponseWriter, r *http.Request) *h
 	return response.Empty(rw)
 }
 
-// PUT request on /v1/browse/rename?id=:id
+// PUT request on /v1/browse/:id/rename
 func (handler *Handler) browseRenameV1(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
 	if err != nil {

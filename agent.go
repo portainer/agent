@@ -99,7 +99,7 @@ type (
 	// InfoService is used to retrieve information from a Docker environment.
 	InfoService interface {
 		GetInformationFromDockerEngine() (map[string]string, error)
-		GetContainerIpFromDockerEngine(containerName string) (string, error)
+		GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error)
 		GetServiceNameFromDockerEngine(containerName string) (string, error)
 	}
 
@@ -141,7 +141,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "1.4.0"
+	Version = "1.5.1"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.

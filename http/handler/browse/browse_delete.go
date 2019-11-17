@@ -10,7 +10,7 @@ import (
 	"github.com/portainer/libhttp/response"
 )
 
-// DELETE request on /browse/delete?id=:id&path=:path
+// DELETE request on /browse/delete?volumeID=:id&path=:path
 func (handler *Handler) browseDelete(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {

@@ -9,7 +9,7 @@ import (
 	"github.com/portainer/libhttp/request"
 )
 
-// GET request on /browse/get?id=:id&path=:path
+// GET request on /browse/get?volumeID=:id&path=:path
 func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {

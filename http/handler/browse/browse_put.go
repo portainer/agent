@@ -33,7 +33,7 @@ func (payload *browsePutPayload) Validate(r *http.Request) error {
 	return nil
 }
 
-// POST request on /browse/put?id=:id
+// POST request on /browse/put?volumeID=:id
 func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
@@ -50,6 +50,11 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 		payload.Path, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.Path)
 		if err != nil {
 			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+		}
+
+		_, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.Filename)
+		if err != nil {
+			return &httperror.HandlerError{http.StatusBadRequest, "Invalid filename", err}
 		}
 	}
 
