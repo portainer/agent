@@ -32,22 +32,19 @@ func main() {
 	systemService := ghw.NewSystemService(agent.HostRoot)
 	containerPlatform := os.DetermineContainerPlatform()
 
-	var clusterService agent.ClusterService
-	var advertiseAddr string
-
 	agentTags := make(map[string]string, 0)
 	agentTags[agent.MemberTagKeyAgentPort] = options.AgentServerPort
 
-	// Can't use this in Kubernetes.
-	// MUST, HAVE, CONTAINER, IP
-	// The container name cannot be guessed via the hostname in Kubernetes?
-	//advertiseAddr := "127.0.0.1"
+	var clusterService agent.ClusterService
+	var advertiseAddr string
 
 	// !Generic
 
 	// Docker
 
 	if containerPlatform == agent.PlatformDocker {
+		log.Println("[INFO] [main] [message: Agent running on Docker platform]")
+
 		var infoService agent.InfoService = docker.NewInfoService()
 
 		agentTags, err = retrieveInformationFromDockerEnvironment(infoService)
@@ -109,6 +106,8 @@ func main() {
 
 	// Kubernetes
 	if containerPlatform == agent.PlatformKubernetes {
+		log.Println("[INFO] [main] [message: Agent running on Kubernetes platform]")
+
 		clusterService = cluster.NewClusterService(agentTags)
 
 		advertiseAddr = os.GetPodIP()
