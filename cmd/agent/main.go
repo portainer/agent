@@ -107,7 +107,10 @@ func main() {
 	if containerPlatform == agent.PlatformKubernetes {
 		clusterService = cluster.NewClusterService(agentTags)
 
-		clusterAddr := "s-portainer-agent-headless.ns-portainer.svc"
+		clusterAddr := options.ClusterAddress
+		if clusterAddr == "" {
+			clusterAddr = "s-portainer-agent-headless"
+		}
 
 		joinAddr, err := net.LookupIPAddresses(clusterAddr)
 		if err != nil {
