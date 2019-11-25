@@ -33,11 +33,15 @@ func main() {
 	containerPlatform := os.DetermineContainerPlatform()
 
 	var clusterService agent.ClusterService
+	var advertiseAddr string
 
 	agentTags := make(map[string]string, 0)
 	agentTags[agent.MemberTagKeyAgentPort] = options.AgentServerPort
 
-	advertiseAddr := "127.0.0.1"
+	// Can't use this in Kubernetes.
+	// MUST, HAVE, CONTAINER, IP
+	// The container name cannot be guessed via the hostname in Kubernetes?
+	//advertiseAddr := "127.0.0.1"
 
 	// !Generic
 
@@ -63,7 +67,7 @@ func main() {
 			log.Fatalf("[ERROR] [main,os] [message: Unable to retrieve container name] [error: %s]", err)
 		}
 
-		advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
+		advertiseAddr, err = infoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 		}
@@ -107,13 +111,18 @@ func main() {
 	if containerPlatform == agent.PlatformKubernetes {
 		clusterService = cluster.NewClusterService(agentTags)
 
+		advertiseAddr = os.GetPodIP()
+		if advertiseAddr == "" {
+			log.Fatalf("[ERROR] [main,kubernetes,env] [message: KUBERNETES_POD_IP env var must be specified when running on Kubernetes] [error: %s]", err)
+		}
+
 		clusterAddr := options.ClusterAddress
 		if clusterAddr == "" {
 			clusterAddr = "s-portainer-agent-headless"
 		}
 
-		// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
-		// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
+		// TODO: Workaround. Kubernetes only adds entries in the DNS for running containers. We need to wait a bit
+		// for the container to be considered running by Kubernetes and added to the DNS.
 		time.Sleep(3 * time.Second)
 
 		joinAddr, err := net.LookupIPAddresses(clusterAddr)
