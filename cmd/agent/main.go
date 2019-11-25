@@ -121,7 +121,7 @@ func main() {
 		}
 
 		// TODO: Workaround. Kubernetes only adds entries in the DNS for running containers. We need to wait a bit
-		// for the container to be considered running by Kubernetes and added to the DNS.
+		// for the container to be considered running by Kubernetes and an entry to be added to the DNS.
 		time.Sleep(3 * time.Second)
 
 		joinAddr, err := net.LookupIPAddresses(clusterAddr)
