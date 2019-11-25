@@ -112,6 +112,10 @@ func main() {
 			clusterAddr = "s-portainer-agent-headless"
 		}
 
+		// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
+		// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
+		time.Sleep(3 * time.Second)
+
 		joinAddr, err := net.LookupIPAddresses(clusterAddr)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,net] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
