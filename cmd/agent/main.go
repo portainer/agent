@@ -107,7 +107,7 @@ func main() {
 	if containerPlatform == agent.PlatformKubernetes {
 		clusterService = cluster.NewClusterService(agentTags)
 
-		clusterAddr := "portainer-agent.ns-portainer.svc"
+		clusterAddr := "s-portainer-agent.ns-portainer.svc"
 
 		joinAddr, err := net.LookupIPAddresses(clusterAddr)
 		if err != nil {
