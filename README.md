@@ -232,6 +232,7 @@ The behavior of the agent can be tuned via a set of mandatory and optional optio
 * AGENT_CLUSTER_ADDR (*mandatory*): address (in the IP:PORT format) of an existing agent to join the agent cluster. When deploying the agent as a Docker Swarm service,
 we can leverage the internal Docker DNS to automatically join existing agents or form a cluster by using `tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT>` as the address.
 * AGENT_PROBE_TIMEOUT (*optional*): timeout interval for receiving agent member probe responses (default to `500ms`)
+* AGENT_PROBE_INTERVAL (*optional*): interval for repeating failed agent member probe (default to `1s`)
 * AGENT_HOST (*optional*): address on which the agent API will be exposed (default to `0.0.0.0`)
 * AGENT_PORT (*optional*): port on which the agent API will be exposed (default to `9001`)
 * CAP_HOST_MANAGEMENT (*optional*): enable advanced filesystem management features. Disabled by default, set to `1` to enable it

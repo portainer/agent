@@ -9,6 +9,7 @@ type (
 		AgentServerPort       string
 		ClusterAddress        string
 		ProbeTimeout          time.Duration
+		ProbeInterval         time.Duration
 		HostManagementEnabled bool
 		SharedSecret          string
 		EdgeMode              bool
@@ -81,7 +82,7 @@ type (
 
 	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
-		Create(advertiseAddr string, joinAddr []string, probeTimeout time.Duration) error
+		Create(advertiseAddr string, joinAddr []string, probeTimeout time.Duration, probeInterval time.Duration) error
 		Members() []ClusterMember
 		Leave()
 		GetMemberByRole(role string) *ClusterMember
@@ -150,6 +151,8 @@ const (
 	DefaultAgentPort = "9001"
 	// DefaultProbeTimeout is the default member list ping probe timeout.
 	DefaultProbeTimeout = 500 * time.Millisecond
+	// DefaultProbeInterval is the interval for repeating failed node checks.
+	DefaultProbeInterval = 1 * time.Second
 	// DefaultLogLevel is the default logging level.
 	DefaultLogLevel = "INFO"
 	// DefaultEdgeSecurityShutdown is the default time after which the Edge server will shutdown if no key is specified
