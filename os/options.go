@@ -13,6 +13,7 @@ const (
 	EnvKeyAgentHost             = "AGENT_HOST"
 	EnvKeyAgentPort             = "AGENT_PORT"
 	EnvKeyClusterAddr           = "AGENT_CLUSTER_ADDR"
+	EnvKeyProbeTimeout          = "AGENT_PROBE_TIMEOUT"
 	EnvKeyAgentSecret           = "AGENT_SECRET"
 	EnvKeyCapHostManagement     = "CAP_HOST_MANAGEMENT"
 	EnvKeyEdge                  = "EDGE"
@@ -36,6 +37,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		AgentServerAddr:       agent.DefaultAgentAddr,
 		AgentServerPort:       agent.DefaultAgentPort,
 		ClusterAddress:        os.Getenv(EnvKeyClusterAddr),
+		ProbeTimeout:          agent.DefaultProbeTimeout,
 		HostManagementEnabled: false,
 		SharedSecret:          os.Getenv(EnvKeyAgentSecret),
 		EdgeID:                os.Getenv(EnvKeyEdgeID),
@@ -107,6 +109,15 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	logLevelEnv := os.Getenv(EnvKeyLogLevel)
 	if logLevelEnv != "" {
 		options.LogLevel = logLevelEnv
+	}
+
+	probeTimeoutEnv := os.Getenv(EnvKeyProbeTimeout)
+	if probeTimeoutEnv != "" {
+		timeout, err := time.ParseDuration(probeTimeoutEnv)
+		if err != nil {
+			return nil, errors.New("invalid time duration format in " + EnvKeyProbeTimeout + " environment variable")
+		}
+		options.ProbeTimeout = timeout
 	}
 
 	return options, nil

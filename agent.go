@@ -1,11 +1,14 @@
 package agent
 
+import "time"
+
 type (
 	// AgentOptions are the options used to start an agent.
 	Options struct {
 		AgentServerAddr       string
 		AgentServerPort       string
 		ClusterAddress        string
+		ProbeTimeout          time.Duration
 		HostManagementEnabled bool
 		SharedSecret          string
 		EdgeMode              bool
@@ -78,7 +81,7 @@ type (
 
 	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
-		Create(advertiseAddr string, joinAddr []string) error
+		Create(advertiseAddr string, joinAddr []string, probeTimeout time.Duration) error
 		Members() []ClusterMember
 		Leave()
 		GetMemberByRole(role string) *ClusterMember
@@ -145,6 +148,8 @@ const (
 	DefaultAgentAddr = "0.0.0.0"
 	// DefaultAgentPort is the default port exposed by the Agent API server.
 	DefaultAgentPort = "9001"
+	// DefaultProbeTimeout is the default member list ping probe timeout.
+	DefaultProbeTimeout = 500 * time.Millisecond
 	// DefaultLogLevel is the default logging level.
 	DefaultLogLevel = "INFO"
 	// DefaultEdgeSecurityShutdown is the default time after which the Edge server will shutdown if no key is specified
