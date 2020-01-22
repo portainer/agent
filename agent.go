@@ -179,6 +179,8 @@ const (
 	// HTTPResponseAgentHeaderName is the name of the header that is automatically added
 	// to each agent response.
 	HTTPResponseAgentHeaderName = "Portainer-Agent"
+	// HTTPKubernetesSATokenHeaderName represent the name of the header containing a Kubernetes SA token
+	HTTPKubernetesSATokenHeaderName = "X-PortainerAgent-SA-Token"
 	// HTTPResponseAgentApiVersion is the name of the header that will have the
 	// Portainer Agent API Version.
 	HTTPResponseAgentApiVersion = "Portainer-Agent-API-Version"

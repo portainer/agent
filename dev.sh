@@ -6,7 +6,8 @@ EDGE=0
 TMP="/tmp"
 GIT_COMMIT_HASH=`git rev-parse --short HEAD`
 GIT_BRANCH_NAME=`git rev-parse --abbrev-ref HEAD`
-IMAGE_NAME="portainerci/agent:${GIT_BRANCH_NAME}-${GIT_COMMIT_HASH}"
+#IMAGE_NAME="portainerci/agent:${GIT_BRANCH_NAME}-${GIT_COMMIT_HASH}"
+IMAGE_NAME="portainerci/agent:k8s-linux-amd64"
 
 if [[ $# -ne 1 ]] ; then
   echo "Usage: $(basename $0) <MODE:local/swarm>"
@@ -36,23 +37,23 @@ function deploy_local() {
 
   echo "Image build..."
   docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
-#  docker push "${IMAGE_NAME}"
+  docker push "${IMAGE_NAME}"
 
 
-  echo "Deployment..."
-  docker run -d --name portainer-agent-dev \
-  -e LOG_LEVEL=${LOG_LEVEL} \
-  -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
-  -e EDGE=${EDGE} \
-  -e EDGE_ID=${EDGE_ID} \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /var/lib/docker/volumes:/var/lib/docker/volumes \
-  -v /:/host \
-  -p 9001:9001 \
-  -p 80:80 \
-  "${IMAGE_NAME}"
-
-  docker logs -f portainer-agent-dev
+#  echo "Deployment..."
+#  docker run -d --name portainer-agent-dev \
+#  -e LOG_LEVEL=${LOG_LEVEL} \
+#  -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
+#  -e EDGE=${EDGE} \
+#  -e EDGE_ID=${EDGE_ID} \
+#  -v /var/run/docker.sock:/var/run/docker.sock \
+#  -v /var/lib/docker/volumes:/var/lib/docker/volumes \
+#  -v /:/host \
+#  -p 9001:9001 \
+#  -p 80:80 \
+#  "${IMAGE_NAME}"
+#
+#  docker logs -f portainer-agent-dev
 }
 
 function deploy_swarm() {
