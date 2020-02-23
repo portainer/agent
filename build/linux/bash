@@ -1,0 +1,11 @@
+#!/bin/busybox sh
+
+if [ -z "$CONSOLE_USER" ]; then
+  export CONSOLE_USER=root
+fi
+
+if [[ "$CAP_HOST_MANAGEMENT" == "1" ]]; then
+  /bin/busybox chroot /host su $CONSOLE_USER
+else
+  echo "Host management is disabled"
+fi
