@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/security"
+	"github.com/portainer/agent/kubernetes"
 	httperror "github.com/portainer/libhttp/error"
 )
 
@@ -15,6 +16,7 @@ type (
 		clusterService     agent.ClusterService
 		connectionUpgrader websocket.Upgrader
 		agentTags          map[string]string
+		kubeClient         *kubernetes.KubeClient
 	}
 
 	execStartOperationPayload struct {
@@ -24,15 +26,17 @@ type (
 )
 
 // NewHandler returns a new instance of Handler.
-func NewHandler(clusterService agent.ClusterService, agentTags map[string]string, notaryService *security.NotaryService) *Handler {
+func NewHandler(clusterService agent.ClusterService, agentTags map[string]string, notaryService *security.NotaryService, kubeClient *kubernetes.KubeClient) *Handler {
 	h := &Handler{
 		Router:             mux.NewRouter(),
 		connectionUpgrader: websocket.Upgrader{},
 		clusterService:     clusterService,
 		agentTags:          agentTags,
+		kubeClient:         kubeClient,
 	}
 
 	h.Handle("/websocket/attach", notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.websocketAttach)))
 	h.Handle("/websocket/exec", notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.websocketExec)))
+	h.Handle("/websocket/pod", notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.websocketPodExec)))
 	return h
 }

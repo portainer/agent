@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 
+	kubecli "github.com/portainer/agent/kubernetes"
+
 	"github.com/portainer/agent/http/handler/kubernetes"
 
 	"github.com/portainer/agent/http/handler/key"
@@ -45,6 +47,7 @@ type Config struct {
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
 	TunnelOperator   agent.TunnelOperator
+	KubeClient       *kubecli.KubeClient
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
 	Secured          bool
@@ -65,7 +68,7 @@ func NewHandler(config *Config) *Handler {
 		dockerProxyHandler:     docker.NewHandler(config.ClusterService, config.AgentTags, notaryService, config.Secured),
 		kubernetesProxyHandler: kubernetes.NewHandler(notaryService),
 		keyHandler:             key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeMode),
-		webSocketHandler:       websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
+		webSocketHandler:       websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService, config.KubeClient),
 		hostHandler:            host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:            ping.NewHandler(),
 		securedProtocol:        config.Secured,

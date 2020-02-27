@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/portainer/agent/kubernetes"
+
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
@@ -37,6 +39,7 @@ func main() {
 
 	var clusterService agent.ClusterService
 	var advertiseAddr string
+	var kubeClient *kubernetes.KubeClient
 
 	// !Generic
 
@@ -107,6 +110,10 @@ func main() {
 	// Kubernetes
 	if containerPlatform == agent.PlatformKubernetes {
 		log.Println("[INFO] [main] [message: Agent running on Kubernetes platform]")
+		kubeClient, err = kubernetes.NewKubeClient()
+		if err != nil {
+			log.Fatalf("[ERROR] [main,kubernetes] [message: Unable to create Kubernetes client] [error: %s]", err)
+		}
 
 		clusterService = cluster.NewClusterService(agentTags)
 
@@ -196,6 +203,7 @@ func main() {
 		AgentTags:        agentTags,
 		AgentOptions:     options,
 		EdgeMode:         options.EdgeMode,
+		KubeClient:       kubeClient,
 	}
 
 	if options.EdgeMode {

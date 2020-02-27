@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/portainer/agent/kubernetes"
+
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/handler"
 )
@@ -20,6 +22,7 @@ type APIServer struct {
 	agentTags        map[string]string
 	agentOptions     *agent.Options
 	edgeMode         bool
+	kubeClient       *kubernetes.KubeClient
 }
 
 // APIServerConfig represents a server configuration
@@ -31,6 +34,7 @@ type APIServerConfig struct {
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
 	TunnelOperator   agent.TunnelOperator
+	KubeClient       *kubernetes.KubeClient
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
 	EdgeMode         bool
@@ -48,6 +52,7 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 		agentTags:        config.AgentTags,
 		agentOptions:     config.AgentOptions,
 		edgeMode:         config.EdgeMode,
+		kubeClient:       config.KubeClient,
 	}
 }
 
@@ -61,6 +66,7 @@ func (server *APIServer) StartUnsecured() error {
 		AgentOptions:   server.agentOptions,
 		EdgeMode:       server.edgeMode,
 		Secured:        false,
+		KubeClient:     server.kubeClient,
 	}
 
 	h := handler.NewHandler(config)
@@ -89,6 +95,7 @@ func (server *APIServer) StartSecured() error {
 		AgentOptions:     server.agentOptions,
 		EdgeMode:         server.edgeMode,
 		Secured:          true,
+		KubeClient:       server.kubeClient,
 	}
 
 	h := handler.NewHandler(config)
