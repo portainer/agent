@@ -23,6 +23,7 @@ const (
 	EnvKeyEdgeInactivityTimeout = "EDGE_INACTIVITY_TIMEOUT"
 	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
 	EnvKeyLogLevel              = "LOG_LEVEL"
+	EnvKeyDockerBinaryPath      = "DOCKER_BINARY_PATH"
 )
 
 type EnvOptionParser struct{}
@@ -44,6 +45,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeInactivityTimeout: agent.DefaultEdgeSleepInterval,
 		EdgeInsecurePoll:      false,
 		LogLevel:              agent.DefaultLogLevel,
+		DockerBinaryPath:      os.Getenv(EnvKeyDockerBinaryPath),
 	}
 
 	if os.Getenv(EnvKeyCapHostManagement) == "1" {
