@@ -8,6 +8,7 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
@@ -85,6 +86,7 @@ func main() {
 	}
 
 	var tunnelOperator agent.TunnelOperator
+	var edgeStackManager agent.EdgeStackManager
 	if options.EdgeMode {
 		apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
 
@@ -107,6 +109,17 @@ func main() {
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
 		}
+
+		edgeStackManager, err = exec.NewEdgeStackManager(options.DockerBinaryPath)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to start stack manager] [error: %s]", err)
+		}
+
+		err = edgeStackManager.Login()
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,stack] [message: Edge stack manager failed to login] [error: %s]", err)
+		}
+
 	}
 
 	systemService := ghw.NewSystemService(agent.HostRoot)
@@ -132,6 +145,7 @@ func main() {
 		AgentTags:        agentTags,
 		AgentOptions:     options,
 		EdgeMode:         options.EdgeMode,
+		EdgeStackManager: edgeStackManager,
 	}
 
 	if options.EdgeMode {

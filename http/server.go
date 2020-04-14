@@ -20,6 +20,7 @@ type APIServer struct {
 	agentTags        map[string]string
 	agentOptions     *agent.Options
 	edgeMode         bool
+	edgeStackManager agent.EdgeStackManager
 }
 
 // APIServerConfig represents a server configuration
@@ -34,6 +35,7 @@ type APIServerConfig struct {
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
 	EdgeMode         bool
+	EdgeStackManager agent.EdgeStackManager
 }
 
 // NewAPIServer returns a pointer to a APIServer.
@@ -48,19 +50,21 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 		agentTags:        config.AgentTags,
 		agentOptions:     config.AgentOptions,
 		edgeMode:         config.EdgeMode,
+		edgeStackManager: config.EdgeStackManager,
 	}
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
 func (server *APIServer) StartUnsecured() error {
 	config := &handler.Config{
-		SystemService:  server.systemService,
-		ClusterService: server.clusterService,
-		TunnelOperator: server.tunnelOperator,
-		AgentTags:      server.agentTags,
-		AgentOptions:   server.agentOptions,
-		EdgeMode:       server.edgeMode,
-		Secured:        false,
+		SystemService:    server.systemService,
+		ClusterService:   server.clusterService,
+		TunnelOperator:   server.tunnelOperator,
+		AgentTags:        server.agentTags,
+		AgentOptions:     server.agentOptions,
+		EdgeMode:         server.edgeMode,
+		Secured:          false,
+		EdgeStackManager: server.edgeStackManager,
 	}
 
 	h := handler.NewHandler(config)
