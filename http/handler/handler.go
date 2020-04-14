@@ -46,6 +46,7 @@ type Config struct {
 	AgentOptions     *agent.Options
 	Secured          bool
 	EdgeMode         bool
+	EdgeStackManager agent.EdgeStackManager
 }
 
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)

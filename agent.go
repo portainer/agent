@@ -16,6 +16,7 @@ type (
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
 		LogLevel              string
+		DockerBinaryPath      string
 	}
 
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -133,6 +134,14 @@ type (
 	// Scheduler is used to manage schedules
 	Scheduler interface {
 		Schedule(schedules []Schedule) error
+	}
+
+	// EdgeStackManager is a service to manager edge stacks
+	EdgeStackManager interface {
+		Login() error
+		Logout() error
+		Deploy(name, projectPath, entryPoint string, prune bool) error
+		Remove(name string) error
 	}
 )
 
