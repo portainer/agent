@@ -26,19 +26,7 @@ func NewEdgeStackManager(binaryPath string) (*EdgeStackManager, error) {
 
 // Login executes the docker login command against a list of registries (including DockerHub).
 func (manager *EdgeStackManager) Login() error {
-	// dockerhub *portainer.DockerHub, registries []portainer.Registry
-	// command, args := manager.prepareDockerCommandAndArgs(manager.binaryPath)
-	// for _, registry := range registries {
-	// 	if registry.Authentication {
-	// 		registryArgs := append(args, "login", "--username", registry.Username, "--password", registry.Password, registry.URL)
-	// 		runCommandAndCaptureStdErr(command, registryArgs, nil, "")
-	// 	}
-	// }
-
-	// if dockerhub.Authentication {
-	// 	dockerhubArgs := append(args, "login", "--username", dockerhub.Username, "--password", dockerhub.Password)
-	// 	runCommandAndCaptureStdErr(command, dockerhubArgs, nil, "")
-	// }
+	// Not implemented yet.
 	return nil
 }
 
