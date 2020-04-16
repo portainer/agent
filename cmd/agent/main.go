@@ -114,12 +114,6 @@ func main() {
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to start stack manager] [error: %s]", err)
 		}
-
-		err = edgeStackManager.Login()
-		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,stack] [message: Edge stack manager failed to login] [error: %s]", err)
-		}
-
 	}
 
 	systemService := ghw.NewSystemService(agent.HostRoot)
