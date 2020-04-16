@@ -2,11 +2,10 @@ package exec
 
 import (
 	"bytes"
+	"errors"
 	"os/exec"
 	"path"
 	"runtime"
-
-	"github.com/portainer/portainer/api"
 )
 
 // EdgeStackManager represents a service for managing stacks.
@@ -69,7 +68,7 @@ func runCommandAndCaptureStdErr(command string, args []string, workingDir string
 
 	err := cmd.Run()
 	if err != nil {
-		return portainer.Error(stderr.String())
+		return errors.New(stderr.String())
 	}
 
 	return nil
