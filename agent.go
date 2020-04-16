@@ -136,7 +136,7 @@ type (
 		Schedule(schedules []Schedule) error
 	}
 
-	// EdgeStackManager is a service to manager edge stacks
+	// EdgeStackManager is a service to manager Edge stacks
 	EdgeStackManager interface {
 		Login() error
 		Logout() error
