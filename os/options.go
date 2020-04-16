@@ -45,7 +45,6 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeInactivityTimeout: agent.DefaultEdgeSleepInterval,
 		EdgeInsecurePoll:      false,
 		LogLevel:              agent.DefaultLogLevel,
-		DockerBinaryPath:      os.Getenv(EnvKeyDockerBinaryPath),
 	}
 
 	if os.Getenv(EnvKeyCapHostManagement) == "1" {

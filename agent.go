@@ -16,7 +16,6 @@ type (
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
 		LogLevel              string
-		DockerBinaryPath      string
 	}
 
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -222,4 +221,6 @@ const (
 	DataDirectory = "/data"
 	// EdgeKeyFile is the name of the file used to persist the Edge key associated to the agent.
 	EdgeKeyFile = "agent_edge_key"
+	// DockerBinaryPath is the path of the docker binary
+	DockerBinaryPath = "/app"
 )

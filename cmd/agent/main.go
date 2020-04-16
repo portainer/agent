@@ -110,7 +110,7 @@ func main() {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
 		}
 
-		edgeStackManager, err = exec.NewEdgeStackManager(options.DockerBinaryPath)
+		edgeStackManager, err = exec.NewEdgeStackManager(agent.DockerBinaryPath)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to start stack manager] [error: %s]", err)
 		}
