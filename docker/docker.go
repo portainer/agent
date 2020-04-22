@@ -109,3 +109,20 @@ func (service *InfoService) GetServiceNameFromDockerEngine(containerName string)
 
 	return containerInspect.Config.Labels[serviceNameLabel], nil
 }
+
+// IsLeaderNode returns true if the node is the leader node of the swarm cluster
+func (service *InfoService) IsLeaderNode() (bool, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	if err != nil {
+		return false, err
+	}
+
+	defer cli.Close()
+
+	node, _, err := cli.NodeInspectWithRaw(context.Background(), "self")
+	if err != nil {
+		return false, err
+	}
+
+	return node.ManagerStatus.Leader, nil
+}

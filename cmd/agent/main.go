@@ -105,7 +105,7 @@ func main() {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}
 
-		err := enableEdgeMode(tunnelOperator, clusterService, options)
+		err := enableEdgeMode(tunnelOperator, clusterService, infoService, options)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
 		}
@@ -162,7 +162,7 @@ func startAPIServer(config *http.APIServerConfig) error {
 	return server.StartSecured()
 }
 
-func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, options *agent.Options) error {
+func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, infoService agent.InfoService, options *agent.Options) error {
 
 	edgeKey, err := retrieveEdgeKey(options, clusterService)
 	if err != nil {
@@ -177,16 +177,45 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 			return err
 		}
 
-		if clusterService != nil {
-			tags := clusterService.GetTags()
-			tags[agent.MemberTagEdgeKeySet] = "set"
-			err = clusterService.UpdateTags(tags)
-			if err != nil {
-				return err
-			}
+		if clusterService == nil {
+			return tunnelOperator.Start()
 		}
 
-		return tunnelOperator.Start()
+		tags := clusterService.GetTags()
+		tags[agent.MemberTagEdgeKeySet] = "set"
+		err = clusterService.UpdateTags(tags)
+		if err != nil {
+			return err
+		}
+		isLeaderNode, err := infoService.IsLeaderNode()
+		if err != nil {
+			return err
+		}
+		if isLeaderNode {
+			return tunnelOperator.Start()
+		}
+
+		ticker := time.NewTicker(time.Duration(5) * time.Second)
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					isLeaderNode, err := infoService.IsLeaderNode()
+					if err != nil {
+						log.Printf("[ERROR] [edge,http,poll] [message: an error occured during short poll] [error: %s]", err)
+					}
+
+					if isLeaderNode {
+						tunnelOperator.Start()
+						ticker.Stop()
+					}
+					// case <-operator.refreshSignal:
+					// 	log.Println("[DEBUG] [http,edge,poll] [message: shutting down Portainer short-polling client]")
+					// 	ticker.Stop()
+					// 	return
+				}
+			}
+		}()
 	}
 
 	log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
