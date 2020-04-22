@@ -98,6 +98,7 @@ type (
 		GetInformationFromDockerEngine() (map[string]string, error)
 		GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error)
 		GetServiceNameFromDockerEngine(containerName string) (string, error)
+		IsLeaderNode() (bool, error)
 	}
 
 	// TLSService is used to create TLS certificates to use enable HTTPS.
