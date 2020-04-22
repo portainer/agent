@@ -17,12 +17,18 @@ import (
 
 const clientDefaultPollTimeout = 5
 
+type stackStatus struct {
+	EdgeStackID int
+	Version     int
+}
+
 type pollStatusResponse struct {
 	Status          string           `json:"status"`
 	Port            int              `json:"port"`
 	Schedules       []agent.Schedule `json:"schedules"`
 	CheckinInterval float64          `json:"checkin"`
 	Credentials     string           `json:"credentials"`
+	Stacks          []stackStatus    `json:"stacks"`
 }
 
 func (operator *Operator) createHTTPClient(timeout float64) {
@@ -102,6 +108,14 @@ func (operator *Operator) poll() error {
 		operator.pollIntervalInSeconds = responseData.CheckinInterval
 		operator.createHTTPClient(responseData.CheckinInterval)
 		go operator.restartStatusPollLoop()
+	}
+
+	if responseData.Stacks != nil {
+		err := operator.handleStacks(responseData.Stacks)
+		if err != nil {
+			log.Printf("[ERROR] [http,edge,stacks] [message: an error occured during stack management] [error: %s]", err)
+			return err
+		}
 	}
 
 	return nil
