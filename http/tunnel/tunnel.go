@@ -163,7 +163,6 @@ func (operator *Operator) startLeaderCheckLoop() {
 				isLeaderNode, err := operator.infoService.IsLeaderNode()
 				if err != nil {
 					log.Printf("[ERROR] [http,edge,poll] [message: an error occured during leader check] [error: %s]", err)
-					return
 				}
 
 				if isLeaderNode {
