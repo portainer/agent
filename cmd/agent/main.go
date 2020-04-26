@@ -188,32 +188,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 			return err
 		}
 
-		isLeaderNode, err := infoService.IsLeaderNode()
-		if err != nil {
-			return err
-		}
-
-		if isLeaderNode {
-			return tunnelOperator.Start()
-		}
-
-		ticker := time.NewTicker(time.Duration(agent.DefaultSwarmLeaderCheckInterval) * time.Second)
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					isLeaderNode, err := infoService.IsLeaderNode()
-					if err != nil {
-						log.Printf("[ERROR] [edge,http,poll] [message: an error occured during short poll] [error: %s]", err)
-					}
-
-					if isLeaderNode {
-						tunnelOperator.Start()
-						ticker.Stop()
-					}
-				}
-			}
-		}()
+		return pollLeaderStatus(infoService, tunnelOperator)
 	}
 
 	log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
@@ -237,6 +212,42 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 		if !tunnelOperator.IsKeySet() {
 			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
 			edgeServer.Shutdown()
+		}
+	}()
+
+	return nil
+}
+
+func pollLeaderStatus(infoService agent.InfoService, tunnelOperator agent.TunnelOperator) error {
+	isLeaderNode, err := infoService.IsLeaderNode()
+	if err != nil {
+		return err
+	}
+
+	if isLeaderNode {
+		return tunnelOperator.Start()
+	}
+
+	pollFrequency, err := time.ParseDuration(agent.DefaultSwarmLeaderCheckInterval)
+	if err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(time.Duration(pollFrequency) * time.Second)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				isLeaderNode, err := infoService.IsLeaderNode()
+				if err != nil {
+					log.Printf("[ERROR] [edge,http,poll] [message: an error occured during short poll] [error: %s]", err)
+				}
+
+				if isLeaderNode {
+					tunnelOperator.Start()
+					ticker.Stop()
+				}
+			}
 		}
 	}()
 
