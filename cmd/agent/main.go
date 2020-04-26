@@ -91,11 +91,14 @@ func main() {
 		apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
 
 		operatorConfig := &tunnel.OperatorConfig{
-			APIServerAddr:     apiServerAddr,
-			EdgeID:            options.EdgeID,
-			PollFrequency:     agent.DefaultEdgePollInterval,
-			InactivityTimeout: options.EdgeInactivityTimeout,
-			InsecurePoll:      options.EdgeInsecurePoll,
+			APIServerAddr:        apiServerAddr,
+			EdgeID:               options.EdgeID,
+			PollFrequency:        agent.DefaultEdgePollInterval,
+			InactivityTimeout:    options.EdgeInactivityTimeout,
+			InsecurePoll:         options.EdgeInsecurePoll,
+			IsCluster:            clusterMode,
+			InfoService:          infoService,
+			LeaderCheckFrequency: agent.DefaultSwarmLeaderCheckInterval,
 		}
 
 		log.Printf("[DEBUG] [main,edge,configuration] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", operatorConfig.APIServerAddr, operatorConfig.EdgeID, operatorConfig.PollFrequency, operatorConfig.InactivityTimeout, operatorConfig.InsecurePoll)
@@ -177,18 +180,16 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 			return err
 		}
 
-		if clusterService == nil {
-			return tunnelOperator.Start()
+		if clusterService != nil {
+			tags := clusterService.GetTags()
+			tags[agent.MemberTagEdgeKeySet] = "set"
+			err = clusterService.UpdateTags(tags)
+			if err != nil {
+				return err
+			}
 		}
 
-		tags := clusterService.GetTags()
-		tags[agent.MemberTagEdgeKeySet] = "set"
-		err = clusterService.UpdateTags(tags)
-		if err != nil {
-			return err
-		}
-
-		return pollLeaderStatus(infoService, tunnelOperator)
+		return tunnelOperator.Start()
 	}
 
 	log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
@@ -212,43 +213,6 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 		if !tunnelOperator.IsKeySet() {
 			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
 			edgeServer.Shutdown()
-		}
-	}()
-
-	return nil
-}
-
-func pollLeaderStatus(infoService agent.InfoService, tunnelOperator agent.TunnelOperator) error {
-	isLeaderNode, err := infoService.IsLeaderNode()
-	if err != nil {
-		return err
-	}
-
-	if isLeaderNode {
-		return tunnelOperator.Start()
-	}
-
-	pollFrequency, err := time.ParseDuration(agent.DefaultSwarmLeaderCheckInterval)
-	if err != nil {
-		return err
-	}
-
-	ticker := time.NewTicker(time.Duration(pollFrequency) * time.Second)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				isLeaderNode, err := infoService.IsLeaderNode()
-				if err != nil {
-					log.Printf("[ERROR] [main,edge,swarm] [message: an error occured during short poll] [error: %s]", err)
-				}
-
-				if isLeaderNode {
-					log.Printf("[DEBUG] [main,edge,swarm] [message: node was promoted to leader]")
-					tunnelOperator.Start()
-					ticker.Stop()
-				}
-			}
 		}
 	}()
 
