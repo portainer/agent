@@ -108,7 +108,7 @@ func main() {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}
 
-		err := enableEdgeMode(tunnelOperator, clusterService, infoService, options)
+		err := enableEdgeMode(tunnelOperator, clusterService, options)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
 		}
@@ -165,7 +165,7 @@ func startAPIServer(config *http.APIServerConfig) error {
 	return server.StartSecured()
 }
 
-func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, infoService agent.InfoService, options *agent.Options) error {
+func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, options *agent.Options) error {
 
 	edgeKey, err := retrieveEdgeKey(options, clusterService)
 	if err != nil {
