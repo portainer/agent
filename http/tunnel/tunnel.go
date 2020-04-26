@@ -27,22 +27,28 @@ type Operator struct {
 	pollIntervalInSeconds float64
 	insecurePoll          bool
 	inactivityTimeout     time.Duration
+	leaderCheckFrequency  time.Duration
 	edgeID                string
 	key                   *edgeKey
 	httpClient            *http.Client
 	tunnelClient          agent.ReverseTunnelClient
 	scheduleManager       agent.Scheduler
+	infoService           agent.InfoService
 	lastActivity          time.Time
 	refreshSignal         chan struct{}
+	isCluster             bool
 }
 
 // OperatorConfig represents the configuration used to create a new Operator.
 type OperatorConfig struct {
-	APIServerAddr     string
-	EdgeID            string
-	InactivityTimeout string
-	PollFrequency     string
-	InsecurePoll      bool
+	APIServerAddr        string
+	EdgeID               string
+	InactivityTimeout    string
+	PollFrequency        string
+	InsecurePoll         bool
+	IsCluster            bool
+	LeaderCheckFrequency string
+	InfoService          agent.InfoService
 }
 
 // NewTunnelOperator creates a new reverse tunnel operator
@@ -57,15 +63,23 @@ func NewTunnelOperator(config *OperatorConfig) (*Operator, error) {
 		return nil, err
 	}
 
+	leaderCheckFrequency, err := time.ParseDuration(config.LeaderCheckFrequency)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Operator{
 		apiServerAddr:         config.APIServerAddr,
 		edgeID:                config.EdgeID,
 		pollIntervalInSeconds: pollFrequency.Seconds(),
 		insecurePoll:          config.InsecurePoll,
 		inactivityTimeout:     inactivityTimeout,
+		leaderCheckFrequency:  leaderCheckFrequency,
 		tunnelClient:          chisel.NewClient(),
 		scheduleManager:       filesystem.NewCronManager(),
 		refreshSignal:         make(chan struct{}),
+		infoService:           config.InfoService,
+		isCluster:             config.IsCluster,
 	}, nil
 }
 
@@ -122,15 +136,45 @@ func (operator *Operator) ResetActivityTimer() {
 // if needed as well as manage schedules.
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
+// If node is part of a cluster, it will start a check for leader status, and will run those loops only when the node
+// is promoted to a leader
 func (operator *Operator) Start() error {
 	if operator.key == nil {
 		return errors.New("missing Edge key")
 	}
 
-	operator.startStatusPollLoop()
-	operator.startActivityMonitoringLoop()
+	if !operator.isCluster {
+		log.Printf("[DEBUG] [http,edge,poll] [message: not a cluster, starting poll]")
+		operator.startStatusPollLoop()
+		operator.startActivityMonitoringLoop()
+		return nil
+	}
 
+	operator.startLeaderCheckLoop()
 	return nil
+}
+
+func (operator *Operator) startLeaderCheckLoop() {
+	ticker := time.NewTicker(operator.leaderCheckFrequency)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				isLeaderNode, err := operator.infoService.IsLeaderNode()
+				if err != nil {
+					log.Printf("[ERROR] [http,edge,poll] [message: an error occured during leader check] [error: %s]", err)
+					return
+				}
+
+				if isLeaderNode {
+					log.Printf("[DEBUG] [http,edge,poll] [message: node is a leader, starting poll]")
+					operator.startStatusPollLoop()
+					operator.startActivityMonitoringLoop()
+					ticker.Stop()
+				}
+			}
+		}
+	}()
 }
 
 func (operator *Operator) restartStatusPollLoop() {
