@@ -187,15 +187,17 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 		if err != nil {
 			return err
 		}
+
 		isLeaderNode, err := infoService.IsLeaderNode()
 		if err != nil {
 			return err
 		}
+
 		if isLeaderNode {
 			return tunnelOperator.Start()
 		}
 
-		ticker := time.NewTicker(time.Duration(5) * time.Second)
+		ticker := time.NewTicker(time.Duration(agent.DefaultSwarmLeaderCheckInterval) * time.Second)
 		go func() {
 			for {
 				select {
@@ -209,10 +211,6 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 						tunnelOperator.Start()
 						ticker.Stop()
 					}
-					// case <-operator.refreshSignal:
-					// 	log.Println("[DEBUG] [http,edge,poll] [message: shutting down Portainer short-polling client]")
-					// 	ticker.Stop()
-					// 	return
 				}
 			}
 		}()
