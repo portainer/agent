@@ -240,10 +240,11 @@ func pollLeaderStatus(infoService agent.InfoService, tunnelOperator agent.Tunnel
 			case <-ticker.C:
 				isLeaderNode, err := infoService.IsLeaderNode()
 				if err != nil {
-					log.Printf("[ERROR] [edge,http,poll] [message: an error occured during short poll] [error: %s]", err)
+					log.Printf("[ERROR] [main,edge,swarm] [message: an error occured during short poll] [error: %s]", err)
 				}
 
 				if isLeaderNode {
+					log.Printf("[DEBUG] [main,edge,swarm] [message: node was promoted to leader]")
 					tunnelOperator.Start()
 					ticker.Stop()
 				}
