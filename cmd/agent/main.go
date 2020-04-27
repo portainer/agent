@@ -29,15 +29,17 @@ func main() {
 	logutils.SetupLogger(options.LogLevel)
 
 	var infoService agent.InfoService = docker.NewInfoService()
-	agentTags, err := retrieveInformationFromDockerEnvironment(infoService)
+
+	agentTags, err := infoService.GetInformationFromDockerEngine()
 	if err != nil {
 		log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve information from Docker] [error: %s]", err)
 	}
+
 	agentTags[agent.MemberTagKeyAgentPort] = options.AgentServerPort
 	log.Printf("[DEBUG] [main,configuration] [Member tags: %+v]", agentTags)
 
 	clusterMode := false
-	if agentTags[agent.MemberTagEngineStatus] == "swarm" {
+	if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusSwarm {
 		clusterMode = true
 		log.Println("[INFO] [main] [message: Agent running on a Swarm cluster node. Running in cluster mode]")
 	}
@@ -91,14 +93,11 @@ func main() {
 		apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
 
 		operatorConfig := &tunnel.OperatorConfig{
-			APIServerAddr:        apiServerAddr,
-			EdgeID:               options.EdgeID,
-			PollFrequency:        agent.DefaultEdgePollInterval,
-			InactivityTimeout:    options.EdgeInactivityTimeout,
-			InsecurePoll:         options.EdgeInsecurePoll,
-			IsCluster:            clusterMode,
-			InfoService:          infoService,
-			LeaderCheckFrequency: agent.DefaultSwarmLeaderCheckInterval,
+			APIServerAddr:     apiServerAddr,
+			EdgeID:            options.EdgeID,
+			PollFrequency:     agent.DefaultEdgePollInterval,
+			InactivityTimeout: options.EdgeInactivityTimeout,
+			InsecurePoll:      options.EdgeInsecurePoll,
 		}
 
 		log.Printf("[DEBUG] [main,edge,configuration] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", operatorConfig.APIServerAddr, operatorConfig.EdgeID, operatorConfig.PollFrequency, operatorConfig.InactivityTimeout, operatorConfig.InsecurePoll)
@@ -108,7 +107,7 @@ func main() {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}
 
-		err := enableEdgeMode(tunnelOperator, clusterService, options)
+		err := enableEdgeMode(tunnelOperator, clusterService, infoService, options)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
 		}
@@ -165,7 +164,7 @@ func startAPIServer(config *http.APIServerConfig) error {
 	return server.StartSecured()
 }
 
-func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, options *agent.Options) error {
+func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, infoService agent.InfoService, options *agent.Options) error {
 
 	edgeKey, err := retrieveEdgeKey(options, clusterService)
 	if err != nil {
@@ -188,8 +187,43 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 				return err
 			}
 		}
+		loopIntervalFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
+		if err != nil {
+			return err
+		}
 
-		return tunnelOperator.Start()
+		ticker := time.NewTicker(time.Duration(loopIntervalFrequency))
+
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					key := tunnelOperator.GetKey()
+					if key == "" {
+						continue
+					}
+
+					agentTags, err := infoService.GetInformationFromDockerEngine()
+					if err != nil {
+						log.Printf("[ERROR] [main,edge,poll] [message: an error occured during docker config check] [error: %s]", err)
+						continue
+					}
+
+					if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusStandalone || agentTags[agent.MemberTagKeyIsLeader] == "1" {
+						err = tunnelOperator.Start()
+						if err != nil {
+							log.Printf("[ERROR] [main,edge,poll] [message: an error occured while starting poll] [error: %s]", err)
+						}
+					} else {
+						err = tunnelOperator.Stop()
+						if err != nil {
+							log.Printf("[ERROR] [main,edge,poll] [message: an error occured while stopping poll] [error: %s]", err)
+						}
+					}
+				}
+			}
+
+		}()
 	}
 
 	log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
@@ -293,13 +327,4 @@ func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, er
 func parseOptions() (*agent.Options, error) {
 	optionParser := os.NewEnvOptionParser()
 	return optionParser.Options()
-}
-
-func retrieveInformationFromDockerEnvironment(infoService agent.InfoService) (map[string]string, error) {
-	agentTags, err := infoService.GetInformationFromDockerEngine()
-	if err != nil {
-		return nil, err
-	}
-
-	return agentTags, nil
 }

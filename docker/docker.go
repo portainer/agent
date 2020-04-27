@@ -41,12 +41,20 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 	info[agent.MemberTagKeyNodeName] = dockerInfo.Name
 
 	if dockerInfo.Swarm.NodeID == "" {
-		info[agent.MemberTagEngineStatus] = "standalone"
+		info[agent.MemberTagEngineStatus] = agent.EngineStatusStandalone
 	} else {
-		info[agent.MemberTagEngineStatus] = "swarm"
+		info[agent.MemberTagEngineStatus] = agent.EngineStatusSwarm
 		info[agent.MemberTagKeyNodeRole] = agent.NodeRoleWorker
 		if dockerInfo.Swarm.ControlAvailable {
 			info[agent.MemberTagKeyNodeRole] = agent.NodeRoleManager
+			isLeader, err := service.isLeaderNode(cli, dockerInfo.Swarm.NodeID)
+			if err != nil {
+				return nil, err
+			}
+
+			if isLeader {
+				info[agent.MemberTagKeyIsLeader] = "1"
+			}
 		}
 	}
 
@@ -111,15 +119,8 @@ func (service *InfoService) GetServiceNameFromDockerEngine(containerName string)
 }
 
 // IsLeaderNode returns true if the node is the leader node of the swarm cluster
-func (service *InfoService) IsLeaderNode() (bool, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
-	if err != nil {
-		return false, err
-	}
-
-	defer cli.Close()
-
-	node, _, err := cli.NodeInspectWithRaw(context.Background(), "self")
+func (service *InfoService) isLeaderNode(cli *client.Client, nodeID string) (bool, error) {
+	node, _, err := cli.NodeInspectWithRaw(context.Background(), nodeID)
 	if err != nil {
 		return false, err
 	}
