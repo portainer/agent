@@ -98,7 +98,6 @@ type (
 		GetInformationFromDockerEngine() (map[string]string, error)
 		GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error)
 		GetServiceNameFromDockerEngine(containerName string) (string, error)
-		IsLeaderNode() (bool, error)
 	}
 
 	// TLSService is used to create TLS certificates to use enable HTTPS.
@@ -124,6 +123,7 @@ type (
 	// the reverse tunnel.
 	TunnelOperator interface {
 		Start() error
+		Stop() error
 		IsKeySet() bool
 		SetKey(key string) error
 		GetKey() string
@@ -166,8 +166,8 @@ const (
 	DefaultEdgePollInterval = "5s"
 	// DefaultEdgeSleepInterval is the default interval after which the agent will close the tunnel if no activity.
 	DefaultEdgeSleepInterval = "5m"
-	// DefaultSwarmLeaderCheckInterval is the default interval used to check if current node was promoted to leader
-	DefaultSwarmLeaderCheckInterval = "1m"
+	// DefaultConfigCheckInterval is the default interval used to check if node config changed
+	DefaultConfigCheckInterval = "1m"
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.
@@ -199,6 +199,8 @@ const (
 	// MemberTagKeyAgentPort is the name of the label storing information about the port exposed
 	// by the agent.
 	MemberTagKeyAgentPort = "AgentPort"
+	// MemberTagKeyIsLeader is the name of the label storing whether the node is a swarm leader
+	MemberTagKeyIsLeader = "NodeIsLeader"
 	// MemberTagKeyNodeName is the name of the label storing information about the name of the
 	// node where the agent is running.
 	MemberTagKeyNodeName = "NodeName"
@@ -214,6 +216,10 @@ const (
 	NodeRoleManager = "manager"
 	// NodeRoleWorker represents a worker node.
 	NodeRoleWorker = "worker"
+	// EngineStatusSwarm represents a swarm docker engine
+	EngineStatusSwarm = "swarm"
+	// EngineStatusStandalone represents a standalone docker engine
+	EngineStatusStandalone = "standalone"
 	// TLSCertPath is the default path to the TLS certificate file.
 	TLSCertPath = "cert.pem"
 	// TLSKeyPath is the default path to the TLS key file.

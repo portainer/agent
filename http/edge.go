@@ -77,8 +77,6 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 			go server.propagateKeyInCluster(tags[agent.MemberTagKeyNodeName], key)
 		}
 
-		go server.tunnelOperator.Start()
-
 		w.Write([]byte("Agent setup OK. You can close this page."))
 		server.Shutdown()
 	}

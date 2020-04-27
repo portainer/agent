@@ -55,7 +55,5 @@ func (handler *Handler) keyCreate(w http.ResponseWriter, r *http.Request) *httpe
 		}
 	}
 
-	go handler.tunnelOperator.Start()
-
 	return response.Empty(w)
 }
