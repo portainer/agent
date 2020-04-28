@@ -187,32 +187,31 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 				return err
 			}
 		}
+	} else {
+		log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
+		edgeServer := http.NewEdgeServer(tunnelOperator, clusterService)
 
+		go func() {
+			log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
+
+			err := edgeServer.Start(options.EdgeServerAddr, options.EdgeServerPort)
+			if err != nil {
+				log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
+			}
+
+			log.Println("[INFO] [main,edge,http] [message: Edge server shutdown]")
+		}()
+
+		go func() {
+			timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
+			<-timer1.C
+
+			if !tunnelOperator.IsKeySet() {
+				log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
+				edgeServer.Shutdown()
+			}
+		}()
 	}
-
-	log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
-	edgeServer := http.NewEdgeServer(tunnelOperator, clusterService)
-
-	go func() {
-		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
-
-		err := edgeServer.Start(options.EdgeServerAddr, options.EdgeServerPort)
-		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
-		}
-
-		log.Println("[INFO] [main,edge,http] [message: Edge server shutdown]")
-	}()
-
-	go func() {
-		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
-		<-timer1.C
-
-		if !tunnelOperator.IsKeySet() {
-			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
-			edgeServer.Shutdown()
-		}
-	}()
 
 	loopIntervalFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
 	if err != nil {
