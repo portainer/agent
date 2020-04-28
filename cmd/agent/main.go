@@ -187,43 +187,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 				return err
 			}
 		}
-		loopIntervalFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
-		if err != nil {
-			return err
-		}
 
-		ticker := time.NewTicker(time.Duration(loopIntervalFrequency))
-
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					key := tunnelOperator.GetKey()
-					if key == "" {
-						continue
-					}
-
-					agentTags, err := infoService.GetInformationFromDockerEngine()
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,poll] [message: an error occured during docker config check] [error: %s]", err)
-						continue
-					}
-
-					if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusStandalone || agentTags[agent.MemberTagKeyIsLeader] == "1" {
-						err = tunnelOperator.Start()
-						if err != nil {
-							log.Printf("[ERROR] [main,edge,poll] [message: an error occured while starting poll] [error: %s]", err)
-						}
-					} else {
-						err = tunnelOperator.Stop()
-						if err != nil {
-							log.Printf("[ERROR] [main,edge,poll] [message: an error occured while stopping poll] [error: %s]", err)
-						}
-					}
-				}
-			}
-
-		}()
 	}
 
 	log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
@@ -247,6 +211,47 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 		if !tunnelOperator.IsKeySet() {
 			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
 			edgeServer.Shutdown()
+		}
+	}()
+
+	loopIntervalFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
+	if err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(time.Duration(loopIntervalFrequency))
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				log.Printf("[DEBUG] [main,edge,poll] [message: checking docker config and key]")
+
+				key := tunnelOperator.GetKey()
+				if key == "" {
+					continue
+				}
+
+				agentTags, err := infoService.GetInformationFromDockerEngine()
+				if err != nil {
+					log.Printf("[ERROR] [main,edge,poll] [message: an error occured during docker config check] [error: %s]", err)
+					continue
+				}
+
+				if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusStandalone || agentTags[agent.MemberTagKeyIsLeader] == "1" {
+					log.Printf("[DEBUG] [main,edge,poll] [message: this is either a leader or a standalone agent, starting tunnel operator]")
+					err = tunnelOperator.Start()
+					if err != nil {
+						log.Printf("[ERROR] [main,edge,poll] [message: an error occured while starting poll] [error: %s]", err)
+					}
+				} else {
+					log.Printf("[DEBUG] [main,edge,poll] [message: this is neither a leader nor a standalone agent, starting tunnel operator]")
+					err = tunnelOperator.Stop()
+					if err != nil {
+						log.Printf("[ERROR] [main,edge,poll] [message: an error occured while stopping poll] [error: %s]", err)
+					}
+				}
+			}
 		}
 	}()
 
