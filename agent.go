@@ -136,11 +136,11 @@ type (
 		Schedule(schedules []Schedule) error
 	}
 
-	// EdgeStackManager is a service to manager Edge stacks
-	EdgeStackManager interface {
+	// DockerStackService is a service to manager Edge stacks
+	DockerStackService interface {
 		Login() error
 		Logout() error
-		Deploy(name, projectPath, entryPoint string, prune bool) error
+		Deploy(name, stackFileContent string, prune bool) error
 		Remove(name string) error
 	}
 )

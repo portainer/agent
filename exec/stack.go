@@ -8,15 +8,15 @@ import (
 	"runtime"
 )
 
-// EdgeStackManager represents a service for managing stacks.
-type EdgeStackManager struct {
+// DockerStackService represents a service for managing stacks.
+type DockerStackService struct {
 	binaryPath string
 }
 
-// NewEdgeStackManager initializes a new EdgeStackManager service.
+// NewDockerStackService initializes a new DockerStackService service.
 // It also updates the configuration of the Docker CLI binary.
-func NewEdgeStackManager(binaryPath string) (*EdgeStackManager, error) {
-	manager := &EdgeStackManager{
+func NewDockerStackService(binaryPath string) (*DockerStackService, error) {
+	manager := &DockerStackService{
 		binaryPath: binaryPath,
 	}
 
@@ -24,13 +24,13 @@ func NewEdgeStackManager(binaryPath string) (*EdgeStackManager, error) {
 }
 
 // Login executes the docker login command against a list of registries (including DockerHub).
-func (manager *EdgeStackManager) Login() error {
+func (manager *DockerStackService) Login() error {
 	// Not implemented yet.
 	return nil
 }
 
 // Logout executes the docker logout command.
-func (manager *EdgeStackManager) Logout() error {
+func (manager *DockerStackService) Logout() error {
 	command := manager.prepareDockerCommand(manager.binaryPath)
 	args := []string{"logout"}
 	return runCommandAndCaptureStdErr(command, args, "")
@@ -38,8 +38,7 @@ func (manager *EdgeStackManager) Logout() error {
 }
 
 // Deploy executes the docker stack deploy command.
-func (manager *EdgeStackManager) Deploy(name, projectPath, entryPoint string, prune bool) error {
-	stackFilePath := path.Join(projectPath, entryPoint)
+func (manager *DockerStackService) Deploy(name, stackFilePath string, prune bool) error {
 	command := manager.prepareDockerCommand(manager.binaryPath)
 
 	args := []string{}
@@ -54,7 +53,7 @@ func (manager *EdgeStackManager) Deploy(name, projectPath, entryPoint string, pr
 }
 
 // Remove executes the docker stack rm command.
-func (manager *EdgeStackManager) Remove(name string) error {
+func (manager *DockerStackService) Remove(name string) error {
 	command := manager.prepareDockerCommand(manager.binaryPath)
 	args := []string{"stack", "rm", name}
 	return runCommandAndCaptureStdErr(command, args, "")
@@ -74,7 +73,7 @@ func runCommandAndCaptureStdErr(command string, args []string, workingDir string
 	return nil
 }
 
-func (manager *EdgeStackManager) prepareDockerCommand(binaryPath string) string {
+func (manager *DockerStackService) prepareDockerCommand(binaryPath string) string {
 	// Assume Linux as a default
 	command := path.Join(binaryPath, "docker")
 

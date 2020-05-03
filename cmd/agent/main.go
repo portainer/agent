@@ -88,7 +88,6 @@ func main() {
 	}
 
 	var tunnelOperator agent.TunnelOperator
-	var edgeStackManager agent.EdgeStackManager
 	if options.EdgeMode {
 		apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
 
@@ -112,9 +111,9 @@ func main() {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
 		}
 
-		edgeStackManager, err = exec.NewEdgeStackManager(agent.DockerBinaryPath)
+		dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to start stack manager] [error: %s]", err)
+			log.Fatalf("[ERROR] [main,edge,docker] [message: Unable to start docker stack service] [error: %s]", err)
 		}
 	}
 
@@ -141,7 +140,6 @@ func main() {
 		AgentTags:        agentTags,
 		AgentOptions:     options,
 		EdgeMode:         options.EdgeMode,
-		EdgeStackManager: edgeStackManager,
 	}
 
 	if options.EdgeMode {
