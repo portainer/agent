@@ -29,7 +29,7 @@ func (handler *Handler) keyCreate(w http.ResponseWriter, r *http.Request) *httpe
 		return &httperror.HandlerError{http.StatusServiceUnavailable, "Edge key management is disabled on non Edge agent", errors.New("Edge key management is disabled")}
 	}
 
-	if handler.tunnelOperator.IsKeySet() {
+	if handler.edgeKeyService.IsKeySet() {
 		return &httperror.HandlerError{http.StatusConflict, "An Edge key is already associated to this agent", errors.New("Edge key already associated")}
 	}
 
@@ -41,7 +41,7 @@ func (handler *Handler) keyCreate(w http.ResponseWriter, r *http.Request) *httpe
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
 	}
 
-	err = handler.tunnelOperator.SetKey(payload.Key)
+	err = handler.edgeKeyService.SetKey(payload.Key)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to associate Edge key", err}
 	}

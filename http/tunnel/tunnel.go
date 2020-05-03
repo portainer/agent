@@ -13,13 +13,6 @@ import (
 
 const tunnelActivityCheckInterval = 30 * time.Second
 
-type edgeKey struct {
-	PortainerInstanceURL    string
-	TunnelServerAddr        string
-	TunnelServerFingerprint string
-	EndpointID              string
-}
-
 // Operator is used to poll a Portainer instance and to establish a reverse tunnel if needed.
 // It also takes care of closing the tunnel after a set period of inactivity.
 type Operator struct {
@@ -28,12 +21,13 @@ type Operator struct {
 	insecurePoll          bool
 	inactivityTimeout     time.Duration
 	edgeID                string
-	key                   *edgeKey
 	httpClient            *http.Client
 	tunnelClient          agent.ReverseTunnelClient
 	scheduleManager       agent.Scheduler
 	lastActivity          time.Time
 	refreshSignal         chan struct{}
+	// edgeStackManager      agent.EdgeStackManager
+	edgeKeyService agent.EdgeKeyService
 }
 
 // OperatorConfig represents the configuration used to create a new Operator.
@@ -46,7 +40,7 @@ type OperatorConfig struct {
 }
 
 // NewTunnelOperator creates a new reverse tunnel operator
-func NewTunnelOperator(config *OperatorConfig) (*Operator, error) {
+func NewTunnelOperator(edgeKeyService agent.EdgeKeyService, config *OperatorConfig) (*Operator, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -66,43 +60,9 @@ func NewTunnelOperator(config *OperatorConfig) (*Operator, error) {
 		tunnelClient:          chisel.NewClient(),
 		scheduleManager:       filesystem.NewCronManager(),
 		refreshSignal:         nil,
+		edgeKeyService:        edgeKeyService,
+		// edgeStackManager:      edgeStackManager,
 	}, nil
-}
-
-// SetKey parses and associate a key to the operator
-func (operator *Operator) SetKey(key string) error {
-	edgeKey, err := parseEdgeKey(key)
-	if err != nil {
-		return err
-	}
-
-	err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
-	if err != nil {
-		return err
-	}
-
-	operator.key = edgeKey
-
-	return nil
-}
-
-// GetKey returns the key associated to the operator
-func (operator *Operator) GetKey() string {
-	var encodedKey string
-
-	if operator.key != nil {
-		encodedKey = encodeKey(operator.key)
-	}
-
-	return encodedKey
-}
-
-// IsKeySet checks if a key is associated to the operator
-func (operator *Operator) IsKeySet() bool {
-	if operator.key == nil {
-		return false
-	}
-	return true
 }
 
 // CloseTunnel closes the reverse tunnel managed by the operator
@@ -123,7 +83,7 @@ func (operator *Operator) ResetActivityTimer() {
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
 func (operator *Operator) Start() error {
-	if operator.key == nil {
+	if !operator.edgeKeyService.IsKeySet() {
 		return errors.New("missing Edge key")
 	}
 	if operator.refreshSignal != nil {
@@ -150,8 +110,13 @@ func (operator *Operator) restartStatusPollLoop() {
 	operator.startStatusPollLoop()
 }
 
-func (operator *Operator) startStatusPollLoop() {
-	log.Printf("[DEBUG] [http,edge,poll] [poll_interval_seconds: %f] [server_url: %s] [message: starting Portainer short-polling client]", operator.pollIntervalInSeconds, operator.key.PortainerInstanceURL)
+func (operator *Operator) startStatusPollLoop() error {
+	portainerURL, _, err := operator.edgeKeyService.GetPortainerConfig()
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[DEBUG] [http,edge,poll] [poll_interval_seconds: %f] [server_url: %s] [message: starting Portainer short-polling client]", operator.pollIntervalInSeconds, portainerURL)
 
 	ticker := time.NewTicker(time.Duration(operator.pollIntervalInSeconds) * time.Second)
 	go func() {
@@ -170,6 +135,8 @@ func (operator *Operator) startStatusPollLoop() {
 			}
 		}
 	}()
+
+	return nil
 }
 
 func (operator *Operator) startActivityMonitoringLoop() {
