@@ -26,8 +26,8 @@ type Operator struct {
 	scheduleManager       agent.Scheduler
 	lastActivity          time.Time
 	refreshSignal         chan struct{}
-	// edgeStackManager      agent.EdgeStackManager
-	edgeKeyService agent.EdgeKeyService
+	edgeStackManager      agent.EdgeStackManager
+	edgeKeyService        agent.EdgeKeyService
 }
 
 // OperatorConfig represents the configuration used to create a new Operator.
@@ -40,7 +40,7 @@ type OperatorConfig struct {
 }
 
 // NewTunnelOperator creates a new reverse tunnel operator
-func NewTunnelOperator(edgeKeyService agent.EdgeKeyService, config *OperatorConfig) (*Operator, error) {
+func NewTunnelOperator(edgeKeyService agent.EdgeKeyService, edgeStackManager agent.EdgeStackManager, config *OperatorConfig) (*Operator, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func NewTunnelOperator(edgeKeyService agent.EdgeKeyService, config *OperatorConf
 		scheduleManager:       filesystem.NewCronManager(),
 		refreshSignal:         nil,
 		edgeKeyService:        edgeKeyService,
-		// edgeStackManager:      edgeStackManager,
+		edgeStackManager:      edgeStackManager,
 	}, nil
 }
 

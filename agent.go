@@ -142,12 +142,19 @@ type (
 		Schedule(schedules []Schedule) error
 	}
 
-	// DockerStackService is a service to manager Edge stacks
+	// DockerStackService is a service to manager deploy and remove docker stacks
 	DockerStackService interface {
 		Login() error
 		Logout() error
 		Deploy(name, stackFileContent string, prune bool) error
 		Remove(name string) error
+	}
+
+	// EdgeStackManager is a service to manage Edge stacks
+	EdgeStackManager interface {
+		UpdateStacksStatus(stacks map[int]int) error
+		Start() error
+		Stop()
 	}
 )
 

@@ -26,6 +26,7 @@ func NewPortainerClient(serverAddress, endpointID, edgeID string) *PortainerClie
 	return &PortainerClient{
 		serverAddress: serverAddress,
 		endpointID:    endpointID,
+		edgeID:        edgeID,
 		httpClient: &http.Client{
 			Timeout: time.Second * 3,
 		},
@@ -39,7 +40,7 @@ type stackConfigResponse struct {
 
 // GetEdgeStackConfig fetches the Edge stack config
 func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (string, bool, error) {
-	requestURL := fmt.Sprintf("http://%s/api/endpoints/%s/edge/stacks/%d", client.serverAddress, client.endpointID, edgeStackID)
+	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/stacks/%d", client.serverAddress, client.endpointID, edgeStackID)
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -55,7 +56,7 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (string, bool
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client] [response_code: %d] [message: GetEdgeStackConfig operation failed]", resp.StatusCode)
+		log.Printf("[ERROR] [http,portainerclient] [response_code: %d] [message: GetEdgeStackConfig operation failed] \n", resp.StatusCode)
 		return "", false, errors.New("GetEdgeStackConfig operation failed")
 	}
 
@@ -92,7 +93,7 @@ func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus i
 		return err
 	}
 
-	requestURL := fmt.Sprintf("http://%s/api/edge_stacks/%d/status", client.serverAddress, edgeStackID)
+	requestURL := fmt.Sprintf("%s/api/edge_stacks/%d/status", client.serverAddress, edgeStackID)
 
 	req, err := http.NewRequest(http.MethodPut, requestURL, bytes.NewReader(data))
 	if err != nil {
