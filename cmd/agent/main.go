@@ -224,8 +224,6 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 		for {
 			select {
 			case <-ticker.C:
-				log.Printf("[DEBUG] [main,edge,docker] [message: checking docker config and key]")
-
 				key := tunnelOperator.GetKey()
 				if key == "" {
 					continue
@@ -238,18 +236,19 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 				}
 
 				if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusStandalone || agentTags[agent.MemberTagKeyIsLeader] == "1" {
-					log.Printf("[DEBUG] [main,edge,docker] [message: this is either a leader or a standalone agent, starting tunnel operator]")
 					err = tunnelOperator.Start()
 					if err != nil {
 						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while starting poll] [error: %s]", err)
 					}
+
 				} else {
-					log.Printf("[DEBUG] [main,edge,docker] [message: this is neither a leader nor a standalone agent, starting tunnel operator]")
 					err = tunnelOperator.Stop()
 					if err != nil {
 						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while stopping poll] [error: %s]", err)
 					}
 				}
+
+				log.Printf("[DEBUG] [main,edge,docker] [] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %s]", agentTags[agent.MemberTagEngineStatus], agentTags[agent.MemberTagKeyIsLeader] == "1")
 			}
 		}
 	}()
