@@ -224,7 +224,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 		for {
 			select {
 			case <-ticker.C:
-				log.Printf("[DEBUG] [main,edge,poll] [message: checking docker config and key]")
+				log.Printf("[DEBUG] [main,edge,docker] [message: checking docker config and key]")
 
 				key := tunnelOperator.GetKey()
 				if key == "" {
@@ -233,21 +233,21 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 
 				agentTags, err := infoService.GetInformationFromDockerEngine()
 				if err != nil {
-					log.Printf("[ERROR] [main,edge,poll] [message: an error occured during docker config check] [error: %s]", err)
+					log.Printf("[ERROR] [main,edge,docker] [message: an error occured during docker config check] [error: %s]", err)
 					continue
 				}
 
 				if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusStandalone || agentTags[agent.MemberTagKeyIsLeader] == "1" {
-					log.Printf("[DEBUG] [main,edge,poll] [message: this is either a leader or a standalone agent, starting tunnel operator]")
+					log.Printf("[DEBUG] [main,edge,docker] [message: this is either a leader or a standalone agent, starting tunnel operator]")
 					err = tunnelOperator.Start()
 					if err != nil {
-						log.Printf("[ERROR] [main,edge,poll] [message: an error occured while starting poll] [error: %s]", err)
+						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while starting poll] [error: %s]", err)
 					}
 				} else {
-					log.Printf("[DEBUG] [main,edge,poll] [message: this is neither a leader nor a standalone agent, starting tunnel operator]")
+					log.Printf("[DEBUG] [main,edge,docker] [message: this is neither a leader nor a standalone agent, starting tunnel operator]")
 					err = tunnelOperator.Stop()
 					if err != nil {
-						log.Printf("[ERROR] [main,edge,poll] [message: an error occured while stopping poll] [error: %s]", err)
+						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while stopping poll] [error: %s]", err)
 					}
 				}
 			}
