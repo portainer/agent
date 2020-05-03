@@ -38,15 +38,15 @@ type Handler struct {
 // Config represents a server handler configuration
 // used to create a new handler
 type Config struct {
-	SystemService    agent.SystemService
-	ClusterService   agent.ClusterService
-	SignatureService agent.DigitalSignatureService
-	TunnelOperator   agent.TunnelOperator
-	AgentTags        map[string]string
-	AgentOptions     *agent.Options
-	Secured          bool
-	EdgeMode         bool
-	EdgeStackManager agent.EdgeStackManager
+	SystemService      agent.SystemService
+	ClusterService     agent.ClusterService
+	SignatureService   agent.DigitalSignatureService
+	TunnelOperator     agent.TunnelOperator
+	AgentTags          map[string]string
+	AgentOptions       *agent.Options
+	Secured            bool
+	EdgeMode           bool
+	DockerStackService agent.DockerStackService
 }
 
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
