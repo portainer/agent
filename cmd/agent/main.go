@@ -218,7 +218,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 		return err
 	}
 
-	ticker := time.NewTicker(time.Duration(loopIntervalFrequency))
+	ticker := time.NewTicker(loopIntervalFrequency)
 
 	go func() {
 		for {
