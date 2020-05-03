@@ -165,7 +165,6 @@ func startAPIServer(config *http.APIServerConfig) error {
 }
 
 func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, infoService agent.InfoService, options *agent.Options) error {
-
 	edgeKey, err := retrieveEdgeKey(options, clusterService)
 	if err != nil {
 		return err
@@ -174,86 +173,18 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 	if edgeKey != "" {
 		log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key to cluster.]")
 
-		err := tunnelOperator.SetKey(edgeKey)
+		err := associateEdgeKey(tunnelOperator, clusterService, edgeKey)
 		if err != nil {
 			return err
 		}
 
-		if clusterService != nil {
-			tags := clusterService.GetTags()
-			tags[agent.MemberTagEdgeKeySet] = "set"
-			err = clusterService.UpdateTags(tags)
-			if err != nil {
-				return err
-			}
-		}
 	} else {
 		log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
-		edgeServer := http.NewEdgeServer(tunnelOperator, clusterService)
 
-		go func() {
-			log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
-
-			err := edgeServer.Start(options.EdgeServerAddr, options.EdgeServerPort)
-			if err != nil {
-				log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
-			}
-
-			log.Println("[INFO] [main,edge,http] [message: Edge server shutdown]")
-		}()
-
-		go func() {
-			timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
-			<-timer1.C
-
-			if !tunnelOperator.IsKeySet() {
-				log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
-				edgeServer.Shutdown()
-			}
-		}()
+		serveEdgeUI(tunnelOperator, clusterService, options)
 	}
 
-	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
-	if err != nil {
-		return err
-	}
-
-	ticker := time.NewTicker(runtimeCheckFrequency)
-
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				key := tunnelOperator.GetKey()
-				if key == "" {
-					continue
-				}
-
-				agentTags, err := infoService.GetInformationFromDockerEngine()
-				if err != nil {
-					log.Printf("[ERROR] [main,edge,docker] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
-					continue
-				}
-
-				if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusStandalone || agentTags[agent.MemberTagKeyIsLeader] == "1" {
-					err = tunnelOperator.Start()
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while starting the short-poll process] [error: %s]", err)
-					}
-
-				} else {
-					err = tunnelOperator.Stop()
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while stopping the short-poll process] [error: %s]", err)
-					}
-				}
-
-				log.Printf("[DEBUG] [main,edge,docker] [] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentTags[agent.MemberTagKeyIsLeader] == "1")
-			}
-		}
-	}()
-
-	return nil
+	return startRuntimeConfigCheckProcess(tunnelOperator, infoService)
 }
 
 func retrieveEdgeKey(options *agent.Options, clusterService agent.ClusterService) (string, error) {
@@ -330,4 +261,92 @@ func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, er
 func parseOptions() (*agent.Options, error) {
 	optionParser := os.NewEnvOptionParser()
 	return optionParser.Options()
+}
+
+func associateEdgeKey(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, edgeKey string) error {
+	err := tunnelOperator.SetKey(edgeKey)
+	if err != nil {
+		return err
+	}
+
+	if clusterService != nil {
+		tags := clusterService.GetTags()
+		tags[agent.MemberTagEdgeKeySet] = "set"
+		err = clusterService.UpdateTags(tags)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func serveEdgeUI(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, options *agent.Options) {
+	edgeServer := http.NewEdgeServer(tunnelOperator, clusterService)
+
+	go func() {
+		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
+
+		err := edgeServer.Start(options.EdgeServerAddr, options.EdgeServerPort)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
+		}
+
+		log.Println("[INFO] [main,edge,http] [message: Edge server shutdown]")
+	}()
+
+	go func() {
+		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
+		<-timer1.C
+
+		if !tunnelOperator.IsKeySet() {
+			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
+			edgeServer.Shutdown()
+		}
+	}()
+}
+
+func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoService agent.InfoService) error {
+
+	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
+	if err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(runtimeCheckFrequency)
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				key := tunnelOperator.GetKey()
+				if key == "" {
+					continue
+				}
+
+				agentTags, err := infoService.GetInformationFromDockerEngine()
+				if err != nil {
+					log.Printf("[ERROR] [main,edge,docker] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
+					continue
+				}
+
+				if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusStandalone || agentTags[agent.MemberTagKeyIsLeader] == "1" {
+					err = tunnelOperator.Start()
+					if err != nil {
+						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while starting poll] [error: %s]", err)
+					}
+
+				} else {
+					err = tunnelOperator.Stop()
+					if err != nil {
+						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while stopping the short-poll process] [error: %s]", err)
+					}
+				}
+
+				log.Printf("[DEBUG] [main,edge,docker] [] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %b]", agentTags[agent.MemberTagEngineStatus], agentTags[agent.MemberTagKeyIsLeader] == "1")
+			}
+		}
+	}()
+
+	return nil
 }
