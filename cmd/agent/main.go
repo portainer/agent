@@ -8,12 +8,12 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
 	"github.com/portainer/agent/http/client"
-
-	// "github.com/portainer/agent/http/edgestacks"
+	"github.com/portainer/agent/http/edgestacks"
 	"github.com/portainer/agent/http/key"
 	"github.com/portainer/agent/http/tunnel"
 	"github.com/portainer/agent/logutils"
@@ -109,17 +109,17 @@ func main() {
 
 		log.Printf("[DEBUG] [main,edge,configuration] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", operatorConfig.APIServerAddr, operatorConfig.EdgeID, operatorConfig.PollFrequency, operatorConfig.InactivityTimeout, operatorConfig.InsecurePoll)
 
-		// dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
-		// if err != nil {
-		// 	log.Fatalf("[ERROR] [main,edge,docker] [message: Unable to start docker stack service] [error: %s]", err)
-		// }
+		dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,docker] [message: Unable to start docker stack service] [error: %s]", err)
+		}
 
-		// edgeStackManager, err := edgestacks.NewManager(dockerStackService, edgeKeyService, options.EdgeID)
-		// if err != nil {
-		// 	log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to start stack manager] [error: %s]", err)
-		// }
+		edgeStackManager, err := edgestacks.NewManager(dockerStackService, edgeKeyService, options.EdgeID)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to start stack manager] [error: %s]", err)
+		}
 
-		tunnelOperator, err = tunnel.NewTunnelOperator(edgeKeyService, operatorConfig)
+		tunnelOperator, err = tunnel.NewTunnelOperator(edgeKeyService, edgeStackManager, operatorConfig)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}

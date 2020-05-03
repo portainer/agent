@@ -18,8 +18,8 @@ import (
 const clientDefaultPollTimeout = 5
 
 type stackStatus struct {
-	EdgeStackID int
-	Version     int
+	ID      int
+	Version int
 }
 
 type pollStatusResponse struct {
@@ -115,13 +115,18 @@ func (operator *Operator) poll() error {
 		go operator.restartStatusPollLoop()
 	}
 
-	// if responseData.Stacks != nil {
-	// 	err := operator.handleStacks(responseData.Stacks)
-	// 	if err != nil {
-	// 		log.Printf("[ERROR] [http,edge,stacks] [message: an error occured during stack management] [error: %s]", err)
-	// 		return err
-	// 	}
-	// }
+	if responseData.Stacks != nil {
+		stacks := map[int]int{}
+		for _, stack := range responseData.Stacks {
+			stacks[stack.ID] = stack.Version
+		}
+
+		err := operator.edgeStackManager.UpdateStacksStatus(stacks)
+		if err != nil {
+			log.Printf("[ERROR] [http,edge,stacks] [message: an error occured during stack management] [error: %s]", err)
+			return err
+		}
+	}
 
 	return nil
 }
