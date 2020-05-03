@@ -172,7 +172,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 	}
 
 	if edgeKey != "" {
-		log.Println("[DEBUG] [main,edge] [message: Edge key available. Starting tunnel operator.]")
+		log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key to cluster.]")
 
 		err := tunnelOperator.SetKey(edgeKey)
 		if err != nil {
