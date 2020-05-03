@@ -8,11 +8,13 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
-	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
 	"github.com/portainer/agent/http/client"
+
+	// "github.com/portainer/agent/http/edgestacks"
+	"github.com/portainer/agent/http/key"
 	"github.com/portainer/agent/http/tunnel"
 	"github.com/portainer/agent/logutils"
 	"github.com/portainer/agent/net"
@@ -87,9 +89,15 @@ func main() {
 		defer clusterService.Leave()
 	}
 
+	var edgeKeyService agent.EdgeKeyService
 	var tunnelOperator agent.TunnelOperator
 	if options.EdgeMode {
 		apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
+
+		edgeKeyService, err = key.NewService()
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,key] [message: Unable to create key service] [error: %s]", err)
+		}
 
 		operatorConfig := &tunnel.OperatorConfig{
 			APIServerAddr:     apiServerAddr,
@@ -101,19 +109,24 @@ func main() {
 
 		log.Printf("[DEBUG] [main,edge,configuration] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", operatorConfig.APIServerAddr, operatorConfig.EdgeID, operatorConfig.PollFrequency, operatorConfig.InactivityTimeout, operatorConfig.InsecurePoll)
 
-		tunnelOperator, err = tunnel.NewTunnelOperator(operatorConfig)
+		// dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
+		// if err != nil {
+		// 	log.Fatalf("[ERROR] [main,edge,docker] [message: Unable to start docker stack service] [error: %s]", err)
+		// }
+
+		// edgeStackManager, err := edgestacks.NewManager(dockerStackService, edgeKeyService, options.EdgeID)
+		// if err != nil {
+		// 	log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to start stack manager] [error: %s]", err)
+		// }
+
+		tunnelOperator, err = tunnel.NewTunnelOperator(edgeKeyService, operatorConfig)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}
 
-		err := enableEdgeMode(tunnelOperator, clusterService, infoService, options)
+		err = enableEdgeMode(tunnelOperator, clusterService, edgeKeyService, infoService, options)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
-		}
-
-		dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
-		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,docker] [message: Unable to start docker stack service] [error: %s]", err)
 		}
 	}
 
@@ -135,6 +148,7 @@ func main() {
 		Port:             options.AgentServerPort,
 		SystemService:    systemService,
 		ClusterService:   clusterService,
+		EdgeKeyService:   edgeKeyService,
 		SignatureService: signatureService,
 		TunnelOperator:   tunnelOperator,
 		AgentTags:        agentTags,
@@ -162,7 +176,7 @@ func startAPIServer(config *http.APIServerConfig) error {
 	return server.StartSecured()
 }
 
-func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, infoService agent.InfoService, options *agent.Options) error {
+func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, keyService agent.EdgeKeyService, infoService agent.InfoService, options *agent.Options) error {
 	edgeKey, err := retrieveEdgeKey(options, clusterService)
 	if err != nil {
 		return err
@@ -171,7 +185,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 	if edgeKey != "" {
 		log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key to cluster.]")
 
-		err := associateEdgeKey(tunnelOperator, clusterService, edgeKey)
+		err := associateEdgeKey(keyService, clusterService, edgeKey)
 		if err != nil {
 			return err
 		}
@@ -179,10 +193,10 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 	} else {
 		log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
 
-		serveEdgeUI(tunnelOperator, clusterService, options)
+		serveEdgeUI(tunnelOperator, clusterService, keyService, options)
 	}
 
-	return startRuntimeConfigCheckProcess(tunnelOperator, infoService)
+	return startRuntimeConfigCheckProcess(tunnelOperator, infoService, keyService)
 }
 
 func retrieveEdgeKey(options *agent.Options, clusterService agent.ClusterService) (string, error) {
@@ -261,8 +275,8 @@ func parseOptions() (*agent.Options, error) {
 	return optionParser.Options()
 }
 
-func associateEdgeKey(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, edgeKey string) error {
-	err := tunnelOperator.SetKey(edgeKey)
+func associateEdgeKey(edgeKeyService agent.EdgeKeyService, clusterService agent.ClusterService, edgeKey string) error {
+	err := edgeKeyService.SetKey(edgeKey)
 	if err != nil {
 		return err
 	}
@@ -279,8 +293,8 @@ func associateEdgeKey(tunnelOperator agent.TunnelOperator, clusterService agent.
 	return nil
 }
 
-func serveEdgeUI(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, options *agent.Options) {
-	edgeServer := http.NewEdgeServer(tunnelOperator, clusterService)
+func serveEdgeUI(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, keyService agent.EdgeKeyService, options *agent.Options) {
+	edgeServer := http.NewEdgeServer(tunnelOperator, clusterService, keyService)
 
 	go func() {
 		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
@@ -297,14 +311,14 @@ func serveEdgeUI(tunnelOperator agent.TunnelOperator, clusterService agent.Clust
 		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
 		<-timer1.C
 
-		if !tunnelOperator.IsKeySet() {
+		if !keyService.IsKeySet() {
 			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
 			edgeServer.Shutdown()
 		}
 	}()
 }
 
-func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoService agent.InfoService) error {
+func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoService agent.InfoService, keyService agent.EdgeKeyService) error {
 
 	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
 	if err != nil {
@@ -317,7 +331,7 @@ func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoSer
 		for {
 			select {
 			case <-ticker.C:
-				key := tunnelOperator.GetKey()
+				key := keyService.GetKey()
 				if key == "" {
 					continue
 				}

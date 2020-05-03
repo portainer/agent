@@ -48,7 +48,12 @@ func (operator *Operator) createHTTPClient(timeout float64) {
 }
 
 func (operator *Operator) poll() error {
-	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", operator.key.PortainerInstanceURL, operator.key.EndpointID)
+	portainerURL, endpointID, err := operator.edgeKeyService.GetPortainerConfig()
+	if err != nil {
+		return err
+	}
+
+	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", portainerURL, endpointID)
 	req, err := http.NewRequest("GET", pollURL, nil)
 	if err != nil {
 		return err
@@ -110,13 +115,13 @@ func (operator *Operator) poll() error {
 		go operator.restartStatusPollLoop()
 	}
 
-	if responseData.Stacks != nil {
-		err := operator.handleStacks(responseData.Stacks)
-		if err != nil {
-			log.Printf("[ERROR] [http,edge,stacks] [message: an error occured during stack management] [error: %s]", err)
-			return err
-		}
-	}
+	// if responseData.Stacks != nil {
+	// 	err := operator.handleStacks(responseData.Stacks)
+	// 	if err != nil {
+	// 		log.Printf("[ERROR] [http,edge,stacks] [message: an error occured during stack management] [error: %s]", err)
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }
@@ -132,9 +137,14 @@ func (operator *Operator) createTunnel(encodedCredentials string, remotePort int
 		return err
 	}
 
+	tunnelServerAddr, tunnelServerFingerprint, err := operator.edgeKeyService.GetTunnelConfig()
+	if err != nil {
+		return err
+	}
+
 	tunnelConfig := agent.TunnelConfig{
-		ServerAddr:       operator.key.TunnelServerAddr,
-		ServerFingerpint: operator.key.TunnelServerFingerprint,
+		ServerAddr:       tunnelServerAddr,
+		ServerFingerpint: tunnelServerFingerprint,
 		Credentials:      string(credentials),
 		RemotePort:       strconv.Itoa(remotePort),
 		LocalAddr:        operator.apiServerAddr,

@@ -124,11 +124,17 @@ type (
 	TunnelOperator interface {
 		Start() error
 		Stop() error
+		CloseTunnel() error
+		ResetActivityTimer()
+	}
+
+	// EdgeKeyService is a service that manages edge key
+	EdgeKeyService interface {
 		IsKeySet() bool
 		SetKey(key string) error
 		GetKey() string
-		CloseTunnel() error
-		ResetActivityTimer()
+		GetPortainerConfig() (string, string, error)
+		GetTunnelConfig() (string, string, error)
 	}
 
 	// Scheduler is used to manage schedules

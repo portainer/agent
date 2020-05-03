@@ -18,13 +18,15 @@ type EdgeServer struct {
 	httpServer     *http.Server
 	tunnelOperator agent.TunnelOperator
 	clusterService agent.ClusterService
+	keyService     agent.EdgeKeyService
 }
 
 // NewEdgeServer returns a pointer to a new instance of EdgeServer.
-func NewEdgeServer(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService) *EdgeServer {
+func NewEdgeServer(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, keyService agent.EdgeKeyService) *EdgeServer {
 	return &EdgeServer{
 		tunnelOperator: tunnelOperator,
 		clusterService: clusterService,
+		keyService:     keyService,
 	}
 }
 
@@ -59,7 +61,7 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 			return
 		}
 
-		err = server.tunnelOperator.SetKey(key)
+		err = server.keyService.SetKey(key)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

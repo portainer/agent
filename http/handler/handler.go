@@ -32,6 +32,7 @@ type Handler struct {
 	hostHandler        *host.Handler
 	pingHandler        *ping.Handler
 	securedProtocol    bool
+	edgeKeyService     agent.EdgeKeyService
 	tunnelOperator     agent.TunnelOperator
 }
 
@@ -41,6 +42,7 @@ type Config struct {
 	SystemService      agent.SystemService
 	ClusterService     agent.ClusterService
 	SignatureService   agent.DigitalSignatureService
+	EdgeKeyService     agent.EdgeKeyService
 	TunnelOperator     agent.TunnelOperator
 	AgentTags          map[string]string
 	AgentOptions       *agent.Options
@@ -61,12 +63,13 @@ func NewHandler(config *Config) *Handler {
 		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService, config.Secured),
-		keyHandler:         key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeMode),
+		keyHandler:         key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeKeyService, config.EdgeMode),
 		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
 		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:        ping.NewHandler(),
 		securedProtocol:    config.Secured,
 		tunnelOperator:     config.TunnelOperator,
+		edgeKeyService:     config.EdgeKeyService,
 	}
 }
 
@@ -76,7 +79,7 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	if !h.securedProtocol && !h.tunnelOperator.IsKeySet() {
+	if !h.securedProtocol && !h.edgeKeyService.IsKeySet() {
 		httperror.WriteError(rw, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
 		return
 	}
