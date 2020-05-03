@@ -231,24 +231,24 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 
 				agentTags, err := infoService.GetInformationFromDockerEngine()
 				if err != nil {
-					log.Printf("[ERROR] [main,edge,docker] [message: an error occured during docker config check] [error: %s]", err)
+					log.Printf("[ERROR] [main,edge,docker] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
 					continue
 				}
 
 				if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusStandalone || agentTags[agent.MemberTagKeyIsLeader] == "1" {
 					err = tunnelOperator.Start()
 					if err != nil {
-						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while starting poll] [error: %s]", err)
+						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while starting the short-poll process] [error: %s]", err)
 					}
 
 				} else {
 					err = tunnelOperator.Stop()
 					if err != nil {
-						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while stopping poll] [error: %s]", err)
+						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while stopping the short-poll process] [error: %s]", err)
 					}
 				}
 
-				log.Printf("[DEBUG] [main,edge,docker] [] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %s]", agentTags[agent.MemberTagEngineStatus], agentTags[agent.MemberTagKeyIsLeader] == "1")
+				log.Printf("[DEBUG] [main,edge,docker] [] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentTags[agent.MemberTagKeyIsLeader] == "1")
 			}
 		}
 	}()
