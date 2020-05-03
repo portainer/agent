@@ -213,12 +213,12 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 		}()
 	}
 
-	loopIntervalFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
+	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
 	if err != nil {
 		return err
 	}
 
-	ticker := time.NewTicker(loopIntervalFrequency)
+	ticker := time.NewTicker(runtimeCheckFrequency)
 
 	go func() {
 		for {
