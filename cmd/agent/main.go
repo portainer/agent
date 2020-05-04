@@ -119,17 +119,12 @@ func main() {
 			log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to create stack manager] [error: %s]", err)
 		}
 
-		err = edgeStackManager.Start()
-		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to start stack manager] [error: %s]", err)
-		}
-
 		tunnelOperator, err = tunnel.NewTunnelOperator(edgeKeyService, edgeStackManager, operatorConfig)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
 		}
 
-		err = enableEdgeMode(tunnelOperator, clusterService, edgeKeyService, infoService, options)
+		err = enableEdgeMode(tunnelOperator, clusterService, edgeKeyService, infoService, edgeStackManager, options)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
 		}
@@ -181,7 +176,7 @@ func startAPIServer(config *http.APIServerConfig) error {
 	return server.StartSecured()
 }
 
-func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, keyService agent.EdgeKeyService, infoService agent.InfoService, options *agent.Options) error {
+func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, keyService agent.EdgeKeyService, infoService agent.InfoService, edgeStackManager agent.EdgeStackManager, options *agent.Options) error {
 	edgeKey, err := retrieveEdgeKey(options, clusterService)
 	if err != nil {
 		return err
@@ -201,7 +196,7 @@ func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.Cl
 		serveEdgeUI(tunnelOperator, clusterService, keyService, options)
 	}
 
-	return startRuntimeConfigCheckProcess(tunnelOperator, infoService, keyService)
+	return startRuntimeConfigCheckProcess(tunnelOperator, infoService, keyService, edgeStackManager)
 }
 
 func retrieveEdgeKey(options *agent.Options, clusterService agent.ClusterService) (string, error) {
@@ -323,7 +318,7 @@ func serveEdgeUI(tunnelOperator agent.TunnelOperator, clusterService agent.Clust
 	}()
 }
 
-func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoService agent.InfoService, keyService agent.EdgeKeyService) error {
+func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoService agent.InfoService, keyService agent.EdgeKeyService, edgeStackManager agent.EdgeStackManager) error {
 
 	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
 	if err != nil {
@@ -347,9 +342,12 @@ func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoSer
 					continue
 				}
 
-				log.Printf("[DEBUG] [main,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentTags[agent.MemberTagKeyIsLeader] == "1")
+				isLeader := agentTags[agent.MemberTagKeyIsLeader] == "1"
+				isSwarm := agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusSwarm
 
-				if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusStandalone || agentTags[agent.MemberTagKeyIsLeader] == "1" {
+				log.Printf("[DEBUG] [main,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], isLeader)
+
+				if !isSwarm || isLeader {
 					err = tunnelOperator.Start()
 					if err != nil {
 						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while starting poll] [error: %s]", err)
@@ -360,6 +358,21 @@ func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoSer
 					if err != nil {
 						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while stopping the short-poll process] [error: %s]", err)
 					}
+
+				}
+
+				if isSwarm && isLeader {
+					err = edgeStackManager.Start()
+					if err != nil {
+						log.Printf("[ERROR] [main,edge,stack] [message: an error occured while starting the Edge stack manager] [error: %s]", err)
+					}
+
+				} else {
+					err = edgeStackManager.Stop()
+					if err != nil {
+						log.Printf("[ERROR] [main,edge,stack] [message: an error occured while stopping the Edge stack manager] [error: %s]", err)
+					}
+
 				}
 			}
 		}
