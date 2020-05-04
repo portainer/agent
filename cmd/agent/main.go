@@ -116,6 +116,11 @@ func main() {
 
 		edgeStackManager, err := edgestacks.NewManager(dockerStackService, edgeKeyService, options.EdgeID)
 		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to create stack manager] [error: %s]", err)
+		}
+
+		err = edgeStackManager.Start()
+		if err != nil {
 			log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to start stack manager] [error: %s]", err)
 		}
 
