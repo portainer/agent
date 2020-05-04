@@ -129,6 +129,7 @@ func (manager *EdgeStackManager) UpdateStacksStatus(stacks map[int]int) error {
 
 	for stackID, stack := range manager.stacks {
 		if _, ok := stacks[int(stackID)]; !ok {
+			log.Printf("[DEBUG] [stacksmanager,update] [message: received stack to delete %d] \n", stackID)
 			stack.Action = actionDelete
 			stack.Status = statusPending
 
@@ -174,31 +175,10 @@ func (manager *EdgeStackManager) Start() error {
 				stackName := fmt.Sprintf("edge_%d", stack.ID)
 				stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
 
-				stack.Status = statusDone
-				stack.Action = actionIdle
-				responseStatus := int(edgeStackStatusOk)
-				errorMessage := ""
-
-				err := manager.dockerStackService.Deploy(stackName, stackFileLocation, stack.Prune)
-				if err != nil {
-					log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed deploying stack] [error: %v] \n", err)
-					stack.Status = statusError
-					responseStatus = int(edgeStackStatusError)
-					errorMessage = err.Error()
-				} else {
-					log.Printf("[DEBUG] [http,edge,stacksmanager] [message: deployed stack id: %v, version: %d] \n", stack.ID, stack.Version)
-				}
-
-				manager.stacks[stack.ID] = stack
-
-				cli, err := manager.createPortainerClient()
-				if err != nil {
-					log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed creating portainer client] [error: %v] \n", err)
-				}
-
-				err = cli.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
-				if err != nil {
-					log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed setting edge stack status] [error: %v] \n", err)
+				if stack.Action == actionDeploy || stack.Action == actionUpdate {
+					manager.deployStack(stack, stackName, stackFileLocation)
+				} else if stack.Action == actionDelete {
+					manager.deleteStack(stack, stackName, stackFileLocation)
 				}
 			}
 		}
@@ -216,6 +196,35 @@ func (manager *EdgeStackManager) next() *edgeStack {
 	return nil
 }
 
+func (manager *EdgeStackManager) deployStack(stack *edgeStack, stackName, stackFileLocation string) {
+	stack.Status = statusDone
+	stack.Action = actionIdle
+	responseStatus := int(edgeStackStatusOk)
+	errorMessage := ""
+
+	err := manager.dockerStackService.Deploy(stackName, stackFileLocation, stack.Prune)
+	if err != nil {
+		log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed deploying stack] [error: %v] \n", err)
+		stack.Status = statusError
+		responseStatus = int(edgeStackStatusError)
+		errorMessage = err.Error()
+	} else {
+		log.Printf("[DEBUG] [http,edge,stacksmanager] [message: deployed stack id: %v, version: %d] \n", stack.ID, stack.Version)
+	}
+
+	manager.stacks[stack.ID] = stack
+
+	cli, err := manager.createPortainerClient()
+	if err != nil {
+		log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed creating portainer client] [error: %v] \n", err)
+	}
+
+	err = cli.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
+	if err != nil {
+		log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed setting edge stack status] [error: %v] \n", err)
+	}
+}
+
 func (manager *EdgeStackManager) createPortainerClient() (*portainerclient.PortainerClient, error) {
 	portainerURL, endpointID, err := manager.keyService.GetPortainerConfig()
 	if err != nil {
@@ -223,4 +232,20 @@ func (manager *EdgeStackManager) createPortainerClient() (*portainerclient.Porta
 	}
 
 	return portainerclient.NewPortainerClient(portainerURL, endpointID, manager.edgeID), nil
+}
+
+func (manager *EdgeStackManager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
+	err := filesystem.RemoveFile(stackFileLocation)
+	if err != nil {
+		log.Printf("[ERROR] [edge,stacksmanager, delete] [message: failed deleting edge stack file] [error: %v] \n", err)
+		return
+	}
+
+	err = manager.dockerStackService.Remove(stackName)
+	if err != nil {
+		log.Printf("[ERROR] [edge,stacksmanager, delete] [message: failed removing stack] [error: %v] \n", err)
+		return
+	}
+
+	delete(manager.stacks, stack.ID)
 }
