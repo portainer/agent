@@ -154,7 +154,7 @@ type (
 	EdgeStackManager interface {
 		UpdateStacksStatus(stacks map[int]int) error
 		Start() error
-		Stop()
+		Stop() error
 	}
 )
 

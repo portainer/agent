@@ -141,13 +141,13 @@ func (manager *EdgeStackManager) UpdateStacksStatus(stacks map[int]int) error {
 }
 
 // Stop stops the manager
-func (manager *EdgeStackManager) Stop() {
-	if manager.stopSignal == nil {
-		return
+func (manager *EdgeStackManager) Stop() error {
+	if manager.stopSignal != nil {
+		close(manager.stopSignal)
+		manager.stopSignal = nil
 	}
 
-	close(manager.stopSignal)
-	manager.stopSignal = nil
+	return nil
 }
 
 // Start starts the loop checking for stacks to deploy
