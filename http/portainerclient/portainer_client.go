@@ -71,7 +71,7 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (string, bool
 
 type setEdgeStackStatusPayload struct {
 	Error      string
-	Type       int
+	Status     int
 	EndpointID int
 }
 
@@ -84,7 +84,7 @@ func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus i
 
 	payload := setEdgeStackStatusPayload{
 		Error:      error,
-		Type:       edgeStackStatus,
+		Status:     edgeStackStatus,
 		EndpointID: endpointID,
 	}
 
