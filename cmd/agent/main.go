@@ -330,6 +330,8 @@ func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoSer
 					continue
 				}
 
+				log.Printf("[DEBUG] [main,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentTags[agent.MemberTagKeyIsLeader] == "1")
+
 				if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusStandalone || agentTags[agent.MemberTagKeyIsLeader] == "1" {
 					err = tunnelOperator.Start()
 					if err != nil {
@@ -342,8 +344,6 @@ func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoSer
 						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while stopping the short-poll process] [error: %s]", err)
 					}
 				}
-
-				log.Printf("[DEBUG] [main,edge,docker] [] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %b]", agentTags[agent.MemberTagEngineStatus], agentTags[agent.MemberTagKeyIsLeader] == "1")
 			}
 		}
 	}()
