@@ -65,7 +65,7 @@ func NewTunnelOperator(config *OperatorConfig) (*Operator, error) {
 		inactivityTimeout:     inactivityTimeout,
 		tunnelClient:          chisel.NewClient(),
 		scheduleManager:       filesystem.NewCronManager(),
-		refreshSignal:         make(chan struct{}),
+		refreshSignal:         nil,
 	}, nil
 }
 
@@ -126,16 +126,27 @@ func (operator *Operator) Start() error {
 	if operator.key == nil {
 		return errors.New("missing Edge key")
 	}
-
+	if operator.refreshSignal != nil {
+		return nil
+	}
+	operator.refreshSignal = make(chan struct{})
 	operator.startStatusPollLoop()
 	operator.startActivityMonitoringLoop()
 
 	return nil
 }
 
+// Stop stops the poll loop
+func (operator *Operator) Stop() error {
+	if operator.refreshSignal != nil {
+		close(operator.refreshSignal)
+		operator.refreshSignal = nil
+	}
+	return nil
+}
+
 func (operator *Operator) restartStatusPollLoop() {
-	close(operator.refreshSignal)
-	operator.refreshSignal = make(chan struct{})
+	operator.Stop()
 	operator.startStatusPollLoop()
 }
 

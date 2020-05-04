@@ -41,13 +41,14 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 	info[agent.MemberTagKeyNodeName] = dockerInfo.Name
 
 	if dockerInfo.Swarm.NodeID == "" {
-		info[agent.MemberTagEngineStatus] = "standalone"
+		getStandaloneInfo(info)
 	} else {
-		info[agent.MemberTagEngineStatus] = "swarm"
-		info[agent.MemberTagKeyNodeRole] = agent.NodeRoleWorker
-		if dockerInfo.Swarm.ControlAvailable {
-			info[agent.MemberTagKeyNodeRole] = agent.NodeRoleManager
+
+		err := getSwarmInformation(info, dockerInfo, cli)
+		if err != nil {
+			return nil, err
 		}
+
 	}
 
 	return info, nil
@@ -108,4 +109,27 @@ func (service *InfoService) GetServiceNameFromDockerEngine(containerName string)
 	}
 
 	return containerInspect.Config.Labels[serviceNameLabel], nil
+}
+
+func getStandaloneInfo(info map[string]string) {
+	info[agent.MemberTagEngineStatus] = agent.EngineStatusStandalone
+}
+
+func getSwarmInformation(info map[string]string, dockerInfo types.Info, cli *client.Client) error {
+	info[agent.MemberTagEngineStatus] = agent.EngineStatusSwarm
+	info[agent.MemberTagKeyNodeRole] = agent.NodeRoleWorker
+	if dockerInfo.Swarm.ControlAvailable {
+		info[agent.MemberTagKeyNodeRole] = agent.NodeRoleManager
+
+		node, _, err := cli.NodeInspectWithRaw(context.Background(), dockerInfo.Swarm.NodeID)
+		if err != nil {
+			return err
+		}
+
+		if node.ManagerStatus.Leader {
+			info[agent.MemberTagKeyIsLeader] = "1"
+		}
+	}
+
+	return nil
 }
