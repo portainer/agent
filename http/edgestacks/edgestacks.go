@@ -197,6 +197,7 @@ func (manager *EdgeStackManager) next() *edgeStack {
 }
 
 func (manager *EdgeStackManager) deployStack(stack *edgeStack, stackName, stackFileLocation string) {
+	log.Printf("[DEBUG] [stacksmanager,update] [message: deploying stack %d] \n", stack.ID)
 	stack.Status = statusDone
 	stack.Action = actionIdle
 	responseStatus := int(edgeStackStatusOk)
@@ -235,6 +236,7 @@ func (manager *EdgeStackManager) createPortainerClient() (*portainerclient.Porta
 }
 
 func (manager *EdgeStackManager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
+	log.Printf("[DEBUG] [stacksmanager,update] [message: removing stack %d] \n", stack.ID)
 	err := filesystem.RemoveFile(stackFileLocation)
 	if err != nil {
 		log.Printf("[ERROR] [edge,stacksmanager, delete] [message: failed deleting edge stack file] [error: %v] \n", err)
