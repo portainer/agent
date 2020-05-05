@@ -61,7 +61,7 @@ func NewHandler(config *Config) *Handler {
 		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService, config.Secured),
-		keyHandler:         key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeManager, config.EdgeMode),
+		keyHandler:         key.NewHandler(config.TunnelOperator, notaryService, config.EdgeManager, config.EdgeMode),
 		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
 		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:        ping.NewHandler(),

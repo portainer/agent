@@ -5,8 +5,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/portainer/agent"
-
 	"github.com/portainer/libhttp/request"
 
 	httperror "github.com/portainer/libhttp/error"
@@ -44,15 +42,6 @@ func (handler *Handler) keyCreate(w http.ResponseWriter, r *http.Request) *httpe
 	err = handler.edgeManager.SetKey(payload.Key)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to associate Edge key", err}
-	}
-
-	if handler.clusterService != nil {
-		tags := handler.clusterService.GetTags()
-		tags[agent.MemberTagEdgeKeySet] = "set"
-		err = handler.clusterService.UpdateTags(tags)
-		if err != nil {
-			return &httperror.HandlerError{http.StatusInternalServerError, "Unable to update agent cluster tags", err}
-		}
 	}
 
 	return response.Empty(w)

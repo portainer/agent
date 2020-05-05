@@ -67,13 +67,6 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 
 		if server.clusterService != nil {
 			tags := server.clusterService.GetTags()
-			tags[agent.MemberTagEdgeKeySet] = "set"
-			err = server.clusterService.UpdateTags(tags)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
 			go server.propagateKeyInCluster(tags[agent.MemberTagKeyNodeName], key)
 		}
 
