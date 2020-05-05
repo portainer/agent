@@ -1,4 +1,4 @@
-package portainerclient
+package client
 
 import (
 	"bytes"
@@ -56,7 +56,7 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (string, bool
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,portainerclient] [response_code: %d] [message: GetEdgeStackConfig operation failed] \n", resp.StatusCode)
+		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: GetEdgeStackConfig operation failed] \n", resp.StatusCode)
 		return "", false, errors.New("GetEdgeStackConfig operation failed")
 	}
 
