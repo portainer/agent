@@ -137,6 +137,16 @@ type (
 		GetTunnelConfig() (string, string, error)
 	}
 
+	// EdgeManager is a service to manager edge tasks
+	EdgeManager interface {
+		Enable(edgeKey string) error
+		IsKeySet() bool
+		SetKey(key string) error
+		GetKey() string
+
+		ResetActivityTimer()
+	}
+
 	// Scheduler is used to manage schedules
 	Scheduler interface {
 		Schedule(schedules []Schedule) error

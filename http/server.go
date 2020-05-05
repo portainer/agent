@@ -11,64 +11,56 @@ import (
 
 // APIServer is the web server exposing the API of an agent.
 type APIServer struct {
-	addr               string
-	port               string
-	systemService      agent.SystemService
-	clusterService     agent.ClusterService
-	signatureService   agent.DigitalSignatureService
-	edgeKeyService     agent.EdgeKeyService
-	tunnelOperator     agent.TunnelOperator
-	agentTags          map[string]string
-	agentOptions       *agent.Options
-	edgeMode           bool
-	dockerStackService agent.DockerStackService
+	addr             string
+	port             string
+	systemService    agent.SystemService
+	clusterService   agent.ClusterService
+	signatureService agent.DigitalSignatureService
+	edgeManager      agent.EdgeManager
+	agentTags        map[string]string
+	agentOptions     *agent.Options
+	edgeMode         bool
 }
 
 // APIServerConfig represents a server configuration
 // used to create a new API server
 type APIServerConfig struct {
-	Addr               string
-	Port               string
-	SystemService      agent.SystemService
-	ClusterService     agent.ClusterService
-	SignatureService   agent.DigitalSignatureService
-	EdgeKeyService     agent.EdgeKeyService
-	TunnelOperator     agent.TunnelOperator
-	AgentTags          map[string]string
-	AgentOptions       *agent.Options
-	EdgeMode           bool
-	DockerStackService agent.DockerStackService
+	Addr             string
+	Port             string
+	SystemService    agent.SystemService
+	ClusterService   agent.ClusterService
+	SignatureService agent.DigitalSignatureService
+	EdgeManager      agent.EdgeManager
+	AgentTags        map[string]string
+	AgentOptions     *agent.Options
+	EdgeMode         bool
 }
 
 // NewAPIServer returns a pointer to a APIServer.
 func NewAPIServer(config *APIServerConfig) *APIServer {
 	return &APIServer{
-		addr:               config.Addr,
-		port:               config.Port,
-		systemService:      config.SystemService,
-		clusterService:     config.ClusterService,
-		signatureService:   config.SignatureService,
-		edgeKeyService:     config.EdgeKeyService,
-		tunnelOperator:     config.TunnelOperator,
-		agentTags:          config.AgentTags,
-		agentOptions:       config.AgentOptions,
-		edgeMode:           config.EdgeMode,
-		dockerStackService: config.DockerStackService,
+		addr:             config.Addr,
+		port:             config.Port,
+		systemService:    config.SystemService,
+		clusterService:   config.ClusterService,
+		signatureService: config.SignatureService,
+		edgeManager:      config.EdgeManager,
+		agentTags:        config.AgentTags,
+		agentOptions:     config.AgentOptions,
+		edgeMode:         config.EdgeMode,
 	}
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
 func (server *APIServer) StartUnsecured() error {
 	config := &handler.Config{
-		SystemService:      server.systemService,
-		ClusterService:     server.clusterService,
-		TunnelOperator:     server.tunnelOperator,
-		AgentTags:          server.agentTags,
-		AgentOptions:       server.agentOptions,
-		EdgeMode:           server.edgeMode,
-		EdgeKeyService:     server.edgeKeyService,
-		Secured:            false,
-		DockerStackService: server.dockerStackService,
+		SystemService:  server.systemService,
+		ClusterService: server.clusterService,
+		AgentTags:      server.agentTags,
+		AgentOptions:   server.agentOptions,
+		EdgeMode:       server.edgeMode,
+		EdgeManager:    server.edgeManager,
+		Secured:        false,
 	}
 
 	h := handler.NewHandler(config)
@@ -91,12 +83,11 @@ func (server *APIServer) StartSecured() error {
 	config := &handler.Config{
 		SystemService:    server.systemService,
 		ClusterService:   server.clusterService,
-		EdgeKeyService:   server.edgeKeyService,
 		SignatureService: server.signatureService,
-		TunnelOperator:   server.tunnelOperator,
 		AgentTags:        server.agentTags,
 		AgentOptions:     server.agentOptions,
 		EdgeMode:         server.edgeMode,
+		EdgeManager:      server.edgeManager,
 		Secured:          true,
 	}
 
