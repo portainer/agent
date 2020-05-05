@@ -56,26 +56,6 @@ func (manager *EdgeManager) GetKey() string {
 	return encodedKey
 }
 
-// GetPortainerConfig returns portainer url and endpoint id
-func (manager *EdgeManager) GetPortainerConfig() (string, string, error) {
-	if manager.key == nil {
-		return "", "", errors.New("Key is not set")
-	}
-
-	key := manager.key
-	return key.PortainerInstanceURL, key.EndpointID, nil
-}
-
-// GetTunnelConfig returns tunnel url and tunnel fingerprint
-func (manager *EdgeManager) GetTunnelConfig() (string, string, error) {
-	if manager.key == nil {
-		return "", "", errors.New("Key is not set")
-	}
-
-	key := manager.key
-	return key.TunnelServerAddr, key.TunnelServerFingerprint, nil
-}
-
 // IsKeySet checks if a key is associated to the manager
 func (manager *EdgeManager) IsKeySet() bool {
 	if manager.key == nil {
