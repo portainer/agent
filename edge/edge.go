@@ -12,6 +12,7 @@ import (
 	"github.com/portainer/agent/http/tunnel"
 )
 
+// EdgeManager manages Edge functionality
 type EdgeManager struct {
 	clusterService     agent.ClusterService
 	dockerStackService agent.DockerStackService
@@ -23,6 +24,7 @@ type EdgeManager struct {
 	key                *edgeKey
 }
 
+// NewEdgeManager creates an instance of EdgeManager
 func NewEdgeManager(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) (*EdgeManager, error) {
 	apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
 
@@ -62,6 +64,7 @@ func NewEdgeManager(options *agent.Options, advertiseAddr string, clusterService
 	}, nil
 }
 
+// Enable enables the manager
 func (manager *EdgeManager) Enable(edgeKey string) error {
 	edgeKey, err := manager.retrieveEdgeKey(edgeKey)
 	if err != nil {
@@ -85,6 +88,7 @@ func (manager *EdgeManager) Enable(edgeKey string) error {
 	return nil
 }
 
+// ResetActivityTimer resets the activity timer
 func (manager *EdgeManager) ResetActivityTimer() {
 	manager.tunnelOperator.ResetActivityTimer()
 }
