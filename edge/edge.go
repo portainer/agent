@@ -82,8 +82,7 @@ func (manager *EdgeManager) Enable(edgeKey string) error {
 		manager.serveEdgeUI()
 	}
 
-	return manager.startRuntimeConfigCheckProcess()
-
+	return nil
 }
 
 func (manager *EdgeManager) ResetActivityTimer() {
@@ -122,58 +121,64 @@ func (manager *EdgeManager) startRuntimeConfigCheckProcess() error {
 		return err
 	}
 
+	err = manager.checkRuntimeConfig()
+	if err != nil {
+		return err
+	}
+
 	ticker := time.NewTicker(runtimeCheckFrequency)
 
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
-				key := manager.GetKey()
-				if key == "" {
-					continue
-				}
-
-				agentTags, err := manager.infoService.GetInformationFromDockerEngine()
+				err := manager.checkRuntimeConfig()
 				if err != nil {
-					log.Printf("[ERROR] [main,edge,docker] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
-					continue
-				}
-
-				isLeader := agentTags[agent.MemberTagKeyIsLeader] == "1"
-				isSwarm := agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusSwarm
-
-				log.Printf("[DEBUG] [main,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], isLeader)
-
-				if !isSwarm || isLeader {
-					err = manager.tunnelOperator.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.key.TunnelServerAddr, manager.key.TunnelServerFingerprint)
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while starting poll] [error: %s]", err)
-					}
-
-				} else {
-					err = manager.tunnelOperator.Stop()
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while stopping the short-poll process] [error: %s]", err)
-					}
-
-				}
-
-				if isSwarm && isLeader {
-					err = manager.stackManager.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID)
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,stack] [message: an error occured while starting the Edge stack manager] [error: %s]", err)
-					}
-
-				} else {
-					err = manager.stackManager.Stop()
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,stack] [message: an error occured while stopping the Edge stack manager] [error: %s]", err)
-					}
-
+					log.Printf("[ERROR] [main,edge,runtime] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
 				}
 			}
 		}
 	}()
+
+	return nil
+}
+
+func (manager *EdgeManager) checkRuntimeConfig() error {
+	agentTags, err := manager.infoService.GetInformationFromDockerEngine()
+	if err != nil {
+		return err
+	}
+
+	isLeader := agentTags[agent.MemberTagKeyIsLeader] == "1"
+	isSwarm := agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusSwarm
+
+	log.Printf("[DEBUG] [main,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], isLeader)
+
+	if !isSwarm || isLeader {
+		err = manager.tunnelOperator.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.key.TunnelServerAddr, manager.key.TunnelServerFingerprint)
+		if err != nil {
+			return err
+		}
+
+	} else {
+		err = manager.tunnelOperator.Stop()
+		if err != nil {
+			return err
+		}
+	}
+
+	if isSwarm && isLeader {
+		err = manager.stackManager.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID)
+		if err != nil {
+			return err
+		}
+
+	} else {
+		err = manager.stackManager.Stop()
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
