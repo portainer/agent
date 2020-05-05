@@ -8,14 +8,9 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
-	"github.com/portainer/agent/exec"
-	"github.com/portainer/agent/filesystem"
+	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
-	"github.com/portainer/agent/http/client"
-	"github.com/portainer/agent/http/edgestacks"
-	"github.com/portainer/agent/http/key"
-	"github.com/portainer/agent/http/tunnel"
 	"github.com/portainer/agent/logutils"
 	"github.com/portainer/agent/net"
 	"github.com/portainer/agent/os"
@@ -89,44 +84,16 @@ func main() {
 		defer clusterService.Leave()
 	}
 
-	var edgeKeyService agent.EdgeKeyService
-	var tunnelOperator agent.TunnelOperator
+	var edgeManager agent.EdgeManager
 	if options.EdgeMode {
-		apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
-
-		edgeKeyService, err = key.NewService()
+		edgeManager, err = edge.NewEdgeManager(options, advertiseAddr, clusterService, infoService)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,key] [message: Unable to create key service] [error: %s]", err)
+			log.Fatalf("[ERROR] [main,edge] [message: Unable to start edge manger] [error: %s]", err)
 		}
 
-		operatorConfig := &tunnel.OperatorConfig{
-			APIServerAddr:     apiServerAddr,
-			EdgeID:            options.EdgeID,
-			PollFrequency:     agent.DefaultEdgePollInterval,
-			InactivityTimeout: options.EdgeInactivityTimeout,
-			InsecurePoll:      options.EdgeInsecurePoll,
-		}
-
-		log.Printf("[DEBUG] [main,edge,configuration] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", operatorConfig.APIServerAddr, operatorConfig.EdgeID, operatorConfig.PollFrequency, operatorConfig.InactivityTimeout, operatorConfig.InsecurePoll)
-
-		dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
+		err = edgeManager.Enable(options.EdgeKey)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,docker] [message: Unable to start docker stack service] [error: %s]", err)
-		}
-
-		edgeStackManager, err := edgestacks.NewManager(dockerStackService, edgeKeyService, options.EdgeID)
-		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,stack] [message: Unable to create stack manager] [error: %s]", err)
-		}
-
-		tunnelOperator, err = tunnel.NewTunnelOperator(edgeKeyService, edgeStackManager, operatorConfig)
-		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to create tunnel operator] [error: %s]", err)
-		}
-
-		err = enableEdgeMode(tunnelOperator, clusterService, edgeKeyService, infoService, edgeStackManager, options)
-		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,rtunnel] [message: Unable to start agent in Edge mode] [error: %s]", err)
+			log.Fatalf("[ERROR] [main,edge] [message: Unable to enable edge mode] [error: %s]", err)
 		}
 	}
 
@@ -148,9 +115,8 @@ func main() {
 		Port:             options.AgentServerPort,
 		SystemService:    systemService,
 		ClusterService:   clusterService,
-		EdgeKeyService:   edgeKeyService,
+		EdgeManager:      edgeManager,
 		SignatureService: signatureService,
-		TunnelOperator:   tunnelOperator,
 		AgentTags:        agentTags,
 		AgentOptions:     options,
 		EdgeMode:         options.EdgeMode,
@@ -176,207 +142,7 @@ func startAPIServer(config *http.APIServerConfig) error {
 	return server.StartSecured()
 }
 
-func enableEdgeMode(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, keyService agent.EdgeKeyService, infoService agent.InfoService, edgeStackManager agent.EdgeStackManager, options *agent.Options) error {
-	edgeKey, err := retrieveEdgeKey(options, clusterService)
-	if err != nil {
-		return err
-	}
-
-	if edgeKey != "" {
-		log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key to cluster.]")
-
-		err := associateEdgeKey(keyService, clusterService, edgeKey)
-		if err != nil {
-			return err
-		}
-
-	} else {
-		log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
-
-		serveEdgeUI(tunnelOperator, clusterService, keyService, options)
-	}
-
-	return startRuntimeConfigCheckProcess(tunnelOperator, infoService, keyService, edgeStackManager)
-}
-
-func retrieveEdgeKey(options *agent.Options, clusterService agent.ClusterService) (string, error) {
-	edgeKey := options.EdgeKey
-
-	if options.EdgeKey != "" {
-		log.Println("[INFO] [main,edge] [message: Edge key loaded from options]")
-		edgeKey = options.EdgeKey
-	}
-
-	if edgeKey == "" {
-		var keyRetrievalError error
-
-		edgeKey, keyRetrievalError = retrieveEdgeKeyFromFilesystem()
-		if keyRetrievalError != nil {
-			return "", keyRetrievalError
-		}
-
-		if edgeKey == "" && clusterService != nil {
-			edgeKey, keyRetrievalError = retrieveEdgeKeyFromCluster(clusterService)
-			if keyRetrievalError != nil {
-				return "", keyRetrievalError
-			}
-		}
-	}
-
-	return edgeKey, nil
-}
-
-func retrieveEdgeKeyFromFilesystem() (string, error) {
-	var edgeKey string
-
-	edgeKeyFilePath := fmt.Sprintf("%s/%s", agent.DataDirectory, agent.EdgeKeyFile)
-
-	keyFileExists, err := filesystem.FileExists(edgeKeyFilePath)
-	if err != nil {
-		return "", err
-	}
-
-	if keyFileExists {
-		filesystemKey, err := filesystem.ReadFromFile(edgeKeyFilePath)
-		if err != nil {
-			return "", err
-		}
-
-		log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
-		edgeKey = string(filesystemKey)
-	}
-
-	return edgeKey, nil
-}
-
-func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, error) {
-	var edgeKey string
-
-	member := clusterService.GetMemberWithEdgeKeySet()
-	if member != nil {
-		httpCli := client.NewAPIClient()
-
-		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
-		memberKey, err := httpCli.GetEdgeKey(memberAddr)
-		if err != nil {
-			log.Printf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
-			return "", err
-		}
-
-		log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
-		edgeKey = memberKey
-	}
-
-	return edgeKey, nil
-}
-
 func parseOptions() (*agent.Options, error) {
 	optionParser := os.NewEnvOptionParser()
 	return optionParser.Options()
-}
-
-func associateEdgeKey(edgeKeyService agent.EdgeKeyService, clusterService agent.ClusterService, edgeKey string) error {
-	err := edgeKeyService.SetKey(edgeKey)
-	if err != nil {
-		return err
-	}
-
-	if clusterService != nil {
-		tags := clusterService.GetTags()
-		tags[agent.MemberTagEdgeKeySet] = "set"
-		err = clusterService.UpdateTags(tags)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func serveEdgeUI(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, keyService agent.EdgeKeyService, options *agent.Options) {
-	edgeServer := http.NewEdgeServer(tunnelOperator, clusterService, keyService)
-
-	go func() {
-		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", options.EdgeServerAddr, options.EdgeServerPort)
-
-		err := edgeServer.Start(options.EdgeServerAddr, options.EdgeServerPort)
-		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
-		}
-
-		log.Println("[INFO] [main,edge,http] [message: Edge server shutdown]")
-	}()
-
-	go func() {
-		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
-		<-timer1.C
-
-		if !keyService.IsKeySet() {
-			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
-			edgeServer.Shutdown()
-		}
-	}()
-}
-
-func startRuntimeConfigCheckProcess(tunnelOperator agent.TunnelOperator, infoService agent.InfoService, keyService agent.EdgeKeyService, edgeStackManager agent.EdgeStackManager) error {
-
-	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
-	if err != nil {
-		return err
-	}
-
-	ticker := time.NewTicker(runtimeCheckFrequency)
-
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				key := keyService.GetKey()
-				if key == "" {
-					continue
-				}
-
-				agentTags, err := infoService.GetInformationFromDockerEngine()
-				if err != nil {
-					log.Printf("[ERROR] [main,edge,docker] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
-					continue
-				}
-
-				isLeader := agentTags[agent.MemberTagKeyIsLeader] == "1"
-				isSwarm := agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusSwarm
-
-				log.Printf("[DEBUG] [main,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], isLeader)
-
-				if !isSwarm || isLeader {
-					err = tunnelOperator.Start()
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while starting poll] [error: %s]", err)
-					}
-
-				} else {
-					err = tunnelOperator.Stop()
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,docker] [message: an error occured while stopping the short-poll process] [error: %s]", err)
-					}
-
-				}
-
-				if isSwarm && isLeader {
-					err = edgeStackManager.Start()
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,stack] [message: an error occured while starting the Edge stack manager] [error: %s]", err)
-					}
-
-				} else {
-					err = edgeStackManager.Stop()
-					if err != nil {
-						log.Printf("[ERROR] [main,edge,stack] [message: an error occured while stopping the Edge stack manager] [error: %s]", err)
-					}
-
-				}
-			}
-		}
-	}()
-
-	return nil
 }

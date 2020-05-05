@@ -32,23 +32,21 @@ type Handler struct {
 	hostHandler        *host.Handler
 	pingHandler        *ping.Handler
 	securedProtocol    bool
-	edgeKeyService     agent.EdgeKeyService
-	tunnelOperator     agent.TunnelOperator
+	edgeManager        agent.EdgeManager
 }
 
 // Config represents a server handler configuration
 // used to create a new handler
 type Config struct {
-	SystemService      agent.SystemService
-	ClusterService     agent.ClusterService
-	SignatureService   agent.DigitalSignatureService
-	EdgeKeyService     agent.EdgeKeyService
-	TunnelOperator     agent.TunnelOperator
-	AgentTags          map[string]string
-	AgentOptions       *agent.Options
-	Secured            bool
-	EdgeMode           bool
-	DockerStackService agent.DockerStackService
+	SystemService    agent.SystemService
+	ClusterService   agent.ClusterService
+	SignatureService agent.DigitalSignatureService
+	EdgeManager      agent.EdgeManager
+	TunnelOperator   agent.TunnelOperator
+	AgentTags        map[string]string
+	AgentOptions     *agent.Options
+	Secured          bool
+	EdgeMode         bool
 }
 
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
@@ -63,13 +61,12 @@ func NewHandler(config *Config) *Handler {
 		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService, config.Secured),
-		keyHandler:         key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeKeyService, config.EdgeMode),
+		keyHandler:         key.NewHandler(config.TunnelOperator, config.ClusterService, notaryService, config.EdgeManager, config.EdgeMode),
 		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
 		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:        ping.NewHandler(),
 		securedProtocol:    config.Secured,
-		tunnelOperator:     config.TunnelOperator,
-		edgeKeyService:     config.EdgeKeyService,
+		edgeManager:        config.EdgeManager,
 	}
 }
 
@@ -79,13 +76,13 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	if !h.securedProtocol && !h.edgeKeyService.IsKeySet() {
+	if !h.securedProtocol && !h.edgeManager.IsKeySet() {
 		httperror.WriteError(rw, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
 		return
 	}
 
-	if h.tunnelOperator != nil {
-		h.tunnelOperator.ResetActivityTimer()
+	if h.edgeManager != nil {
+		h.edgeManager.ResetActivityTimer()
 	}
 
 	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
