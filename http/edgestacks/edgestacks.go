@@ -8,7 +8,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
-	"github.com/portainer/agent/http/portainerclient"
+	"github.com/portainer/agent/http/client"
 )
 
 const baseDir = "/tmp/edge_stacks"
@@ -235,11 +235,11 @@ func (manager *EdgeStackManager) deployStack(stack *edgeStack, stackName, stackF
 	}
 }
 
-func (manager *EdgeStackManager) createPortainerClient() (*portainerclient.PortainerClient, error) {
+func (manager *EdgeStackManager) createPortainerClient() (*client.PortainerClient, error) {
 	if manager.portainerURL == "" || manager.endpointID == "" || manager.edgeID == "" {
 		return nil, errors.New("Client parameters are invalid")
 	}
-	return portainerclient.NewPortainerClient(manager.portainerURL, manager.endpointID, manager.edgeID), nil
+	return client.NewPortainerClient(manager.portainerURL, manager.endpointID, manager.edgeID), nil
 }
 
 func (manager *EdgeStackManager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
