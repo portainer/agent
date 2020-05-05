@@ -143,7 +143,7 @@ type (
 		Schedule(schedules []Schedule) error
 	}
 
-	// DockerStackService is a service to manager deploy and remove docker stacks
+	// DockerStackService is a service used to deploy and remove Docker stacks
 	DockerStackService interface {
 		Login() error
 		Logout() error
