@@ -48,12 +48,8 @@ func (operator *Operator) createHTTPClient(timeout float64) {
 }
 
 func (operator *Operator) poll() error {
-	portainerURL, endpointID, err := operator.edgeKeyService.GetPortainerConfig()
-	if err != nil {
-		return err
-	}
 
-	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", portainerURL, endpointID)
+	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", operator.portainerURL, operator.endpointID)
 	req, err := http.NewRequest("GET", pollURL, nil)
 	if err != nil {
 		return err
@@ -142,14 +138,9 @@ func (operator *Operator) createTunnel(encodedCredentials string, remotePort int
 		return err
 	}
 
-	tunnelServerAddr, tunnelServerFingerprint, err := operator.edgeKeyService.GetTunnelConfig()
-	if err != nil {
-		return err
-	}
-
 	tunnelConfig := agent.TunnelConfig{
-		ServerAddr:       tunnelServerAddr,
-		ServerFingerpint: tunnelServerFingerprint,
+		ServerAddr:       operator.tunnelServerAddr,
+		ServerFingerpint: operator.tunnelServerFingerprint,
 		Credentials:      string(credentials),
 		RemotePort:       strconv.Itoa(remotePort),
 		LocalAddr:        operator.apiServerAddr,

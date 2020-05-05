@@ -16,17 +16,15 @@ import (
 // EdgeServer expose an UI to associate an Edge key with the agent.
 type EdgeServer struct {
 	httpServer     *http.Server
-	tunnelOperator agent.TunnelOperator
+	edgeManager    agent.EdgeManager
 	clusterService agent.ClusterService
-	keyService     agent.EdgeKeyService
 }
 
 // NewEdgeServer returns a pointer to a new instance of EdgeServer.
-func NewEdgeServer(tunnelOperator agent.TunnelOperator, clusterService agent.ClusterService, keyService agent.EdgeKeyService) *EdgeServer {
+func NewEdgeServer(edgeManager agent.EdgeManager, clusterService agent.ClusterService) *EdgeServer {
 	return &EdgeServer{
-		tunnelOperator: tunnelOperator,
 		clusterService: clusterService,
-		keyService:     keyService,
+		edgeManager:    edgeManager,
 	}
 }
 
@@ -61,7 +59,7 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 			return
 		}
 
-		err = server.keyService.SetKey(key)
+		err = server.edgeManager.SetKey(key)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

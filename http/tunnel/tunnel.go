@@ -16,18 +16,21 @@ const tunnelActivityCheckInterval = 30 * time.Second
 // Operator is used to poll a Portainer instance and to establish a reverse tunnel if needed.
 // It also takes care of closing the tunnel after a set period of inactivity.
 type Operator struct {
-	apiServerAddr         string
-	pollIntervalInSeconds float64
-	insecurePoll          bool
-	inactivityTimeout     time.Duration
-	edgeID                string
-	httpClient            *http.Client
-	tunnelClient          agent.ReverseTunnelClient
-	scheduleManager       agent.Scheduler
-	lastActivity          time.Time
-	refreshSignal         chan struct{}
-	edgeStackManager      agent.EdgeStackManager
-	edgeKeyService        agent.EdgeKeyService
+	apiServerAddr           string
+	pollIntervalInSeconds   float64
+	insecurePoll            bool
+	inactivityTimeout       time.Duration
+	edgeID                  string
+	httpClient              *http.Client
+	tunnelClient            agent.ReverseTunnelClient
+	scheduleManager         agent.Scheduler
+	lastActivity            time.Time
+	refreshSignal           chan struct{}
+	edgeStackManager        agent.EdgeStackManager
+	portainerURL            string
+	endpointID              string
+	tunnelServerAddr        string
+	tunnelServerFingerprint string
 }
 
 // OperatorConfig represents the configuration used to create a new Operator.
@@ -40,7 +43,7 @@ type OperatorConfig struct {
 }
 
 // NewTunnelOperator creates a new reverse tunnel operator
-func NewTunnelOperator(edgeKeyService agent.EdgeKeyService, edgeStackManager agent.EdgeStackManager, config *OperatorConfig) (*Operator, error) {
+func NewTunnelOperator(edgeStackManager agent.EdgeStackManager, config *OperatorConfig) (*Operator, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -60,7 +63,6 @@ func NewTunnelOperator(edgeKeyService agent.EdgeKeyService, edgeStackManager age
 		tunnelClient:          chisel.NewClient(),
 		scheduleManager:       filesystem.NewCronManager(),
 		refreshSignal:         nil,
-		edgeKeyService:        edgeKeyService,
 		edgeStackManager:      edgeStackManager,
 	}, nil
 }
@@ -82,13 +84,20 @@ func (operator *Operator) ResetActivityTimer() {
 // if needed as well as manage schedules.
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
-func (operator *Operator) Start() error {
-	if !operator.edgeKeyService.IsKeySet() {
-		return errors.New("missing Edge key")
+func (operator *Operator) Start(portainerURL, endpointID, tunnelServerAddr, tunnelServerFingerprint string) error {
+	if portainerURL == "" || endpointID == "" || tunnelServerAddr == "" || tunnelServerFingerprint == "" {
+		return errors.New("Tunnel operator parameters are invalid")
 	}
+
+	operator.portainerURL = portainerURL
+	operator.endpointID = endpointID
+	operator.tunnelServerAddr = tunnelServerAddr
+	operator.tunnelServerFingerprint = tunnelServerFingerprint
+
 	if operator.refreshSignal != nil {
 		return nil
 	}
+
 	operator.refreshSignal = make(chan struct{})
 	operator.startStatusPollLoop()
 	operator.startActivityMonitoringLoop()
@@ -111,12 +120,7 @@ func (operator *Operator) restartStatusPollLoop() {
 }
 
 func (operator *Operator) startStatusPollLoop() error {
-	portainerURL, _, err := operator.edgeKeyService.GetPortainerConfig()
-	if err != nil {
-		return err
-	}
-
-	log.Printf("[DEBUG] [http,edge,poll] [poll_interval_seconds: %f] [server_url: %s] [message: starting Portainer short-polling client]", operator.pollIntervalInSeconds, portainerURL)
+	log.Printf("[DEBUG] [http,edge,poll] [poll_interval_seconds: %f] [server_url: %s] [message: starting Portainer short-polling client]", operator.pollIntervalInSeconds, operator.portainerURL)
 
 	ticker := time.NewTicker(time.Duration(operator.pollIntervalInSeconds) * time.Second)
 	go func() {
