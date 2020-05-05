@@ -153,12 +153,12 @@ func (manager *EdgeManager) checkRuntimeConfig() error {
 		return err
 	}
 
-	isLeader := agentTags[agent.MemberTagKeyIsLeader] == "1"
-	isSwarm := agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusSwarm
+	agentRunsOnLeaderNode := agentTags[agent.MemberTagKeyIsLeader] == "1"
+	agentRunsOnSwarm := agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusSwarm
 
-	log.Printf("[DEBUG] [main,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], isLeader)
+	log.Printf("[DEBUG] [main,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentRunsOnLeaderNode)
 
-	if !isSwarm || isLeader {
+	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
 		err = manager.tunnelOperator.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.key.TunnelServerAddr, manager.key.TunnelServerFingerprint)
 		if err != nil {
 			return err
@@ -171,7 +171,7 @@ func (manager *EdgeManager) checkRuntimeConfig() error {
 		}
 	}
 
-	if isSwarm && isLeader {
+	if agentRunsOnSwarm && agentRunsOnLeaderNode {
 		err = manager.stackManager.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID)
 		if err != nil {
 			return err
