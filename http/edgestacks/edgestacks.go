@@ -58,15 +58,16 @@ type EdgeStackManager struct {
 	stacks             map[edgeStackID]*edgeStack
 	stopSignal         chan struct{}
 	dockerStackService agent.DockerStackService
-	keyService         agent.EdgeKeyService
 	edgeID             string
+	portainerURL       string
+	endpointID         string
+	isEnabled          bool
 }
 
 // NewManager creates a new instance of EdgeStackManager
-func NewManager(dockerStackService agent.DockerStackService, keyService agent.EdgeKeyService, edgeID string) (*EdgeStackManager, error) {
+func NewManager(dockerStackService agent.DockerStackService, edgeID string) (*EdgeStackManager, error) {
 	return &EdgeStackManager{
 		dockerStackService: dockerStackService,
-		keyService:         keyService,
 		edgeID:             edgeID,
 		stacks:             map[edgeStackID]*edgeStack{},
 		stopSignal:         nil,
@@ -75,6 +76,10 @@ func NewManager(dockerStackService agent.DockerStackService, keyService agent.Ed
 
 // UpdateStacksStatus updates stacks version and status
 func (manager *EdgeStackManager) UpdateStacksStatus(stacks map[int]int) error {
+	if !manager.isEnabled {
+		return nil
+	}
+
 	for stackID, version := range stacks {
 		stack, ok := manager.stacks[edgeStackID(stackID)]
 		if ok {
@@ -145,17 +150,21 @@ func (manager *EdgeStackManager) Stop() error {
 	if manager.stopSignal != nil {
 		close(manager.stopSignal)
 		manager.stopSignal = nil
+		manager.isEnabled = false
 	}
 
 	return nil
 }
 
 // Start starts the loop checking for stacks to deploy
-func (manager *EdgeStackManager) Start() error {
+func (manager *EdgeStackManager) Start(portainerURL, endpointID string) error {
 	if manager.stopSignal != nil {
-		return errors.New("Manager is already started")
+		return nil
 	}
 
+	manager.portainerURL = portainerURL
+	manager.endpointID = endpointID
+	manager.isEnabled = true
 	manager.stopSignal = make(chan struct{})
 
 	go (func() {
@@ -227,12 +236,10 @@ func (manager *EdgeStackManager) deployStack(stack *edgeStack, stackName, stackF
 }
 
 func (manager *EdgeStackManager) createPortainerClient() (*portainerclient.PortainerClient, error) {
-	portainerURL, endpointID, err := manager.keyService.GetPortainerConfig()
-	if err != nil {
-		return nil, err
+	if manager.portainerURL == "" || manager.endpointID == "" || manager.edgeID == "" {
+		return nil, errors.New("Client parameters are invalid")
 	}
-
-	return portainerclient.NewPortainerClient(portainerURL, endpointID, manager.edgeID), nil
+	return portainerclient.NewPortainerClient(manager.portainerURL, manager.endpointID, manager.edgeID), nil
 }
 
 func (manager *EdgeStackManager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {

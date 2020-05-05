@@ -122,19 +122,10 @@ type (
 	// TunnelOperator is a service that is used to communicate with a Portainer instance and to manage
 	// the reverse tunnel.
 	TunnelOperator interface {
-		Start() error
+		Start(portainerURL, endpointID, tunnelServerAddr, tunnelServerFingerprint string) error
 		Stop() error
 		CloseTunnel() error
 		ResetActivityTimer()
-	}
-
-	// EdgeKeyService is a service that manages edge key
-	EdgeKeyService interface {
-		IsKeySet() bool
-		SetKey(key string) error
-		GetKey() string
-		GetPortainerConfig() (string, string, error)
-		GetTunnelConfig() (string, string, error)
 	}
 
 	// EdgeManager is a service to manager edge tasks
@@ -163,7 +154,7 @@ type (
 	// EdgeStackManager is a service to manage Edge stacks
 	EdgeStackManager interface {
 		UpdateStacksStatus(stacks map[int]int) error
-		Start() error
+		Start(portainerURL, endpointID string) error
 		Stop() error
 	}
 )

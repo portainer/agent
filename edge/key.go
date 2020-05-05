@@ -1,4 +1,4 @@
-package key
+package edge
 
 import (
 	"encoding/base64"
@@ -17,18 +17,8 @@ type edgeKey struct {
 	EndpointID              string
 }
 
-// Service is a service that manages edge key
-type Service struct {
-	key *edgeKey
-}
-
-// NewService creates a new instance of Service
-func NewService() (*Service, error) {
-	return &Service{}, nil
-}
-
-// SetKey parses and associate a key to the service
-func (service *Service) SetKey(key string) error {
+// SetKey parses and associate a key to the manager
+func (manager *EdgeManager) SetKey(key string) error {
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
 		return err
@@ -39,45 +29,45 @@ func (service *Service) SetKey(key string) error {
 		return err
 	}
 
-	service.key = edgeKey
+	manager.key = edgeKey
 
 	return nil
 }
 
-// GetKey returns the key associated to the service
-func (service *Service) GetKey() string {
+// GetKey returns the key associated to the manager
+func (manager *EdgeManager) GetKey() string {
 	var encodedKey string
 
-	if service.key != nil {
-		encodedKey = encodeKey(service.key)
+	if manager.key != nil {
+		encodedKey = encodeKey(manager.key)
 	}
 
 	return encodedKey
 }
 
 // GetPortainerConfig returns portainer url and endpoint id
-func (service *Service) GetPortainerConfig() (string, string, error) {
-	if service.key == nil {
+func (manager *EdgeManager) GetPortainerConfig() (string, string, error) {
+	if manager.key == nil {
 		return "", "", errors.New("Key is not set")
 	}
 
-	key := service.key
+	key := manager.key
 	return key.PortainerInstanceURL, key.EndpointID, nil
 }
 
 // GetTunnelConfig returns tunnel url and tunnel fingerprint
-func (service *Service) GetTunnelConfig() (string, string, error) {
-	if service.key == nil {
+func (manager *EdgeManager) GetTunnelConfig() (string, string, error) {
+	if manager.key == nil {
 		return "", "", errors.New("Key is not set")
 	}
 
-	key := service.key
+	key := manager.key
 	return key.TunnelServerAddr, key.TunnelServerFingerprint, nil
 }
 
-// IsKeySet checks if a key is associated to the service
-func (service *Service) IsKeySet() bool {
-	if service.key == nil {
+// IsKeySet checks if a key is associated to the manager
+func (manager *EdgeManager) IsKeySet() bool {
+	if manager.key == nil {
 		return false
 	}
 	return true
