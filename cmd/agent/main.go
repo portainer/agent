@@ -84,16 +84,15 @@ func main() {
 		defer clusterService.Leave()
 	}
 
-	edgeManager, err := edge.NewEdgeManager(options, advertiseAddr, clusterService, infoService)
+	edgeManager, err := edge.NewEdgeManager()
 	if err != nil {
 		log.Fatalf("[ERROR] [main,edge] [message: Unable to start edge manger] [error: %s]", err)
 	}
 
 	if options.EdgeMode {
-
-		err = edgeManager.Enable(options.EdgeKey)
+		err = edgeManager.Init(options, advertiseAddr, clusterService, infoService)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,edge] [message: Unable to enable edge mode] [error: %s]", err)
+			log.Fatalf("[ERROR] [main,edge] [message: Unable to init edge manager] [error: %s]", err)
 		}
 
 		if !edgeManager.IsKeySet() {
