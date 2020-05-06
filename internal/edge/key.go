@@ -18,7 +18,7 @@ type edgeKey struct {
 }
 
 // SetKey parses and associate a key to the manager
-func (manager *EdgeManager) SetKey(key string) error {
+func (manager *Manager) SetKey(key string) error {
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (manager *EdgeManager) SetKey(key string) error {
 }
 
 // GetKey returns the key associated to the manager
-func (manager *EdgeManager) GetKey() string {
+func (manager *Manager) GetKey() string {
 	var encodedKey string
 
 	if manager.key != nil {
@@ -55,7 +55,7 @@ func (manager *EdgeManager) GetKey() string {
 }
 
 // IsKeySet checks if a key is associated to the manager
-func (manager *EdgeManager) IsKeySet() bool {
+func (manager *Manager) IsKeySet() bool {
 	if manager.key == nil {
 		return false
 	}

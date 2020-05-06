@@ -33,7 +33,7 @@ type Handler struct {
 	hostHandler        *host.Handler
 	pingHandler        *ping.Handler
 	securedProtocol    bool
-	edgeManager        *edge.EdgeManager
+	edgeManager        *edge.Manager
 }
 
 // Config represents a server handler configuration
@@ -42,7 +42,7 @@ type Config struct {
 	SystemService    agent.SystemService
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
-	EdgeManager      *edge.EdgeManager
+	EdgeManager      *edge.Manager
 	TunnelOperator   agent.TunnelOperator
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
