@@ -18,13 +18,19 @@ type EdgeManager struct {
 	infoService        agent.InfoService
 	stacksManager      *edgestacks.Manager
 	tunnelOperator     agent.TunnelOperator
-	serverAddr         string
-	serverPort         string
 	key                *edgeKey
+	edgeMode           bool
 }
 
 // NewEdgeManager creates an instance of EdgeManager
-func NewEdgeManager(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) (*EdgeManager, error) {
+func NewEdgeManager() (*EdgeManager, error) {
+
+	return &EdgeManager{}, nil
+}
+
+// Enable enables the manager
+func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) error {
+
 	apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
 
 	operatorConfig := &tunnel.OperatorConfig{
@@ -39,33 +45,27 @@ func NewEdgeManager(options *agent.Options, advertiseAddr string, clusterService
 
 	dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	manager.dockerStackService = dockerStackService
 
-	edgeStackManager, err := edgestacks.NewManager(dockerStackService, options.EdgeID)
+	stacksManager, err := edgestacks.NewManager(dockerStackService, options.EdgeID)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	manager.stacksManager = stacksManager
 
-	tunnelOperator, err := tunnel.NewTunnelOperator(edgeStackManager, operatorConfig)
+	tunnelOperator, err := tunnel.NewTunnelOperator(stacksManager, operatorConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	manager.tunnelOperator = tunnelOperator
 
-	return &EdgeManager{
-		clusterService:     clusterService,
-		dockerStackService: dockerStackService,
-		infoService:        infoService,
-		stacksManager:      edgeStackManager,
-		tunnelOperator:     tunnelOperator,
-		serverAddr:         options.EdgeServerAddr,
-		serverPort:         options.EdgeServerPort,
-	}, nil
-}
+	manager.infoService = infoService
+	manager.clusterService = clusterService
+	manager.edgeMode = true
 
-// Enable enables the manager
-func (manager *EdgeManager) Enable(edgeKey string) error {
-	edgeKey, err := manager.retrieveEdgeKey(edgeKey)
+	edgeKey, err := manager.retrieveEdgeKey(options.EdgeKey)
 	if err != nil {
 		return err
 	}
@@ -80,6 +80,11 @@ func (manager *EdgeManager) Enable(edgeKey string) error {
 	}
 
 	return nil
+}
+
+// IsEdgeModeEnabled returns true if edge mode is enabled
+func (manager *EdgeManager) IsEdgeModeEnabled() bool {
+	return manager.edgeMode
 }
 
 // ResetActivityTimer resets the activity timer
