@@ -7,7 +7,6 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/exec"
-	"github.com/portainer/agent/http"
 	"github.com/portainer/agent/http/edgestacks"
 	"github.com/portainer/agent/http/tunnel"
 )
@@ -78,11 +77,6 @@ func (manager *EdgeManager) Enable(edgeKey string) error {
 		if err != nil {
 			return err
 		}
-
-	} else {
-		log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
-
-		manager.serveEdgeUI()
 	}
 
 	return nil
@@ -91,31 +85,6 @@ func (manager *EdgeManager) Enable(edgeKey string) error {
 // ResetActivityTimer resets the activity timer
 func (manager *EdgeManager) ResetActivityTimer() {
 	manager.tunnelOperator.ResetActivityTimer()
-}
-
-func (manager *EdgeManager) serveEdgeUI() {
-	edgeServer := http.NewEdgeServer(manager, manager.clusterService)
-
-	go func() {
-		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", manager.serverAddr, manager.serverPort)
-
-		err := edgeServer.Start(manager.serverAddr, manager.serverPort)
-		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
-		}
-
-		log.Println("[INFO] [main,edge,http] [message: Edge server shutdown]")
-	}()
-
-	go func() {
-		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
-		<-timer1.C
-
-		if !manager.IsKeySet() {
-			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
-			edgeServer.Shutdown()
-		}
-	}()
 }
 
 func (manager *EdgeManager) startRuntimeConfigCheckProcess() error {

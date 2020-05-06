@@ -7,6 +7,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/handler"
+	"github.com/portainer/agent/internal/edge"
 )
 
 // APIServer is the web server exposing the API of an agent.
@@ -16,7 +17,7 @@ type APIServer struct {
 	systemService    agent.SystemService
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
-	edgeManager      agent.EdgeManager
+	edgeManager      *edge.EdgeManager
 	agentTags        map[string]string
 	agentOptions     *agent.Options
 	edgeMode         bool
@@ -30,7 +31,7 @@ type APIServerConfig struct {
 	SystemService    agent.SystemService
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
-	EdgeManager      agent.EdgeManager
+	EdgeManager      *edge.EdgeManager
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
 	EdgeMode         bool
