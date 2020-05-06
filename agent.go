@@ -140,13 +140,6 @@ type (
 		Deploy(name, stackFileContent string, prune bool) error
 		Remove(name string) error
 	}
-
-	// EdgeStackManager is a service to manage Edge stacks
-	EdgeStackManager interface {
-		UpdateStacksStatus(stacks map[int]int) error
-		Start(portainerURL, endpointID string) error
-		Stop() error
-	}
 )
 
 const (

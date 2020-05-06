@@ -53,8 +53,8 @@ const (
 	edgeStackStatusAcknowledged
 )
 
-// EdgeStackManager represents a service for managing Edge stacks
-type EdgeStackManager struct {
+// Manager represents a service for managing Edge stacks
+type Manager struct {
 	stacks             map[edgeStackID]*edgeStack
 	stopSignal         chan struct{}
 	dockerStackService agent.DockerStackService
@@ -64,9 +64,9 @@ type EdgeStackManager struct {
 	isEnabled          bool
 }
 
-// NewManager creates a new instance of EdgeStackManager
-func NewManager(dockerStackService agent.DockerStackService, edgeID string) (*EdgeStackManager, error) {
-	return &EdgeStackManager{
+// NewManager creates a new instance of Manager
+func NewManager(dockerStackService agent.DockerStackService, edgeID string) (*Manager, error) {
+	return &Manager{
 		dockerStackService: dockerStackService,
 		edgeID:             edgeID,
 		stacks:             map[edgeStackID]*edgeStack{},
@@ -75,7 +75,7 @@ func NewManager(dockerStackService agent.DockerStackService, edgeID string) (*Ed
 }
 
 // UpdateStacksStatus updates stacks version and status
-func (manager *EdgeStackManager) UpdateStacksStatus(stacks map[int]int) error {
+func (manager *Manager) UpdateStacksStatus(stacks map[int]int) error {
 	if !manager.isEnabled {
 		return nil
 	}
@@ -146,7 +146,7 @@ func (manager *EdgeStackManager) UpdateStacksStatus(stacks map[int]int) error {
 }
 
 // Stop stops the manager
-func (manager *EdgeStackManager) Stop() error {
+func (manager *Manager) Stop() error {
 	if manager.stopSignal != nil {
 		close(manager.stopSignal)
 		manager.stopSignal = nil
@@ -157,7 +157,7 @@ func (manager *EdgeStackManager) Stop() error {
 }
 
 // Start starts the loop checking for stacks to deploy
-func (manager *EdgeStackManager) Start(portainerURL, endpointID string) error {
+func (manager *Manager) Start(portainerURL, endpointID string) error {
 	if manager.stopSignal != nil {
 		return nil
 	}
@@ -196,7 +196,7 @@ func (manager *EdgeStackManager) Start(portainerURL, endpointID string) error {
 	return nil
 }
 
-func (manager *EdgeStackManager) next() *edgeStack {
+func (manager *Manager) next() *edgeStack {
 	for _, stack := range manager.stacks {
 		if stack.Status == statusPending {
 			return stack
@@ -205,7 +205,7 @@ func (manager *EdgeStackManager) next() *edgeStack {
 	return nil
 }
 
-func (manager *EdgeStackManager) deployStack(stack *edgeStack, stackName, stackFileLocation string) {
+func (manager *Manager) deployStack(stack *edgeStack, stackName, stackFileLocation string) {
 	log.Printf("[DEBUG] [stacksmanager,update] [message: deploying stack %d] \n", stack.ID)
 	stack.Status = statusDone
 	stack.Action = actionIdle
@@ -235,14 +235,14 @@ func (manager *EdgeStackManager) deployStack(stack *edgeStack, stackName, stackF
 	}
 }
 
-func (manager *EdgeStackManager) createPortainerClient() (*client.PortainerClient, error) {
+func (manager *Manager) createPortainerClient() (*client.PortainerClient, error) {
 	if manager.portainerURL == "" || manager.endpointID == "" || manager.edgeID == "" {
 		return nil, errors.New("Client parameters are invalid")
 	}
 	return client.NewPortainerClient(manager.portainerURL, manager.endpointID, manager.edgeID), nil
 }
 
-func (manager *EdgeStackManager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
+func (manager *Manager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
 	log.Printf("[DEBUG] [stacksmanager,update] [message: removing stack %d] \n", stack.ID)
 	err := filesystem.RemoveFile(stackFileLocation)
 	if err != nil {
