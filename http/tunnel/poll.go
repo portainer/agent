@@ -117,7 +117,7 @@ func (operator *Operator) poll() error {
 			stacks[stack.ID] = stack.Version
 		}
 
-		err := operator.edgeStackManager.UpdateStacksStatus(stacks)
+		err := operator.edgeStacksManager.UpdateStacksStatus(stacks)
 		if err != nil {
 			log.Printf("[ERROR] [http,edge,stacks] [message: an error occured during stack management] [error: %s]", err)
 			return err

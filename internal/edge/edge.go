@@ -7,8 +7,8 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/exec"
-	"github.com/portainer/agent/http/edgestacks"
 	"github.com/portainer/agent/http/tunnel"
+	"github.com/portainer/agent/internal/edgestacks"
 )
 
 // EdgeManager manages Edge functionality
@@ -16,7 +16,7 @@ type EdgeManager struct {
 	clusterService     agent.ClusterService
 	dockerStackService agent.DockerStackService
 	infoService        agent.InfoService
-	stackManager       agent.EdgeStackManager
+	stacksManager      *edgestacks.Manager
 	tunnelOperator     agent.TunnelOperator
 	serverAddr         string
 	serverPort         string
@@ -56,7 +56,7 @@ func NewEdgeManager(options *agent.Options, advertiseAddr string, clusterService
 		clusterService:     clusterService,
 		dockerStackService: dockerStackService,
 		infoService:        infoService,
-		stackManager:       edgeStackManager,
+		stacksManager:      edgeStackManager,
 		tunnelOperator:     tunnelOperator,
 		serverAddr:         options.EdgeServerAddr,
 		serverPort:         options.EdgeServerPort,
@@ -141,13 +141,13 @@ func (manager *EdgeManager) checkRuntimeConfig() error {
 	}
 
 	if agentRunsOnSwarm && agentRunsOnLeaderNode {
-		err = manager.stackManager.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID)
+		err = manager.stacksManager.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID)
 		if err != nil {
 			return err
 		}
 
 	} else {
-		err = manager.stackManager.Stop()
+		err = manager.stacksManager.Stop()
 		if err != nil {
 			return err
 		}
