@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -37,6 +38,10 @@ func NewEdgeManager(options *agent.Options, advertiseAddr string, clusterService
 
 // Init initializes the manager
 func (manager *EdgeManager) Init() error {
+	if !manager.IsKeySet() {
+		return errors.New("Unable to initalize edge manager without key")
+	}
+
 	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
 
 	pollServiceConfig := &pollServiceConfig{
