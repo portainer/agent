@@ -16,27 +16,35 @@ type EdgeManager struct {
 	infoService        agent.InfoService
 	stacksManager      *StacksManager
 	pollService        agent.TunnelOperator
+	pollServiceConfig  *pollServiceConfig
 	key                *edgeKey
 	edgeMode           bool
+	agentOptions       *agent.Options
+	advertiseAddr      string
 }
 
 // NewEdgeManager creates an instance of EdgeManager
-func NewEdgeManager() (*EdgeManager, error) {
+func NewEdgeManager(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) (*EdgeManager, error) {
 
-	return &EdgeManager{}, nil
+	return &EdgeManager{
+		clusterService: clusterService,
+		infoService:    infoService,
+		agentOptions:   options,
+		advertiseAddr:  advertiseAddr,
+		edgeMode:       options.EdgeMode,
+	}, nil
 }
 
 // Init initializes the manager
-func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) error {
-
-	apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
+func (manager *EdgeManager) Init() error {
+	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
 
 	pollServiceConfig := &pollServiceConfig{
 		APIServerAddr:     apiServerAddr,
-		EdgeID:            options.EdgeID,
+		EdgeID:            manager.agentOptions.EdgeID,
 		PollFrequency:     agent.DefaultEdgePollInterval,
-		InactivityTimeout: options.EdgeInactivityTimeout,
-		InsecurePoll:      options.EdgeInsecurePoll,
+		InactivityTimeout: manager.agentOptions.EdgeInactivityTimeout,
+		InsecurePoll:      manager.agentOptions.EdgeInsecurePoll,
 	}
 
 	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll)
@@ -47,7 +55,7 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 	}
 	manager.dockerStackService = dockerStackService
 
-	stacksManager, err := NewStacksManager(dockerStackService, options.EdgeID)
+	stacksManager, err := NewStacksManager(dockerStackService, manager.agentOptions.EdgeID)
 	if err != nil {
 		return err
 	}
@@ -59,24 +67,10 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 	}
 	manager.pollService = pollService
 
-	manager.infoService = infoService
-	manager.clusterService = clusterService
-
-	edgeKey, err := manager.retrieveEdgeKey(options.EdgeKey)
+	err = manager.startEdgeBackgroundProcess()
 	if err != nil {
 		return err
 	}
-
-	if edgeKey != "" {
-		log.Println("[DEBUG] [internal,edge] [message: Edge key found in environment. Associating Edge key to cluster.]")
-
-		err := manager.SetKey(edgeKey)
-		if err != nil {
-			return err
-		}
-	}
-
-	manager.edgeMode = true
 
 	return nil
 }

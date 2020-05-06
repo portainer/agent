@@ -8,8 +8,10 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
+	"github.com/portainer/agent/http/client"
 	"github.com/portainer/agent/internal/edge"
 	"github.com/portainer/agent/logutils"
 	"github.com/portainer/agent/net"
@@ -84,18 +86,31 @@ func main() {
 		defer clusterService.Leave()
 	}
 
-	edgeManager, err := edge.NewEdgeManager()
+	edgeManager, err := edge.NewEdgeManager(options, advertiseAddr, clusterService, infoService)
 	if err != nil {
 		log.Fatalf("[ERROR] [main,edge] [message: Unable to start edge manger] [error: %s]", err)
 	}
 
 	if options.EdgeMode {
-		err = edgeManager.Init(options, advertiseAddr, clusterService, infoService)
+		edgeKey, err := retrieveEdgeKey(options.EdgeKey, clusterService)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,edge] [message: Unable to init edge manager] [error: %s]", err)
+			log.Fatalf("[ERROR] [main,edge] [message: Unable to retrieve edge key] [error: %s]", err)
 		}
 
-		if !edgeManager.IsKeySet() {
+		if edgeKey != "" {
+			log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key to cluster.]")
+
+			err := edgeManager.SetKey(edgeKey)
+			if err != nil {
+				log.Fatalf("[ERROR] [main,edge] [message: Unable to set edge key] [error: %s]", err)
+			}
+
+			err = edgeManager.Init()
+			if err != nil {
+				log.Fatalf("[ERROR] [main,edge] [message: Unable to init edge manager] [error: %s]", err)
+			}
+
+		} else {
 			log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
 
 			serveEdgeUI(edgeManager, clusterService, options.EdgeServerAddr, options.EdgeServerPort)
@@ -174,4 +189,72 @@ func serveEdgeUI(edgeManager *edge.EdgeManager, clusterService agent.ClusterServ
 			edgeServer.Shutdown()
 		}
 	}()
+}
+
+func retrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (string, error) {
+
+	if edgeKey != "" {
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from options]")
+		return edgeKey, nil
+	}
+
+	var keyRetrievalError error
+
+	edgeKey, keyRetrievalError = retrieveEdgeKeyFromFilesystem()
+	if keyRetrievalError != nil {
+		return "", keyRetrievalError
+	}
+
+	if edgeKey == "" && clusterService != nil {
+		edgeKey, keyRetrievalError = retrieveEdgeKeyFromCluster(clusterService)
+		if keyRetrievalError != nil {
+			return "", keyRetrievalError
+		}
+	}
+
+	return edgeKey, nil
+}
+
+func retrieveEdgeKeyFromFilesystem() (string, error) {
+	var edgeKey string
+
+	edgeKeyFilePath := fmt.Sprintf("%s/%s", agent.DataDirectory, agent.EdgeKeyFile)
+
+	keyFileExists, err := filesystem.FileExists(edgeKeyFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	if keyFileExists {
+		filesystemKey, err := filesystem.ReadFromFile(edgeKeyFilePath)
+		if err != nil {
+			return "", err
+		}
+
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
+		edgeKey = string(filesystemKey)
+	}
+
+	return edgeKey, nil
+}
+
+func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, error) {
+	var edgeKey string
+
+	member := clusterService.GetMemberWithEdgeKeySet()
+	if member != nil {
+		httpCli := client.NewAPIClient()
+
+		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
+		memberKey, err := httpCli.GetEdgeKey(memberAddr)
+		if err != nil {
+			log.Printf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
+			return "", err
+		}
+
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
+		edgeKey = memberKey
+	}
+
+	return edgeKey, nil
 }
