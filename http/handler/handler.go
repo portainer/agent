@@ -81,7 +81,7 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	if h.edgeManager != nil {
+	if h.edgeManager.IsEdgeModeEnabled() {
 		h.edgeManager.ResetActivityTimer()
 	}
 
