@@ -44,9 +44,6 @@ function deploy_local() {
 
   echo "Image build..."
   docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
-  #  docker push "${IMAGE_NAME}"
-  # -e EDGE_KEY="aHR0cDovLzE3Mi4xNy4wLjE6OTAwMHwxNzIuMTcuMC4xOjgwMDB8ZWU6YTQ6YTg6ZDY6YzQ6Njk6MjY6MGI6N2Y6MDk6YTU6YTk6N2Y6NzQ6YTk6ZDZ8Nw" \
-
 
   echo "Deployment..."
   docker run -d --name portainer-agent-dev \
@@ -100,7 +97,6 @@ function deploy_swarm() {
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -e EDGE=${EDGE} \
   -e EDGE_ID=${EDGE_ID} \
-  -e EDGE_KEY=aHR0cDovLzEwLjAuMi4yOjkwMDB8MTAuMC4yLjI6ODAwMHxlZTphNDphODpkNjpjNDo2OToyNjowYjo3ZjowOTphNTphOTo3Zjo3NDphOTpkNnw1 \
   --mode global \
   --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
   --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
