@@ -40,11 +40,15 @@ type PollService struct {
 }
 
 type pollServiceConfig struct {
-	APIServerAddr     string
-	EdgeID            string
-	InactivityTimeout string
-	PollFrequency     string
-	InsecurePoll      bool
+	APIServerAddr           string
+	EdgeID                  string
+	InactivityTimeout       string
+	PollFrequency           string
+	InsecurePoll            bool
+	PortainerURL            string
+	EndpointID              string
+	TunnelServerAddr        string
+	TunnelServerFingerprint string
 }
 
 // newPollService creates a new reverse tunnel service
@@ -60,15 +64,19 @@ func newPollService(edgeStacksManager *StacksManager, config *pollServiceConfig)
 	}
 
 	return &PollService{
-		apiServerAddr:         config.APIServerAddr,
-		edgeID:                config.EdgeID,
-		pollIntervalInSeconds: pollFrequency.Seconds(),
-		insecurePoll:          config.InsecurePoll,
-		inactivityTimeout:     inactivityTimeout,
-		tunnelClient:          chisel.NewClient(),
-		scheduleManager:       filesystem.NewCronManager(),
-		refreshSignal:         nil,
-		edgeStacksManager:     edgeStacksManager,
+		apiServerAddr:           config.APIServerAddr,
+		edgeID:                  config.EdgeID,
+		pollIntervalInSeconds:   pollFrequency.Seconds(),
+		insecurePoll:            config.InsecurePoll,
+		inactivityTimeout:       inactivityTimeout,
+		tunnelClient:            chisel.NewClient(),
+		scheduleManager:         filesystem.NewCronManager(),
+		refreshSignal:           nil,
+		edgeStacksManager:       edgeStacksManager,
+		portainerURL:            config.PortainerURL,
+		endpointID:              config.EndpointID,
+		tunnelServerAddr:        config.TunnelServerAddr,
+		tunnelServerFingerprint: config.TunnelServerFingerprint,
 	}, nil
 }
 
@@ -89,16 +97,7 @@ func (service *PollService) ResetActivityTimer() {
 // if needed as well as manage schedules.
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
-func (service *PollService) Start(portainerURL, endpointID, tunnelServerAddr, tunnelServerFingerprint string) error {
-	if portainerURL == "" || endpointID == "" || tunnelServerAddr == "" || tunnelServerFingerprint == "" {
-		return errors.New("Tunnel service parameters are invalid")
-	}
-
-	service.portainerURL = portainerURL
-	service.endpointID = endpointID
-	service.tunnelServerAddr = tunnelServerAddr
-	service.tunnelServerFingerprint = tunnelServerFingerprint
-
+func (service *PollService) Start() error {
 	if service.refreshSignal != nil {
 		return nil
 	}
