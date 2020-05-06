@@ -8,7 +8,7 @@ import (
 	"runtime"
 )
 
-// DockerStackService represents a service for managing stacks.
+// DockerStackService represents a service for managing stacks by using the Docker binary.
 type DockerStackService struct {
 	binaryPath string
 }
@@ -16,30 +16,30 @@ type DockerStackService struct {
 // NewDockerStackService initializes a new DockerStackService service.
 // It also updates the configuration of the Docker CLI binary.
 func NewDockerStackService(binaryPath string) (*DockerStackService, error) {
-	manager := &DockerStackService{
+	service := &DockerStackService{
 		binaryPath: binaryPath,
 	}
 
-	return manager, nil
+	return service, nil
 }
 
 // Login executes the docker login command against a list of registries (including DockerHub).
-func (manager *DockerStackService) Login() error {
+func (service *DockerStackService) Login() error {
 	// Not implemented yet.
 	return nil
 }
 
 // Logout executes the docker logout command.
-func (manager *DockerStackService) Logout() error {
-	command := manager.prepareDockerCommand(manager.binaryPath)
+func (service *DockerStackService) Logout() error {
+	command := service.prepareDockerCommand(service.binaryPath)
 	args := []string{"logout"}
 	return runCommandAndCaptureStdErr(command, args, "")
 
 }
 
 // Deploy executes the docker stack deploy command.
-func (manager *DockerStackService) Deploy(name, stackFilePath string, prune bool) error {
-	command := manager.prepareDockerCommand(manager.binaryPath)
+func (service *DockerStackService) Deploy(name, stackFilePath string, prune bool) error {
+	command := service.prepareDockerCommand(service.binaryPath)
 
 	args := []string{}
 	if prune {
@@ -53,8 +53,8 @@ func (manager *DockerStackService) Deploy(name, stackFilePath string, prune bool
 }
 
 // Remove executes the docker stack rm command.
-func (manager *DockerStackService) Remove(name string) error {
-	command := manager.prepareDockerCommand(manager.binaryPath)
+func (service *DockerStackService) Remove(name string) error {
+	command := service.prepareDockerCommand(service.binaryPath)
 	args := []string{"stack", "rm", name}
 	return runCommandAndCaptureStdErr(command, args, "")
 }
@@ -73,7 +73,7 @@ func runCommandAndCaptureStdErr(command string, args []string, workingDir string
 	return nil
 }
 
-func (manager *DockerStackService) prepareDockerCommand(binaryPath string) string {
+func (service *DockerStackService) prepareDockerCommand(binaryPath string) string {
 	// Assume Linux as a default
 	command := path.Join(binaryPath, "docker")
 
