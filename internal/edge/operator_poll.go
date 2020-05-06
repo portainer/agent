@@ -1,4 +1,4 @@
-package tunnel
+package edge
 
 import (
 	"crypto/tls"
@@ -68,7 +68,7 @@ func (operator *Operator) poll() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[DEBUG] [http,edge,poll] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
+		log.Printf("[DEBUG] [internal,edge,poll] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
 		return errors.New("short poll request failed")
 	}
 
@@ -78,34 +78,34 @@ func (operator *Operator) poll() error {
 		return err
 	}
 
-	log.Printf("[DEBUG] [http,edge,poll] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", responseData.Status, responseData.Port, len(responseData.Schedules), responseData.CheckinInterval)
+	log.Printf("[DEBUG] [internal,edge,poll] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", responseData.Status, responseData.Port, len(responseData.Schedules), responseData.CheckinInterval)
 
 	if responseData.Status == "IDLE" && operator.tunnelClient.IsTunnelOpen() {
-		log.Printf("[DEBUG] [http,edge,poll] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
+		log.Printf("[DEBUG] [internal,edge,poll] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
 
 		err := operator.tunnelClient.CloseTunnel()
 		if err != nil {
-			log.Printf("[ERROR] [http,edge,poll] [message: Unable to shutdown tunnel] [error: %s]", err)
+			log.Printf("[ERROR] [internal,edge,poll] [message: Unable to shutdown tunnel] [error: %s]", err)
 		}
 	}
 
 	if responseData.Status == "REQUIRED" && !operator.tunnelClient.IsTunnelOpen() {
-		log.Println("[DEBUG] [http,edge,poll] [message: Required status detected, creating reverse tunnel]")
+		log.Println("[DEBUG] [internal,edge,poll] [message: Required status detected, creating reverse tunnel]")
 
 		err := operator.createTunnel(responseData.Credentials, responseData.Port)
 		if err != nil {
-			log.Printf("[ERROR] [http,edge,poll] [message: Unable to create tunnel] [error: %s]", err)
+			log.Printf("[ERROR] [internal,edge,poll] [message: Unable to create tunnel] [error: %s]", err)
 			return err
 		}
 	}
 
 	err = operator.scheduleManager.Schedule(responseData.Schedules)
 	if err != nil {
-		log.Printf("[ERROR] [http,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
+		log.Printf("[ERROR] [internal,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
 	}
 
 	if responseData.CheckinInterval != operator.pollIntervalInSeconds {
-		log.Printf("[DEBUG] [http,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", operator.pollIntervalInSeconds, responseData.CheckinInterval)
+		log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", operator.pollIntervalInSeconds, responseData.CheckinInterval)
 		operator.pollIntervalInSeconds = responseData.CheckinInterval
 		operator.createHTTPClient(responseData.CheckinInterval)
 		go operator.restartStatusPollLoop()
@@ -119,7 +119,7 @@ func (operator *Operator) poll() error {
 
 		err := operator.edgeStacksManager.UpdateStacksStatus(stacks)
 		if err != nil {
-			log.Printf("[ERROR] [http,edge,stacks] [message: an error occured during stack management] [error: %s]", err)
+			log.Printf("[ERROR] [internal,edge,stack] [message: an error occured during stack management] [error: %s]", err)
 			return err
 		}
 	}

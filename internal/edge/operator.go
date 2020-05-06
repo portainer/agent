@@ -1,4 +1,4 @@
-package tunnel
+package edge
 
 import (
 	"errors"
@@ -121,7 +121,7 @@ func (operator *Operator) restartStatusPollLoop() {
 }
 
 func (operator *Operator) startStatusPollLoop() error {
-	log.Printf("[DEBUG] [http,edge,poll] [poll_interval_seconds: %f] [server_url: %s] [message: starting Portainer short-polling client]", operator.pollIntervalInSeconds, operator.portainerURL)
+	log.Printf("[DEBUG] [internal,edge,poll] [poll_interval_seconds: %f] [server_url: %s] [message: starting Portainer short-polling client]", operator.pollIntervalInSeconds, operator.portainerURL)
 
 	ticker := time.NewTicker(time.Duration(operator.pollIntervalInSeconds) * time.Second)
 	go func() {
@@ -130,11 +130,11 @@ func (operator *Operator) startStatusPollLoop() error {
 			case <-ticker.C:
 				err := operator.poll()
 				if err != nil {
-					log.Printf("[ERROR] [edge,http,poll] [message: an error occured during short poll] [error: %s]", err)
+					log.Printf("[ERROR] [internal,edge,poll] [message: an error occured during short poll] [error: %s]", err)
 				}
 
 			case <-operator.refreshSignal:
-				log.Println("[DEBUG] [http,edge,poll] [message: shutting down Portainer short-polling client]")
+				log.Println("[DEBUG] [internal,edge,poll] [message: shutting down Portainer short-polling client]")
 				ticker.Stop()
 				return
 			}
@@ -148,7 +148,7 @@ func (operator *Operator) startActivityMonitoringLoop() {
 	ticker := time.NewTicker(tunnelActivityCheckInterval)
 	quit := make(chan struct{})
 
-	log.Printf("[DEBUG] [http,edge,monitoring] [monitoring_interval_seconds: %f] [inactivity_timeout: %s] [message: starting activity monitoring loop]", tunnelActivityCheckInterval.Seconds(), operator.inactivityTimeout.String())
+	log.Printf("[DEBUG] [internal,edge,monitoring] [monitoring_interval_seconds: %f] [inactivity_timeout: %s] [message: starting activity monitoring loop]", tunnelActivityCheckInterval.Seconds(), operator.inactivityTimeout.String())
 
 	go func() {
 		for {
@@ -160,15 +160,15 @@ func (operator *Operator) startActivityMonitoringLoop() {
 				}
 
 				elapsed := time.Since(operator.lastActivity)
-				log.Printf("[DEBUG] [http,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: tunnel activity monitoring]", elapsed.Seconds())
+				log.Printf("[DEBUG] [internal,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: tunnel activity monitoring]", elapsed.Seconds())
 
 				if operator.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > operator.inactivityTimeout.Seconds() {
 
-					log.Printf("[INFO] [http,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: shutting down tunnel after inactivity period]", elapsed.Seconds())
+					log.Printf("[INFO] [internal,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: shutting down tunnel after inactivity period]", elapsed.Seconds())
 
 					err := operator.tunnelClient.CloseTunnel()
 					if err != nil {
-						log.Printf("[ERROR] [http,edge,monitoring] [message: unable to shutdown tunnel] [error: %s]", err)
+						log.Printf("[ERROR] [internal,edge,monitoring] [message: unable to shutdown tunnel] [error: %s]", err)
 					}
 				}
 
