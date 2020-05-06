@@ -92,7 +92,6 @@ function deploy_swarm() {
   sleep 5
 
   echo "Deployment..."
-  # -e EDGE_KEY=aHR0cDovLzEwLjAuMi4yOjkwMDB8MTAuMC4yLjI6ODAwMHxlZTphNDphODpkNjpjNDo2OToyNjowYjo3ZjowOTphNTphOTo3Zjo3NDphOTpkNnw1 \
 
   docker -H "${DOCKER_MANAGER}:2375" network create --driver overlay portainer-agent-dev-net
   docker -H "${DOCKER_MANAGER}:2375" service create --name portainer-agent-dev \
@@ -101,6 +100,7 @@ function deploy_swarm() {
   -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -e EDGE=${EDGE} \
   -e EDGE_ID=${EDGE_ID} \
+  -e EDGE_KEY=aHR0cDovLzEwLjAuMi4yOjkwMDB8MTAuMC4yLjI6ODAwMHxlZTphNDphODpkNjpjNDo2OToyNjowYjo3ZjowOTphNTphOTo3Zjo3NDphOTpkNnw1 \
   --mode global \
   --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
   --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
