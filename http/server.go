@@ -20,7 +20,6 @@ type APIServer struct {
 	edgeManager      *edge.EdgeManager
 	agentTags        map[string]string
 	agentOptions     *agent.Options
-	edgeMode         bool
 }
 
 // APIServerConfig represents a server configuration
@@ -34,7 +33,6 @@ type APIServerConfig struct {
 	EdgeManager      *edge.EdgeManager
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
-	EdgeMode         bool
 }
 
 // NewAPIServer returns a pointer to a APIServer.
@@ -48,7 +46,6 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 		edgeManager:      config.EdgeManager,
 		agentTags:        config.AgentTags,
 		agentOptions:     config.AgentOptions,
-		edgeMode:         config.EdgeMode,
 	}
 }
 
@@ -59,7 +56,6 @@ func (server *APIServer) StartUnsecured() error {
 		ClusterService: server.clusterService,
 		AgentTags:      server.agentTags,
 		AgentOptions:   server.agentOptions,
-		EdgeMode:       server.edgeMode,
 		EdgeManager:    server.edgeManager,
 		Secured:        false,
 	}
@@ -87,7 +83,6 @@ func (server *APIServer) StartSecured() error {
 		SignatureService: server.signatureService,
 		AgentTags:        server.agentTags,
 		AgentOptions:     server.agentOptions,
-		EdgeMode:         server.edgeMode,
 		EdgeManager:      server.edgeManager,
 		Secured:          true,
 	}
