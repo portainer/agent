@@ -15,7 +15,7 @@ type EdgeManager struct {
 	dockerStackService agent.DockerStackService
 	infoService        agent.InfoService
 	stacksManager      *StacksManager
-	tunnelOperator     agent.TunnelOperator
+	pollService        agent.TunnelOperator
 	key                *edgeKey
 	edgeMode           bool
 }
@@ -26,12 +26,12 @@ func NewEdgeManager() (*EdgeManager, error) {
 	return &EdgeManager{}, nil
 }
 
-// Enable enables the manager
+// Init initializes the manager
 func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) error {
 
 	apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
 
-	operatorConfig := &OperatorConfig{
+	pollServiceConfig := &pollServiceConfig{
 		APIServerAddr:     apiServerAddr,
 		EdgeID:            options.EdgeID,
 		PollFrequency:     agent.DefaultEdgePollInterval,
@@ -39,7 +39,7 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 		InsecurePoll:      options.EdgeInsecurePoll,
 	}
 
-	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", operatorConfig.APIServerAddr, operatorConfig.EdgeID, operatorConfig.PollFrequency, operatorConfig.InactivityTimeout, operatorConfig.InsecurePoll)
+	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll)
 
 	dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
 	if err != nil {
@@ -53,11 +53,11 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 	}
 	manager.stacksManager = stacksManager
 
-	tunnelOperator, err := NewTunnelOperator(stacksManager, operatorConfig)
+	pollService, err := newPollService(stacksManager, pollServiceConfig)
 	if err != nil {
 		return err
 	}
-	manager.tunnelOperator = tunnelOperator
+	manager.pollService = pollService
 
 	manager.infoService = infoService
 	manager.clusterService = clusterService
@@ -87,7 +87,7 @@ func (manager *EdgeManager) IsEdgeModeEnabled() bool {
 
 // ResetActivityTimer resets the activity timer
 func (manager *EdgeManager) ResetActivityTimer() {
-	manager.tunnelOperator.ResetActivityTimer()
+	manager.pollService.ResetActivityTimer()
 }
 
 func (manager *EdgeManager) startRuntimeConfigCheckProcess() error {
@@ -131,13 +131,13 @@ func (manager *EdgeManager) checkRuntimeConfig() error {
 	log.Printf("[DEBUG] [internal,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
-		err = manager.tunnelOperator.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.key.TunnelServerAddr, manager.key.TunnelServerFingerprint)
+		err = manager.pollService.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.key.TunnelServerAddr, manager.key.TunnelServerFingerprint)
 		if err != nil {
 			return err
 		}
 
 	} else {
-		err = manager.tunnelOperator.Stop()
+		err = manager.pollService.Stop()
 		if err != nil {
 			return err
 		}
