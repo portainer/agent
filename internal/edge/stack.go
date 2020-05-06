@@ -1,7 +1,6 @@
 package edge
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -58,19 +57,21 @@ type StacksManager struct {
 	stacks             map[edgeStackID]*edgeStack
 	stopSignal         chan struct{}
 	dockerStackService agent.DockerStackService
-	edgeID             string
 	portainerURL       string
 	endpointID         string
 	isEnabled          bool
+	httpClient         *client.PortainerClient
 }
 
 // NewStacksManager creates a new instance of StacksManager
-func NewStacksManager(dockerStackService agent.DockerStackService, edgeID string) (*StacksManager, error) {
+func NewStacksManager(dockerStackService agent.DockerStackService, portainerURL, endpointID, edgeID string) (*StacksManager, error) {
+	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID)
+
 	return &StacksManager{
 		dockerStackService: dockerStackService,
-		edgeID:             edgeID,
 		stacks:             map[edgeStackID]*edgeStack{},
 		stopSignal:         nil,
+		httpClient:         cli,
 	}, nil
 }
 
@@ -102,12 +103,7 @@ func (manager *StacksManager) UpdateStacksStatus(stacks map[int]int) error {
 			}
 		}
 
-		cli, err := manager.createPortainerClient()
-		if err != nil {
-			return err
-		}
-
-		fileContent, prune, err := cli.GetEdgeStackConfig(int(stack.ID))
+		fileContent, prune, err := manager.httpClient.GetEdgeStackConfig(int(stack.ID))
 		if err != nil {
 			return err
 		}
@@ -126,7 +122,7 @@ func (manager *StacksManager) UpdateStacksStatus(stacks map[int]int) error {
 
 		manager.stacks[stack.ID] = stack
 
-		err = cli.SetEdgeStackStatus(int(stack.ID), int(edgeStackStatusAcknowledged), "")
+		err = manager.httpClient.SetEdgeStackStatus(int(stack.ID), int(edgeStackStatusAcknowledged), "")
 		if err != nil {
 			return err
 		}
@@ -157,13 +153,11 @@ func (manager *StacksManager) Stop() error {
 }
 
 // Start starts the loop checking for stacks to deploy
-func (manager *StacksManager) Start(portainerURL, endpointID string) error {
+func (manager *StacksManager) Start() error {
 	if manager.stopSignal != nil {
 		return nil
 	}
 
-	manager.portainerURL = portainerURL
-	manager.endpointID = endpointID
 	manager.isEnabled = true
 	manager.stopSignal = make(chan struct{})
 
@@ -224,22 +218,10 @@ func (manager *StacksManager) deployStack(stack *edgeStack, stackName, stackFile
 
 	manager.stacks[stack.ID] = stack
 
-	cli, err := manager.createPortainerClient()
-	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: failed creating portainer client] [error: %v]", err)
-	}
-
-	err = cli.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
+	err = manager.httpClient.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
 	if err != nil {
 		log.Printf("[ERROR] [internal,edge,stack] [message: failed setting edge stack status] [error: %v]", err)
 	}
-}
-
-func (manager *StacksManager) createPortainerClient() (*client.PortainerClient, error) {
-	if manager.portainerURL == "" || manager.endpointID == "" || manager.edgeID == "" {
-		return nil, errors.New("Client parameters are invalid")
-	}
-	return client.NewPortainerClient(manager.portainerURL, manager.endpointID, manager.edgeID), nil
 }
 
 func (manager *StacksManager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
