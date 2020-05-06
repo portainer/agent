@@ -86,13 +86,13 @@ func (manager *StacksManager) UpdateStacksStatus(stacks map[int]int) error {
 			if stack.Version == version {
 				continue
 			}
-			log.Printf("[DEBUG] [internal,edge,stack] [message: received stack to update %d]", stackID)
+			log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: marking stack for update]", stackID)
 
 			stack.Action = actionUpdate
 			stack.Version = version
 			stack.Status = statusPending
 		} else {
-			log.Printf("[DEBUG] [internal,edge,stack] [message: received new stack %d]", stackID)
+			log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: marking stack for deployment]", stackID)
 
 			stack = &edgeStack{
 				Action:  actionDeploy,
@@ -134,7 +134,7 @@ func (manager *StacksManager) UpdateStacksStatus(stacks map[int]int) error {
 
 	for stackID, stack := range manager.stacks {
 		if _, ok := stacks[int(stackID)]; !ok {
-			log.Printf("[DEBUG] [internal,edge,stack] [message: received stack to delete %d]", stackID)
+			log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: marking stack for deletion]", stackID)
 			stack.Action = actionDelete
 			stack.Status = statusPending
 
@@ -206,7 +206,7 @@ func (manager *StacksManager) next() *edgeStack {
 }
 
 func (manager *StacksManager) deployStack(stack *edgeStack, stackName, stackFileLocation string) {
-	log.Printf("[DEBUG] [internal,edge,stack] [message: deploying stack %d]", stack.ID)
+	log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
 	stack.Status = statusDone
 	stack.Action = actionIdle
 	responseStatus := int(edgeStackStatusOk)
@@ -219,7 +219,7 @@ func (manager *StacksManager) deployStack(stack *edgeStack, stackName, stackFile
 		responseStatus = int(edgeStackStatusError)
 		errorMessage = err.Error()
 	} else {
-		log.Printf("[DEBUG] [internal,edge,stack] [message: deployed stack id: %v, version: %d]", stack.ID, stack.Version)
+		log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: stack deployed]", stack.ID, stack.Version)
 	}
 
 	manager.stacks[stack.ID] = stack
