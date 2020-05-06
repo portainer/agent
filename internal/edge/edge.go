@@ -7,7 +7,6 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/exec"
-	"github.com/portainer/agent/http/tunnel"
 	"github.com/portainer/agent/internal/edgestacks"
 )
 
@@ -33,7 +32,7 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 
 	apiServerAddr := fmt.Sprintf("%s:%s", advertiseAddr, options.AgentServerPort)
 
-	operatorConfig := &tunnel.OperatorConfig{
+	operatorConfig := &OperatorConfig{
 		APIServerAddr:     apiServerAddr,
 		EdgeID:            options.EdgeID,
 		PollFrequency:     agent.DefaultEdgePollInterval,
@@ -55,7 +54,7 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 	}
 	manager.stacksManager = stacksManager
 
-	tunnelOperator, err := tunnel.NewTunnelOperator(stacksManager, operatorConfig)
+	tunnelOperator, err := NewTunnelOperator(stacksManager, operatorConfig)
 	if err != nil {
 		return err
 	}
