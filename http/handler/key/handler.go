@@ -16,19 +16,17 @@ type Handler struct {
 	*mux.Router
 	tunnelOperator agent.TunnelOperator
 	edgeManager    *edge.EdgeManager
-	edgeMode       bool
 }
 
 // NewHandler returns a pointer to an Handler
 // It sets the associated handle functions for all the Edge key related HTTP endpoints.
 // This handler is meant to be used when the agent is started in Edge mode, all the API endpoints will return
 // a HTTP 503 service not available if edge mode is disabled.
-func NewHandler(tunnelOperator agent.TunnelOperator, notaryService *security.NotaryService, edgeManager *edge.EdgeManager, edgeMode bool) *Handler {
+func NewHandler(tunnelOperator agent.TunnelOperator, notaryService *security.NotaryService, edgeManager *edge.EdgeManager) *Handler {
 	h := &Handler{
 		Router:         mux.NewRouter(),
 		edgeManager:    edgeManager,
 		tunnelOperator: tunnelOperator,
-		edgeMode:       edgeMode,
 	}
 
 	h.Handle("/key",

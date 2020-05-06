@@ -105,7 +105,7 @@ func main() {
 	systemService := ghw.NewSystemService(agent.HostRoot)
 
 	var signatureService agent.DigitalSignatureService
-	if !options.EdgeMode {
+	if !edgeManager.IsEdgeModeEnabled() {
 		signatureService = crypto.NewECDSAService(options.SharedSecret)
 		tlsService := crypto.TLSService{}
 
@@ -124,10 +124,9 @@ func main() {
 		SignatureService: signatureService,
 		AgentTags:        agentTags,
 		AgentOptions:     options,
-		EdgeMode:         options.EdgeMode,
 	}
 
-	if options.EdgeMode {
+	if edgeManager.IsEdgeModeEnabled() {
 		config.Addr = advertiseAddr
 	}
 
@@ -140,7 +139,7 @@ func main() {
 func startAPIServer(config *http.APIServerConfig) error {
 	server := http.NewAPIServer(config)
 
-	if config.EdgeMode {
+	if config.EdgeManager.IsEdgeModeEnabled() {
 		return server.StartUnsecured()
 	}
 

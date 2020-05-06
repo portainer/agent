@@ -47,7 +47,6 @@ type Config struct {
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
 	Secured          bool
-	EdgeMode         bool
 }
 
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
@@ -62,7 +61,7 @@ func NewHandler(config *Config) *Handler {
 		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService, config.Secured),
-		keyHandler:         key.NewHandler(config.TunnelOperator, notaryService, config.EdgeManager, config.EdgeMode),
+		keyHandler:         key.NewHandler(config.TunnelOperator, notaryService, config.EdgeManager),
 		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
 		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:        ping.NewHandler(),
