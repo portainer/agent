@@ -7,7 +7,6 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/exec"
-	"github.com/portainer/agent/internal/edgestacks"
 )
 
 // EdgeManager manages Edge functionality
@@ -15,7 +14,7 @@ type EdgeManager struct {
 	clusterService     agent.ClusterService
 	dockerStackService agent.DockerStackService
 	infoService        agent.InfoService
-	stacksManager      *edgestacks.Manager
+	stacksManager      *StacksManager
 	tunnelOperator     agent.TunnelOperator
 	key                *edgeKey
 	edgeMode           bool
@@ -40,7 +39,7 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 		InsecurePoll:      options.EdgeInsecurePoll,
 	}
 
-	log.Printf("[DEBUG] [main,edge,configuration] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", operatorConfig.APIServerAddr, operatorConfig.EdgeID, operatorConfig.PollFrequency, operatorConfig.InactivityTimeout, operatorConfig.InsecurePoll)
+	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", operatorConfig.APIServerAddr, operatorConfig.EdgeID, operatorConfig.PollFrequency, operatorConfig.InactivityTimeout, operatorConfig.InsecurePoll)
 
 	dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
 	if err != nil {
@@ -48,7 +47,7 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 	}
 	manager.dockerStackService = dockerStackService
 
-	stacksManager, err := edgestacks.NewManager(dockerStackService, options.EdgeID)
+	stacksManager, err := NewStacksManager(dockerStackService, options.EdgeID)
 	if err != nil {
 		return err
 	}
@@ -70,7 +69,7 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 	}
 
 	if edgeKey != "" {
-		log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key to cluster.]")
+		log.Println("[DEBUG] [internal,edge] [message: Edge key found in environment. Associating Edge key to cluster.]")
 
 		err := manager.SetKey(edgeKey)
 		if err != nil {
@@ -111,7 +110,7 @@ func (manager *EdgeManager) startRuntimeConfigCheckProcess() error {
 			case <-ticker.C:
 				err := manager.checkRuntimeConfig()
 				if err != nil {
-					log.Printf("[ERROR] [main,edge,runtime] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
+					log.Printf("[ERROR] [internal,edge,runtime] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
 				}
 			}
 		}
@@ -129,7 +128,7 @@ func (manager *EdgeManager) checkRuntimeConfig() error {
 	agentRunsOnLeaderNode := agentTags[agent.MemberTagKeyIsLeader] == "1"
 	agentRunsOnSwarm := agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusSwarm
 
-	log.Printf("[DEBUG] [main,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentRunsOnLeaderNode)
+	log.Printf("[DEBUG] [internal,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
 		err = manager.tunnelOperator.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.key.TunnelServerAddr, manager.key.TunnelServerFingerprint)

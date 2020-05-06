@@ -9,7 +9,6 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
 	"github.com/portainer/agent/filesystem"
-	"github.com/portainer/agent/internal/edgestacks"
 )
 
 const tunnelActivityCheckInterval = 30 * time.Second
@@ -27,7 +26,7 @@ type Operator struct {
 	scheduleManager         agent.Scheduler
 	lastActivity            time.Time
 	refreshSignal           chan struct{}
-	edgeStacksManager       *edgestacks.Manager
+	edgeStacksManager       *StacksManager
 	portainerURL            string
 	endpointID              string
 	tunnelServerAddr        string
@@ -44,7 +43,7 @@ type OperatorConfig struct {
 }
 
 // NewTunnelOperator creates a new reverse tunnel operator
-func NewTunnelOperator(edgeStacksManager *edgestacks.Manager, config *OperatorConfig) (*Operator, error) {
+func NewTunnelOperator(edgeStacksManager *StacksManager, config *OperatorConfig) (*Operator, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
