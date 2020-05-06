@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/portainer/agent/http/client"
+	"github.com/portainer/agent/internal/edge"
 
 	"github.com/gorilla/mux"
 	"github.com/portainer/agent"
@@ -16,12 +17,12 @@ import (
 // EdgeServer expose an UI to associate an Edge key with the agent.
 type EdgeServer struct {
 	httpServer     *http.Server
-	edgeManager    agent.EdgeManager
+	edgeManager    *edge.EdgeManager
 	clusterService agent.ClusterService
 }
 
 // NewEdgeServer returns a pointer to a new instance of EdgeServer.
-func NewEdgeServer(edgeManager agent.EdgeManager, clusterService agent.ClusterService) *EdgeServer {
+func NewEdgeServer(edgeManager *edge.EdgeManager, clusterService agent.ClusterService) *EdgeServer {
 	return &EdgeServer{
 		clusterService: clusterService,
 		edgeManager:    edgeManager,

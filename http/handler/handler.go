@@ -17,6 +17,7 @@ import (
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
+	"github.com/portainer/agent/internal/edge"
 	httperror "github.com/portainer/libhttp/error"
 )
 
@@ -32,7 +33,7 @@ type Handler struct {
 	hostHandler        *host.Handler
 	pingHandler        *ping.Handler
 	securedProtocol    bool
-	edgeManager        agent.EdgeManager
+	edgeManager        *edge.EdgeManager
 }
 
 // Config represents a server handler configuration
@@ -41,7 +42,7 @@ type Config struct {
 	SystemService    agent.SystemService
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
-	EdgeManager      agent.EdgeManager
+	EdgeManager      *edge.EdgeManager
 	TunnelOperator   agent.TunnelOperator
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options

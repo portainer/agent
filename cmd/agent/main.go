@@ -84,16 +84,22 @@ func main() {
 		defer clusterService.Leave()
 	}
 
-	var edgeManager agent.EdgeManager
+	edgeManager, err := edge.NewEdgeManager(options, advertiseAddr, clusterService, infoService)
+	if err != nil {
+		log.Fatalf("[ERROR] [main,edge] [message: Unable to start edge manger] [error: %s]", err)
+	}
+
 	if options.EdgeMode {
-		edgeManager, err = edge.NewEdgeManager(options, advertiseAddr, clusterService, infoService)
-		if err != nil {
-			log.Fatalf("[ERROR] [main,edge] [message: Unable to start edge manger] [error: %s]", err)
-		}
 
 		err = edgeManager.Enable(options.EdgeKey)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,edge] [message: Unable to enable edge mode] [error: %s]", err)
+		}
+
+		if !edgeManager.IsKeySet() {
+			log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
+
+			serveEdgeUI(edgeManager, clusterService, options.EdgeServerAddr, options.EdgeServerPort)
 		}
 	}
 
@@ -145,4 +151,29 @@ func startAPIServer(config *http.APIServerConfig) error {
 func parseOptions() (*agent.Options, error) {
 	optionParser := os.NewEnvOptionParser()
 	return optionParser.Options()
+}
+
+func serveEdgeUI(edgeManager *edge.EdgeManager, clusterService agent.ClusterService, serverAddr, serverPort string) {
+	edgeServer := http.NewEdgeServer(edgeManager, clusterService)
+
+	go func() {
+		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", serverAddr, serverPort)
+
+		err := edgeServer.Start(serverAddr, serverPort)
+		if err != nil {
+			log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
+		}
+
+		log.Println("[INFO] [main,edge,http] [message: Edge server shutdown]")
+	}()
+
+	go func() {
+		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
+		<-timer1.C
+
+		if !edgeManager.IsKeySet() {
+			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
+			edgeServer.Shutdown()
+		}
+	}()
 }
