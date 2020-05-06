@@ -8,6 +8,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
+	"github.com/portainer/agent/http/client"
 )
 
 type edgeKey struct {
@@ -60,6 +61,34 @@ func (manager *Manager) IsKeySet() bool {
 		return false
 	}
 	return true
+}
+
+// PropagateKeyInCluster propogates the edge key in the cluster
+func (manager *Manager) PropagateKeyInCluster() error {
+	if manager.clusterService != nil {
+		return nil
+	}
+
+	httpCli := client.NewAPIClient()
+	tags := manager.clusterService.GetTags()
+	currentNodeName := tags[agent.MemberTagKeyNodeName]
+
+	members := manager.clusterService.Members()
+	for _, member := range members {
+
+		if member.NodeName == currentNodeName || member.EdgeKeySet {
+			continue
+		}
+
+		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
+
+		err := httpCli.SetEdgeKey(memberAddr, manager.GetKey())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // parseEdgeKey decodes a base64 encoded key and extract the decoded information from the following

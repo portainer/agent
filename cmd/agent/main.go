@@ -113,7 +113,7 @@ func main() {
 		} else {
 			log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
 
-			serveEdgeUI(edgeManager, clusterService, options.EdgeServerAddr, options.EdgeServerPort)
+			serveEdgeUI(edgeManager, options.EdgeServerAddr, options.EdgeServerPort)
 		}
 	}
 
@@ -166,8 +166,8 @@ func parseOptions() (*agent.Options, error) {
 	return optionParser.Options()
 }
 
-func serveEdgeUI(edgeManager *edge.Manager, clusterService agent.ClusterService, serverAddr, serverPort string) {
-	edgeServer := http.NewEdgeServer(edgeManager, clusterService)
+func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
+	edgeServer := http.NewEdgeServer(edgeManager)
 
 	go func() {
 		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", serverAddr, serverPort)

@@ -2,30 +2,25 @@ package http
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/portainer/agent/http/client"
 	"github.com/portainer/agent/internal/edge"
 
 	"github.com/gorilla/mux"
-	"github.com/portainer/agent"
 )
 
 // EdgeServer expose an UI to associate an Edge key with the agent.
 type EdgeServer struct {
-	httpServer     *http.Server
-	edgeManager    *edge.Manager
-	clusterService agent.ClusterService
+	httpServer  *http.Server
+	edgeManager *edge.Manager
 }
 
 // NewEdgeServer returns a pointer to a new instance of EdgeServer.
-func NewEdgeServer(edgeManager *edge.Manager, clusterService agent.ClusterService) *EdgeServer {
+func NewEdgeServer(edgeManager *edge.Manager) *EdgeServer {
 	return &EdgeServer{
-		clusterService: clusterService,
-		edgeManager:    edgeManager,
+		edgeManager: edgeManager,
 	}
 }
 
@@ -71,32 +66,17 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		if server.clusterService != nil {
-			tags := server.clusterService.GetTags()
-			go server.propagateKeyInCluster(tags[agent.MemberTagKeyNodeName], key)
-		}
+		go server.propagateKeyInCluster()
 
 		w.Write([]byte("Agent setup OK. You can close this page."))
 		server.Shutdown()
 	}
 }
 
-func (server *EdgeServer) propagateKeyInCluster(currentNodeName, key string) {
-	httpCli := client.NewAPIClient()
-
-	members := server.clusterService.Members()
-	for _, member := range members {
-
-		if member.NodeName == currentNodeName || member.EdgeKeySet {
-			continue
-		}
-
-		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
-
-		err := httpCli.SetEdgeKey(memberAddr, key)
-		if err != nil {
-			log.Printf("[ERROR] [edge,http] [member_address: %s] [message: Unable to propagate key to cluster member] [err: %s]", memberAddr, err)
-		}
+func (server *EdgeServer) propagateKeyInCluster() {
+	err := server.edgeManager.PropagateKeyInCluster()
+	if err != nil {
+		log.Printf("[ERROR] [edge,http] [message: Unable to propagate key to cluster] [err: %s]", err)
 	}
 }
 
