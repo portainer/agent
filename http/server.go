@@ -17,7 +17,7 @@ type APIServer struct {
 	systemService    agent.SystemService
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
-	edgeManager      *edge.EdgeManager
+	edgeManager      *edge.Manager
 	agentTags        map[string]string
 	agentOptions     *agent.Options
 }
@@ -30,7 +30,7 @@ type APIServerConfig struct {
 	SystemService    agent.SystemService
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
-	EdgeManager      *edge.EdgeManager
+	EdgeManager      *edge.Manager
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
 }

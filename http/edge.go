@@ -17,12 +17,12 @@ import (
 // EdgeServer expose an UI to associate an Edge key with the agent.
 type EdgeServer struct {
 	httpServer     *http.Server
-	edgeManager    *edge.EdgeManager
+	edgeManager    *edge.Manager
 	clusterService agent.ClusterService
 }
 
 // NewEdgeServer returns a pointer to a new instance of EdgeServer.
-func NewEdgeServer(edgeManager *edge.EdgeManager, clusterService agent.ClusterService) *EdgeServer {
+func NewEdgeServer(edgeManager *edge.Manager, clusterService agent.ClusterService) *EdgeServer {
 	return &EdgeServer{
 		clusterService: clusterService,
 		edgeManager:    edgeManager,

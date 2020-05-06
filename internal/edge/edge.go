@@ -10,8 +10,8 @@ import (
 	"github.com/portainer/agent/exec"
 )
 
-// EdgeManager manages Edge functionality
-type EdgeManager struct {
+// Manager manages Edge functionality
+type Manager struct {
 	clusterService     agent.ClusterService
 	dockerStackService agent.DockerStackService
 	infoService        agent.InfoService
@@ -24,10 +24,10 @@ type EdgeManager struct {
 	advertiseAddr      string
 }
 
-// NewEdgeManager creates an instance of EdgeManager
-func NewEdgeManager(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) (*EdgeManager, error) {
+// NewManager creates an instance of Manager
+func NewManager(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) (*Manager, error) {
 
-	return &EdgeManager{
+	return &Manager{
 		clusterService: clusterService,
 		infoService:    infoService,
 		agentOptions:   options,
@@ -37,7 +37,7 @@ func NewEdgeManager(options *agent.Options, advertiseAddr string, clusterService
 }
 
 // Init initializes the manager
-func (manager *EdgeManager) Init() error {
+func (manager *Manager) Init() error {
 	if !manager.IsKeySet() {
 		return errors.New("Unable to initalize edge manager without key")
 	}
@@ -85,16 +85,16 @@ func (manager *EdgeManager) Init() error {
 }
 
 // IsEdgeModeEnabled returns true if edge mode is enabled
-func (manager *EdgeManager) IsEdgeModeEnabled() bool {
+func (manager *Manager) IsEdgeModeEnabled() bool {
 	return manager.edgeMode
 }
 
 // ResetActivityTimer resets the activity timer
-func (manager *EdgeManager) ResetActivityTimer() {
+func (manager *Manager) ResetActivityTimer() {
 	manager.pollService.ResetActivityTimer()
 }
 
-func (manager *EdgeManager) startEdgeBackgroundProcess() error {
+func (manager *Manager) startEdgeBackgroundProcess() error {
 
 	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
 	if err != nil {
@@ -123,7 +123,7 @@ func (manager *EdgeManager) startEdgeBackgroundProcess() error {
 	return nil
 }
 
-func (manager *EdgeManager) checkRuntimeConfig() error {
+func (manager *Manager) checkRuntimeConfig() error {
 	agentTags, err := manager.infoService.GetInformationFromDockerEngine()
 	if err != nil {
 		return err

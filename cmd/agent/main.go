@@ -86,7 +86,7 @@ func main() {
 		defer clusterService.Leave()
 	}
 
-	edgeManager, err := edge.NewEdgeManager(options, advertiseAddr, clusterService, infoService)
+	edgeManager, err := edge.NewManager(options, advertiseAddr, clusterService, infoService)
 	if err != nil {
 		log.Fatalf("[ERROR] [main,edge] [message: Unable to start edge manger] [error: %s]", err)
 	}
@@ -166,7 +166,7 @@ func parseOptions() (*agent.Options, error) {
 	return optionParser.Options()
 }
 
-func serveEdgeUI(edgeManager *edge.EdgeManager, clusterService agent.ClusterService, serverAddr, serverPort string) {
+func serveEdgeUI(edgeManager *edge.Manager, clusterService agent.ClusterService, serverAddr, serverPort string) {
 	edgeServer := http.NewEdgeServer(edgeManager, clusterService)
 
 	go func() {
