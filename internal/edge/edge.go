@@ -55,7 +55,7 @@ func (manager *EdgeManager) Init() error {
 	}
 	manager.dockerStackService = dockerStackService
 
-	stacksManager, err := NewStacksManager(dockerStackService, manager.agentOptions.EdgeID)
+	stacksManager, err := NewStacksManager(dockerStackService, manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (manager *EdgeManager) checkRuntimeConfig() error {
 	}
 
 	if agentRunsOnSwarm && agentRunsOnLeaderNode {
-		err = manager.stacksManager.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID)
+		err = manager.stacksManager.Start()
 		if err != nil {
 			return err
 		}
