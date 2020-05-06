@@ -13,7 +13,7 @@ import (
 	"github.com/portainer/agent"
 )
 
-// PortainerClient is used to execute HTTP requests against the agent API
+// PortainerClient is used to execute HTTP requests against the Portainer API
 type PortainerClient struct {
 	httpClient    *http.Client
 	serverAddress string
@@ -38,7 +38,7 @@ type stackConfigResponse struct {
 	Prune            bool
 }
 
-// GetEdgeStackConfig fetches the Edge stack config
+// GetEdgeStackConfig retrieves the configuration associated to an Edge stack
 func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (string, bool, error) {
 	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/stacks/%d", client.serverAddress, client.endpointID, edgeStackID)
 
@@ -56,7 +56,7 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (string, bool
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: GetEdgeStackConfig operation failed] \n", resp.StatusCode)
+		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: GetEdgeStackConfig operation failed]", resp.StatusCode)
 		return "", false, errors.New("GetEdgeStackConfig operation failed")
 	}
 
@@ -75,7 +75,7 @@ type setEdgeStackStatusPayload struct {
 	EndpointID int
 }
 
-// SetEdgeStackStatus set the Edge stack status on portainer server
+// SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
 func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
 	endpointID, err := strconv.Atoi(client.endpointID)
 	if err != nil {
@@ -110,7 +110,7 @@ func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus i
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client] [response_code: %d] [message: SetEdgeStackStatus operation failed]", resp.StatusCode)
+		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: SetEdgeStackStatus operation failed]", resp.StatusCode)
 		return errors.New("SetEdgeStackStatus operation failed")
 	}
 

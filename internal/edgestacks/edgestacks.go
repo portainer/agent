@@ -86,13 +86,13 @@ func (manager *Manager) UpdateStacksStatus(stacks map[int]int) error {
 			if stack.Version == version {
 				continue
 			}
-			log.Printf("[DEBUG] [stacksmanager,update] [message: received stack to update %d] \n", stackID)
+			log.Printf("[DEBUG] [stacksmanager,update] [message: received stack to update %d]", stackID)
 
 			stack.Action = actionUpdate
 			stack.Version = version
 			stack.Status = statusPending
 		} else {
-			log.Printf("[DEBUG] [stacksmanager,update] [message: received new stack %d] \n", stackID)
+			log.Printf("[DEBUG] [stacksmanager,update] [message: received new stack %d]", stackID)
 
 			stack = &edgeStack{
 				Action:  actionDeploy,
@@ -134,7 +134,7 @@ func (manager *Manager) UpdateStacksStatus(stacks map[int]int) error {
 
 	for stackID, stack := range manager.stacks {
 		if _, ok := stacks[int(stackID)]; !ok {
-			log.Printf("[DEBUG] [stacksmanager,update] [message: received stack to delete %d] \n", stackID)
+			log.Printf("[DEBUG] [stacksmanager,update] [message: received stack to delete %d]", stackID)
 			stack.Action = actionDelete
 			stack.Status = statusPending
 
@@ -206,7 +206,7 @@ func (manager *Manager) next() *edgeStack {
 }
 
 func (manager *Manager) deployStack(stack *edgeStack, stackName, stackFileLocation string) {
-	log.Printf("[DEBUG] [stacksmanager,update] [message: deploying stack %d] \n", stack.ID)
+	log.Printf("[DEBUG] [stacksmanager,update] [message: deploying stack %d]", stack.ID)
 	stack.Status = statusDone
 	stack.Action = actionIdle
 	responseStatus := int(edgeStackStatusOk)
@@ -214,24 +214,24 @@ func (manager *Manager) deployStack(stack *edgeStack, stackName, stackFileLocati
 
 	err := manager.dockerStackService.Deploy(stackName, stackFileLocation, stack.Prune)
 	if err != nil {
-		log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed deploying stack] [error: %v] \n", err)
+		log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed deploying stack] [error: %v]", err)
 		stack.Status = statusError
 		responseStatus = int(edgeStackStatusError)
 		errorMessage = err.Error()
 	} else {
-		log.Printf("[DEBUG] [http,edge,stacksmanager] [message: deployed stack id: %v, version: %d] \n", stack.ID, stack.Version)
+		log.Printf("[DEBUG] [http,edge,stacksmanager] [message: deployed stack id: %v, version: %d]", stack.ID, stack.Version)
 	}
 
 	manager.stacks[stack.ID] = stack
 
 	cli, err := manager.createPortainerClient()
 	if err != nil {
-		log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed creating portainer client] [error: %v] \n", err)
+		log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed creating portainer client] [error: %v]", err)
 	}
 
 	err = cli.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
 	if err != nil {
-		log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed setting edge stack status] [error: %v] \n", err)
+		log.Printf("[ERROR] [http,edge,stacksmanager] [message: failed setting edge stack status] [error: %v]", err)
 	}
 }
 
@@ -243,16 +243,16 @@ func (manager *Manager) createPortainerClient() (*client.PortainerClient, error)
 }
 
 func (manager *Manager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
-	log.Printf("[DEBUG] [stacksmanager,update] [message: removing stack %d] \n", stack.ID)
+	log.Printf("[DEBUG] [stacksmanager,update] [message: removing stack %d]", stack.ID)
 	err := filesystem.RemoveFile(stackFileLocation)
 	if err != nil {
-		log.Printf("[ERROR] [edge,stacksmanager, delete] [message: failed deleting edge stack file] [error: %v] \n", err)
+		log.Printf("[ERROR] [edge,stacksmanager, delete] [message: failed deleting edge stack file] [error: %v]", err)
 		return
 	}
 
 	err = manager.dockerStackService.Remove(stackName)
 	if err != nil {
-		log.Printf("[ERROR] [edge,stacksmanager, delete] [message: failed removing stack] [error: %v] \n", err)
+		log.Printf("[ERROR] [edge,stacksmanager, delete] [message: failed removing stack] [error: %v]", err)
 		return
 	}
 
