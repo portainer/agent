@@ -40,11 +40,15 @@ func (manager *EdgeManager) Init() error {
 	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
 
 	pollServiceConfig := &pollServiceConfig{
-		APIServerAddr:     apiServerAddr,
-		EdgeID:            manager.agentOptions.EdgeID,
-		PollFrequency:     agent.DefaultEdgePollInterval,
-		InactivityTimeout: manager.agentOptions.EdgeInactivityTimeout,
-		InsecurePoll:      manager.agentOptions.EdgeInsecurePoll,
+		APIServerAddr:           apiServerAddr,
+		EdgeID:                  manager.agentOptions.EdgeID,
+		PollFrequency:           agent.DefaultEdgePollInterval,
+		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
+		InsecurePoll:            manager.agentOptions.EdgeInsecurePoll,
+		PortainerURL:            manager.key.PortainerInstanceURL,
+		EndpointID:              manager.key.EndpointID,
+		TunnelServerAddr:        manager.key.TunnelServerAddr,
+		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
 	}
 
 	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll)
@@ -126,7 +130,7 @@ func (manager *EdgeManager) checkRuntimeConfig() error {
 	log.Printf("[DEBUG] [internal,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
-		err = manager.pollService.Start(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.key.TunnelServerAddr, manager.key.TunnelServerFingerprint)
+		err = manager.pollService.Start()
 		if err != nil {
 			return err
 		}

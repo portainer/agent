@@ -122,7 +122,7 @@ type (
 	// TunnelOperator is a service that is used to communicate with a Portainer instance and to manage
 	// the reverse tunnel.
 	TunnelOperator interface {
-		Start(portainerURL, endpointID, tunnelServerAddr, tunnelServerFingerprint string) error
+		Start() error
 		Stop() error
 		CloseTunnel() error
 		ResetActivityTimer()
