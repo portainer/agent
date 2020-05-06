@@ -61,7 +61,6 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 
 	manager.infoService = infoService
 	manager.clusterService = clusterService
-	manager.edgeMode = true
 
 	edgeKey, err := manager.retrieveEdgeKey(options.EdgeKey)
 	if err != nil {
@@ -77,6 +76,8 @@ func (manager *EdgeManager) Init(options *agent.Options, advertiseAddr string, c
 		}
 	}
 
+	manager.edgeMode = true
+
 	return nil
 }
 
@@ -90,7 +91,7 @@ func (manager *EdgeManager) ResetActivityTimer() {
 	manager.pollService.ResetActivityTimer()
 }
 
-func (manager *EdgeManager) startRuntimeConfigCheckProcess() error {
+func (manager *EdgeManager) startEdgeBackgroundProcess() error {
 
 	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
 	if err != nil {

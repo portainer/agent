@@ -42,7 +42,7 @@ func (manager *EdgeManager) SetKey(key string) error {
 		}
 	}
 
-	return manager.startRuntimeConfigCheckProcess()
+	return manager.startEdgeBackgroundProcess()
 }
 
 // GetKey returns the key associated to the manager
