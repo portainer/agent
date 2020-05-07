@@ -208,7 +208,7 @@ func (manager *StacksManager) deployStack(stack *edgeStack, stackName, stackFile
 
 	err := manager.dockerStackService.Deploy(stackName, stackFileLocation, stack.Prune)
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: failed deploying stack] [error: %v]", err)
+		log.Printf("[ERROR] [internal,edge,stack] [message: stack deployment failed] [error: %s]", err)
 		stack.Status = statusError
 		responseStatus = int(edgeStackStatusError)
 		errorMessage = err.Error()
@@ -220,21 +220,21 @@ func (manager *StacksManager) deployStack(stack *edgeStack, stackName, stackFile
 
 	err = manager.httpClient.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: failed setting edge stack status] [error: %v]", err)
+		log.Printf("[ERROR] [internal,edge,stack] [message: unable to update Edge stack status] [error: %s]", err)
 	}
 }
 
 func (manager *StacksManager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
-	log.Printf("[DEBUG] [internal,edge,stack] [message: removing stack %d]", stack.ID)
+	log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: removing stack]", stack.ID)
 	err := filesystem.RemoveFile(stackFileLocation)
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: failed deleting edge stack file] [error: %v]", err)
+		log.Printf("[ERROR] [internal,edge,stack] [message: unable to delete Edge stack file] [error: %s]", err)
 		return
 	}
 
 	err = manager.dockerStackService.Remove(stackName)
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: failed removing stack] [error: %v]", err)
+		log.Printf("[ERROR] [internal,edge,stack] [message: unable to remove stack] [error: %s]", err)
 		return
 	}
 

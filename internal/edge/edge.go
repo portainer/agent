@@ -10,7 +10,7 @@ import (
 	"github.com/portainer/agent/exec"
 )
 
-// Manager manages Edge functionality
+// Manager is used to manage all Edge features through multiple sub-components. It is mainly responsible for running the Edge background process.
 type Manager struct {
 	clusterService     agent.ClusterService
 	dockerStackService agent.DockerStackService
@@ -24,7 +24,7 @@ type Manager struct {
 	advertiseAddr      string
 }
 
-// NewManager creates an instance of Manager
+// NewManager returns a pointer to a new instance of Manager
 func NewManager(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) (*Manager, error) {
 
 	return &Manager{
@@ -39,7 +39,7 @@ func NewManager(options *agent.Options, advertiseAddr string, clusterService age
 // Init initializes the manager
 func (manager *Manager) Init() error {
 	if !manager.IsKeySet() {
-		return errors.New("Unable to initalize edge manager without key")
+		return errors.New("Unable to initialize Edge manager without key")
 	}
 
 	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
