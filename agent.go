@@ -220,4 +220,6 @@ const (
 	EdgeKeyFile = "agent_edge_key"
 	// DockerBinaryPath is the path of the docker binary
 	DockerBinaryPath = "/app"
+	// EdgeStackFilesPath is the path where edge stack files are saved
+	EdgeStackFilesPath = "/tmp/edge_stacls"
 )
