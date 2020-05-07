@@ -86,10 +86,7 @@ func main() {
 		defer clusterService.Leave()
 	}
 
-	edgeManager, err := edge.NewManager(options, advertiseAddr, clusterService, infoService)
-	if err != nil {
-		log.Fatalf("[ERROR] [main,edge] [message: Unable to start edge manger] [error: %s]", err)
-	}
+	edgeManager := edge.NewManager(options, advertiseAddr, clusterService, infoService)
 
 	if options.EdgeMode {
 		edgeKey, err := retrieveEdgeKey(options.EdgeKey, clusterService)
@@ -107,7 +104,7 @@ func main() {
 
 			err = edgeManager.Start()
 			if err != nil {
-				log.Fatalf("[ERROR] [main,edge] [message: An error occured during Edge initialization] [error: %s]", err)
+				log.Fatalf("[ERROR] [main,edge] [message: Unable to start Edge manager] [error: %s]", err)
 			}
 
 		} else {

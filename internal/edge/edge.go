@@ -25,14 +25,14 @@ type Manager struct {
 }
 
 // NewManager returns a pointer to a new instance of Manager
-func NewManager(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) (*Manager, error) {
+func NewManager(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) *Manager {
 	return &Manager{
 		clusterService: clusterService,
 		infoService:    infoService,
 		agentOptions:   options,
 		advertiseAddr:  advertiseAddr,
 		edgeMode:       options.EdgeMode,
-	}, nil
+	}
 }
 
 // Start starts the manager
