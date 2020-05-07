@@ -81,24 +81,22 @@ func newPollService(edgeStacksManager *StacksManager, config *pollServiceConfig)
 	}, nil
 }
 
-// CloseTunnel closes the reverse tunnel managed by the service
-func (service *PollService) CloseTunnel() error {
+func (service *PollService) closeTunnel() error {
 	return service.tunnelClient.CloseTunnel()
 }
 
-// ResetActivityTimer will reset the last activity time timer
-func (service *PollService) ResetActivityTimer() {
+func (service *PollService) resetActivityTimer() {
 	if service.tunnelClient.IsTunnelOpen() {
 		service.lastActivity = time.Now()
 	}
 }
 
-// Start will start two loops in go routines
+// start will start two loops in go routines
 // The first loop will poll the Portainer instance for the status of the associated endpoint and create a reverse tunnel
 // if needed as well as manage schedules.
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
-func (service *PollService) Start() error {
+func (service *PollService) start() error {
 	if service.refreshSignal != nil {
 		return nil
 	}
@@ -110,8 +108,7 @@ func (service *PollService) Start() error {
 	return nil
 }
 
-// Stop stops the poll loop
-func (service *PollService) Stop() error {
+func (service *PollService) stop() error {
 	if service.refreshSignal != nil {
 		close(service.refreshSignal)
 		service.refreshSignal = nil
@@ -120,7 +117,7 @@ func (service *PollService) Stop() error {
 }
 
 func (service *PollService) restartStatusPollLoop() {
-	service.Stop()
+	service.stop()
 	service.startStatusPollLoop()
 }
 
@@ -320,6 +317,6 @@ func (service *PollService) createTunnel(encodedCredentials string, remotePort i
 		return err
 	}
 
-	service.ResetActivityTimer()
+	service.resetActivityTimer()
 	return nil
 }

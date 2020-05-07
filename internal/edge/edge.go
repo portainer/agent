@@ -91,7 +91,7 @@ func (manager *Manager) IsEdgeModeEnabled() bool {
 
 // ResetActivityTimer resets the activity timer
 func (manager *Manager) ResetActivityTimer() {
-	manager.pollService.ResetActivityTimer()
+	manager.pollService.resetActivityTimer()
 }
 
 func (manager *Manager) startEdgeBackgroundProcess() error {
@@ -135,13 +135,13 @@ func (manager *Manager) checkRuntimeConfig() error {
 	log.Printf("[DEBUG] [internal,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
-		err = manager.pollService.Start()
+		err = manager.pollService.start()
 		if err != nil {
 			return err
 		}
 
 	} else {
-		err = manager.pollService.Stop()
+		err = manager.pollService.stop()
 		if err != nil {
 			return err
 		}
