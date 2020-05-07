@@ -102,10 +102,10 @@ func main() {
 
 			err := edgeManager.SetKey(edgeKey)
 			if err != nil {
-				log.Fatalf("[ERROR] [main,edge] [message: Unable to associate Edge edge key] [error: %s]", err)
+				log.Fatalf("[ERROR] [main,edge] [message: Unable to associate Edge key] [error: %s]", err)
 			}
 
-			err = edgeManager.Init()
+			err = edgeManager.Start()
 			if err != nil {
 				log.Fatalf("[ERROR] [main,edge] [message: An error occured during Edge initialization] [error: %s]", err)
 			}
