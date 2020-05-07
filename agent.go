@@ -119,15 +119,6 @@ type (
 		IsTunnelOpen() bool
 	}
 
-	// TunnelOperator is a service that is used to communicate with a Portainer instance and to manage
-	// the reverse tunnel.
-	TunnelOperator interface {
-		Start() error
-		Stop() error
-		CloseTunnel() error
-		ResetActivityTimer()
-	}
-
 	// Scheduler is used to manage schedules
 	Scheduler interface {
 		Schedule(schedules []Schedule) error

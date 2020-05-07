@@ -16,7 +16,7 @@ type Manager struct {
 	dockerStackService agent.DockerStackService
 	infoService        agent.InfoService
 	stacksManager      *StacksManager
-	pollService        agent.TunnelOperator
+	pollService        *PollService
 	pollServiceConfig  *pollServiceConfig
 	key                *edgeKey
 	edgeMode           bool
