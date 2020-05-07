@@ -10,8 +10,6 @@ import (
 	"github.com/portainer/agent/http/client"
 )
 
-const baseDir = "/tmp/edge_stacks"
-
 type edgeStackID int
 
 type edgeStack struct {
@@ -110,7 +108,7 @@ func (manager *StacksManager) UpdateStacksStatus(stacks map[int]int) error {
 
 		stack.Prune = prune
 
-		folder := fmt.Sprintf("%s/%d", baseDir, stackID)
+		folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 		fileName := "docker-compose.yml"
 		err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 644)
 		if err != nil {
