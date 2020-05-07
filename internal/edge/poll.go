@@ -33,7 +33,7 @@ type PollService struct {
 	scheduleManager         agent.Scheduler
 	lastActivity            time.Time
 	refreshSignal           chan struct{}
-	edgeStackManager       *StackManager
+	edgeStackManager        *StackManager
 	portainerURL            string
 	endpointID              string
 	tunnelServerAddr        string
@@ -73,7 +73,7 @@ func newPollService(edgeStackManager *StackManager, config *pollServiceConfig) (
 		tunnelClient:            chisel.NewClient(),
 		scheduleManager:         filesystem.NewCronManager(),
 		refreshSignal:           nil,
-		edgeStackManager:       edgeStackManager,
+		edgeStackManager:        edgeStackManager,
 		portainerURL:            config.PortainerURL,
 		endpointID:              config.EndpointID,
 		tunnelServerAddr:        config.TunnelServerAddr,
@@ -283,7 +283,7 @@ func (service *PollService) poll() error {
 			stacks[stack.ID] = stack.Version
 		}
 
-		err := service.edgeStackManager.UpdateStacksStatus(stacks)
+		err := service.edgeStackManager.updateStacksStatus(stacks)
 		if err != nil {
 			log.Printf("[ERROR] [internal,edge,stack] [message: an error occured during stack management] [error: %s]", err)
 			return err

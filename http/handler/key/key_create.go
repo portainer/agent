@@ -44,9 +44,9 @@ func (handler *Handler) keyCreate(w http.ResponseWriter, r *http.Request) *httpe
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to associate Edge key", err}
 	}
 
-	err = handler.edgeManager.Init()
+	err = handler.edgeManager.Start()
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to initialize Edge Manager", err}
+		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to start Edge Manager", err}
 	}
 
 	return response.Empty(w)

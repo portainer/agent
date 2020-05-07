@@ -35,10 +35,10 @@ func NewManager(options *agent.Options, advertiseAddr string, clusterService age
 	}, nil
 }
 
-// Init initializes the manager
-func (manager *Manager) Init() error {
+// Start starts the manager
+func (manager *Manager) Start() error {
 	if !manager.IsKeySet() {
-		return errors.New("Unable to initialize Edge manager without key")
+		return errors.New("Unable to start Edge manager without key")
 	}
 
 	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
