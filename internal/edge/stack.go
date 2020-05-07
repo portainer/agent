@@ -208,7 +208,7 @@ func (manager *StackManager) deployStack(stack *edgeStack, stackName, stackFileL
 		responseStatus = int(edgeStackStatusError)
 		errorMessage = err.Error()
 	} else {
-		log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: stack deployed]", stack.ID, stack.Version)
+		log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [stack_version: %d] [message: stack deployed]", stack.ID, stack.Version)
 	}
 
 	manager.stacks[stack.ID] = stack
