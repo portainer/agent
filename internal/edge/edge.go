@@ -15,7 +15,7 @@ type Manager struct {
 	clusterService     agent.ClusterService
 	dockerStackService agent.DockerStackService
 	infoService        agent.InfoService
-	stacksManager      *StacksManager
+	stackManager       *StackManager
 	pollService        *PollService
 	pollServiceConfig  *pollServiceConfig
 	key                *edgeKey
@@ -26,7 +26,6 @@ type Manager struct {
 
 // NewManager returns a pointer to a new instance of Manager
 func NewManager(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) (*Manager, error) {
-
 	return &Manager{
 		clusterService: clusterService,
 		infoService:    infoService,
@@ -64,13 +63,9 @@ func (manager *Manager) Init() error {
 	}
 	manager.dockerStackService = dockerStackService
 
-	stacksManager, err := NewStacksManager(dockerStackService, manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
-	if err != nil {
-		return err
-	}
-	manager.stacksManager = stacksManager
+	manager.stackManager = newStackManager(dockerStackService, manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
 
-	pollService, err := newPollService(stacksManager, pollServiceConfig)
+	pollService, err := newPollService(manager.stackManager, pollServiceConfig)
 	if err != nil {
 		return err
 	}
@@ -148,13 +143,13 @@ func (manager *Manager) checkRuntimeConfig() error {
 	}
 
 	if agentRunsOnSwarm && agentRunsOnLeaderNode {
-		err = manager.stacksManager.Start()
+		err = manager.stackManager.start()
 		if err != nil {
 			return err
 		}
 
 	} else {
-		err = manager.stacksManager.Stop()
+		err = manager.stackManager.stop()
 		if err != nil {
 			return err
 		}

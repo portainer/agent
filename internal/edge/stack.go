@@ -50,8 +50,8 @@ const (
 	edgeStackStatusAcknowledged
 )
 
-// StacksManager represents a service for managing Edge stacks
-type StacksManager struct {
+// StackManager represents a service for managing Edge stacks
+type StackManager struct {
 	stacks             map[edgeStackID]*edgeStack
 	stopSignal         chan struct{}
 	dockerStackService agent.DockerStackService
@@ -61,20 +61,19 @@ type StacksManager struct {
 	httpClient         *client.PortainerClient
 }
 
-// NewStacksManager creates a new instance of StacksManager
-func NewStacksManager(dockerStackService agent.DockerStackService, portainerURL, endpointID, edgeID string) (*StacksManager, error) {
+// newStackManager returns a pointer to a new instance of StackManager
+func newStackManager(dockerStackService agent.DockerStackService, portainerURL, endpointID, edgeID string) *StackManager {
 	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID)
 
-	return &StacksManager{
+	return &StackManager{
 		dockerStackService: dockerStackService,
 		stacks:             map[edgeStackID]*edgeStack{},
 		stopSignal:         nil,
 		httpClient:         cli,
-	}, nil
+	}
 }
 
-// UpdateStacksStatus updates stacks version and status
-func (manager *StacksManager) UpdateStacksStatus(stacks map[int]int) error {
+func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
 	if !manager.isEnabled {
 		return nil
 	}
@@ -139,8 +138,7 @@ func (manager *StacksManager) UpdateStacksStatus(stacks map[int]int) error {
 	return nil
 }
 
-// Stop stops the manager
-func (manager *StacksManager) Stop() error {
+func (manager *StackManager) stop() error {
 	if manager.stopSignal != nil {
 		close(manager.stopSignal)
 		manager.stopSignal = nil
@@ -150,8 +148,7 @@ func (manager *StacksManager) Stop() error {
 	return nil
 }
 
-// Start starts the loop checking for stacks to deploy
-func (manager *StacksManager) Start() error {
+func (manager *StackManager) start() error {
 	if manager.stopSignal != nil {
 		return nil
 	}
@@ -188,7 +185,7 @@ func (manager *StacksManager) Start() error {
 	return nil
 }
 
-func (manager *StacksManager) next() *edgeStack {
+func (manager *StackManager) next() *edgeStack {
 	for _, stack := range manager.stacks {
 		if stack.Status == statusPending {
 			return stack
@@ -197,7 +194,7 @@ func (manager *StacksManager) next() *edgeStack {
 	return nil
 }
 
-func (manager *StacksManager) deployStack(stack *edgeStack, stackName, stackFileLocation string) {
+func (manager *StackManager) deployStack(stack *edgeStack, stackName, stackFileLocation string) {
 	log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
 	stack.Status = statusDone
 	stack.Action = actionIdle
@@ -222,7 +219,7 @@ func (manager *StacksManager) deployStack(stack *edgeStack, stackName, stackFile
 	}
 }
 
-func (manager *StacksManager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
+func (manager *StackManager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
 	log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: removing stack]", stack.ID)
 	err := filesystem.RemoveFile(stackFileLocation)
 	if err != nil {

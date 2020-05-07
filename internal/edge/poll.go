@@ -33,7 +33,7 @@ type PollService struct {
 	scheduleManager         agent.Scheduler
 	lastActivity            time.Time
 	refreshSignal           chan struct{}
-	edgeStacksManager       *StacksManager
+	edgeStackManager       *StackManager
 	portainerURL            string
 	endpointID              string
 	tunnelServerAddr        string
@@ -53,7 +53,7 @@ type pollServiceConfig struct {
 }
 
 // newPollService returns a pointer to a new instance of PollService
-func newPollService(edgeStacksManager *StacksManager, config *pollServiceConfig) (*PollService, error) {
+func newPollService(edgeStackManager *StackManager, config *pollServiceConfig) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func newPollService(edgeStacksManager *StacksManager, config *pollServiceConfig)
 		tunnelClient:            chisel.NewClient(),
 		scheduleManager:         filesystem.NewCronManager(),
 		refreshSignal:           nil,
-		edgeStacksManager:       edgeStacksManager,
+		edgeStackManager:       edgeStackManager,
 		portainerURL:            config.PortainerURL,
 		endpointID:              config.EndpointID,
 		tunnelServerAddr:        config.TunnelServerAddr,
@@ -283,7 +283,7 @@ func (service *PollService) poll() error {
 			stacks[stack.ID] = stack.Version
 		}
 
-		err := service.edgeStacksManager.UpdateStacksStatus(stacks)
+		err := service.edgeStackManager.UpdateStacksStatus(stacks)
 		if err != nil {
 			log.Printf("[ERROR] [internal,edge,stack] [message: an error occured during stack management] [error: %s]", err)
 			return err
