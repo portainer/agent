@@ -28,7 +28,7 @@ func NewPortainerClient(serverAddress, endpointID, edgeID string) *PortainerClie
 		endpointID:    endpointID,
 		edgeID:        edgeID,
 		httpClient: &http.Client{
-			Timeout: time.Second * 3,
+			Timeout: 10 * time.Second,
 		},
 	}
 }
