@@ -18,7 +18,8 @@ type edgeKey struct {
 	EndpointID              string
 }
 
-// SetKey parses and associate a key to the manager
+// SetKey parses and associates an Edge key to the agent.
+// If the agent is running inside a Swarm cluster, it will also set the "set" flag to specify that a key is set on this agent in the cluster.
 func (manager *Manager) SetKey(key string) error {
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
@@ -44,7 +45,7 @@ func (manager *Manager) SetKey(key string) error {
 	return nil
 }
 
-// GetKey returns the key associated to the manager
+// GetKey returns the Edge key associated to the agent
 func (manager *Manager) GetKey() string {
 	var encodedKey string
 
@@ -55,7 +56,7 @@ func (manager *Manager) GetKey() string {
 	return encodedKey
 }
 
-// IsKeySet checks if a key is associated to the manager
+// IsKeySet returns true if an Edge key is associated to the agent
 func (manager *Manager) IsKeySet() bool {
 	if manager.key == nil {
 		return false
@@ -63,7 +64,7 @@ func (manager *Manager) IsKeySet() bool {
 	return true
 }
 
-// PropagateKeyInCluster propogates the edge key in the cluster
+// PropagateKeyInCluster propagates the Edge key associated to the agent to all the other agents inside the cluster
 func (manager *Manager) PropagateKeyInCluster() error {
 	if manager.clusterService != nil {
 		return nil

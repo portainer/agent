@@ -94,20 +94,20 @@ func main() {
 	if options.EdgeMode {
 		edgeKey, err := retrieveEdgeKey(options.EdgeKey, clusterService)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,edge] [message: Unable to retrieve edge key] [error: %s]", err)
+			log.Fatalf("[ERROR] [main,edge] [message: Unable to retrieve Edge key] [error: %s]", err)
 		}
 
 		if edgeKey != "" {
-			log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key to cluster.]")
+			log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key]")
 
 			err := edgeManager.SetKey(edgeKey)
 			if err != nil {
-				log.Fatalf("[ERROR] [main,edge] [message: Unable to set edge key] [error: %s]", err)
+				log.Fatalf("[ERROR] [main,edge] [message: Unable to associate Edge edge key] [error: %s]", err)
 			}
 
 			err = edgeManager.Init()
 			if err != nil {
-				log.Fatalf("[ERROR] [main,edge] [message: Unable to init edge manager] [error: %s]", err)
+				log.Fatalf("[ERROR] [main,edge] [message: An error occured during Edge initialization] [error: %s]", err)
 			}
 
 		} else {

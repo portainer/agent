@@ -19,8 +19,9 @@ import (
 
 const tunnelActivityCheckInterval = 30 * time.Second
 
-// PollService is used to poll a Portainer instance and to establish a reverse tunnel if needed.
-// It also takes care of closing the tunnel after a set period of inactivity.
+// PollService is used to poll a Portainer instance to retrieve the status associated to the Edge endpoint.
+// It is responsible for managing the state of the reverse tunnel (open and closing after inactivity).
+// It is also responsible for retrieving the data associated to Edge stacks and schedules.
 type PollService struct {
 	apiServerAddr           string
 	pollIntervalInSeconds   float64
@@ -51,7 +52,7 @@ type pollServiceConfig struct {
 	TunnelServerFingerprint string
 }
 
-// newPollService creates a new reverse tunnel service
+// newPollService returns a pointer to a new instance of PollService
 func newPollService(edgeStacksManager *StacksManager, config *pollServiceConfig) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
