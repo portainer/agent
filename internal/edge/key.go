@@ -66,7 +66,7 @@ func (manager *Manager) IsKeySet() bool {
 
 // PropagateKeyInCluster propagates the Edge key associated to the agent to all the other agents inside the cluster
 func (manager *Manager) PropagateKeyInCluster() error {
-	if manager.clusterService != nil {
+	if manager.clusterService == nil {
 		return nil
 	}
 
