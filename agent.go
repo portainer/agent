@@ -221,5 +221,5 @@ const (
 	// DockerBinaryPath is the path of the docker binary
 	DockerBinaryPath = "/app"
 	// EdgeStackFilesPath is the path where edge stack files are saved
-	EdgeStackFilesPath = "/tmp/edge_stacls"
+	EdgeStackFilesPath = "/tmp/edge_stacks"
 )
