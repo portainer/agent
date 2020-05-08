@@ -119,28 +119,16 @@ type (
 		IsTunnelOpen() bool
 	}
 
-	// TunnelOperator is a service that is used to communicate with a Portainer instance and to manage
-	// the reverse tunnel.
-	TunnelOperator interface {
-		Start() error
-		Stop() error
-		IsKeySet() bool
-		SetKey(key string) error
-		GetKey() string
-		CloseTunnel() error
-		ResetActivityTimer()
-	}
-
 	// Scheduler is used to manage schedules
 	Scheduler interface {
 		Schedule(schedules []Schedule) error
 	}
 
-	// EdgeStackManager is a service to manager Edge stacks
-	EdgeStackManager interface {
+	// DockerStackService is a service used to deploy and remove Docker stacks
+	DockerStackService interface {
 		Login() error
 		Logout() error
-		Deploy(name, projectPath, entryPoint string, prune bool) error
+		Deploy(name, stackFileContent string, prune bool) error
 		Remove(name string) error
 	}
 )
@@ -232,4 +220,6 @@ const (
 	EdgeKeyFile = "agent_edge_key"
 	// DockerBinaryPath is the path of the docker binary
 	DockerBinaryPath = "/app"
+	// EdgeStackFilesPath is the path where edge stack files are saved
+	EdgeStackFilesPath = "/tmp/edge_stacks"
 )

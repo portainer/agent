@@ -7,6 +7,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/handler"
+	"github.com/portainer/agent/internal/edge"
 )
 
 // APIServer is the web server exposing the API of an agent.
@@ -16,11 +17,9 @@ type APIServer struct {
 	systemService    agent.SystemService
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
-	tunnelOperator   agent.TunnelOperator
+	edgeManager      *edge.Manager
 	agentTags        map[string]string
 	agentOptions     *agent.Options
-	edgeMode         bool
-	edgeStackManager agent.EdgeStackManager
 }
 
 // APIServerConfig represents a server configuration
@@ -31,11 +30,9 @@ type APIServerConfig struct {
 	SystemService    agent.SystemService
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
-	TunnelOperator   agent.TunnelOperator
+	EdgeManager      *edge.Manager
 	AgentTags        map[string]string
 	AgentOptions     *agent.Options
-	EdgeMode         bool
-	EdgeStackManager agent.EdgeStackManager
 }
 
 // NewAPIServer returns a pointer to a APIServer.
@@ -46,25 +43,21 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 		systemService:    config.SystemService,
 		clusterService:   config.ClusterService,
 		signatureService: config.SignatureService,
-		tunnelOperator:   config.TunnelOperator,
+		edgeManager:      config.EdgeManager,
 		agentTags:        config.AgentTags,
 		agentOptions:     config.AgentOptions,
-		edgeMode:         config.EdgeMode,
-		edgeStackManager: config.EdgeStackManager,
 	}
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
 func (server *APIServer) StartUnsecured() error {
 	config := &handler.Config{
-		SystemService:    server.systemService,
-		ClusterService:   server.clusterService,
-		TunnelOperator:   server.tunnelOperator,
-		AgentTags:        server.agentTags,
-		AgentOptions:     server.agentOptions,
-		EdgeMode:         server.edgeMode,
-		Secured:          false,
-		EdgeStackManager: server.edgeStackManager,
+		SystemService:  server.systemService,
+		ClusterService: server.clusterService,
+		AgentTags:      server.agentTags,
+		AgentOptions:   server.agentOptions,
+		EdgeManager:    server.edgeManager,
+		Secured:        false,
 	}
 
 	h := handler.NewHandler(config)
@@ -88,10 +81,9 @@ func (server *APIServer) StartSecured() error {
 		SystemService:    server.systemService,
 		ClusterService:   server.clusterService,
 		SignatureService: server.signatureService,
-		TunnelOperator:   server.tunnelOperator,
 		AgentTags:        server.agentTags,
 		AgentOptions:     server.agentOptions,
-		EdgeMode:         server.edgeMode,
+		EdgeManager:      server.edgeManager,
 		Secured:          true,
 	}
 
