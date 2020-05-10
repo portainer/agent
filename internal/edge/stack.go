@@ -14,6 +14,7 @@ type edgeStackID int
 
 type edgeStack struct {
 	ID         edgeStackID
+	Name       string
 	Version    int
 	FileFolder string
 	FileName   string
@@ -100,7 +101,7 @@ func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
 			}
 		}
 
-		fileContent, prune, err := manager.httpClient.GetEdgeStackConfig(int(stack.ID))
+		name, fileContent, prune, err := manager.httpClient.GetEdgeStackConfig(int(stack.ID))
 		if err != nil {
 			return err
 		}
@@ -116,6 +117,7 @@ func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
 
 		stack.FileFolder = folder
 		stack.FileName = fileName
+		stack.Name = name
 
 		manager.stacks[stack.ID] = stack
 
@@ -175,7 +177,7 @@ func (manager *StackManager) start() error {
 					continue
 				}
 
-				stackName := fmt.Sprintf("edge_%d", stack.ID)
+				stackName := fmt.Sprintf("edge_%s", stack.Name)
 				stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
 
 				if stack.Action == actionDeploy || stack.Action == actionUpdate {
