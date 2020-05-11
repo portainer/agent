@@ -27,6 +27,13 @@ type (
 		EdgeKeySet bool
 	}
 
+	// EdgeStackConfig represnts an Edge stack config
+	EdgeStackConfig struct {
+		Name        string
+		FileContent string
+		Prune       bool
+	}
+
 	// AgentMetadata is the representation of the metadata object used to decorate
 	// all the objects in the response of a Docker aggregated resource request.
 	Metadata struct {
