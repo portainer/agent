@@ -222,4 +222,6 @@ const (
 	DockerBinaryPath = "/app"
 	// EdgeStackFilesPath is the path where edge stack files are saved
 	EdgeStackFilesPath = "/tmp/edge_stacks"
+	// EdgeStackQueueSleepInterval is the interval used to check if there's an Edge stack to deploy
+	EdgeStackQueueSleepInterval = "5s"
 )

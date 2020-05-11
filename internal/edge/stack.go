@@ -156,6 +156,11 @@ func (manager *StackManager) start() error {
 	manager.isEnabled = true
 	manager.stopSignal = make(chan struct{})
 
+	queueSleepInterval, err := time.ParseDuration(agent.EdgeStackQueueSleepInterval)
+	if err != nil {
+		return err
+	}
+
 	go (func() {
 		for {
 			select {
@@ -165,7 +170,7 @@ func (manager *StackManager) start() error {
 			default:
 				stack := manager.next()
 				if stack == nil {
-					timer1 := time.NewTimer(1 * time.Minute)
+					timer1 := time.NewTimer(queueSleepInterval)
 					<-timer1.C
 					continue
 				}
