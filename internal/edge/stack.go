@@ -101,23 +101,23 @@ func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
 			}
 		}
 
-		name, fileContent, prune, err := manager.httpClient.GetEdgeStackConfig(int(stack.ID))
+		stackConfig, err := manager.httpClient.GetEdgeStackConfig(int(stack.ID))
 		if err != nil {
 			return err
 		}
 
-		stack.Prune = prune
+		stack.Prune = stackConfig.Prune
+		stack.Name = stackConfig.Name
 
 		folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 		fileName := "docker-compose.yml"
-		err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 644)
+		err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 644)
 		if err != nil {
 			return err
 		}
 
 		stack.FileFolder = folder
 		stack.FileName = fileName
-		stack.Name = name
 
 		manager.stacks[stack.ID] = stack
 

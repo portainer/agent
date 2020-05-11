@@ -34,40 +34,40 @@ func NewPortainerClient(serverAddress, endpointID, edgeID string) *PortainerClie
 }
 
 type stackConfigResponse struct {
-	Name string
+	Name             string
 	StackFileContent string
 	Prune            bool
 }
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
-func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (string, string, bool, error) {
+func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
 	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/stacks/%d", client.serverAddress, client.endpointID, edgeStackID)
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
-		return "", "", false, err
+		return nil, err
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
-		return "", "", false, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: GetEdgeStackConfig operation failed]", resp.StatusCode)
-		return "", "", false, errors.New("GetEdgeStackConfig operation failed")
+		return nil, errors.New("GetEdgeStackConfig operation failed")
 	}
 
 	var data stackConfigResponse
 	err = json.NewDecoder(resp.Body).Decode(&data)
 	if err != nil {
-		return "", "", false, err
+		return nil, err
 	}
 
-	return data.Name, data.StackFileContent, data.Prune, nil
+	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent, Prune: data.Prune}, nil
 }
 
 type setEdgeStackStatusPayload struct {
