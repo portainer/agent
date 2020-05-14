@@ -2,7 +2,7 @@
 
 LOG_LEVEL=DEBUG
 CAP_HOST_MANAGEMENT=1 #Enabled by default. Change this to anything else to disable this feature
-EDGE=0
+EDGE=1
 TMP="/tmp"
 GIT_COMMIT_HASH=`git rev-parse --short HEAD`
 GIT_BRANCH_NAME=`git rev-parse --abbrev-ref HEAD`
@@ -27,7 +27,6 @@ fi
 function compile() {
   echo "Compilation..."
 
-  rm -rf dist/*
   cd cmd/agent
   GOOS="linux" GOARCH="amd64" CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
   rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
@@ -45,8 +44,6 @@ function deploy_local() {
 
   echo "Image build..."
   docker build --no-cache -t "${IMAGE_NAME}" -f build/linux/Dockerfile .
-  #  docker push "${IMAGE_NAME}"
-
 
   echo "Deployment..."
   docker run -d --name portainer-agent-dev \

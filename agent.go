@@ -27,6 +27,13 @@ type (
 		EdgeKeySet bool
 	}
 
+	// EdgeStackConfig represnts an Edge stack config
+	EdgeStackConfig struct {
+		Name        string
+		FileContent string
+		Prune       bool
+	}
+
 	// AgentMetadata is the representation of the metadata object used to decorate
 	// all the objects in the response of a Docker aggregated resource request.
 	Metadata struct {
@@ -119,20 +126,17 @@ type (
 		IsTunnelOpen() bool
 	}
 
-	// TunnelOperator is a service that is used to communicate with a Portainer instance and to manage
-	// the reverse tunnel.
-	TunnelOperator interface {
-		Start() error
-		IsKeySet() bool
-		SetKey(key string) error
-		GetKey() string
-		CloseTunnel() error
-		ResetActivityTimer()
-	}
-
 	// Scheduler is used to manage schedules
 	Scheduler interface {
 		Schedule(schedules []Schedule) error
+	}
+
+	// DockerStackService is a service used to deploy and remove Docker stacks
+	DockerStackService interface {
+		Login() error
+		Logout() error
+		Deploy(name, stackFileContent string, prune bool) error
+		Remove(name string) error
 	}
 )
 
@@ -157,6 +161,8 @@ const (
 	DefaultEdgePollInterval = "5s"
 	// DefaultEdgeSleepInterval is the default interval after which the agent will close the tunnel if no activity.
 	DefaultEdgeSleepInterval = "5m"
+	// DefaultConfigCheckInterval is the default interval used to check if node config changed
+	DefaultConfigCheckInterval = "1m"
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.
@@ -188,6 +194,8 @@ const (
 	// MemberTagKeyAgentPort is the name of the label storing information about the port exposed
 	// by the agent.
 	MemberTagKeyAgentPort = "AgentPort"
+	// MemberTagKeyIsLeader is the name of the label storing whether the node is a swarm leader
+	MemberTagKeyIsLeader = "NodeIsLeader"
 	// MemberTagKeyNodeName is the name of the label storing information about the name of the
 	// node where the agent is running.
 	MemberTagKeyNodeName = "NodeName"
@@ -203,6 +211,10 @@ const (
 	NodeRoleManager = "manager"
 	// NodeRoleWorker represents a worker node.
 	NodeRoleWorker = "worker"
+	// EngineStatusSwarm represents a swarm docker engine
+	EngineStatusSwarm = "swarm"
+	// EngineStatusStandalone represents a standalone docker engine
+	EngineStatusStandalone = "standalone"
 	// TLSCertPath is the default path to the TLS certificate file.
 	TLSCertPath = "cert.pem"
 	// TLSKeyPath is the default path to the TLS key file.
@@ -213,4 +225,10 @@ const (
 	DataDirectory = "/data"
 	// EdgeKeyFile is the name of the file used to persist the Edge key associated to the agent.
 	EdgeKeyFile = "agent_edge_key"
+	// DockerBinaryPath is the path of the docker binary
+	DockerBinaryPath = "/app"
+	// EdgeStackFilesPath is the path where edge stack files are saved
+	EdgeStackFilesPath = "/tmp/edge_stacks"
+	// EdgeStackQueueSleepInterval is the interval used to check if there's an Edge stack to deploy
+	EdgeStackQueueSleepInterval = "5s"
 )

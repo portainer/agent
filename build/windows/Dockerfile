@@ -4,7 +4,7 @@ USER ContainerAdministrator
 
 WORKDIR /app
 
-COPY dist/agent.exe /app/
+COPY dist /app/
 COPY static /app/static
 
 ENTRYPOINT ["C:/app/agent.exe"]
