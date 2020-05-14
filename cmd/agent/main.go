@@ -91,7 +91,7 @@ func main() {
 	if options.EdgeMode {
 		edgeKey, err := retrieveEdgeKey(options.EdgeKey, clusterService)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,edge] [message: Unable to retrieve Edge key] [error: %s]", err)
+			log.Printf("[ERROR] [main,edge] [message: Unable to retrieve Edge key] [error: %s]", err)
 		}
 
 		if edgeKey != "" {
