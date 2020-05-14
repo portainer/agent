@@ -169,7 +169,6 @@ func (service *ClusterService) GetTags() *agent.InfoTags {
 func convertTagsToMap(tags *agent.InfoTags) map[string]string {
 	tagsMap := map[string]string{}
 
-	tagsMap[memberTagKeyEdgeKeySet] = ""
 	if tags.EdgeKeySet {
 		tagsMap[memberTagKeyEdgeKeySet] = "set"
 	}
@@ -181,7 +180,6 @@ func convertTagsToMap(tags *agent.InfoTags) map[string]string {
 
 	tagsMap[memberTagKeyAgentPort] = tags.AgentPort
 
-	tagsMap[memberTagKeyIsLeader] = ""
 	if tags.Leader {
 		tagsMap[memberTagKeyIsLeader] = "1"
 	}
