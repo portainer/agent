@@ -78,6 +78,18 @@ type (
 		Credentials      string
 	}
 
+	InfoTags struct {
+		AgentPort    string
+		EdgeKeySet   bool
+		EngineStatus EngineStatus
+		Leader       bool
+		NodeName     string
+		NodeRole     NodeRole
+	}
+
+	EngineStatus int
+	NodeRole     int
+
 	// OptionParser is used to parse options.
 	OptionParser interface {
 		Options() (*Options, error)
@@ -88,11 +100,11 @@ type (
 		Create(advertiseAddr string, joinAddr []string) error
 		Members() []ClusterMember
 		Leave()
-		GetMemberByRole(role string) *ClusterMember
+		GetMemberByRole(role NodeRole) *ClusterMember
 		GetMemberByNodeName(nodeName string) *ClusterMember
 		GetMemberWithEdgeKeySet() *ClusterMember
-		GetTags() map[string]string
-		UpdateTags(tags map[string]string) error
+		GetTags() *InfoTags
+		UpdateTags(tags *InfoTags) error
 	}
 
 	// DigitalSignatureService is used to validate digital signatures.
@@ -102,7 +114,7 @@ type (
 
 	// InfoService is used to retrieve information from a Docker environment.
 	InfoService interface {
-		GetInformationFromDockerEngine() (map[string]string, error)
+		GetInformationFromDockerEngine() (*InfoTags, error)
 		GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error)
 		GetServiceNameFromDockerEngine(containerName string) (string, error)
 	}
@@ -191,30 +203,6 @@ const (
 	// ResponseMetadataKey is the JSON field used to store any Portainer related information in
 	// response objects.
 	ResponseMetadataKey = "Portainer"
-	// MemberTagKeyAgentPort is the name of the label storing information about the port exposed
-	// by the agent.
-	MemberTagKeyAgentPort = "AgentPort"
-	// MemberTagKeyIsLeader is the name of the label storing whether the node is a swarm leader
-	MemberTagKeyIsLeader = "NodeIsLeader"
-	// MemberTagKeyNodeName is the name of the label storing information about the name of the
-	// node where the agent is running.
-	MemberTagKeyNodeName = "NodeName"
-	// MemberTagKeyNodeRole is the name of the label storing information about the role of the
-	// node where the agent is running.
-	MemberTagKeyNodeRole = "NodeRole"
-	// MemberTagEngineStatus is the name of the label storing information about the status of the Docker engine where
-	// the agent is running. Possible values are "standalone" or "swarm".
-	MemberTagEngineStatus = "EngineStatus"
-	// MemberTagEdgeKeySet is the name of the label storing information regarding the association of an Edge key.
-	MemberTagEdgeKeySet = "EdgeKeySet"
-	// NodeRoleManager represents a manager node.
-	NodeRoleManager = "manager"
-	// NodeRoleWorker represents a worker node.
-	NodeRoleWorker = "worker"
-	// EngineStatusSwarm represents a swarm docker engine
-	EngineStatusSwarm = "swarm"
-	// EngineStatusStandalone represents a standalone docker engine
-	EngineStatusStandalone = "standalone"
 	// TLSCertPath is the default path to the TLS certificate file.
 	TLSCertPath = "cert.pem"
 	// TLSKeyPath is the default path to the TLS key file.
@@ -231,4 +219,16 @@ const (
 	EdgeStackFilesPath = "/tmp/edge_stacks"
 	// EdgeStackQueueSleepInterval is the interval used to check if there's an Edge stack to deploy
 	EdgeStackQueueSleepInterval = "5s"
+)
+
+const (
+	_ NodeRole = iota
+	NodeRoleManager
+	NodeRoleWorker
+)
+
+const (
+	_ EngineStatus = iota
+	EngineStatusStandalone
+	EngineStatusSwarm
 )

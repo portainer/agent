@@ -11,15 +11,29 @@ import (
 	"github.com/portainer/agent"
 )
 
+const (
+	memberTagKeyAgentPort    = "AgentPort"
+	memberTagKeyIsLeader     = "NodeIsLeader"
+	memberTagKeyNodeName     = "NodeName"
+	memberTagKeyNodeRole     = "NodeRole"
+	memberTagKeyEngineStatus = "EngineStatus"
+	memberTagKeyEdgeKeySet   = "EdgeKeySet"
+
+	memberTagValueEngineStatusSwarm      = "swarm"
+	memberTagValueEngineStatusStandalone = "standalone"
+	memberTagValueNodeRoleManager        = "manager"
+	memberTagValueNodeRoleWorker         = "worker"
+)
+
 // ClusterService is a service used to manage cluster related actions such as joining
 // the cluster, retrieving members in the clusters...
 type ClusterService struct {
-	tags    map[string]string
+	tags    *agent.InfoTags
 	cluster *serf.Serf
 }
 
 // NewClusterService returns a pointer to a ClusterService.
-func NewClusterService(tags map[string]string) *ClusterService {
+func NewClusterService(tags *agent.InfoTags) *ClusterService {
 	return &ClusterService{
 		tags: tags,
 	}
@@ -42,8 +56,8 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string) e
 
 	conf := serf.DefaultConfig()
 	conf.Init()
-	conf.NodeName = fmt.Sprintf("%s-%s", service.tags[agent.MemberTagKeyNodeName], conf.NodeName)
-	conf.Tags = service.tags
+	conf.NodeName = fmt.Sprintf("%s-%s", service.tags.NodeName, conf.NodeName)
+	conf.Tags = convertTagsToMap(service.tags)
 	conf.MemberlistConfig.LogOutput = filter
 	conf.LogOutput = filter
 	conf.MemberlistConfig.AdvertiseAddr = advertiseAddr
@@ -80,13 +94,13 @@ func (service *ClusterService) Members() []agent.ClusterMember {
 		if member.Status == serf.StatusAlive {
 			clusterMember := agent.ClusterMember{
 				IPAddress:  member.Addr.String(),
-				Port:       member.Tags[agent.MemberTagKeyAgentPort],
-				NodeRole:   member.Tags[agent.MemberTagKeyNodeRole],
-				NodeName:   member.Tags[agent.MemberTagKeyNodeName],
+				Port:       member.Tags[memberTagKeyAgentPort],
+				NodeRole:   member.Tags[memberTagKeyNodeRole],
+				NodeName:   member.Tags[memberTagKeyNodeName],
 				EdgeKeySet: false,
 			}
 
-			_, ok := member.Tags[agent.MemberTagEdgeKeySet]
+			_, ok := member.Tags[memberTagKeyEdgeKeySet]
 			if ok {
 				clusterMember.EdgeKeySet = true
 			}
@@ -99,10 +113,16 @@ func (service *ClusterService) Members() []agent.ClusterMember {
 }
 
 // GetMemberByRole will return the first member with the specified role.
-func (service *ClusterService) GetMemberByRole(role string) *agent.ClusterMember {
+func (service *ClusterService) GetMemberByRole(role agent.NodeRole) *agent.ClusterMember {
 	members := service.Members()
+
+	roleString := memberTagValueNodeRoleManager
+	if role == agent.NodeRoleWorker {
+		roleString = memberTagValueNodeRoleWorker
+	}
+
 	for _, member := range members {
-		if member.NodeRole == role {
+		if member.NodeRole == roleString {
 			return &member
 		}
 	}
@@ -135,12 +155,43 @@ func (service *ClusterService) GetMemberWithEdgeKeySet() *agent.ClusterMember {
 }
 
 // UpdateTags propagate the new tags to the cluster
-func (service *ClusterService) UpdateTags(tags map[string]string) error {
+func (service *ClusterService) UpdateTags(tags *agent.InfoTags) error {
 	service.tags = tags
-	return service.cluster.SetTags(tags)
+	tagsMap := convertTagsToMap(tags)
+	return service.cluster.SetTags(tagsMap)
 }
 
 // GetTags returns the tags associated to the service
-func (service *ClusterService) GetTags() map[string]string {
+func (service *ClusterService) GetTags() *agent.InfoTags {
 	return service.tags
+}
+
+func convertTagsToMap(tags *agent.InfoTags) map[string]string {
+	tagsMap := map[string]string{}
+
+	tagsMap[memberTagKeyEdgeKeySet] = ""
+	if tags.EdgeKeySet {
+		tagsMap[memberTagKeyEdgeKeySet] = "set"
+	}
+
+	tagsMap[memberTagKeyEngineStatus] = memberTagValueEngineStatusStandalone
+	if tags.EngineStatus == agent.EngineStatusSwarm {
+		tagsMap[memberTagKeyEngineStatus] = memberTagValueEngineStatusSwarm
+	}
+
+	tagsMap[memberTagKeyAgentPort] = tags.AgentPort
+
+	tagsMap[memberTagKeyIsLeader] = ""
+	if tags.Leader {
+		tagsMap[memberTagKeyIsLeader] = "1"
+	}
+
+	tagsMap[memberTagKeyNodeName] = tags.NodeName
+
+	tagsMap[memberTagKeyNodeRole] = memberTagValueNodeRoleManager
+	if tags.NodeRole == agent.NodeRoleWorker {
+		tagsMap[memberTagKeyNodeRole] = memberTagValueNodeRoleWorker
+	}
+
+	return tagsMap
 }

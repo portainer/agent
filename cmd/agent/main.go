@@ -34,11 +34,11 @@ func main() {
 		log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve information from Docker] [error: %s]", err)
 	}
 
-	agentTags[agent.MemberTagKeyAgentPort] = options.AgentServerPort
+	agentTags.AgentPort = options.AgentServerPort
 	log.Printf("[DEBUG] [main,configuration] [Member tags: %+v]", agentTags)
 
 	clusterMode := false
-	if agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusSwarm {
+	if agentTags.EngineStatus == agent.EngineStatusSwarm {
 		clusterMode = true
 		log.Println("[INFO] [main] [message: Agent running on a Swarm cluster node. Running in cluster mode]")
 	}
