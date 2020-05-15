@@ -23,7 +23,7 @@ func (handler *Handler) websocketAttach(w http.ResponseWriter, r *http.Request) 
 	}
 
 	agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
-	if agentTargetHeader == handler.agentTags[agent.MemberTagKeyNodeName] {
+	if agentTargetHeader == handler.agentTags.NodeName {
 		return handler.handleAttachRequest(w, r)
 	}
 

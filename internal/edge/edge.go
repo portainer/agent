@@ -124,10 +124,10 @@ func (manager *Manager) checkRuntimeConfig() error {
 		return err
 	}
 
-	agentRunsOnLeaderNode := agentTags[agent.MemberTagKeyIsLeader] == "1"
-	agentRunsOnSwarm := agentTags[agent.MemberTagEngineStatus] == agent.EngineStatusSwarm
+	agentRunsOnLeaderNode := agentTags.Leader
+	agentRunsOnSwarm := agentTags.EngineStatus == agent.EngineStatusSwarm
 
-	log.Printf("[DEBUG] [internal,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags[agent.MemberTagEngineStatus], agentRunsOnLeaderNode)
+	log.Printf("[DEBUG] [internal,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags.EngineStatus, agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
 		err = manager.pollService.start()

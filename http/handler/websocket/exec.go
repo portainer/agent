@@ -24,7 +24,7 @@ func (handler *Handler) websocketExec(w http.ResponseWriter, r *http.Request) *h
 
 	agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
 
-	if agentTargetHeader == handler.agentTags[agent.MemberTagKeyNodeName] {
+	if agentTargetHeader == handler.agentTags.NodeName {
 		return handler.handleExecRequest(w, r)
 	}
 

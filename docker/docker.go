@@ -25,7 +25,7 @@ func NewInfoService() *InfoService {
 
 // GetInformationFromDockerEngine retrieves information from a Docker environment
 // and returns a map of labels.
-func (service *InfoService) GetInformationFromDockerEngine() (map[string]string, error) {
+func (service *InfoService) GetInformationFromDockerEngine() (*agent.InfoTags, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 	if err != nil {
 		return nil, err
@@ -37,8 +37,8 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 		return nil, err
 	}
 
-	info := make(map[string]string)
-	info[agent.MemberTagKeyNodeName] = dockerInfo.Name
+	info := &agent.InfoTags{}
+	info.NodeName = dockerInfo.Name
 
 	if dockerInfo.Swarm.NodeID == "" {
 		getStandaloneInfo(info)
@@ -111,15 +111,16 @@ func (service *InfoService) GetServiceNameFromDockerEngine(containerName string)
 	return containerInspect.Config.Labels[serviceNameLabel], nil
 }
 
-func getStandaloneInfo(info map[string]string) {
-	info[agent.MemberTagEngineStatus] = agent.EngineStatusStandalone
+func getStandaloneInfo(info *agent.InfoTags) {
+	info.EngineStatus = agent.EngineStatusStandalone
 }
 
-func getSwarmInformation(info map[string]string, dockerInfo types.Info, cli *client.Client) error {
-	info[agent.MemberTagEngineStatus] = agent.EngineStatusSwarm
-	info[agent.MemberTagKeyNodeRole] = agent.NodeRoleWorker
+func getSwarmInformation(info *agent.InfoTags, dockerInfo types.Info, cli *client.Client) error {
+	info.EngineStatus = agent.EngineStatusSwarm
+	info.NodeRole = agent.NodeRoleWorker
+
 	if dockerInfo.Swarm.ControlAvailable {
-		info[agent.MemberTagKeyNodeRole] = agent.NodeRoleManager
+		info.NodeRole = agent.NodeRoleManager
 
 		node, _, err := cli.NodeInspectWithRaw(context.Background(), dockerInfo.Swarm.NodeID)
 		if err != nil {
@@ -127,7 +128,7 @@ func getSwarmInformation(info map[string]string, dockerInfo types.Info, cli *cli
 		}
 
 		if node.ManagerStatus.Leader {
-			info[agent.MemberTagKeyIsLeader] = "1"
+			info.Leader = true
 		}
 	}
 

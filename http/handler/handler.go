@@ -43,8 +43,7 @@ type Config struct {
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
 	EdgeManager      *edge.Manager
-	PollService      *edge.PollService
-	AgentTags        map[string]string
+	AgentTags        *agent.InfoTags
 	AgentOptions     *agent.Options
 	Secured          bool
 }
@@ -61,7 +60,7 @@ func NewHandler(config *Config) *Handler {
 		browseHandler:      browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
 		browseHandlerV1:    browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler: docker.NewHandler(config.ClusterService, config.AgentTags, notaryService, config.Secured),
-		keyHandler:         key.NewHandler(config.PollService, notaryService, config.EdgeManager),
+		keyHandler:         key.NewHandler(notaryService, config.EdgeManager),
 		webSocketHandler:   websocket.NewHandler(config.ClusterService, config.AgentTags, notaryService),
 		hostHandler:        host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:        ping.NewHandler(),
