@@ -174,7 +174,7 @@ const (
 	// DefaultEdgeSleepInterval is the default interval after which the agent will close the tunnel if no activity.
 	DefaultEdgeSleepInterval = "5m"
 	// DefaultConfigCheckInterval is the default interval used to check if node config changed
-	DefaultConfigCheckInterval = "1m"
+	DefaultConfigCheckInterval = "5s"
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.
