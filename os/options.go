@@ -23,6 +23,7 @@ const (
 	EnvKeyEdgeInactivityTimeout = "EDGE_INACTIVITY_TIMEOUT"
 	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
 	EnvKeyLogLevel              = "LOG_LEVEL"
+	EnvKeyDockerBinaryPath      = "DOCKER_BINARY_PATH"
 )
 
 type EnvOptionParser struct{}

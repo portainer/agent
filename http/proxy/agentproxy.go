@@ -12,12 +12,12 @@ import (
 // AgentProxy enables redirection to different nodes
 type AgentProxy struct {
 	clusterService agent.ClusterService
-	agentTags      map[string]string
+	agentTags      *agent.InfoTags
 	useTLS         bool
 }
 
 // NewAgentProxy returns a pointer to a new AgentProxy object
-func NewAgentProxy(clusterService agent.ClusterService, agentTags map[string]string, useTLS bool) *AgentProxy {
+func NewAgentProxy(clusterService agent.ClusterService, agentTags *agent.InfoTags, useTLS bool) *AgentProxy {
 	return &AgentProxy{
 		clusterService: clusterService,
 		agentTags:      agentTags,
@@ -36,7 +36,7 @@ func (p *AgentProxy) Redirect(next http.Handler) http.Handler {
 
 		agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
 
-		if agentTargetHeader == p.agentTags[agent.MemberTagKeyNodeName] || agentTargetHeader == "" {
+		if agentTargetHeader == p.agentTags.NodeName || agentTargetHeader == "" {
 			next.ServeHTTP(rw, r)
 		} else {
 			targetMember := p.clusterService.GetMemberByNodeName(agentTargetHeader)

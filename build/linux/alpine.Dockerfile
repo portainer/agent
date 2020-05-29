@@ -1,4 +1,4 @@
-FROM portainer/base
+FROM alpine:latest
 
 WORKDIR /app
 

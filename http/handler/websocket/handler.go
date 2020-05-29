@@ -14,7 +14,7 @@ type (
 		*mux.Router
 		clusterService     agent.ClusterService
 		connectionUpgrader websocket.Upgrader
-		agentTags          map[string]string
+		agentTags          *agent.InfoTags
 	}
 
 	execStartOperationPayload struct {
@@ -24,7 +24,7 @@ type (
 )
 
 // NewHandler returns a new instance of Handler.
-func NewHandler(clusterService agent.ClusterService, agentTags map[string]string, notaryService *security.NotaryService) *Handler {
+func NewHandler(clusterService agent.ClusterService, agentTags *agent.InfoTags, notaryService *security.NotaryService) *Handler {
 	h := &Handler{
 		Router:             mux.NewRouter(),
 		connectionUpgrader: websocket.Upgrader{},
