@@ -12,16 +12,17 @@ import (
 
 // Manager is used to manage all Edge features through multiple sub-components. It is mainly responsible for running the Edge background process.
 type Manager struct {
+	advertiseAddr      string
+	agentOptions       *agent.Options
 	clusterService     agent.ClusterService
 	dockerStackService agent.DockerStackService
+	edgeMode           bool
 	infoService        agent.InfoService
-	stackManager       *StackManager
+	key                *edgeKey
+	logsManager        *logsManager
 	pollService        *PollService
 	pollServiceConfig  *pollServiceConfig
-	key                *edgeKey
-	edgeMode           bool
-	agentOptions       *agent.Options
-	advertiseAddr      string
+	stackManager       *StackManager
 }
 
 // NewManager returns a pointer to a new instance of Manager
@@ -65,7 +66,10 @@ func (manager *Manager) Start() error {
 
 	manager.stackManager = newStackManager(dockerStackService, manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
 
-	pollService, err := newPollService(manager.stackManager, pollServiceConfig)
+	manager.logsManager = newLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
+	manager.logsManager.start()
+
+	pollService, err := newPollService(manager.stackManager, manager.logsManager, pollServiceConfig)
 	if err != nil {
 		return err
 	}
@@ -127,7 +131,7 @@ func (manager *Manager) checkRuntimeConfig() error {
 	agentRunsOnLeaderNode := agentTags.Leader
 	agentRunsOnSwarm := agentTags.EngineStatus == agent.EngineStatusSwarm
 
-	log.Printf("[DEBUG] [internal,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags.EngineStatus, agentRunsOnLeaderNode)
+	log.Printf("[DEBUG] [internal,edge,docker] [message: Docker runtime configuration check] [engine_status: %d] [leader_node: %t]", agentTags.EngineStatus, agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
 		err = manager.pollService.start()
@@ -147,7 +151,6 @@ func (manager *Manager) checkRuntimeConfig() error {
 		if err != nil {
 			return err
 		}
-
 	} else {
 		err = manager.stackManager.stop()
 		if err != nil {
