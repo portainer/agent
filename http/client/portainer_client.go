@@ -117,3 +117,43 @@ func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus i
 
 	return nil
 }
+
+type logFilePayload struct {
+	FileContent string
+}
+
+// SendJobLogFile sends the jobID log to the Portainer server
+func (client *PortainerClient) SendJobLogFile(jobID int, fileContent []byte) error {
+	payload := logFilePayload{
+		FileContent: string(fileContent),
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/jobs/%d/logs", client.serverAddress, client.endpointID, jobID)
+
+	req, err := http.NewRequest(http.MethodPut, requestURL, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: SendJobLogFile operation failed]", resp.StatusCode)
+		return errors.New("SetEdgeStackStatus operation failed")
+	}
+
+	return nil
+
+}
