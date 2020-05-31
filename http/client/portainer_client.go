@@ -151,7 +151,7 @@ func (client *PortainerClient) SendJobLogFile(jobID int, fileContent []byte) err
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: SendJobLogFile operation failed]", resp.StatusCode)
-		return errors.New("SetEdgeStackStatus operation failed")
+		return errors.New("SendJobLogFile operation failed")
 	}
 
 	return nil
