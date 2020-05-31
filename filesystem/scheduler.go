@@ -12,10 +12,9 @@ import (
 )
 
 const (
-	cronDirectory           = "/etc/cron.d"
-	cronFile                = "portainer_agent"
-	cronJobUser             = "root"
-	scheduleScriptDirectory = "/opt/portainer/scripts"
+	cronDirectory = "/etc/cron.d"
+	cronFile      = "portainer_agent"
+	cronJobUser   = "root"
 )
 
 // CronManager is a service that manage schedules by creating a new entry inside the host filesystem under
@@ -81,14 +80,14 @@ func createCronEntry(schedule *agent.Schedule) (string, error) {
 		return "", err
 	}
 
-	err = WriteFile(fmt.Sprintf("%s%s", agent.HostRoot, scheduleScriptDirectory), fmt.Sprintf("schedule_%d", schedule.ID), []byte(decodedScript), 0744)
+	err = WriteFile(fmt.Sprintf("%s%s", agent.HostRoot, agent.ScheduleScriptDirectory), fmt.Sprintf("schedule_%d", schedule.ID), []byte(decodedScript), 0744)
 	if err != nil {
 		return "", err
 	}
 
 	cronExpression := schedule.CronExpression
-	command := fmt.Sprintf("%s/schedule_%d", scheduleScriptDirectory, schedule.ID)
-	logFile := fmt.Sprintf("%s/schedule_%d.log", scheduleScriptDirectory, schedule.ID)
+	command := fmt.Sprintf("%s/schedule_%d", agent.ScheduleScriptDirectory, schedule.ID)
+	logFile := fmt.Sprintf("%s/schedule_%d.log", agent.ScheduleScriptDirectory, schedule.ID)
 
 	return fmt.Sprintf("%s %s %s > %s 2>&1", cronExpression, cronJobUser, command, logFile), nil
 }
