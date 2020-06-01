@@ -61,6 +61,7 @@ func (manager *logsManager) start() error {
 					<-timer.C
 					continue
 				}
+
 				log.Printf("[DEBUG] [internal,edge,logs] [job_identifier: %d] [message: started job log collection]", jobID)
 
 				logFileLocation := fmt.Sprintf("%s%s/schedule_%d.log", agent.HostRoot, agent.ScheduleScriptDirectory, jobID)
@@ -88,7 +89,7 @@ func (manager *logsManager) start() error {
 					continue
 				}
 
-				delete(manager.jobs, jobID)
+				manager.jobs[jobID] = logSuccess
 			}
 		}
 	}()
@@ -107,6 +108,7 @@ func (manager *logsManager) stop() {
 func (manager *logsManager) handleReceivedLogsRequests(jobs []int) {
 	for _, jobID := range jobs {
 		if _, ok := manager.jobs[jobID]; !ok {
+			log.Printf("[DEBUG] [internal,edge,logs] [job_identifier: %d] [message: added job to queue]", jobID)
 			manager.jobs[jobID] = logPending
 		}
 	}

@@ -135,7 +135,7 @@ func (client *PortainerClient) SendJobLogFile(jobID int, fileContent []byte) err
 
 	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/jobs/%d/logs", client.serverAddress, client.endpointID, jobID)
 
-	req, err := http.NewRequest(http.MethodPut, requestURL, bytes.NewReader(data))
+	req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
