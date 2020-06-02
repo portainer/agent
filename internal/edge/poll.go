@@ -118,6 +118,7 @@ func (service *PollService) stop() error {
 
 func (service *PollService) restartStatusPollLoop() {
 	service.stop()
+	service.refreshSignal = make(chan struct{})
 	service.startStatusPollLoop()
 }
 
