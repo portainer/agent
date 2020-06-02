@@ -89,7 +89,7 @@ func (manager *logsManager) start() error {
 					continue
 				}
 
-				manager.jobs[jobID] = logSuccess
+				delete(manager.jobs, jobID)
 			}
 		}
 	}()
