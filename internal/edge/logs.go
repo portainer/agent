@@ -72,8 +72,11 @@ func (manager *logsManager) start() error {
 					continue
 				}
 
-				file := []byte("")
-				if exist {
+				var file []byte
+				if !exist {
+					file = []byte("")
+					log.Printf("[DEBUG] [internal,edge,logs] [job_identifier: %d] [message: file doesn't exist]", jobID)
+				} else {
 					file, err = filesystem.ReadFromFile(logFileLocation)
 					if err != nil {
 						manager.jobs[jobID] = logFailed
