@@ -86,8 +86,7 @@ The agent also exposes the following endpoints:
 * `/websocket/attach` (*GET*): Websocket attach endpoint (for container console usage)
 * `/websocket/exec` (*GET*): Websocket exec endpoint (for container console usage)
 
-Note: The `/browse/*` endpoints can be used to manage a filesystem. By default, it allows manipulation of files in Docker volumes (available under `/var/run/docker/volumes` when bind-mounted in the agent container) but can also manipulate files anywhere on the filesystem. To enable global
-filesystem manipulation support for these endpoints, the `CAP_HOST_MANAGEMENT` environment variable must be set to `1`.
+Note: The `/browse/*` endpoints can be used to manage a filesystem. By default, it allows manipulation of files in Docker volumes (available under `/var/run/docker/volumes` when bind-mounted in the agent container) but can also manipulate files anywhere on the filesystem. 
 
 ### Agent API version
 
@@ -233,7 +232,6 @@ The behavior of the agent can be tuned via a set of mandatory and optional optio
 we can leverage the internal Docker DNS to automatically join existing agents or form a cluster by using `tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT>` as the address.
 * AGENT_HOST (*optional*): address on which the agent API will be exposed (default to `0.0.0.0`)
 * AGENT_PORT (*optional*): port on which the agent API will be exposed (default to `9001`)
-* CAP_HOST_MANAGEMENT (*optional*): enable advanced filesystem management features. Disabled by default, set to `1` to enable it
 * AGENT_SECRET (*optional*): shared secret used in the signature verification process
 * LOG_LEVEL (*optional*): defines the log output verbosity (default to `INFO`)
 * EDGE (*optional*): enable Edge mode. Disabled by default, set to `1` to enable it
