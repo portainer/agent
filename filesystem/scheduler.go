@@ -38,6 +38,7 @@ func NewCronManager() *CronManager {
 // Note that this implementation do not clean-up scripts located on the filesystem that are related to old schedules.
 func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 	if len(schedules) == 0 {
+		manager.managedSchedules = schedules
 		if manager.cronFileExists {
 			log.Println("[DEBUG] [filesystem,cron] [message: no schedules available, removing cron file]")
 			manager.cronFileExists = false
