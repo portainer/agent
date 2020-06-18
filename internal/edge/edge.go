@@ -94,7 +94,6 @@ func (manager *Manager) ResetActivityTimer() {
 }
 
 func (manager *Manager) startEdgeBackgroundProcess() error {
-
 	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
 	if err != nil {
 		return err
