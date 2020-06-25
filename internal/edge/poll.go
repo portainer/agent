@@ -38,6 +38,7 @@ type PollService struct {
 	endpointID              string
 	tunnelServerAddr        string
 	tunnelServerFingerprint string
+	logsManager             *logsManager
 }
 
 type pollServiceConfig struct {
@@ -53,7 +54,7 @@ type pollServiceConfig struct {
 }
 
 // newPollService returns a pointer to a new instance of PollService
-func newPollService(edgeStackManager *StackManager, config *pollServiceConfig) (*PollService, error) {
+func newPollService(edgeStackManager *StackManager, logsManager *logsManager, config *pollServiceConfig) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -78,6 +79,7 @@ func newPollService(edgeStackManager *StackManager, config *pollServiceConfig) (
 		endpointID:              config.EndpointID,
 		tunnelServerAddr:        config.TunnelServerAddr,
 		tunnelServerFingerprint: config.TunnelServerFingerprint,
+		logsManager:             logsManager,
 	}, nil
 }
 
@@ -270,6 +272,15 @@ func (service *PollService) poll() error {
 	if err != nil {
 		log.Printf("[ERROR] [internal,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
 	}
+
+	logsToCollect := []int{}
+	for _, schedule := range responseData.Schedules {
+		if schedule.CollectLogs {
+			logsToCollect = append(logsToCollect, schedule.ID)
+		}
+	}
+
+	service.logsManager.handleReceivedLogsRequests(logsToCollect)
 
 	if responseData.CheckinInterval != service.pollIntervalInSeconds {
 		log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)

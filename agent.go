@@ -66,6 +66,7 @@ type (
 		CronExpression string
 		Script         string
 		Version        int
+		CollectLogs    bool
 	}
 
 	// TunnelConfig contains all the required information for the agent to establish
@@ -211,6 +212,8 @@ const (
 	HostRoot = "/host"
 	// DataDirectory is the folder where the data associated to the agent is persisted.
 	DataDirectory = "/data"
+	// ScheduleScriptDirectory is the folder where schedules are saved on the host
+	ScheduleScriptDirectory = "/opt/portainer/scripts"
 	// EdgeKeyFile is the name of the file used to persist the Edge key associated to the agent.
 	EdgeKeyFile = "agent_edge_key"
 	// DockerBinaryPath is the path of the docker binary
