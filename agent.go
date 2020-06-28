@@ -27,6 +27,13 @@ type (
 		EdgeKeySet bool
 	}
 
+	// EdgeStackConfig represnts an Edge stack config
+	EdgeStackConfig struct {
+		Name        string
+		FileContent string
+		Prune       bool
+	}
+
 	// AgentMetadata is the representation of the metadata object used to decorate
 	// all the objects in the response of a Docker aggregated resource request.
 	Metadata struct {
@@ -59,6 +66,7 @@ type (
 		CronExpression string
 		Script         string
 		Version        int
+		CollectLogs    bool
 	}
 
 	// TunnelConfig contains all the required information for the agent to establish
@@ -74,6 +82,18 @@ type (
 	// ContainerPlatform represent the platform on which the agent is running (Docker, Kubernetes)
 	ContainerPlatform int
 
+	InfoTags struct {
+		AgentPort    string
+		EdgeKeySet   bool
+		EngineStatus EngineStatus
+		Leader       bool
+		NodeName     string
+		NodeRole     NodeRole
+	}
+
+	EngineStatus int
+	NodeRole     int
+
 	// OptionParser is used to parse options.
 	OptionParser interface {
 		Options() (*Options, error)
@@ -84,11 +104,11 @@ type (
 		Create(advertiseAddr string, joinAddr []string) error
 		Members() []ClusterMember
 		Leave()
-		GetMemberByRole(role string) *ClusterMember
+		GetMemberByRole(role NodeRole) *ClusterMember
 		GetMemberByNodeName(nodeName string) *ClusterMember
 		GetMemberWithEdgeKeySet() *ClusterMember
-		GetTags() map[string]string
-		UpdateTags(tags map[string]string) error
+		GetTags() *InfoTags
+		UpdateTags(tags *InfoTags) error
 	}
 
 	// DigitalSignatureService is used to validate digital signatures.
@@ -98,7 +118,7 @@ type (
 
 	// InfoService is used to retrieve information from a Docker environment.
 	InfoService interface {
-		GetInformationFromDockerEngine() (map[string]string, error)
+		GetInformationFromDockerEngine() (*InfoTags, error)
 		GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error)
 		GetServiceNameFromDockerEngine(containerName string) (string, error)
 	}
@@ -122,26 +142,23 @@ type (
 		IsTunnelOpen() bool
 	}
 
-	// TunnelOperator is a service that is used to communicate with a Portainer instance and to manage
-	// the reverse tunnel.
-	TunnelOperator interface {
-		Start() error
-		IsKeySet() bool
-		SetKey(key string) error
-		GetKey() string
-		CloseTunnel() error
-		ResetActivityTimer()
-	}
-
 	// Scheduler is used to manage schedules
 	Scheduler interface {
 		Schedule(schedules []Schedule) error
+	}
+
+	// DockerStackService is a service used to deploy and remove Docker stacks
+	DockerStackService interface {
+		Login() error
+		Logout() error
+		Deploy(name, stackFileContent string, prune bool) error
+		Remove(name string) error
 	}
 )
 
 const (
 	// Version represents the version of the agent.
-	Version = "1.5.1-k8s-beta"
+	Version = "1.6.0"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.
@@ -160,6 +177,8 @@ const (
 	DefaultEdgePollInterval = "5s"
 	// DefaultEdgeSleepInterval is the default interval after which the agent will close the tunnel if no activity.
 	DefaultEdgeSleepInterval = "5m"
+	// DefaultConfigCheckInterval is the default interval used to check if node config changed
+	DefaultConfigCheckInterval = "5s"
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.
@@ -190,24 +209,6 @@ const (
 	// ResponseMetadataKey is the JSON field used to store any Portainer related information in
 	// response objects.
 	ResponseMetadataKey = "Portainer"
-	// MemberTagKeyAgentPort is the name of the label storing information about the port exposed
-	// by the agent.
-	MemberTagKeyAgentPort = "AgentPort"
-	// MemberTagKeyNodeName is the name of the label storing information about the name of the
-	// node where the agent is running.
-	MemberTagKeyNodeName = "NodeName"
-	// MemberTagKeyNodeRole is the name of the label storing information about the role of the
-	// node where the agent is running.
-	MemberTagKeyNodeRole = "NodeRole"
-	// MemberTagEngineStatus is the name of the label storing information about the status of the Docker engine where
-	// the agent is running. Possible values are "standalone" or "swarm".
-	MemberTagEngineStatus = "EngineStatus"
-	// MemberTagEdgeKeySet is the name of the label storing information regarding the association of an Edge key.
-	MemberTagEdgeKeySet = "EdgeKeySet"
-	// NodeRoleManager represents a manager node.
-	NodeRoleManager = "manager"
-	// NodeRoleWorker represents a worker node.
-	NodeRoleWorker = "worker"
 	// TLSCertPath is the default path to the TLS certificate file.
 	TLSCertPath = "cert.pem"
 	// TLSKeyPath is the default path to the TLS key file.
@@ -216,8 +217,28 @@ const (
 	HostRoot = "/host"
 	// DataDirectory is the folder where the data associated to the agent is persisted.
 	DataDirectory = "/data"
+	// ScheduleScriptDirectory is the folder where schedules are saved on the host
+	ScheduleScriptDirectory = "/opt/portainer/scripts"
 	// EdgeKeyFile is the name of the file used to persist the Edge key associated to the agent.
 	EdgeKeyFile = "agent_edge_key"
+	// DockerBinaryPath is the path of the docker binary
+	DockerBinaryPath = "/app"
+	// EdgeStackFilesPath is the path where edge stack files are saved
+	EdgeStackFilesPath = "/tmp/edge_stacks"
+	// EdgeStackQueueSleepInterval is the interval used to check if there's an Edge stack to deploy
+	EdgeStackQueueSleepInterval = "5s"
+)
+
+const (
+	_ NodeRole = iota
+	NodeRoleManager
+	NodeRoleWorker
+)
+
+const (
+	_ EngineStatus = iota
+	EngineStatusStandalone
+	EngineStatusSwarm
 )
 
 const (

@@ -25,7 +25,7 @@ func NewInfoService() *InfoService {
 
 // GetInformationFromDockerEngine retrieves information from a Docker environment
 // and returns a map of labels.
-func (service *InfoService) GetInformationFromDockerEngine() (map[string]string, error) {
+func (service *InfoService) GetInformationFromDockerEngine() (*agent.InfoTags, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 	if err != nil {
 		return nil, err
@@ -37,17 +37,18 @@ func (service *InfoService) GetInformationFromDockerEngine() (map[string]string,
 		return nil, err
 	}
 
-	info := make(map[string]string)
-	info[agent.MemberTagKeyNodeName] = dockerInfo.Name
+	info := &agent.InfoTags{}
+	info.NodeName = dockerInfo.Name
 
 	if dockerInfo.Swarm.NodeID == "" {
-		info[agent.MemberTagEngineStatus] = "standalone"
+		getStandaloneInfo(info)
 	} else {
-		info[agent.MemberTagEngineStatus] = "swarm"
-		info[agent.MemberTagKeyNodeRole] = agent.NodeRoleWorker
-		if dockerInfo.Swarm.ControlAvailable {
-			info[agent.MemberTagKeyNodeRole] = agent.NodeRoleManager
+
+		err := getSwarmInformation(info, dockerInfo, cli)
+		if err != nil {
+			return nil, err
 		}
+
 	}
 
 	return info, nil
@@ -108,4 +109,28 @@ func (service *InfoService) GetServiceNameFromDockerEngine(containerName string)
 	}
 
 	return containerInspect.Config.Labels[serviceNameLabel], nil
+}
+
+func getStandaloneInfo(info *agent.InfoTags) {
+	info.EngineStatus = agent.EngineStatusStandalone
+}
+
+func getSwarmInformation(info *agent.InfoTags, dockerInfo types.Info, cli *client.Client) error {
+	info.EngineStatus = agent.EngineStatusSwarm
+	info.NodeRole = agent.NodeRoleWorker
+
+	if dockerInfo.Swarm.ControlAvailable {
+		info.NodeRole = agent.NodeRoleManager
+
+		node, _, err := cli.NodeInspectWithRaw(context.Background(), dockerInfo.Swarm.NodeID)
+		if err != nil {
+			return err
+		}
+
+		if node.ManagerStatus.Leader {
+			info.Leader = true
+		}
+	}
+
+	return nil
 }

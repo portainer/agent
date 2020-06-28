@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/portainer/agent/kubernetes"
-
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/handler"
+	"github.com/portainer/agent/internal/edge"
+	"github.com/portainer/agent/kubernetes"
 )
 
 // APIServer is the web server exposing the API of an agent.
@@ -18,10 +18,9 @@ type APIServer struct {
 	systemService    agent.SystemService
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
-	tunnelOperator   agent.TunnelOperator
-	agentTags        map[string]string
+	edgeManager      *edge.Manager
+	agentTags        *agent.InfoTags
 	agentOptions     *agent.Options
-	edgeMode         bool
 	kubeClient       *kubernetes.KubeClient
 }
 
@@ -33,11 +32,10 @@ type APIServerConfig struct {
 	SystemService    agent.SystemService
 	ClusterService   agent.ClusterService
 	SignatureService agent.DigitalSignatureService
-	TunnelOperator   agent.TunnelOperator
+	EdgeManager      *edge.Manager
 	KubeClient       *kubernetes.KubeClient
-	AgentTags        map[string]string
+	AgentTags        *agent.InfoTags
 	AgentOptions     *agent.Options
-	EdgeMode         bool
 }
 
 // NewAPIServer returns a pointer to a APIServer.
@@ -48,10 +46,9 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 		systemService:    config.SystemService,
 		clusterService:   config.ClusterService,
 		signatureService: config.SignatureService,
-		tunnelOperator:   config.TunnelOperator,
+		edgeManager:      config.EdgeManager,
 		agentTags:        config.AgentTags,
 		agentOptions:     config.AgentOptions,
-		edgeMode:         config.EdgeMode,
 		kubeClient:       config.KubeClient,
 	}
 }
@@ -61,10 +58,9 @@ func (server *APIServer) StartUnsecured() error {
 	config := &handler.Config{
 		SystemService:  server.systemService,
 		ClusterService: server.clusterService,
-		TunnelOperator: server.tunnelOperator,
 		AgentTags:      server.agentTags,
 		AgentOptions:   server.agentOptions,
-		EdgeMode:       server.edgeMode,
+		EdgeManager:    server.edgeManager,
 		Secured:        false,
 		KubeClient:     server.kubeClient,
 	}
@@ -90,10 +86,9 @@ func (server *APIServer) StartSecured() error {
 		SystemService:    server.systemService,
 		ClusterService:   server.clusterService,
 		SignatureService: server.signatureService,
-		TunnelOperator:   server.tunnelOperator,
 		AgentTags:        server.agentTags,
 		AgentOptions:     server.agentOptions,
-		EdgeMode:         server.edgeMode,
+		EdgeManager:      server.edgeManager,
 		Secured:          true,
 		KubeClient:       server.kubeClient,
 	}

@@ -2,6 +2,7 @@ package os
 
 import (
 	"errors"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -23,6 +24,7 @@ const (
 	EnvKeyEdgeInactivityTimeout = "EDGE_INACTIVITY_TIMEOUT"
 	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
 	EnvKeyLogLevel              = "LOG_LEVEL"
+	EnvKeyDockerBinaryPath      = "DOCKER_BINARY_PATH"
 )
 
 type EnvOptionParser struct{}
@@ -36,7 +38,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		AgentServerAddr:       agent.DefaultAgentAddr,
 		AgentServerPort:       agent.DefaultAgentPort,
 		ClusterAddress:        os.Getenv(EnvKeyClusterAddr),
-		HostManagementEnabled: false,
+		HostManagementEnabled: true,
 		SharedSecret:          os.Getenv(EnvKeyAgentSecret),
 		EdgeID:                os.Getenv(EnvKeyEdgeID),
 		EdgeServerAddr:        agent.DefaultEdgeServerAddr,
@@ -46,8 +48,8 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		LogLevel:              agent.DefaultLogLevel,
 	}
 
-	if os.Getenv(EnvKeyCapHostManagement) == "1" {
-		options.HostManagementEnabled = true
+	if os.Getenv(EnvKeyCapHostManagement) != "" {
+		log.Println("[WARN] [os,options] [message: the CAP_HOST_MANAGEMENT environment variable is deprecated and will likely be removed in a future version of Portainer agent]")
 	}
 
 	if os.Getenv(EnvKeyEdge) == "1" {
