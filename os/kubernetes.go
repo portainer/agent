@@ -23,8 +23,8 @@ func DetermineContainerPlatform() agent.ContainerPlatform {
 	return agent.PlatformDocker
 }
 
-// GetPodIP returns the pod IP address through the KUBERNETES_POD_IP environment variable.
+// GetKubernetesPodIP returns the pod IP address through the KUBERNETES_POD_IP environment variable.
 // This environment variable must be specified in the Agent deployment specs.
-func GetPodIP() string {
+func GetKubernetesPodIP() string {
 	return os.Getenv(KubernetesPodIP)
 }

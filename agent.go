@@ -82,6 +82,8 @@ type (
 	// ContainerPlatform represent the platform on which the agent is running (Docker, Kubernetes)
 	ContainerPlatform int
 
+	// TODO: should be renamed to RuntimeConfiguration
+	// +comment
 	InfoTags struct {
 		AgentPort    string
 		EdgeKeySet   bool
@@ -116,11 +118,16 @@ type (
 		VerifySignature(signature, key string) (bool, error)
 	}
 
-	// InfoService is used to retrieve information from a Docker environment.
-	InfoService interface {
+	// DockerInfoService is used to retrieve information from a Docker environment.
+	DockerInfoService interface {
 		GetInformationFromDockerEngine() (*InfoTags, error)
 		GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error)
 		GetServiceNameFromDockerEngine(containerName string) (string, error)
+	}
+
+	// KubernetesInfoService is used to retrieve information from a Kubernetes environment.
+	KubernetesInfoService interface {
+		GetInformationFromKubernetesCluster() (*InfoTags, error)
 	}
 
 	// TLSService is used to create TLS certificates to use enable HTTPS.

@@ -14,11 +14,11 @@ const (
 	serviceNameLabel = "com.docker.swarm.service.name"
 )
 
-// InfoService is a service used to retrieve information from a Docker environment
+// DockerInfoService is a service used to retrieve information from a Docker environment
 // using the Docker library.
 type InfoService struct{}
 
-// NewInfoService returns a pointer to an instance of InfoService
+// NewInfoService returns a pointer to an instance of DockerInfoService
 func NewInfoService() *InfoService {
 	return &InfoService{}
 }

@@ -37,7 +37,7 @@ func main() {
 	}
 
 	var clusterService agent.ClusterService
-	var infoService agent.InfoService
+	var dockerInfoService agent.DockerInfoService
 	var advertiseAddr string
 	var kubeClient *kubernetes.KubeClient
 
@@ -48,9 +48,9 @@ func main() {
 	if containerPlatform == agent.PlatformDocker {
 		log.Println("[INFO] [main] [message: Agent running on Docker platform]")
 
-		infoService = docker.NewInfoService()
+		dockerInfoService = docker.NewInfoService()
 
-		agentTags, err = infoService.GetInformationFromDockerEngine()
+		agentTags, err = dockerInfoService.GetInformationFromDockerEngine()
 		if err != nil {
 			log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve information from Docker] [error: %s]", err)
 		}
@@ -69,7 +69,7 @@ func main() {
 			log.Fatalf("[ERROR] [main,os] [message: Unable to retrieve container name] [error: %s]", err)
 		}
 
-		advertiseAddr, err := infoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
+		advertiseAddr, err := dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 		}
@@ -80,9 +80,9 @@ func main() {
 
 			clusterAddr := options.ClusterAddress
 			if clusterAddr == "" {
-				serviceName, err := infoService.GetServiceNameFromDockerEngine(containerName)
+				serviceName, err := dockerInfoService.GetServiceNameFromDockerEngine(containerName)
 				if err != nil {
-					log.Fatalf("[ERROR] [main,docker] [message: Unable to agent service name from Docker] [error: %s]", err)
+					log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve agent service name from Docker] [error: %s]", err)
 				}
 
 				clusterAddr = fmt.Sprintf("tasks.%s", serviceName)
@@ -120,7 +120,7 @@ func main() {
 
 		clusterService = cluster.NewClusterService(agentTags)
 
-		advertiseAddr = os.GetPodIP()
+		advertiseAddr = os.GetKubernetesPodIP()
 		if advertiseAddr == "" {
 			log.Fatalf("[ERROR] [main,kubernetes,env] [message: KUBERNETES_POD_IP env var must be specified when running on Kubernetes] [error: %s]", err)
 		}
@@ -166,7 +166,14 @@ func main() {
 	// !Security
 
 	// Edge
-	edgeManager := edge.NewManager(options, advertiseAddr, clusterService, infoService)
+	edgeManagerParameters := &edge.ManagerParameters{
+		Options:           options,
+		AdvertiseAddr:     advertiseAddr,
+		ClusterService:    clusterService,
+		DockerInfoService: dockerInfoService,
+		ContainerPlatform: containerPlatform,
+	}
+	edgeManager := edge.NewManager(edgeManagerParameters)
 
 	if options.EdgeMode {
 		edgeKey, err := retrieveEdgeKey(options.EdgeKey, clusterService)
