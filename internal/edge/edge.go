@@ -129,10 +129,6 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency time.Duration) error {
-	// TODO: all nodes in a kubernetes cluster are polling the Portainer instance, should run on a leader node only
-	// can't use leader in cloud provider kubernetes (only worker are available, managed nodes unavailable)
-	// to be confirmed on DO
-
 	err := manager.pollService.start()
 	if err != nil {
 		return err
