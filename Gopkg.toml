@@ -86,6 +86,10 @@
   name = "github.com/jpillora/chisel"
   version = "=1.3.1"
 
+[[constraint]]
+  name = "k8s.io/client-go"
+  version = "=v0.17.2"
+
 [prune]
   go-tests = true
   unused-packages = true

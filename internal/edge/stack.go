@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/portainer/agent/exec"
+
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/http/client"
@@ -63,15 +65,22 @@ type StackManager struct {
 }
 
 // newStackManager returns a pointer to a new instance of StackManager
-func newStackManager(dockerStackService agent.DockerStackService, portainerURL, endpointID, edgeID string) *StackManager {
+func newStackManager(portainerURL, endpointID, edgeID string) (*StackManager, error) {
 	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID)
 
-	return &StackManager{
+	dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
+	if err != nil {
+		return nil, err
+	}
+
+	stackManager := &StackManager{
 		dockerStackService: dockerStackService,
 		stacks:             map[edgeStackID]*edgeStack{},
 		stopSignal:         nil,
 		httpClient:         cli,
 	}
+
+	return stackManager, nil
 }
 
 func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {

@@ -8,6 +8,7 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/handler"
 	"github.com/portainer/agent/internal/edge"
+	"github.com/portainer/agent/kubernetes"
 )
 
 // APIServer is the web server exposing the API of an agent.
@@ -18,21 +19,23 @@ type APIServer struct {
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
 	edgeManager      *edge.Manager
-	agentTags        *agent.InfoTags
+	agentTags        *agent.RuntimeConfiguration
 	agentOptions     *agent.Options
+	kubeClient       *kubernetes.KubeClient
 }
 
 // APIServerConfig represents a server configuration
 // used to create a new API server
 type APIServerConfig struct {
-	Addr             string
-	Port             string
-	SystemService    agent.SystemService
-	ClusterService   agent.ClusterService
-	SignatureService agent.DigitalSignatureService
-	EdgeManager      *edge.Manager
-	AgentTags        *agent.InfoTags
-	AgentOptions     *agent.Options
+	Addr                 string
+	Port                 string
+	SystemService        agent.SystemService
+	ClusterService       agent.ClusterService
+	SignatureService     agent.DigitalSignatureService
+	EdgeManager          *edge.Manager
+	KubeClient           *kubernetes.KubeClient
+	RuntimeConfiguration *agent.RuntimeConfiguration
+	AgentOptions         *agent.Options
 }
 
 // NewAPIServer returns a pointer to a APIServer.
@@ -44,20 +47,22 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 		clusterService:   config.ClusterService,
 		signatureService: config.SignatureService,
 		edgeManager:      config.EdgeManager,
-		agentTags:        config.AgentTags,
+		agentTags:        config.RuntimeConfiguration,
 		agentOptions:     config.AgentOptions,
+		kubeClient:       config.KubeClient,
 	}
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
 func (server *APIServer) StartUnsecured() error {
 	config := &handler.Config{
-		SystemService:  server.systemService,
-		ClusterService: server.clusterService,
-		AgentTags:      server.agentTags,
-		AgentOptions:   server.agentOptions,
-		EdgeManager:    server.edgeManager,
-		Secured:        false,
+		SystemService:        server.systemService,
+		ClusterService:       server.clusterService,
+		RuntimeConfiguration: server.agentTags,
+		AgentOptions:         server.agentOptions,
+		EdgeManager:          server.edgeManager,
+		Secured:              false,
+		KubeClient:           server.kubeClient,
 	}
 
 	h := handler.NewHandler(config)
@@ -78,13 +83,14 @@ func (server *APIServer) StartUnsecured() error {
 // Start starts a new web server by listening on the specified listenAddr.
 func (server *APIServer) StartSecured() error {
 	config := &handler.Config{
-		SystemService:    server.systemService,
-		ClusterService:   server.clusterService,
-		SignatureService: server.signatureService,
-		AgentTags:        server.agentTags,
-		AgentOptions:     server.agentOptions,
-		EdgeManager:      server.edgeManager,
-		Secured:          true,
+		SystemService:        server.systemService,
+		ClusterService:       server.clusterService,
+		SignatureService:     server.signatureService,
+		RuntimeConfiguration: server.agentTags,
+		AgentOptions:         server.agentOptions,
+		EdgeManager:          server.edgeManager,
+		Secured:              true,
+		KubeClient:           server.kubeClient,
 	}
 
 	h := handler.NewHandler(config)
