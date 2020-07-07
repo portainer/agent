@@ -13,10 +13,10 @@ type (
 	// Handler represents an HTTP API handler for proxying requests to a web socket.
 	Handler struct {
 		*mux.Router
-		clusterService     agent.ClusterService
-		connectionUpgrader websocket.Upgrader
-		agentTags          *agent.RuntimeConfiguration
-		kubeClient         *kubernetes.KubeClient
+		clusterService       agent.ClusterService
+		connectionUpgrader   websocket.Upgrader
+		runtimeConfiguration *agent.RuntimeConfiguration
+		kubeClient           *kubernetes.KubeClient
 	}
 
 	execStartOperationPayload struct {
@@ -26,13 +26,13 @@ type (
 )
 
 // NewHandler returns a new instance of Handler.
-func NewHandler(clusterService agent.ClusterService, agentTags *agent.RuntimeConfiguration, notaryService *security.NotaryService, kubeClient *kubernetes.KubeClient) *Handler {
+func NewHandler(clusterService agent.ClusterService, config *agent.RuntimeConfiguration, notaryService *security.NotaryService, kubeClient *kubernetes.KubeClient) *Handler {
 	h := &Handler{
-		Router:             mux.NewRouter(),
-		connectionUpgrader: websocket.Upgrader{},
-		clusterService:     clusterService,
-		agentTags:          agentTags,
-		kubeClient:         kubeClient,
+		Router:               mux.NewRouter(),
+		connectionUpgrader:   websocket.Upgrader{},
+		clusterService:       clusterService,
+		runtimeConfiguration: config,
+		kubeClient:           kubeClient,
 	}
 
 	h.Handle("/websocket/attach", notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.websocketAttach)))

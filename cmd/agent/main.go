@@ -206,15 +206,15 @@ func main() {
 	// API
 
 	config := &http.APIServerConfig{
-		Addr:             options.AgentServerAddr,
-		Port:             options.AgentServerPort,
-		SystemService:    systemService,
-		ClusterService:   clusterService,
-		EdgeManager:      edgeManager,
-		SignatureService: signatureService,
-		AgentTags:        runtimeConfiguration,
-		AgentOptions:     options,
-		KubeClient:       kubeClient,
+		Addr:                 options.AgentServerAddr,
+		Port:                 options.AgentServerPort,
+		SystemService:        systemService,
+		ClusterService:       clusterService,
+		EdgeManager:          edgeManager,
+		SignatureService:     signatureService,
+		RuntimeConfiguration: runtimeConfiguration,
+		AgentOptions:         options,
+		KubeClient:           kubeClient,
 	}
 
 	if edgeManager.IsEdgeModeEnabled() {
