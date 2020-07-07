@@ -82,19 +82,28 @@ type (
 	// ContainerPlatform represent the platform on which the agent is running (Docker, Kubernetes)
 	ContainerPlatform int
 
-	// TODO: should be renamed to RuntimeConfiguration
-	// +comment
-	InfoTags struct {
-		AgentPort    string
-		EdgeKeySet   bool
-		EngineStatus EngineStatus
-		Leader       bool
-		NodeName     string
-		NodeRole     NodeRole
+	// RuntimeConfiguration represent the configuration of an agent during runtime
+	RuntimeConfiguration struct {
+		AgentPort               string
+		EdgeKeySet              bool
+		NodeName                string
+		DockerConfiguration     DockerRuntimeConfiguration
+		KubernetesConfiguration KubernetesRuntimeConfiguration
 	}
 
-	EngineStatus int
-	NodeRole     int
+	// DockerRuntimeConfiguration represents the runtime configuration of an agent running on the Docker platform
+	DockerRuntimeConfiguration struct {
+		EngineStatus DockerEngineStatus
+		Leader       bool
+		NodeRole     DockerNodeRole
+	}
+
+	// KubernetesRuntimeConfiguration represents the runtime configuration of an agent running on the Kubernetes platform
+	KubernetesRuntimeConfiguration struct {
+	}
+
+	DockerEngineStatus int
+	DockerNodeRole     int
 
 	// OptionParser is used to parse options.
 	OptionParser interface {
@@ -106,11 +115,11 @@ type (
 		Create(advertiseAddr string, joinAddr []string) error
 		Members() []ClusterMember
 		Leave()
-		GetMemberByRole(role NodeRole) *ClusterMember
+		GetMemberByRole(role DockerNodeRole) *ClusterMember
 		GetMemberByNodeName(nodeName string) *ClusterMember
 		GetMemberWithEdgeKeySet() *ClusterMember
-		GetTags() *InfoTags
-		UpdateTags(tags *InfoTags) error
+		GetRuntimeConfiguration() *RuntimeConfiguration
+		UpdateRuntimeConfiguration(runtimeConfiguration *RuntimeConfiguration) error
 	}
 
 	// DigitalSignatureService is used to validate digital signatures.
@@ -120,14 +129,14 @@ type (
 
 	// DockerInfoService is used to retrieve information from a Docker environment.
 	DockerInfoService interface {
-		GetInformationFromDockerEngine() (*InfoTags, error)
+		GetRuntimeConfigurationFromDockerEngine() (*RuntimeConfiguration, error)
 		GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error)
 		GetServiceNameFromDockerEngine(containerName string) (string, error)
 	}
 
 	// KubernetesInfoService is used to retrieve information from a Kubernetes environment.
 	KubernetesInfoService interface {
-		GetInformationFromKubernetesCluster() (*InfoTags, error)
+		GetInformationFromKubernetesCluster() (*RuntimeConfiguration, error)
 	}
 
 	// TLSService is used to create TLS certificates to use enable HTTPS.
@@ -237,13 +246,13 @@ const (
 )
 
 const (
-	_ NodeRole = iota
+	_ DockerNodeRole = iota
 	NodeRoleManager
 	NodeRoleWorker
 )
 
 const (
-	_ EngineStatus = iota
+	_ DockerEngineStatus = iota
 	EngineStatusStandalone
 	EngineStatusSwarm
 )

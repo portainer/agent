@@ -32,7 +32,7 @@ func main() {
 
 	systemService := ghw.NewSystemService(agent.HostRoot)
 	containerPlatform := os.DetermineContainerPlatform()
-	agentTags := &agent.InfoTags{
+	runtimeConfiguration := &agent.RuntimeConfiguration{
 		AgentPort: options.AgentServerPort,
 	}
 
@@ -50,16 +50,16 @@ func main() {
 
 		dockerInfoService = docker.NewInfoService()
 
-		agentTags, err = dockerInfoService.GetInformationFromDockerEngine()
+		runtimeConfiguration, err = dockerInfoService.GetRuntimeConfigurationFromDockerEngine()
 		if err != nil {
 			log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve information from Docker] [error: %s]", err)
 		}
 
-		agentTags.AgentPort = options.AgentServerPort
-		log.Printf("[DEBUG] [main,configuration] [Member tags: %+v]", agentTags)
+		runtimeConfiguration.AgentPort = options.AgentServerPort
+		log.Printf("[DEBUG] [main,configuration] [Member tags: %+v]", runtimeConfiguration)
 
 		clusterMode := false
-		if agentTags.EngineStatus == agent.EngineStatusSwarm {
+		if runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm {
 			clusterMode = true
 			log.Println("[INFO] [main] [message: Agent running on a Swarm cluster node. Running in cluster mode]")
 		}
@@ -76,7 +76,7 @@ func main() {
 
 		var clusterService agent.ClusterService
 		if clusterMode {
-			clusterService = cluster.NewClusterService(agentTags)
+			clusterService = cluster.NewClusterService(runtimeConfiguration)
 
 			clusterAddr := options.ClusterAddress
 			if clusterAddr == "" {
@@ -118,7 +118,7 @@ func main() {
 			log.Fatalf("[ERROR] [main,kubernetes] [message: Unable to create Kubernetes client] [error: %s]", err)
 		}
 
-		clusterService = cluster.NewClusterService(agentTags)
+		clusterService = cluster.NewClusterService(runtimeConfiguration)
 
 		advertiseAddr = os.GetKubernetesPodIP()
 		if advertiseAddr == "" {
@@ -212,7 +212,7 @@ func main() {
 		ClusterService:   clusterService,
 		EdgeManager:      edgeManager,
 		SignatureService: signatureService,
-		AgentTags:        agentTags,
+		AgentTags:        runtimeConfiguration,
 		AgentOptions:     options,
 		KubeClient:       kubeClient,
 	}

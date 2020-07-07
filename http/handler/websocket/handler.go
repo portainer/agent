@@ -15,7 +15,7 @@ type (
 		*mux.Router
 		clusterService     agent.ClusterService
 		connectionUpgrader websocket.Upgrader
-		agentTags          *agent.InfoTags
+		agentTags          *agent.RuntimeConfiguration
 		kubeClient         *kubernetes.KubeClient
 	}
 
@@ -26,7 +26,7 @@ type (
 )
 
 // NewHandler returns a new instance of Handler.
-func NewHandler(clusterService agent.ClusterService, agentTags *agent.InfoTags, notaryService *security.NotaryService, kubeClient *kubernetes.KubeClient) *Handler {
+func NewHandler(clusterService agent.ClusterService, agentTags *agent.RuntimeConfiguration, notaryService *security.NotaryService, kubeClient *kubernetes.KubeClient) *Handler {
 	h := &Handler{
 		Router:             mux.NewRouter(),
 		connectionUpgrader: websocket.Upgrader{},

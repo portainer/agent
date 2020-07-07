@@ -19,7 +19,7 @@ type APIServer struct {
 	clusterService   agent.ClusterService
 	signatureService agent.DigitalSignatureService
 	edgeManager      *edge.Manager
-	agentTags        *agent.InfoTags
+	agentTags        *agent.RuntimeConfiguration
 	agentOptions     *agent.Options
 	kubeClient       *kubernetes.KubeClient
 }
@@ -34,7 +34,7 @@ type APIServerConfig struct {
 	SignatureService agent.DigitalSignatureService
 	EdgeManager      *edge.Manager
 	KubeClient       *kubernetes.KubeClient
-	AgentTags        *agent.InfoTags
+	AgentTags        *agent.RuntimeConfiguration
 	AgentOptions     *agent.Options
 }
 

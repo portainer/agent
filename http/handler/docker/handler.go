@@ -14,13 +14,13 @@ type Handler struct {
 	dockerProxy    *proxy.LocalProxy
 	clusterProxy   *proxy.ClusterProxy
 	clusterService agent.ClusterService
-	agentTags      *agent.InfoTags
+	agentTags      *agent.RuntimeConfiguration
 	useTLS         bool
 }
 
 // NewHandler returns a new instance of Handler.
 // It sets the associated handle functions for all the Docker related HTTP endpoints.
-func NewHandler(clusterService agent.ClusterService, agentTags *agent.InfoTags, notaryService *security.NotaryService, useTLS bool) *Handler {
+func NewHandler(clusterService agent.ClusterService, agentTags *agent.RuntimeConfiguration, notaryService *security.NotaryService, useTLS bool) *Handler {
 	h := &Handler{
 		Router:         mux.NewRouter(),
 		dockerProxy:    proxy.NewLocalProxy(),

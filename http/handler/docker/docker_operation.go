@@ -59,7 +59,7 @@ func (handler *Handler) dispatchOperation(rw http.ResponseWriter, request *http.
 }
 
 func (handler *Handler) executeOperationOnManagerNode(rw http.ResponseWriter, request *http.Request) *httperror.HandlerError {
-	if handler.agentTags.NodeRole == agent.NodeRoleManager {
+	if handler.agentTags.DockerConfiguration.NodeRole == agent.NodeRoleManager {
 		handler.dockerProxy.ServeHTTP(rw, request)
 	} else {
 		targetMember := handler.clusterService.GetMemberByRole(agent.NodeRoleManager)

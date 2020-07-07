@@ -46,7 +46,7 @@ type Config struct {
 	SignatureService agent.DigitalSignatureService
 	KubeClient       *kubecli.KubeClient
 	EdgeManager      *edge.Manager
-	AgentTags        *agent.InfoTags
+	AgentTags        *agent.RuntimeConfiguration
 	AgentOptions     *agent.Options
 	Secured          bool
 }

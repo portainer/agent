@@ -169,15 +169,15 @@ func (manager *Manager) startEdgeBackgroundProcess() error {
 }
 
 func (manager *Manager) checkDockerRuntimeConfig() error {
-	agentTags, err := manager.dockerInfoService.GetInformationFromDockerEngine()
+	runtimeConfiguration, err := manager.dockerInfoService.GetRuntimeConfigurationFromDockerEngine()
 	if err != nil {
 		return err
 	}
 
-	agentRunsOnLeaderNode := agentTags.Leader
-	agentRunsOnSwarm := agentTags.EngineStatus == agent.EngineStatusSwarm
+	agentRunsOnLeaderNode := runtimeConfiguration.DockerConfiguration.Leader
+	agentRunsOnSwarm := runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm
 
-	log.Printf("[DEBUG] [internal,edge,runtime,docker] [message: Docker runtime configuration check] [engine_status: %d] [leader_node: %t]", agentTags.EngineStatus, agentRunsOnLeaderNode)
+	log.Printf("[DEBUG] [internal,edge,runtime,docker] [message: Docker runtime configuration check] [engine_status: %d] [leader_node: %t]", runtimeConfiguration.DockerConfiguration.EngineStatus, agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
 		err = manager.pollService.start()

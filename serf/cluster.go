@@ -15,8 +15,8 @@ const (
 	memberTagKeyAgentPort    = "AgentPort"
 	memberTagKeyIsLeader     = "NodeIsLeader"
 	memberTagKeyNodeName     = "NodeName"
-	memberTagKeyNodeRole     = "NodeRole"
-	memberTagKeyEngineStatus = "EngineStatus"
+	memberTagKeyNodeRole     = "DockerNodeRole"
+	memberTagKeyEngineStatus = "DockerEngineStatus"
 	memberTagKeyEdgeKeySet   = "EdgeKeySet"
 
 	memberTagValueEngineStatusSwarm      = "swarm"
@@ -28,14 +28,14 @@ const (
 // ClusterService is a service used to manage cluster related actions such as joining
 // the cluster, retrieving members in the clusters...
 type ClusterService struct {
-	tags    *agent.InfoTags
-	cluster *serf.Serf
+	runtimeConfiguration *agent.RuntimeConfiguration
+	cluster              *serf.Serf
 }
 
 // NewClusterService returns a pointer to a ClusterService.
-func NewClusterService(tags *agent.InfoTags) *ClusterService {
+func NewClusterService(runtimeConfiguration *agent.RuntimeConfiguration) *ClusterService {
 	return &ClusterService{
-		tags: tags,
+		runtimeConfiguration: runtimeConfiguration,
 	}
 }
 
@@ -56,8 +56,8 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string) e
 
 	conf := serf.DefaultConfig()
 	conf.Init()
-	conf.NodeName = fmt.Sprintf("%s-%s", service.tags.NodeName, conf.NodeName)
-	conf.Tags = convertTagsToMap(service.tags)
+	conf.NodeName = fmt.Sprintf("%s-%s", service.runtimeConfiguration.NodeName, conf.NodeName)
+	conf.Tags = convertRuntimeConfigurationToTagMap(service.runtimeConfiguration)
 	conf.MemberlistConfig.LogOutput = filter
 	conf.LogOutput = filter
 	conf.MemberlistConfig.AdvertiseAddr = advertiseAddr
@@ -113,7 +113,7 @@ func (service *ClusterService) Members() []agent.ClusterMember {
 }
 
 // GetMemberByRole will return the first member with the specified role.
-func (service *ClusterService) GetMemberByRole(role agent.NodeRole) *agent.ClusterMember {
+func (service *ClusterService) GetMemberByRole(role agent.DockerNodeRole) *agent.ClusterMember {
 	members := service.Members()
 
 	roleString := memberTagValueNodeRoleManager
@@ -154,40 +154,40 @@ func (service *ClusterService) GetMemberWithEdgeKeySet() *agent.ClusterMember {
 	return nil
 }
 
-// UpdateTags propagate the new tags to the cluster
-func (service *ClusterService) UpdateTags(tags *agent.InfoTags) error {
-	service.tags = tags
-	tagsMap := convertTagsToMap(tags)
+// UpdateRuntimeConfiguration propagate the new runtimeConfiguration to the cluster
+func (service *ClusterService) UpdateRuntimeConfiguration(runtimeConfiguration *agent.RuntimeConfiguration) error {
+	service.runtimeConfiguration = runtimeConfiguration
+	tagsMap := convertRuntimeConfigurationToTagMap(runtimeConfiguration)
 	return service.cluster.SetTags(tagsMap)
 }
 
-// GetTags returns the tags associated to the service
-func (service *ClusterService) GetTags() *agent.InfoTags {
-	return service.tags
+// GetRuntimeConfiguration returns the runtimeConfiguration associated to the service
+func (service *ClusterService) GetRuntimeConfiguration() *agent.RuntimeConfiguration {
+	return service.runtimeConfiguration
 }
 
-func convertTagsToMap(tags *agent.InfoTags) map[string]string {
+func convertRuntimeConfigurationToTagMap(runtimeConfiguration *agent.RuntimeConfiguration) map[string]string {
 	tagsMap := map[string]string{}
 
-	if tags.EdgeKeySet {
+	if runtimeConfiguration.EdgeKeySet {
 		tagsMap[memberTagKeyEdgeKeySet] = "set"
 	}
 
 	tagsMap[memberTagKeyEngineStatus] = memberTagValueEngineStatusStandalone
-	if tags.EngineStatus == agent.EngineStatusSwarm {
+	if runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm {
 		tagsMap[memberTagKeyEngineStatus] = memberTagValueEngineStatusSwarm
 	}
 
-	tagsMap[memberTagKeyAgentPort] = tags.AgentPort
+	tagsMap[memberTagKeyAgentPort] = runtimeConfiguration.AgentPort
 
-	if tags.Leader {
+	if runtimeConfiguration.DockerConfiguration.Leader {
 		tagsMap[memberTagKeyIsLeader] = "1"
 	}
 
-	tagsMap[memberTagKeyNodeName] = tags.NodeName
+	tagsMap[memberTagKeyNodeName] = runtimeConfiguration.NodeName
 
 	tagsMap[memberTagKeyNodeRole] = memberTagValueNodeRoleManager
-	if tags.NodeRole == agent.NodeRoleWorker {
+	if runtimeConfiguration.DockerConfiguration.NodeRole == agent.NodeRoleWorker {
 		tagsMap[memberTagKeyNodeRole] = memberTagValueNodeRoleWorker
 	}
 
