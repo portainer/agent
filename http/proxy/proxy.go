@@ -51,6 +51,7 @@ func proxyWebsocketRequest(rw http.ResponseWriter, request *http.Request, target
 	}
 	proxy.Dialer = &websocket.Dialer{
 		TLSClientConfig: &tls.Config{
+			MinVersion:         tls.VersionTLS13,
 			InsecureSkipVerify: true,
 		},
 	}
@@ -77,6 +78,7 @@ func newAgentReverseProxy(target *url.URL, targetNode string) *httputil.ReverseP
 		Director: director,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
+				MinVersion:         tls.VersionTLS13,
 				InsecureSkipVerify: true,
 			},
 		},

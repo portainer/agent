@@ -210,6 +210,7 @@ func (service *PollService) createHTTPClient(timeout float64) {
 	if service.insecurePoll {
 		httpCli.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
+				MinVersion:         tls.VersionTLS13,
 				InsecureSkipVerify: true,
 			},
 		}
