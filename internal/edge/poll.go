@@ -200,6 +200,11 @@ type pollStatusResponse struct {
 func (service *PollService) createHTTPClient(timeout float64) {
 	httpCli := &http.Client{
 		Timeout: time.Duration(timeout) * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS13,
+			},
+		},
 	}
 
 	if service.insecurePoll {
