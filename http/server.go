@@ -1,6 +1,7 @@
 package http
 
 import (
+	"crypto/tls"
 	"log"
 	"net/http"
 	"time"
@@ -92,10 +93,15 @@ func (server *APIServer) StartSecured() error {
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS13,
+	}
+
 	httpServer := &http.Server{
 		Addr:         listenAddr,
 		Handler:      h,
 		ReadTimeout:  5 * time.Second,
+		TLSConfig:    tlsConfig,
 		WriteTimeout: 120 * time.Second,
 	}
 
