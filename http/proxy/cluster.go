@@ -27,7 +27,6 @@ type ClusterProxy struct {
 // It also sets the default values used in the underlying http.Client.
 func NewClusterProxy(useTLS bool) *ClusterProxy {
 	tlsConfig := &tls.Config{
-		MinVersion:         tls.VersionTLS13,
 		InsecureSkipVerify: true,
 	}
 
