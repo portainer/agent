@@ -93,7 +93,7 @@ func (server *APIServer) StartSecured() error {
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 
-	cfg := &tls.Config{
+	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS13,
 	}
 
@@ -101,7 +101,7 @@ func (server *APIServer) StartSecured() error {
 		Addr:         listenAddr,
 		Handler:      h,
 		ReadTimeout:  5 * time.Second,
-		TLSConfig:    cfg,
+		TLSConfig:    tlsConfig,
 		WriteTimeout: 120 * time.Second,
 	}
 
