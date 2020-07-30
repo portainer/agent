@@ -96,6 +96,7 @@ func (server *APIServer) StartSecured() error {
 		EdgeManager:          server.edgeManager,
 		Secured:              true,
 		KubeClient:           server.kubeClient,
+		ContainerPlatform:    server.containerPlatform,
 	}
 
 	h := handler.NewHandler(config)
