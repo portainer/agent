@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/portainer/agent"
@@ -36,6 +37,7 @@ type Handler struct {
 	pingHandler            *ping.Handler
 	securedProtocol        bool
 	edgeManager            *edge.Manager
+	containerPlatform      agent.ContainerPlatform
 }
 
 // Config represents a server handler configuration
@@ -49,6 +51,7 @@ type Config struct {
 	RuntimeConfiguration *agent.RuntimeConfiguration
 	AgentOptions         *agent.Options
 	Secured              bool
+	ContainerPlatform    agent.ContainerPlatform
 }
 
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
@@ -70,6 +73,7 @@ func NewHandler(config *Config) *Handler {
 		pingHandler:            ping.NewHandler(),
 		securedProtocol:        config.Secured,
 		edgeManager:            config.EdgeManager,
+		containerPlatform:      config.ContainerPlatform,
 	}
 }
 
@@ -91,6 +95,7 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
 	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
+	rw.Header().Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(h.containerPlatform)))
 
 	switch {
 	case strings.HasPrefix(request.URL.Path, "/v1"):
