@@ -215,6 +215,7 @@ func main() {
 		RuntimeConfiguration: runtimeConfiguration,
 		AgentOptions:         options,
 		KubeClient:           kubeClient,
+		ContainerPlatform:    containerPlatform,
 	}
 
 	if edgeManager.IsEdgeModeEnabled() {
