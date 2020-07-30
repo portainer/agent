@@ -69,7 +69,7 @@ func main() {
 			log.Fatalf("[ERROR] [main,os] [message: Unable to retrieve container name] [error: %s]", err)
 		}
 
-		advertiseAddr, err := dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
+		advertiseAddr, err = dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
 			log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 		}
