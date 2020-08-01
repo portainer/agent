@@ -39,6 +39,7 @@ type PollService struct {
 	tunnelServerAddr        string
 	tunnelServerFingerprint string
 	logsManager             *logsManager
+	containerPlatform       agent.ContainerPlatform
 }
 
 type pollServiceConfig struct {
@@ -51,6 +52,7 @@ type pollServiceConfig struct {
 	EndpointID              string
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
+	ContainerPlatform       agent.ContainerPlatform
 }
 
 // newPollService returns a pointer to a new instance of PollService
@@ -80,6 +82,7 @@ func newPollService(edgeStackManager *StackManager, logsManager *logsManager, co
 		tunnelServerAddr:        config.TunnelServerAddr,
 		tunnelServerFingerprint: config.TunnelServerFingerprint,
 		logsManager:             logsManager,
+		containerPlatform:       config.ContainerPlatform,
 	}, nil
 }
 
@@ -225,6 +228,9 @@ func (service *PollService) poll() error {
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, service.edgeID)
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(service.containerPlatform)))
+
+	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(service.containerPlatform)))
 
 	if service.httpClient == nil {
 		service.createHTTPClient(clientDefaultPollTimeout)
