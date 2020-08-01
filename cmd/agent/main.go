@@ -74,7 +74,6 @@ func main() {
 			log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 		}
 
-		var clusterService agent.ClusterService
 		if clusterMode {
 			clusterService = cluster.NewClusterService(runtimeConfiguration)
 
