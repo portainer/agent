@@ -39,6 +39,7 @@ type PollService struct {
 	tunnelServerAddr        string
 	tunnelServerFingerprint string
 	logsManager             *logsManager
+	containerPlatform       agent.ContainerPlatform
 }
 
 type pollServiceConfig struct {
@@ -51,6 +52,7 @@ type pollServiceConfig struct {
 	EndpointID              string
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
+	ContainerPlatform       agent.ContainerPlatform
 }
 
 // newPollService returns a pointer to a new instance of PollService
@@ -80,6 +82,7 @@ func newPollService(edgeStackManager *StackManager, logsManager *logsManager, co
 		tunnelServerAddr:        config.TunnelServerAddr,
 		tunnelServerFingerprint: config.TunnelServerFingerprint,
 		logsManager:             logsManager,
+		containerPlatform:       config.ContainerPlatform,
 	}, nil
 }
 
@@ -225,6 +228,9 @@ func (service *PollService) poll() error {
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, service.edgeID)
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(service.containerPlatform)))
+
+	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(service.containerPlatform)))
 
 	if service.httpClient == nil {
 		service.createHTTPClient(clientDefaultPollTimeout)
@@ -268,37 +274,39 @@ func (service *PollService) poll() error {
 		}
 	}
 
-	err = service.scheduleManager.Schedule(responseData.Schedules)
-	if err != nil {
-		log.Printf("[ERROR] [internal,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
-	}
-
-	logsToCollect := []int{}
-	for _, schedule := range responseData.Schedules {
-		if schedule.CollectLogs {
-			logsToCollect = append(logsToCollect, schedule.ID)
-		}
-	}
-
-	service.logsManager.handleReceivedLogsRequests(logsToCollect)
-
-	if responseData.CheckinInterval != service.pollIntervalInSeconds {
-		log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
-		service.pollIntervalInSeconds = responseData.CheckinInterval
-		service.createHTTPClient(responseData.CheckinInterval)
-		go service.restartStatusPollLoop()
-	}
-
-	if responseData.Stacks != nil {
-		stacks := map[int]int{}
-		for _, stack := range responseData.Stacks {
-			stacks[stack.ID] = stack.Version
-		}
-
-		err := service.edgeStackManager.updateStacksStatus(stacks)
+	if service.containerPlatform == agent.PlatformDocker {
+		err = service.scheduleManager.Schedule(responseData.Schedules)
 		if err != nil {
-			log.Printf("[ERROR] [internal,edge,stack] [message: an error occured during stack management] [error: %s]", err)
-			return err
+			log.Printf("[ERROR] [internal,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
+		}
+
+		logsToCollect := []int{}
+		for _, schedule := range responseData.Schedules {
+			if schedule.CollectLogs {
+				logsToCollect = append(logsToCollect, schedule.ID)
+			}
+		}
+
+		service.logsManager.handleReceivedLogsRequests(logsToCollect)
+
+		if responseData.CheckinInterval != service.pollIntervalInSeconds {
+			log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
+			service.pollIntervalInSeconds = responseData.CheckinInterval
+			service.createHTTPClient(responseData.CheckinInterval)
+			go service.restartStatusPollLoop()
+		}
+
+		if responseData.Stacks != nil {
+			stacks := map[int]int{}
+			for _, stack := range responseData.Stacks {
+				stacks[stack.ID] = stack.Version
+			}
+
+			err := service.edgeStackManager.updateStacksStatus(stacks)
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,stack] [message: an error occured during stack management] [error: %s]", err)
+				return err
+			}
 		}
 	}
 

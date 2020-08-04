@@ -221,6 +221,8 @@ const (
 	// HTTPResponseAgentApiVersion is the name of the header that will have the
 	// Portainer Agent API Version.
 	HTTPResponseAgentApiVersion = "Portainer-Agent-API-Version"
+	// HTTPResponseAgentPlatform is the name of the header that will have the Portainer agent platform
+	HTTPResponseAgentPlatform = "Portainer-Agent-Platform"
 	// PortainerAgentSignatureMessage is the unhashed content that is signed by the Portainer instance.
 	// It is used by the agent during the signature verification process.
 	PortainerAgentSignatureMessage = "Portainer-App"
