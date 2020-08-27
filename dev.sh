@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 LOG_LEVEL=DEBUG
-CAP_HOST_MANAGEMENT=1 #Enabled by default. Change this to anything else to disable this feature
 EDGE=1
 TMP="/tmp"
 GIT_COMMIT_HASH=`git rev-parse --short HEAD`
@@ -48,7 +47,6 @@ function deploy_local() {
   echo "Deployment..."
   docker run -d --name portainer-agent-dev \
   -e LOG_LEVEL=${LOG_LEVEL} \
-  -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -e EDGE=${EDGE} \
   -e EDGE_ID=${EDGE_ID} \
   -v /var/run/docker.sock:/var/run/docker.sock \
@@ -94,7 +92,6 @@ function deploy_swarm() {
   docker -H "${DOCKER_MANAGER}:2375" service create --name portainer-agent-dev \
   --network portainer-agent-dev-net \
   -e LOG_LEVEL="${LOG_LEVEL}" \
-  -e CAP_HOST_MANAGEMENT=${CAP_HOST_MANAGEMENT} \
   -e EDGE=${EDGE} \
   -e EDGE_ID=${EDGE_ID} \
   --mode global \

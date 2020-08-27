@@ -59,7 +59,7 @@ func (handler *Handler) dispatchOperation(rw http.ResponseWriter, request *http.
 }
 
 func (handler *Handler) executeOperationOnManagerNode(rw http.ResponseWriter, request *http.Request) *httperror.HandlerError {
-	if handler.agentTags.NodeRole == agent.NodeRoleManager {
+	if handler.runtimeConfiguration.DockerConfiguration.NodeRole == agent.NodeRoleManager {
 		handler.dockerProxy.ServeHTTP(rw, request)
 	} else {
 		targetMember := handler.clusterService.GetMemberByRole(agent.NodeRoleManager)
@@ -75,7 +75,7 @@ func (handler *Handler) executeOperationOnManagerNode(rw http.ResponseWriter, re
 func (handler *Handler) executeOperationOnNode(rw http.ResponseWriter, request *http.Request) *httperror.HandlerError {
 	agentTargetHeader := request.Header.Get(agent.HTTPTargetHeaderName)
 
-	if agentTargetHeader == handler.agentTags.NodeName || agentTargetHeader == "" {
+	if agentTargetHeader == handler.runtimeConfiguration.NodeName || agentTargetHeader == "" {
 		handler.dockerProxy.ServeHTTP(rw, request)
 	} else {
 		targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
@@ -92,7 +92,7 @@ func (handler *Handler) executeOperationOnNode(rw http.ResponseWriter, request *
 func (handler *Handler) executeOperationOnCluster(rw http.ResponseWriter, request *http.Request) *httperror.HandlerError {
 	agentTargetHeader := request.Header.Get(agent.HTTPTargetHeaderName)
 
-	if agentTargetHeader == handler.agentTags.NodeName {
+	if agentTargetHeader == handler.runtimeConfiguration.NodeName {
 		handler.dockerProxy.ServeHTTP(rw, request)
 		return nil
 	}

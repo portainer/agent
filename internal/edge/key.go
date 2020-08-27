@@ -34,9 +34,9 @@ func (manager *Manager) SetKey(key string) error {
 	manager.key = edgeKey
 
 	if manager.clusterService != nil {
-		tags := manager.clusterService.GetTags()
+		tags := manager.clusterService.GetRuntimeConfiguration()
 		tags.EdgeKeySet = true
-		err = manager.clusterService.UpdateTags(tags)
+		err = manager.clusterService.UpdateRuntimeConfiguration(tags)
 		if err != nil {
 			return err
 		}
@@ -71,8 +71,8 @@ func (manager *Manager) PropagateKeyInCluster() error {
 	}
 
 	httpCli := client.NewAPIClient()
-	tags := manager.clusterService.GetTags()
-	currentNodeName := tags.NodeName
+	runtimeConfiguration := manager.clusterService.GetRuntimeConfiguration()
+	currentNodeName := runtimeConfiguration.NodeName
 
 	members := manager.clusterService.Members()
 	for _, member := range members {

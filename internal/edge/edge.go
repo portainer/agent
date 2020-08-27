@@ -7,31 +7,44 @@ import (
 	"time"
 
 	"github.com/portainer/agent"
-	"github.com/portainer/agent/exec"
 )
 
-// Manager is used to manage all Edge features through multiple sub-components. It is mainly responsible for running the Edge background process.
-type Manager struct {
-	clusterService     agent.ClusterService
-	dockerStackService agent.DockerStackService
-	infoService        agent.InfoService
-	stackManager       *StackManager
-	pollService        *PollService
-	pollServiceConfig  *pollServiceConfig
-	key                *edgeKey
-	edgeMode           bool
-	agentOptions       *agent.Options
-	advertiseAddr      string
-}
+type (
+	// Manager is used to manage all Edge features through multiple sub-components. It is mainly responsible for running the Edge background process.
+	Manager struct {
+		containerPlatform  agent.ContainerPlatform
+		advertiseAddr      string
+		agentOptions       *agent.Options
+		clusterService     agent.ClusterService
+		dockerStackService agent.DockerStackService
+		edgeMode           bool
+		dockerInfoService  agent.DockerInfoService
+		key                *edgeKey
+		logsManager        *logsManager
+		pollService        *PollService
+		pollServiceConfig  *pollServiceConfig
+		stackManager       *StackManager
+	}
+
+	// ManagerParameters represents an object used to create a Manager
+	ManagerParameters struct {
+		Options           *agent.Options
+		AdvertiseAddr     string
+		ClusterService    agent.ClusterService
+		DockerInfoService agent.DockerInfoService
+		ContainerPlatform agent.ContainerPlatform
+	}
+)
 
 // NewManager returns a pointer to a new instance of Manager
-func NewManager(options *agent.Options, advertiseAddr string, clusterService agent.ClusterService, infoService agent.InfoService) *Manager {
+func NewManager(parameters *ManagerParameters) *Manager {
 	return &Manager{
-		clusterService: clusterService,
-		infoService:    infoService,
-		agentOptions:   options,
-		advertiseAddr:  advertiseAddr,
-		edgeMode:       options.EdgeMode,
+		clusterService:    parameters.ClusterService,
+		dockerInfoService: parameters.DockerInfoService,
+		agentOptions:      parameters.Options,
+		advertiseAddr:     parameters.AdvertiseAddr,
+		edgeMode:          parameters.Options.EdgeMode,
+		containerPlatform: parameters.ContainerPlatform,
 	}
 }
 
@@ -53,19 +66,23 @@ func (manager *Manager) Start() error {
 		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
 		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
+		ContainerPlatform:       manager.containerPlatform,
 	}
 
 	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll)
 
-	dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
-	if err != nil {
-		return err
+	if manager.containerPlatform == agent.PlatformDocker {
+		stackManager, err := newStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
+		if err != nil {
+			return err
+		}
+		manager.stackManager = stackManager
+
+		manager.logsManager = newLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
+		manager.logsManager.start()
 	}
-	manager.dockerStackService = dockerStackService
 
-	manager.stackManager = newStackManager(dockerStackService, manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
-
-	pollService, err := newPollService(manager.stackManager, pollServiceConfig)
+	pollService, err := newPollService(manager.stackManager, manager.logsManager, pollServiceConfig)
 	if err != nil {
 		return err
 	}
@@ -89,14 +106,8 @@ func (manager *Manager) ResetActivityTimer() {
 	manager.pollService.resetActivityTimer()
 }
 
-func (manager *Manager) startEdgeBackgroundProcess() error {
-
-	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
-	if err != nil {
-		return err
-	}
-
-	err = manager.checkRuntimeConfig()
+func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency time.Duration) error {
+	err := manager.checkDockerRuntimeConfig()
 	if err != nil {
 		return err
 	}
@@ -107,9 +118,9 @@ func (manager *Manager) startEdgeBackgroundProcess() error {
 		for {
 			select {
 			case <-ticker.C:
-				err := manager.checkRuntimeConfig()
+				err := manager.checkDockerRuntimeConfig()
 				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
+					log.Printf("[ERROR] [internal,edge,runtime,docker] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
 				}
 			}
 		}
@@ -118,16 +129,56 @@ func (manager *Manager) startEdgeBackgroundProcess() error {
 	return nil
 }
 
-func (manager *Manager) checkRuntimeConfig() error {
-	agentTags, err := manager.infoService.GetInformationFromDockerEngine()
+func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency time.Duration) error {
+	err := manager.pollService.start()
 	if err != nil {
 		return err
 	}
 
-	agentRunsOnLeaderNode := agentTags.Leader
-	agentRunsOnSwarm := agentTags.EngineStatus == agent.EngineStatusSwarm
+	ticker := time.NewTicker(runtimeCheckFrequency)
 
-	log.Printf("[DEBUG] [internal,edge,docker] [message: Docker runtime configuration check] [engine_status: %s] [leader_node: %t]", agentTags.EngineStatus, agentRunsOnLeaderNode)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				err := manager.pollService.start()
+				if err != nil {
+					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start short-poll service] [error: %s]", err)
+				}
+
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (manager *Manager) startEdgeBackgroundProcess() error {
+	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
+	if err != nil {
+		return err
+	}
+
+	switch manager.containerPlatform {
+	case agent.PlatformDocker:
+		return manager.startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency)
+	case agent.PlatformKubernetes:
+		return manager.startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency)
+	}
+
+	return nil
+}
+
+func (manager *Manager) checkDockerRuntimeConfig() error {
+	runtimeConfiguration, err := manager.dockerInfoService.GetRuntimeConfigurationFromDockerEngine()
+	if err != nil {
+		return err
+	}
+
+	agentRunsOnLeaderNode := runtimeConfiguration.DockerConfiguration.Leader
+	agentRunsOnSwarm := runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm
+
+	log.Printf("[DEBUG] [internal,edge,runtime,docker] [message: Docker runtime configuration check] [engine_status: %d] [leader_node: %t]", runtimeConfiguration.DockerConfiguration.EngineStatus, agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
 		err = manager.pollService.start()
@@ -147,7 +198,6 @@ func (manager *Manager) checkRuntimeConfig() error {
 		if err != nil {
 			return err
 		}
-
 	} else {
 		err = manager.stackManager.stop()
 		if err != nil {
