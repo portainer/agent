@@ -12,6 +12,8 @@ func (h *Handler) ServeHTTPV2(rw http.ResponseWriter, request *http.Request) {
 		http.StripPrefix("/v2", h.pingHandler).ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v2/agents"):
 		http.StripPrefix("/v2", h.agentHandler).ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/v2/dockerhub"):
+		http.StripPrefix("/v2", h.dockerhubHandler).ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v2/host"):
 		http.StripPrefix("/v2", h.hostHandler).ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v2/browse"):
