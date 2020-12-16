@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/request"
 	"github.com/portainer/libhttp/response"
-	"github.com/portainer/portainer/api/http/client"
 )
 
 type dockerhubStatusPayload struct {
@@ -43,7 +43,9 @@ func (handler *Handler) dockerhubStatus(w http.ResponseWriter, r *http.Request) 
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
 	}
 
-	httpClient := client.NewHTTPClient()
+	httpClient := &http.Client{
+		Timeout: time.Second * 3,
+	}
 	token, err := getDockerHubToken(httpClient, &payload)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve DockerHub token from DockerHub", err}
@@ -57,7 +59,7 @@ func (handler *Handler) dockerhubStatus(w http.ResponseWriter, r *http.Request) 
 	return response.JSON(w, resp)
 }
 
-func getDockerHubToken(httpClient *client.HTTPClient, dockerhub *dockerhubStatusPayload) (string, error) {
+func getDockerHubToken(httpClient *http.Client, dockerhub *dockerhubStatusPayload) (string, error) {
 	type dockerhubTokenResponse struct {
 		Token string `json:"token"`
 	}
@@ -92,7 +94,7 @@ func getDockerHubToken(httpClient *client.HTTPClient, dockerhub *dockerhubStatus
 	return data.Token, nil
 }
 
-func getDockerHubLimits(httpClient *client.HTTPClient, token string) (*dockerhubStatusResponse, error) {
+func getDockerHubLimits(httpClient *http.Client, token string) (*dockerhubStatusResponse, error) {
 
 	requestURL := "https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest"
 

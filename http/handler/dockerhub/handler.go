@@ -20,7 +20,7 @@ func NewHandler(notaryService *security.NotaryService) *Handler {
 		Router: mux.NewRouter(),
 	}
 
-	h.Handle("/dockerhub/status",
+	h.Handle("/dockerhub",
 		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.dockerhubStatus))).Methods(http.MethodPost)
 
 	return h
