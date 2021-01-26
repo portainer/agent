@@ -39,6 +39,11 @@ type (
 		PhysicalDisks []PhysicalDisk
 	}
 
+	// KubernetesDeployer represents a service to deploy a manifest inside a Kubernetes endpoint
+	KubernetesDeployer interface {
+		Deploy(data string, namespace string) ([]byte, error)
+	}
+
 	// KubernetesRuntimeConfiguration represents the runtime configuration of an agent running on the Kubernetes platform
 	KubernetesRuntimeConfiguration struct{}
 

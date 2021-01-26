@@ -8,6 +8,7 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
@@ -110,12 +111,15 @@ func main() {
 	// !Docker
 
 	// Kubernetes
+	var kubernetesDeployer agent.KubernetesDeployer
 	if containerPlatform == agent.PlatformKubernetes {
 		log.Println("[INFO] [main] [message: Agent running on Kubernetes platform]")
 		kubeClient, err = kubernetes.NewKubeClient()
 		if err != nil {
 			log.Fatalf("[ERROR] [main,kubernetes] [message: Unable to create Kubernetes client] [error: %s]", err)
 		}
+
+		kubernetesDeployer = exec.NewKubernetesDeployer(agent.DockerBinaryPath)
 
 		clusterService = cluster.NewClusterService(runtimeConfiguration)
 
@@ -214,6 +218,7 @@ func main() {
 		RuntimeConfiguration: runtimeConfiguration,
 		AgentOptions:         options,
 		KubeClient:           kubeClient,
+		KubernetesDeployer:   kubernetesDeployer,
 		ContainerPlatform:    containerPlatform,
 	}
 

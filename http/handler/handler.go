@@ -47,6 +47,7 @@ type Config struct {
 	ClusterService       agent.ClusterService
 	SignatureService     agent.DigitalSignatureService
 	KubeClient           *kubecli.KubeClient
+	KubernetesDeployer   agent.KubernetesDeployer
 	EdgeManager          *edge.Manager
 	RuntimeConfiguration *agent.RuntimeConfiguration
 	AgentOptions         *agent.Options
@@ -67,7 +68,7 @@ func NewHandler(config *Config) *Handler {
 		browseHandlerV1:        browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler:     docker.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.Secured),
 		keyHandler:             key.NewHandler(notaryService, config.EdgeManager),
-		kubernetesProxyHandler: kubernetes.NewHandler(notaryService),
+		kubernetesProxyHandler: kubernetes.NewHandler(notaryService, config.KubernetesDeployer),
 		webSocketHandler:       websocket.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.KubeClient),
 		hostHandler:            host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:            ping.NewHandler(),
