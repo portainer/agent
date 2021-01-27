@@ -100,6 +100,7 @@ func (server *APIServer) StartSecured() error {
 		EdgeManager:          server.edgeManager,
 		Secured:              true,
 		KubeClient:           server.kubeClient,
+		KubernetesDeployer:   server.kubernetesDeployer,
 		ContainerPlatform:    server.containerPlatform,
 	}
 

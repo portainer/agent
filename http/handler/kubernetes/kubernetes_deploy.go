@@ -11,21 +11,21 @@ import (
 
 type (
 	deployPayload struct {
-		data      string
-		namespace string
+		StackConfig string
+		Namespace   string
 	}
 
 	deployResponse struct {
-		output string
+		Output string
 	}
 )
 
 func (payload *deployPayload) Validate(r *http.Request) error {
-	if payload.data == "" {
-		return errors.New("Missing deployment data")
+	if payload.StackConfig == "" {
+		return errors.New("Missing deployment config")
 	}
 
-	if payload.namespace == "" {
+	if payload.Namespace == "" {
 		return errors.New("Missing namespace")
 	}
 
@@ -39,10 +39,10 @@ func (handler *Handler) kubernetesDeploy(rw http.ResponseWriter, r *http.Request
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
 	}
 
-	output, err := handler.kubernetesDeployer.Deploy(payload.data, payload.namespace)
+	output, err := handler.kubernetesDeployer.Deploy(payload.StackConfig, payload.Namespace)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Failed deploying", err}
 	}
 
-	return response.JSON(rw, &deployResponse{output: string(output)})
+	return response.JSON(rw, &deployResponse{Output: string(output)})
 }

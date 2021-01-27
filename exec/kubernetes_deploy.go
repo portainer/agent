@@ -2,7 +2,7 @@ package exec
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"os/exec"
 	"path"
@@ -49,7 +49,7 @@ func (deployer *KubernetesDeployer) Deploy(data string, namespace string) ([]byt
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, errors.New(stderr.String())
+		return nil, fmt.Errorf("%w: %s", err, stderr.String())
 	}
 
 	return output, nil
