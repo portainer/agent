@@ -13,7 +13,7 @@ import (
 	"github.com/portainer/agent/http/handler/docker"
 	"github.com/portainer/agent/http/handler/host"
 	"github.com/portainer/agent/http/handler/key"
-	"github.com/portainer/agent/http/handler/kubernetes"
+	"github.com/portainer/agent/http/handler/kubernetesproxy"
 	"github.com/portainer/agent/http/handler/ping"
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
@@ -31,7 +31,7 @@ type Handler struct {
 	browseHandlerV1        *browse.Handler
 	dockerProxyHandler     *docker.Handler
 	keyHandler             *key.Handler
-	kubernetesProxyHandler *kubernetes.Handler
+	kubernetesProxyHandler *kubernetesproxy.Handler
 	webSocketHandler       *websocket.Handler
 	hostHandler            *host.Handler
 	pingHandler            *ping.Handler
@@ -68,7 +68,7 @@ func NewHandler(config *Config) *Handler {
 		browseHandlerV1:        browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler:     docker.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.Secured),
 		keyHandler:             key.NewHandler(notaryService, config.EdgeManager),
-		kubernetesProxyHandler: kubernetes.NewHandler(notaryService, config.KubernetesDeployer),
+		kubernetesProxyHandler: kubernetesproxy.NewHandler(notaryService),
 		webSocketHandler:       websocket.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.KubeClient),
 		hostHandler:            host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:            ping.NewHandler(),
