@@ -17,6 +17,4 @@ COPY --from=core /Windows/System32/netapi32.dll /Windows/System32/netapi32.dll
 COPY dist /app/
 COPY static /app/static
 
-WORKDIR /app
-
 ENTRYPOINT ["C:/app/agent.exe"]
