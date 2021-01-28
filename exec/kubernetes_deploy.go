@@ -25,7 +25,6 @@ func NewKubernetesDeployer(binaryPath string) *KubernetesDeployer {
 // Deploy will deploy a Kubernetes manifest inside a specific namespace
 // it will use kubectl to deploy the manifest.
 func (deployer *KubernetesDeployer) Deploy(data string, namespace string) ([]byte, error) {
-
 	token, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
 	if err != nil {
 		return nil, err
