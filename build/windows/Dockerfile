@@ -14,6 +14,8 @@ ENV PATH "C:\mingit\cmd;C:\Windows\system32;C:\Windows;"
 COPY --from=downloader /mingit mingit/
 COPY --from=core /Windows/System32/netapi32.dll /Windows/System32/netapi32.dll
 
+USER ContainerAdministrator
+
 COPY dist /app/
 COPY static /app/static
 
