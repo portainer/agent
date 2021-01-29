@@ -4,6 +4,7 @@ FROM --platform=linux/amd64 alpine:3.13.0 as downloader
 ENV GIT_VERSION 2.30.0
 ENV GIT_PATCH_VERSION 2
 
+USER ContainerAdministrator
 RUN mkdir mingit/ \
 && wget https://github.com/git-for-windows/git/releases/download/v$GIT_VERSION.windows.$GIT_PATCH_VERSION/MinGit-$GIT_VERSION.$GIT_PATCH_VERSION-busybox-64-bit.zip \
 && unzip MinGit-$GIT_VERSION.$GIT_PATCH_VERSION-busybox-64-bit.zip -d mingit/
