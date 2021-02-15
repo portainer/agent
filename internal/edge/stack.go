@@ -5,11 +5,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/portainer/agent/exec"
-
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/http/client"
+	"github.com/portainer/agent/libcompose"
+	wrapper "github.com/portainer/docker-compose-wrapper"
 )
 
 type edgeStackID int
@@ -55,6 +56,7 @@ const (
 
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
+	isSwarm            *bool
 	stacks             map[edgeStackID]*edgeStack
 	stopSignal         chan struct{}
 	dockerStackService agent.DockerStackService
@@ -68,16 +70,10 @@ type StackManager struct {
 func newStackManager(portainerURL, endpointID, edgeID string) (*StackManager, error) {
 	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID)
 
-	dockerStackService, err := exec.NewDockerStackService(agent.DockerBinaryPath)
-	if err != nil {
-		return nil, err
-	}
-
 	stackManager := &StackManager{
-		dockerStackService: dockerStackService,
-		stacks:             map[edgeStackID]*edgeStack{},
-		stopSignal:         nil,
-		httpClient:         cli,
+		stacks:     map[edgeStackID]*edgeStack{},
+		stopSignal: nil,
+		httpClient: cli,
 	}
 
 	return stackManager, nil
@@ -210,6 +206,27 @@ func (manager *StackManager) next() *edgeStack {
 	return nil
 }
 
+func (manager *StackManager) setEngineStatus(isSwarm bool) error {
+	if manager.isSwarm != nil && isSwarm == *manager.isSwarm {
+		return nil
+	}
+
+	manager.isSwarm = &isSwarm
+
+	err := manager.stop()
+	if err != nil {
+		return err
+	}
+
+	dockerStackService, err := buildDockerStackService(isSwarm)
+	if err != nil {
+		return err
+	}
+	manager.dockerStackService = dockerStackService
+
+	return nil
+}
+
 func (manager *StackManager) deployStack(stack *edgeStack, stackName, stackFileLocation string) {
 	log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
 	stack.Status = statusDone
@@ -250,4 +267,20 @@ func (manager *StackManager) deleteStack(stack *edgeStack, stackName, stackFileL
 	}
 
 	delete(manager.stacks, stack.ID)
+}
+
+func buildDockerStackService(isSwarm bool) (agent.DockerStackService, error) {
+	if isSwarm {
+		return exec.NewDockerSwarmStackService(agent.DockerBinaryPath)
+	}
+
+	service, err := exec.NewDockerComposeStackService(agent.DockerBinaryPath)
+	if err != nil {
+		if err == wrapper.ErrBinaryNotFound {
+			log.Printf("[INFO] [internal,edge,stack] [message: docker-compose binary not found, falling back to libcompose]")
+			return libcompose.NewDockerComposeStackService(), nil
+		}
+	}
+
+	return service, nil
 }
