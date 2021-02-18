@@ -9,6 +9,14 @@ download_kubectl_binary(){
     PLATFORM="windows"
   fi
 
+  if [ "$ARCH" = "armhf" ]; then
+    ARCH="arm"
+  fi
+
+  if [ "$ARCH" = "aarch64" ]; then
+    ARCH="arm64"
+  fi
+
   if [ "$ARCH" = "x86_64" ]; then
     ARCH="amd64"
   fi
