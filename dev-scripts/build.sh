@@ -1,15 +1,64 @@
 #!/usr/bin/env bash
 
+compile=0
+image_name=""
+
 function build() {
-    local ret_value=""
-    default_image_name
-    DEFAULT_IMAGE_NAME=$ret_value
-    
-    local IMAGE_NAME="${1:-$DEFAULT_IMAGE_NAME}"
-    docker rmi -f "$IMAGE_NAME" || true
-    
+    parse_build_params "${@:1}"
+
+    if [[ "$compile" == "1" ]]; then
+        compile
+    fi
+
+    docker rmi -f "$image_name" || true
+
     msg "Image build..."
-    docker build --no-cache -t "$IMAGE_NAME" -f build/linux/Dockerfile .
-    
-    msg "Image $IMAGE_NAME is built"
+    docker build --no-cache -t "$image_name" -f build/linux/Dockerfile .
+
+    msg "Image $image_name is built"
+}
+
+function parse_build_params() {
+    if [[ "${1-}" == "" ]]; then
+        usage_build
+    fi
+
+    while :; do
+        case "${1-}" in
+        -h | --help) usage_build ;;
+        -v | --verbose) set -x ;;
+        -c | --compile) compile=1 ;;
+        --image-name)
+            image_name=$2
+            shift
+            ;;
+        -?*) die "Unknown option: $1" ;;
+        *) break ;;
+        esac
+        shift
+    done
+
+    if [[ "$image_name" == "" ]]; then
+        local ret_value=""
+        default_image_name
+        image_name=$ret_value
+    fi
+
+    return 0
+}
+
+function usage_build() {
+    cmd="./dev.sh"
+    cat <<EOF
+Usage: $cmd build [-h] [-v|--verbose] [-c|--compile] [--image-name IMAGE_NAME]
+
+This script is intended to help with building docker imagesa
+
+Available flags:
+-h, --help                  Print this help and exit
+-v, --verbose               Verbose output
+-c, --compile               Compile the code before build
+--image-name IMAGE_NAME     Choose a different image name (default: portainercy/agent:GIT_BRANCH:GIT_HASH)
+EOF
+    exit
 }
