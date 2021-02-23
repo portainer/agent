@@ -159,8 +159,8 @@ function usage_deploy() {
     cmd="./dev.sh"
     cat <<EOF
 Usage: $cmd deploy [-h] [-v|--verbose] [--local] [-s|--swarm]\
-                       [-c|--compile] [-b|--build] [-e|--edge] [--edge-id=EDGE_ID] [--edge-key=EDGE_KEY] \
-                       [--ip=SWARM_MANAGER_IP] [--ip=SWARM_NODE_IP1] [--ip=SWARM_NODE_IP2]
+        [-c|--compile] [-b|--build] [-e|--edge] [--edge-id EDGE_ID] [--edge-key EDGE_KEY] \
+        [--ip SWARM_MANAGER_IP] [--ip SWARM_NODE_IP1] [--ip SWARM_NODE_IP2]
 
 This script is intended to help with deploying of dev enviroment
 
@@ -172,9 +172,9 @@ Available flags:
 -c, --compile           Compile the code before deployment (will also build a docker image)
 -b, --build             Build the image before deployment
 -e, --edge              Deploy an edge agent
---edge-id=EDGE_ID       Set agent edge id to EDGE_ID (required when using -e)
---edge-key=EDGE_KEY     Set agent edge key to EDGE_KEY
---ip=IP                 Swarm IP, the first will always be the manager ip
+--edge-id EDGE_ID       Set agent edge id to EDGE_ID (required when using -e)
+--edge-key EDGE_KEY     Set agent edge key to EDGE_KEY
+--ip IP                 Swarm IP, the first will always be the manager ip
 EOF
     exit
 }
