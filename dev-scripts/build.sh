@@ -3,26 +3,26 @@
 compile=0
 image_name=""
 
-function build() {
+function build_command() {
     parse_build_params "${@:1}"
 
     if [[ "$compile" == "1" ]]; then
         compile
     fi
 
-    docker rmi -f "$image_name" || true
+    build "$image_name"
+}
+
+function build() {
+    docker rmi -f "$1" &>/dev/null || true
 
     msg "Image build..."
-    docker build --no-cache -t "$image_name" -f build/linux/Dockerfile .
+    docker build --no-cache -t "$1" -f build/linux/Dockerfile . &>/dev/null
 
-    msg "Image $image_name is built"
+    msg "Image $1 is built"
 }
 
 function parse_build_params() {
-    if [[ "${1-}" == "" ]]; then
-        usage_build
-    fi
-
     while :; do
         case "${1-}" in
         -h | --help) usage_build ;;

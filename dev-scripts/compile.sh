@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 
-function compile() {
+function compile_cmd() {
     parse_compile_params "${@:1}"
 
-    local TARGET_DIST=dist/agent
-    mkdir -p $TARGET_DIST
+    compile
+}
 
+function compile() {
     msg "Compilation..."
+
+    local TARGET_DIST=dist
+    mkdir -p $TARGET_DIST
 
     cd cmd/agent || exit 1
     GOOS="linux" GOARCH="amd64" CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
@@ -15,7 +19,7 @@ function compile() {
     cd ../..
     mv cmd/agent/agent $TARGET_DIST
 
-    msg "Agent executable is available on $TARGET_DIST"
+    msg "Agent executable is available on $TARGET_DIST/agent"
 }
 
 function parse_compile_params() {

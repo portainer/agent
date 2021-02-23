@@ -11,51 +11,17 @@ edge_key=""
 
 LOG_LEVEL=DEBUG
 
-function parse_deploy_params() {
-    if [[ "${1-}" == "" ]]; then
-        usage_deploy
-    fi
-
-    while :; do
-        case "${1-}" in
-        -h | --help) usage_deploy ;;
-        -v | --verbose) set -x ;;
-        --local) local=1 ;;
-        -s | --swarm) swarm=1 ;;
-        -c | --compile) compile=1 ;;
-        -b | --build) build=1 ;;
-        -e | --edge) edge=1 ;;
-        --edge-id)
-            edge_id=$2
-            shift
-            ;;
-        --edge-key)
-            edge_key=$2
-            shift
-            ;;
-        --ip)
-            swarm_ips+=("$2")
-            shift
-            ;;
-        -?*) die "Unknown option: $1" ;;
-        *) break ;;
-        esac
-        shift
-    done
-
-    if [[ ($edge -eq 1) && (-z "${edge_id}") ]]; then
-        die "Missing edge id"
-    fi
-
-    return 0
-}
-
-function deploy() {
+function deploy_command() {
     parse_deploy_params "${@:1}"
     local ret_value=""
 
     default_image_name
     local IMAGE_NAME=$ret_value
+
+    deploy
+}
+
+function deploy() {
 
     if [[ "$compile" == "1" ]]; then
         compile
@@ -155,11 +121,53 @@ function run_swarm() {
     docker "$URL_PREFIX" service logs -f portainer-agent-dev
 }
 
+function parse_deploy_params() {
+    if [[ "${1-}" == "" ]]; then
+        usage_deploy
+    fi
+
+    while :; do
+        case "${1-}" in
+        -h | --help) usage_deploy ;;
+        -v | --verbose)
+            msg "verbose"
+            set -x
+            ;;
+        --local) local=1 ;;
+        -s | --swarm) swarm=1 ;;
+        -c | --compile) compile=1 ;;
+        -b | --build) build=1 ;;
+        -e | --edge) edge=1 ;;
+        --edge-id)
+            edge_id=$2
+            shift
+            ;;
+        --edge-key)
+            edge_key=$2
+            shift
+            ;;
+        --ip)
+            swarm_ips+=("$2")
+            shift
+            ;;
+        -?*) die "Unknown option: $1" ;;
+        *) break ;;
+        esac
+        shift
+    done
+
+    if [[ ($edge -eq 1) && (-z "${edge_id}") ]]; then
+        die "Missing edge id"
+    fi
+
+    return 0
+}
+
 function usage_deploy() {
     cmd="./dev.sh"
     cat <<EOF
-Usage: $cmd deploy [-h] [-v|--verbose] [--local] [-s|--swarm]\
-        [-c|--compile] [-b|--build] [-e|--edge] [--edge-id EDGE_ID] [--edge-key EDGE_KEY] \
+Usage: $cmd deploy [-h] [-v|--verbose] [--local] [-s|--swarm] 
+        [-c|--compile] [-b|--build] [-e|--edge] [--edge-id EDGE_ID] [--edge-key EDGE_KEY] 
         [--ip SWARM_MANAGER_IP] [--ip SWARM_NODE_IP1] [--ip SWARM_NODE_IP2]
 
 This script is intended to help with deploying of dev enviroment
