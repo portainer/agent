@@ -12,15 +12,21 @@ source ./dev-scripts/build.sh
 source ./dev-scripts/deploy.sh
 
 usage() {
+  cmd=$(basename "${BASH_SOURCE[0]}")
   cat <<EOF
-Usage: $(basename "${BASH_SOURCE[0]}") [-h]
+Usage: $cmd command
 
-Script description here.
+This script is intended to help with compiling and deploying of dev enviroment
 
-Available options:
+Available commands:
 
--h, --help      Print this help and exit
-TODO
+help      Print this help and exit
+compile   Compile the codebase
+build     Build a docker image
+deploy    Deploy the agent image
+
+To get help with a command use: $cmd command -h
+
 EOF
     exit
 }
