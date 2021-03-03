@@ -20,7 +20,6 @@ This script is intended to help with compiling and deploying of dev enviroment
 
 Available commands:
 
-help      Print this help and exit
 compile   Compile the codebase
 build     Build a docker image
 deploy    Deploy the agent image
@@ -38,17 +37,21 @@ cleanup() {
 
 setup_colors
 
+if [[ "${1-}" == "" ]]; then
+    usage
+fi
+
 case $1 in
 compile | build | deploy)
     "$1"_command "${@:2}"
     ;;
-help | usage | -h)
-    usage
-    ;;
 local)
     deploy_command --local -c "${@:2}"
     ;;
-*)
+swarm)
     deploy_command -s --ip 10.0.7.10 --ip 10.0.7.11 -c "${@:2}"
+    ;;
+*)
+    usage
     ;;
 esac
