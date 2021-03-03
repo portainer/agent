@@ -23,6 +23,8 @@ Available commands:
 compile   Compile the codebase
 build     Build a docker image
 deploy    Deploy the agent image
+local     Compile, build and deploy a local standalone agent
+swarm     Compile, build and deploy a swarm agent
 
 To get help with a command use: $cmd command -h
 
