@@ -42,7 +42,7 @@ case $1 in
 compile | build | deploy)
     "$1"_command "${@:2}"
     ;;
-help | usage)
+help | usage | -h)
     usage
     ;;
 local)
