@@ -256,14 +256,19 @@ If you want to add any extra dependency:
 dep ensure -add github.com/foo/bar
 ```
 
-3. Run a local agent container:
+### 3. Run 
+
+- A local agent container:
 
 ```
 ./dev.sh local
 ```
 
-4. Run the agent container inside a Swarm cluster (requires https://github.com/deviantony/vagrant-swarm-cluster)
+- The agent container inside a Swarm cluster (requires https://github.com/deviantony/vagrant-swarm-cluster)
 
 ```
 ./dev.sh swarm
 ```
+
+- The dev script has more commands, you can see them by running `./dev.sh`
+
