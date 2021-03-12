@@ -7,17 +7,22 @@ import (
 )
 
 const (
+	PodmanMode            = "PODMAN_MODE"
 	KubernetesServiceHost = "KUBERNETES_SERVICE_HOST"
 	KubernetesPodIP       = "KUBERNETES_POD_IP"
 )
 
-// DetermineContainerPlatform will check for the existence of the
-// KUBERNETES_SERVICE_HOST environment variable to determine if
-// the container is running inside the Kubernetes platform.
+// DetermineContainerPlatform will check for the existence of the PODMAN_MODE
+// or KUBERNETES_SERVICE_HOST environment variable to determine if
+// the container is running on Podman or inside the Kubernetes platform.
 // Defaults to Docker otherwise.
 func DetermineContainerPlatform() agent.ContainerPlatform {
-	serviceHostEnvVar := os.Getenv(KubernetesServiceHost)
-	if serviceHostEnvVar != "" {
+	podmanModeEnvVar := os.Getenv(PodmanMode)
+	if podmanModeEnvVar != "" {
+		return agent.PlatformPodman
+	}
+	serviceHostKubernetesEnvVar := os.Getenv(KubernetesServiceHost)
+	if serviceHostKubernetesEnvVar != "" {
 		return agent.PlatformKubernetes
 	}
 	return agent.PlatformDocker

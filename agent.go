@@ -253,6 +253,8 @@ const (
 	_ ContainerPlatform = iota
 	// PlatformDocker represent the Docker platform (Standalone/Swarm)
 	PlatformDocker
+	// PlatformDocker represent the Podman platform (Standalone)
+	PlatformPodman
 	// PlatformKubernetes represent the Kubernetes platform
 	PlatformKubernetes
 )
