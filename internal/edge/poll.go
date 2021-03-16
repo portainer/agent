@@ -228,9 +228,16 @@ func (service *PollService) poll() error {
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, service.edgeID)
-	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(service.containerPlatform)))
 
-	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(service.containerPlatform)))
+	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
+	// However, Portainer should handle podman agents the same way as docker agents.
+	agentPlatformIdentifier := service.containerPlatform
+	if service.containerPlatform == agent.PlatformPodman {
+		agentPlatformIdentifier = agent.PlatformDocker
+	}
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
+
+	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(agentPlatformIdentifier)))
 
 	if service.httpClient == nil {
 		service.createHTTPClient(clientDefaultPollTimeout)

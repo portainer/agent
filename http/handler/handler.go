@@ -95,7 +95,14 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
 	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
-	rw.Header().Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(h.containerPlatform)))
+
+	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
+	// However, Portainer should handle podman agents the same way as docker agents.
+	agentPlatformIdentifier := h.containerPlatform
+	if h.containerPlatform == agent.PlatformPodman {
+		agentPlatformIdentifier = agent.PlatformDocker
+	}
+	rw.Header().Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
 
 	switch {
 	case strings.HasPrefix(request.URL.Path, "/v1"):
