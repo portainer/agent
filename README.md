@@ -184,6 +184,7 @@ server where the agent API is exposed. By using self-signed certificates, each a
 Each request to an agent must include a digital signature in the `X-PortainerAgent-Signature` header encoded using the `base64` format (without the padding characters).
 
 ![public key cryptography wikipedia](https://user-images.githubusercontent.com/5485061/48817100-ac410b80-eda9-11e8-8d72-ef668e8278df.png)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fportainer%2Fagent.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fportainer%2Fagent?ref=badge_shield)
 
 The following protocol is used between a Portainer instance and an agent:
 
@@ -272,3 +273,7 @@ dep ensure -add github.com/foo/bar
 
 - The dev script has more commands, you can see them by running `./dev.sh`
 
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fportainer%2Fagent.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fportainer%2Fagent?ref=badge_large)
