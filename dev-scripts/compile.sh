@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-function compile_cmd() {
+function compile_command() {
     parse_compile_params "${@:1}"
 
     compile
