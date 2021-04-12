@@ -20,6 +20,8 @@ func (h *Handler) ServeHTTPV2(rw http.ResponseWriter, request *http.Request) {
 		http.StripPrefix("/v2", h.browseHandler).ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v2/websocket"):
 		http.StripPrefix("/v2", h.webSocketHandler).ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/v2/kubernetes"):
+		http.StripPrefix("/v2", h.kubernetesHandler).ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/"):
 		h.dockerProxyHandler.ServeHTTP(rw, request)
 	}

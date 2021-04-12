@@ -15,6 +15,7 @@ import (
 	"github.com/portainer/agent/http/handler/host"
 	"github.com/portainer/agent/http/handler/key"
 	"github.com/portainer/agent/http/handler/kubernetes"
+	"github.com/portainer/agent/http/handler/kubernetesproxy"
 	"github.com/portainer/agent/http/handler/ping"
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
@@ -33,7 +34,8 @@ type Handler struct {
 	dockerProxyHandler     *docker.Handler
 	dockerhubHandler       *dockerhub.Handler
 	keyHandler             *key.Handler
-	kubernetesProxyHandler *kubernetes.Handler
+	kubernetesHandler      *kubernetes.Handler
+	kubernetesProxyHandler *kubernetesproxy.Handler
 	webSocketHandler       *websocket.Handler
 	hostHandler            *host.Handler
 	pingHandler            *ping.Handler
@@ -49,6 +51,7 @@ type Config struct {
 	ClusterService       agent.ClusterService
 	SignatureService     agent.DigitalSignatureService
 	KubeClient           *kubecli.KubeClient
+	KubernetesDeployer   agent.KubernetesDeployer
 	EdgeManager          *edge.Manager
 	RuntimeConfiguration *agent.RuntimeConfiguration
 	AgentOptions         *agent.Options
@@ -70,7 +73,8 @@ func NewHandler(config *Config) *Handler {
 		dockerProxyHandler:     docker.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.Secured),
 		dockerhubHandler:       dockerhub.NewHandler(notaryService),
 		keyHandler:             key.NewHandler(notaryService, config.EdgeManager),
-		kubernetesProxyHandler: kubernetes.NewHandler(notaryService),
+		kubernetesHandler:      kubernetes.NewHandler(notaryService, config.KubernetesDeployer),
+		kubernetesProxyHandler: kubernetesproxy.NewHandler(notaryService),
 		webSocketHandler:       websocket.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.KubeClient),
 		hostHandler:            host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:            ping.NewHandler(),

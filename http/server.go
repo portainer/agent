@@ -14,16 +14,17 @@ import (
 
 // APIServer is the web server exposing the API of an agent.
 type APIServer struct {
-	addr              string
-	port              string
-	systemService     agent.SystemService
-	clusterService    agent.ClusterService
-	signatureService  agent.DigitalSignatureService
-	edgeManager       *edge.Manager
-	agentTags         *agent.RuntimeConfiguration
-	agentOptions      *agent.Options
-	kubeClient        *kubernetes.KubeClient
-	containerPlatform agent.ContainerPlatform
+	addr               string
+	port               string
+	systemService      agent.SystemService
+	clusterService     agent.ClusterService
+	signatureService   agent.DigitalSignatureService
+	edgeManager        *edge.Manager
+	agentTags          *agent.RuntimeConfiguration
+	agentOptions       *agent.Options
+	kubeClient         *kubernetes.KubeClient
+	kubernetesDeployer agent.KubernetesDeployer
+	containerPlatform  agent.ContainerPlatform
 }
 
 // APIServerConfig represents a server configuration
@@ -36,6 +37,7 @@ type APIServerConfig struct {
 	SignatureService     agent.DigitalSignatureService
 	EdgeManager          *edge.Manager
 	KubeClient           *kubernetes.KubeClient
+	KubernetesDeployer   agent.KubernetesDeployer
 	RuntimeConfiguration *agent.RuntimeConfiguration
 	AgentOptions         *agent.Options
 	ContainerPlatform    agent.ContainerPlatform
@@ -44,16 +46,17 @@ type APIServerConfig struct {
 // NewAPIServer returns a pointer to a APIServer.
 func NewAPIServer(config *APIServerConfig) *APIServer {
 	return &APIServer{
-		addr:              config.Addr,
-		port:              config.Port,
-		systemService:     config.SystemService,
-		clusterService:    config.ClusterService,
-		signatureService:  config.SignatureService,
-		edgeManager:       config.EdgeManager,
-		agentTags:         config.RuntimeConfiguration,
-		agentOptions:      config.AgentOptions,
-		kubeClient:        config.KubeClient,
-		containerPlatform: config.ContainerPlatform,
+		addr:               config.Addr,
+		port:               config.Port,
+		systemService:      config.SystemService,
+		clusterService:     config.ClusterService,
+		signatureService:   config.SignatureService,
+		edgeManager:        config.EdgeManager,
+		agentTags:          config.RuntimeConfiguration,
+		agentOptions:       config.AgentOptions,
+		kubeClient:         config.KubeClient,
+		kubernetesDeployer: config.KubernetesDeployer,
+		containerPlatform:  config.ContainerPlatform,
 	}
 }
 
@@ -67,6 +70,7 @@ func (server *APIServer) StartUnsecured() error {
 		EdgeManager:          server.edgeManager,
 		Secured:              false,
 		KubeClient:           server.kubeClient,
+		KubernetesDeployer:   server.kubernetesDeployer,
 		ContainerPlatform:    server.containerPlatform,
 	}
 
@@ -96,6 +100,7 @@ func (server *APIServer) StartSecured() error {
 		EdgeManager:          server.edgeManager,
 		Secured:              true,
 		KubeClient:           server.kubeClient,
+		KubernetesDeployer:   server.kubernetesDeployer,
 		ContainerPlatform:    server.containerPlatform,
 	}
 
