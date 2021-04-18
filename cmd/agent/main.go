@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"log"
 	"time"
 
@@ -44,9 +45,9 @@ func main() {
 
 	// !Generic
 
-	// Docker
+	// Docker & Podman
 
-	if containerPlatform == agent.PlatformDocker {
+	if containerPlatform == agent.PlatformDocker || containerPlatform == agent.PlatformPodman {
 		log.Println("[INFO] [main] [message: Agent running on Docker platform]")
 
 		dockerInfoService = docker.NewInfoService()
@@ -72,10 +73,15 @@ func main() {
 
 		advertiseAddr, err = dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
+			if containerPlatform == agent.PlatformPodman {
+				log.Printf("[WARN] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
+				advertiseAddr = options.AgentServerAddr
+			} else {
+				log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
+			}
 		}
 
-		if clusterMode {
+		if containerPlatform == agent.PlatformDocker && clusterMode {
 			clusterService = cluster.NewClusterService(runtimeConfiguration)
 
 			clusterAddr := options.ClusterAddress

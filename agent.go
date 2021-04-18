@@ -260,6 +260,8 @@ const (
 	PlatformDocker
 	// PlatformKubernetes represent the Kubernetes platform
 	PlatformKubernetes
+	// PlatformPodman represent the Podman platform (Standalone)
+	PlatformPodman
 )
 
 const (

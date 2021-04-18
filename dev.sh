@@ -25,6 +25,7 @@ build     Build a docker image
 deploy    Deploy the agent image
 local     Compile, build and deploy a local standalone agent
 swarm     Compile, build and deploy a swarm agent
+podman    Compile, build and deploy to a local podman agent
 
 To get help with a command use: $cmd command -h
 
@@ -52,6 +53,9 @@ local)
     ;;
 swarm)
     deploy_command -s --ip 10.0.7.10 --ip 10.0.7.11 -c "${@:2}"
+    ;;
+podman)
+    deploy_command -p -c "${@:2}"
     ;;
 *)
     usage
