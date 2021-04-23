@@ -86,7 +86,7 @@ function deploy_podman() {
 
     podman run -d --name portainer-agent-dev \
         -e LOG_LEVEL=${LOG_LEVEL} \
-        -e PODMAN_MODE="true" \
+        -e PODMAN=1 \
         -v /run/user/1000/podman/podman.sock:/var/run/docker.sock \
         -v /run/user/1000/podman/myvolumes:/var/lib/docker/volumes \
         -v /:/host \

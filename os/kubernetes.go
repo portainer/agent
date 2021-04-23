@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	PodmanMode            = "PODMAN_MODE"
+	PodmanMode            = "PODMAN"
 	KubernetesServiceHost = "KUBERNETES_SERVICE_HOST"
 	KubernetesPodIP       = "KUBERNETES_POD_IP"
 )
@@ -18,7 +18,7 @@ const (
 // Defaults to Docker otherwise.
 func DetermineContainerPlatform() agent.ContainerPlatform {
 	podmanModeEnvVar := os.Getenv(PodmanMode)
-	if podmanModeEnvVar != "" {
+	if podmanModeEnvVar == "1" {
 		return agent.PlatformPodman
 	}
 	serviceHostKubernetesEnvVar := os.Getenv(KubernetesServiceHost)
