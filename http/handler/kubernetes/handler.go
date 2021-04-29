@@ -4,25 +4,26 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/portainer/agent/http/proxy"
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/security"
 	httperror "github.com/portainer/libhttp/error"
 )
 
-// Handler represents an HTTP API handler for proxying requests to the Kubernetes API.
+// Handler is the HTTP handler used to handle volume browsing operations.
 type Handler struct {
 	*mux.Router
-	kubernetesProxy http.Handler
+	kubernetesDeployer agent.KubernetesDeployer
 }
 
-// NewHandler returns a new instance of Handler.
-// It sets the associated handle functions for all the Kubernetes related HTTP endpoints.
-func NewHandler(notaryService *security.NotaryService) *Handler {
+// NewHandler returns a pointer to an Handler
+func NewHandler(notaryService *security.NotaryService, kubernetesDeployer agent.KubernetesDeployer) *Handler {
 	h := &Handler{
-		Router:          mux.NewRouter(),
-		kubernetesProxy: proxy.NewKubernetesProxy(),
+		Router:             mux.NewRouter(),
+		kubernetesDeployer: kubernetesDeployer,
 	}
 
-	h.PathPrefix("/").Handler(notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.kubernetesOperation)))
+	h.Handle("/kubernetes/stack",
+		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.kubernetesDeploy))).Methods(http.MethodPost)
+
 	return h
 }

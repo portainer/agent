@@ -118,7 +118,7 @@ to access the Edge UI again.
 
 ### Edge key
 
-The Edge key is used by the agent to connect to a specific Portainer instance. It is encoded using base64 and contains the following information:
+The Edge key is used by the agent to connect to a specific Portainer instance. It is encoded using `base64` format (without the padding characters) and contains the following information:
 
 * Portainer instance API URL
 * Portainer instance tunnel server address
@@ -189,7 +189,7 @@ The following protocol is used between a Portainer instance and an agent:
 
 For each HTTP request made from the Portainer instance to the agent:
 
-1. The Portainer instance generates a signature using its private key. It encodes this signature in base64 and add it to the `X-PortainerAgent-Signature` header of the request
+1. The Portainer instance generates a signature using its private key. It encodes this signature in `base64` format (without the padding characters) and add it to the `X-PortainerAgent-Signature` header of the request
 2. The Portainer instance encodes its public key in hexadecimal and adds it the `X-PortainerAgent-PublicKey` header of the request
 
 
@@ -256,14 +256,19 @@ If you want to add any extra dependency:
 dep ensure -add github.com/foo/bar
 ```
 
-3. Run a local agent container:
+### 3. Run 
+
+- A local agent container:
 
 ```
 ./dev.sh local
 ```
 
-4. Run the agent container inside a Swarm cluster (requires https://github.com/deviantony/vagrant-swarm-cluster)
+- The agent container inside a Swarm cluster (requires https://github.com/deviantony/vagrant-swarm-cluster)
 
 ```
 ./dev.sh swarm
 ```
+
+- The dev script has more commands, you can see them by running `./dev.sh`
+

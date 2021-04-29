@@ -39,6 +39,11 @@ type (
 		PhysicalDisks []PhysicalDisk
 	}
 
+	// KubernetesDeployer represents a service to deploy a manifest inside a Kubernetes endpoint
+	KubernetesDeployer interface {
+		Deploy(data string, namespace string) ([]byte, error)
+	}
+
 	// KubernetesRuntimeConfiguration represents the runtime configuration of an agent running on the Kubernetes platform
 	KubernetesRuntimeConfiguration struct{}
 
@@ -176,7 +181,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "2.0.0"
+	Version = "2.4.0"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.
