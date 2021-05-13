@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/http/handler"
 	"github.com/portainer/agent/internal/edge"
 	"github.com/portainer/agent/kubernetes"
@@ -23,7 +24,7 @@ type APIServer struct {
 	agentTags          *agent.RuntimeConfiguration
 	agentOptions       *agent.Options
 	kubeClient         *kubernetes.KubeClient
-	kubernetesDeployer agent.KubernetesDeployer
+	kubernetesDeployer *exec.KubernetesDeployer
 	containerPlatform  agent.ContainerPlatform
 }
 
@@ -37,7 +38,7 @@ type APIServerConfig struct {
 	SignatureService     agent.DigitalSignatureService
 	EdgeManager          *edge.Manager
 	KubeClient           *kubernetes.KubeClient
-	KubernetesDeployer   agent.KubernetesDeployer
+	KubernetesDeployer   *exec.KubernetesDeployer
 	RuntimeConfiguration *agent.RuntimeConfiguration
 	AgentOptions         *agent.Options
 	ContainerPlatform    agent.ContainerPlatform

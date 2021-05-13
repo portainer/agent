@@ -281,39 +281,37 @@ func (service *PollService) poll() error {
 		}
 	}
 
-	if service.containerPlatform == agent.PlatformDocker {
-		err = service.scheduleManager.Schedule(responseData.Schedules)
+	err = service.scheduleManager.Schedule(responseData.Schedules)
+	if err != nil {
+		log.Printf("[ERROR] [internal,edge,cron] [message: an error occurred during schedule management] [err: %s]", err)
+	}
+
+	logsToCollect := []int{}
+	for _, schedule := range responseData.Schedules {
+		if schedule.CollectLogs {
+			logsToCollect = append(logsToCollect, schedule.ID)
+		}
+	}
+
+	service.logsManager.handleReceivedLogsRequests(logsToCollect)
+
+	if responseData.CheckinInterval != service.pollIntervalInSeconds {
+		log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
+		service.pollIntervalInSeconds = responseData.CheckinInterval
+		service.createHTTPClient(responseData.CheckinInterval)
+		go service.restartStatusPollLoop()
+	}
+
+	if responseData.Stacks != nil {
+		stacks := map[int]int{}
+		for _, stack := range responseData.Stacks {
+			stacks[stack.ID] = stack.Version
+		}
+
+		err := service.edgeStackManager.updateStacksStatus(stacks)
 		if err != nil {
-			log.Printf("[ERROR] [internal,edge,cron] [message: an error occured during schedule management] [err: %s]", err)
-		}
-
-		logsToCollect := []int{}
-		for _, schedule := range responseData.Schedules {
-			if schedule.CollectLogs {
-				logsToCollect = append(logsToCollect, schedule.ID)
-			}
-		}
-
-		service.logsManager.handleReceivedLogsRequests(logsToCollect)
-
-		if responseData.CheckinInterval != service.pollIntervalInSeconds {
-			log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
-			service.pollIntervalInSeconds = responseData.CheckinInterval
-			service.createHTTPClient(responseData.CheckinInterval)
-			go service.restartStatusPollLoop()
-		}
-
-		if responseData.Stacks != nil {
-			stacks := map[int]int{}
-			for _, stack := range responseData.Stacks {
-				stacks[stack.ID] = stack.Version
-			}
-
-			err := service.edgeStackManager.updateStacksStatus(stacks)
-			if err != nil {
-				log.Printf("[ERROR] [internal,edge,stack] [message: an error occured during stack management] [error: %s]", err)
-				return err
-			}
+			log.Printf("[ERROR] [internal,edge,stack] [message: an error occurred during stack management] [error: %s]", err)
+			return err
 		}
 	}
 

@@ -12,18 +12,17 @@ import (
 type (
 	// Manager is used to manage all Edge features through multiple sub-components. It is mainly responsible for running the Edge background process.
 	Manager struct {
-		containerPlatform  agent.ContainerPlatform
-		advertiseAddr      string
-		agentOptions       *agent.Options
-		clusterService     agent.ClusterService
-		dockerStackService agent.DockerStackService
-		edgeMode           bool
-		dockerInfoService  agent.DockerInfoService
-		key                *edgeKey
-		logsManager        *logsManager
-		pollService        *PollService
-		pollServiceConfig  *pollServiceConfig
-		stackManager       *StackManager
+		containerPlatform agent.ContainerPlatform
+		advertiseAddr     string
+		agentOptions      *agent.Options
+		clusterService    agent.ClusterService
+		edgeMode          bool
+		dockerInfoService agent.DockerInfoService
+		key               *edgeKey
+		logsManager       *logsManager
+		pollService       *PollService
+		pollServiceConfig *pollServiceConfig
+		stackManager      *StackManager
 	}
 
 	// ManagerParameters represents an object used to create a Manager
@@ -71,16 +70,14 @@ func (manager *Manager) Start() error {
 
 	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll)
 
-	if manager.containerPlatform == agent.PlatformDocker {
-		stackManager, err := newStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
-		if err != nil {
-			return err
-		}
-		manager.stackManager = stackManager
-
-		manager.logsManager = newLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
-		manager.logsManager.start()
+	stackManager, err := newStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
+	if err != nil {
+		return err
 	}
+	manager.stackManager = stackManager
+
+	manager.logsManager = newLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID)
+	manager.logsManager.start()
 
 	pollService, err := newPollService(manager.stackManager, manager.logsManager, pollServiceConfig)
 	if err != nil {
@@ -144,6 +141,19 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 				err := manager.pollService.start()
 				if err != nil {
 					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start short-poll service] [error: %s]", err)
+					return
+				}
+
+				err = manager.stackManager.setEngineStatus(engineStatusKubernetes)
+				if err != nil {
+					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
+					return
+				}
+
+				err = manager.stackManager.start()
+				if err != nil {
+					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
+					return
 				}
 
 			}
@@ -181,12 +191,17 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 	log.Printf("[DEBUG] [internal,edge,runtime,docker] [message: Docker runtime configuration check] [engine_status: %d] [leader_node: %t]", runtimeConfiguration.DockerConfiguration.EngineStatus, agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
+		engineStatus := engineStatusDockerStandalone
+		if agentRunsOnSwarm {
+			engineStatus = engineStatusDockerSwarm
+		}
+
 		err = manager.pollService.start()
 		if err != nil {
 			return err
 		}
 
-		err = manager.stackManager.setEngineStatus(agentRunsOnSwarm)
+		err = manager.stackManager.setEngineStatus(engineStatus)
 		if err != nil {
 			return err
 		}

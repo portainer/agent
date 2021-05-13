@@ -36,7 +36,6 @@ func NewPortainerClient(serverAddress, endpointID, edgeID string) *PortainerClie
 type stackConfigResponse struct {
 	Name             string
 	StackFileContent string
-	Prune            bool
 }
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
@@ -67,7 +66,7 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeS
 		return nil, err
 	}
 
-	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent, Prune: data.Prune}, nil
+	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent}, nil
 }
 
 type setEdgeStackStatusPayload struct {
