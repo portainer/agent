@@ -83,7 +83,7 @@ func (server *APIServer) StartUnsecured() error {
 		Addr:         listenAddr,
 		Handler:      h,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 600 * time.Second,
+		WriteTimeout: 30 * time.Minute,
 	}
 
 	return httpServer.ListenAndServe()
@@ -129,7 +129,7 @@ func (server *APIServer) StartSecured() error {
 		Handler:      h,
 		ReadTimeout:  5 * time.Second,
 		TLSConfig:    tlsConfig,
-		WriteTimeout: 600 * time.Second,
+		WriteTimeout: 30 * time.Minute,
 	}
 
 	return httpServer.ListenAndServeTLS(agent.TLSCertPath, agent.TLSKeyPath)
