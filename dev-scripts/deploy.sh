@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 local=0
+podman=0
 swarm=0
 build=0
 compile=0
@@ -29,7 +30,16 @@ function deploy() {
     fi
 
     if [[ "$build" == "1" ]]; then
-        build "$IMAGE_NAME"
+        if [[ "$podman" == "1" ]]; then
+          build_podman "$IMAGE_NAME"
+        fi
+        if [[ "$local" == "1" ]]; then
+          build "$IMAGE_NAME"
+        fi
+    fi
+
+    if [[ "$podman" == "1" ]]; then
+        deploy_podman
     fi
 
     if [[ "$local" == "1" ]]; then
@@ -64,6 +74,27 @@ function deploy_local() {
         "${IMAGE_NAME}"
 
     docker logs -f portainer-agent-dev
+}
+
+function deploy_podman() {
+    msg "Running local agent $IMAGE_NAME with podman socket"
+
+    #podman rm -f portainer-agent-dev
+
+    # Create local folder for podman volumes
+    mkdir -p /run/user/1000/podman/myvolumes
+
+    podman run -d --name portainer-agent-dev \
+        -e LOG_LEVEL=${LOG_LEVEL} \
+        -e PODMAN=1 \
+        -v /run/user/1000/podman/podman.sock:/var/run/docker.sock \
+        -v /run/user/1000/podman/myvolumes:/var/lib/docker/volumes \
+        -v /:/host \
+        -p 9001:9001 \
+        -p 8080:80 \
+        "${IMAGE_NAME}"
+
+    podman logs -f portainer-agent-dev
 }
 
 function deploy_swarm() {
@@ -135,6 +166,7 @@ function parse_deploy_params() {
             ;;
         --local) local=1 ;;
         -s | --swarm) swarm=1 ;;
+        -p | --podman) podman=1 ;;
         -c | --compile) compile=1 ;;
         -b | --build) build=1 ;;
         -e | --edge) edge=1 ;;
@@ -177,6 +209,7 @@ Available flags:
 -v, --verbose           Verbose output
 --local                 Deploy to a local docker
 -s, --swarm             Deploy to a swarm cluster
+-p, --podman            Deploy to a local podman
 -c, --compile           Compile the code before deployment (will also build a docker image)
 -b, --build             Build the image before deployment
 -e, --edge              Deploy an edge agent

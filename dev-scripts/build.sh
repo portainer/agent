@@ -22,6 +22,15 @@ function build() {
     msg "Image $1 is built"
 }
 
+function build_podman() {
+    podman rmi -f "$1" &>/dev/null || true
+
+    msg "Image build..."
+    podman build --no-cache -t "$1" -f build/linux/Dockerfile . &>/dev/null
+
+    msg "Image $1 is built"
+}
+
 function parse_build_params() {
     while :; do
         case "${1-}" in
