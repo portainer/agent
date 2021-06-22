@@ -38,9 +38,6 @@ function deploy() {
         exit 0
     fi
     
-    if [[ "$build" == "1" ]]; then
-        build "$IMAGE_NAME"
-    fi
     
     
     if [[ "$local" == "1" ]]; then
@@ -117,9 +114,10 @@ function run_swarm() {
         node_ips=("${@:2}")
     fi
     
-    rm "/tmp/portainer-agent.tar" || true
     
     msg "Cleaning..."
+    rm "/tmp/portainer-agent.tar" || true
+    
     docker "$URL_PREFIX" service rm portainer-agent-dev || true
     docker "$URL_PREFIX" network rm portainer-agent-dev-net || true
     
@@ -170,7 +168,17 @@ function parse_deploy_params() {
             -p | --podman) podman=1 ;;
             -c | --compile) compile=1 ;;
             -b | --build) build=1 ;;
-            -e | --edge) edge=1 ;;
+            -e | --edge)
+                edge=1
+                if [[ $# -ge 2 && ! $2 == -* ]]; then # id is supplied
+                    edge_id=$2
+                    if [[ $# -ge 3 && (! $3 == -*)]]; then # key is supplied
+                        edge_key=$3
+                        shift
+                    fi
+                    shift
+                fi
+            ;;
             --edge-id)
                 edge_id=$2
                 shift
@@ -192,7 +200,7 @@ function parse_deploy_params() {
     if [[ ($edge -eq 1) && (-z "${edge_id}") ]]; then
         die "Missing edge id"
     fi
-    
+    exit 0
     return 0
 }
 
@@ -206,17 +214,18 @@ Usage: $cmd deploy [-h] [-v|--verbose] [--local] [-s|--swarm]
 This script is intended to help with deploying of dev enviroment
 
 Available flags:
--h, --help              Print this help and exit
--v, --verbose           Verbose output
---local                 Deploy to a local docker
--s, --swarm             Deploy to a swarm cluster
--p, --podman            Deploy to a local podman
--c, --compile           Compile the code before deployment (will also build a docker image)
--b, --build             Build the image before deployment
--e, --edge              Deploy an edge agent
---edge-id EDGE_ID       Set agent edge id to EDGE_ID (required when using -e)
---edge-key EDGE_KEY     Set agent edge key to EDGE_KEY
---ip IP                 Swarm IP, the first will always be the manager ip
+-h, --help                              Print this help and exit
+-v, --verbose                           Verbose output
+--local                                 Deploy to a local docker
+-s, --swarm                             Deploy to a swarm cluster
+-p, --podman                            Deploy to a local podman
+-c, --compile                           Compile the code before deployment (will also build a docker image)
+-b, --build                             Build the image before deployment
+-e, --edge                              Deploy an edge agent
+--edge-e, --edge  [EDGE_ID EDGE_KEY]    Deploy an edge agent
+id EDGE_ID                              Set agent edge id to EDGE_ID (required when using -e without edge-id)
+--edge-key EDGE_KEY                     Set agent edge key to EDGE_KEY
+--ip IP                                 Swarm IP, the first will always be the manager ip
 EOF
     exit
 }
