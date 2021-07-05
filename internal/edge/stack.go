@@ -280,6 +280,8 @@ func buildDockerStackService(isSwarm bool) (agent.DockerStackService, error) {
 			log.Printf("[INFO] [internal,edge,stack] [message: docker-compose binary not found, falling back to libcompose]")
 			return libcompose.NewDockerComposeStackService(), nil
 		}
+
+		return nil, err
 	}
 
 	return service, nil

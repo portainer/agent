@@ -40,12 +40,12 @@ func (service *DockerComposeStackService) Logout() error {
 
 // Deploy executes the docker stack deploy command.
 func (service *DockerComposeStackService) Deploy(name, stackFilePath string, prune bool) error {
-	_, err := service.wrapper.Up(stackFilePath, "", name, "")
+	_, err := service.wrapper.Up([]string{stackFilePath}, "", name, "", "")
 	return err
 }
 
 // Remove executes the docker stack rm command.
 func (service *DockerComposeStackService) Remove(name string) error {
-	_, err := service.wrapper.Down("", "", name)
+	_, err := service.wrapper.Down([]string{""}, "", name)
 	return err
 }

@@ -25,10 +25,11 @@ require (
 	github.com/miekg/dns v1.1.14 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/portainer/docker-compose-wrapper v0.0.0-20210329220935-8d56f0cb5735
+	github.com/portainer/docker-compose-wrapper v0.0.0-20210527221011-0a1418224b92
 	github.com/portainer/libcompose v0.5.3
 	github.com/portainer/libcrypto v0.0.0-20190723020511-2cfe5519d14f
 	github.com/portainer/libhttp v0.0.0-20190806161840-cde6e97fcd52
+	github.com/stretchr/testify v1.7.0 // indirect
 	k8s.io/api v0.20.6
 	k8s.io/client-go v0.20.6
 )
