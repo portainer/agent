@@ -8,15 +8,15 @@ import (
 	"runtime"
 )
 
-// DockerStackService represents a service for managing stacks by using the Docker binary.
-type DockerStackService struct {
+// DockerSwarmStackService represents a service for managing stacks by using the Docker binary.
+type DockerSwarmStackService struct {
 	binaryPath string
 }
 
-// NewDockerStackService initializes a new DockerStackService service.
+// NewDockerSwarmStackService initializes a new DockerStackService service.
 // It also updates the configuration of the Docker CLI binary.
-func NewDockerStackService(binaryPath string) (*DockerStackService, error) {
-	service := &DockerStackService{
+func NewDockerSwarmStackService(binaryPath string) (*DockerSwarmStackService, error) {
+	service := &DockerSwarmStackService{
 		binaryPath: binaryPath,
 	}
 
@@ -24,13 +24,13 @@ func NewDockerStackService(binaryPath string) (*DockerStackService, error) {
 }
 
 // Login executes the docker login command against a list of registries (including DockerHub).
-func (service *DockerStackService) Login() error {
+func (service *DockerSwarmStackService) Login() error {
 	// Not implemented yet.
 	return nil
 }
 
 // Logout executes the docker logout command.
-func (service *DockerStackService) Logout() error {
+func (service *DockerSwarmStackService) Logout() error {
 	command := service.prepareDockerCommand(service.binaryPath)
 	args := []string{"logout"}
 	return runCommandAndCaptureStdErr(command, args, "")
@@ -38,7 +38,7 @@ func (service *DockerStackService) Logout() error {
 }
 
 // Deploy executes the docker stack deploy command.
-func (service *DockerStackService) Deploy(name, stackFilePath string, prune bool) error {
+func (service *DockerSwarmStackService) Deploy(name, stackFilePath string, prune bool) error {
 	command := service.prepareDockerCommand(service.binaryPath)
 
 	args := []string{}
@@ -53,7 +53,7 @@ func (service *DockerStackService) Deploy(name, stackFilePath string, prune bool
 }
 
 // Remove executes the docker stack rm command.
-func (service *DockerStackService) Remove(name string) error {
+func (service *DockerSwarmStackService) Remove(name string) error {
 	command := service.prepareDockerCommand(service.binaryPath)
 	args := []string{"stack", "rm", name}
 	return runCommandAndCaptureStdErr(command, args, "")
@@ -73,7 +73,7 @@ func runCommandAndCaptureStdErr(command string, args []string, workingDir string
 	return nil
 }
 
-func (service *DockerStackService) prepareDockerCommand(binaryPath string) string {
+func (service *DockerSwarmStackService) prepareDockerCommand(binaryPath string) string {
 	// Assume Linux as a default
 	command := path.Join(binaryPath, "docker")
 

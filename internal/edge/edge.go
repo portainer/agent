@@ -120,7 +120,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 			case <-ticker.C:
 				err := manager.checkDockerRuntimeConfig()
 				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime,docker] [message: an error occured during Docker runtime configuration check] [error: %s]", err)
+					log.Printf("[ERROR] [internal,edge,runtime,docker] [message: an error occurred during Docker runtime configuration check] [error: %s]", err)
 				}
 			}
 		}
@@ -186,19 +186,22 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 			return err
 		}
 
+		err = manager.stackManager.setEngineStatus(agentRunsOnSwarm)
+		if err != nil {
+			return err
+		}
+
+		err = manager.stackManager.start()
+		if err != nil {
+			return err
+		}
+
 	} else {
 		err = manager.pollService.stop()
 		if err != nil {
 			return err
 		}
-	}
 
-	if agentRunsOnSwarm && agentRunsOnLeaderNode {
-		err = manager.stackManager.start()
-		if err != nil {
-			return err
-		}
-	} else {
 		err = manager.stackManager.stop()
 		if err != nil {
 			return err
