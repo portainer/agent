@@ -3,6 +3,8 @@ package exec
 import (
 	"bytes"
 	"fmt"
+	"github.com/portainer/agent"
+	"os"
 	"os/exec"
 	"path"
 	"runtime"
@@ -23,16 +25,32 @@ func NewKubernetesDeployer(binaryPath string) *KubernetesDeployer {
 
 // Deploy will deploy a Kubernetes manifest inside a specific namespace
 // it will use kubectl to deploy the manifest.
-// kubectl uses in-cluster config.
-func (deployer *KubernetesDeployer) Deploy(data string, namespace string) ([]byte, error) {
+func (deployer *KubernetesDeployer) Deploy(token, data string, namespace string) ([]byte, error) {
 	command := path.Join(deployer.binaryPath, "kubectl")
 	if runtime.GOOS == "windows" {
 		command = path.Join(deployer.binaryPath, "kubectl.exe")
 	}
 
 	args := make([]string, 0)
-	// Specifying "--insecure-skip-tls-verify" make kubectl return error "default cluster has no server defined"
-	//args = append(args, "--insecure-skip-tls-verify")
+
+	if token != "" {
+		host := os.Getenv(agent.KubernetesServiceHost)
+		if host == "" {
+			return nil, fmt.Errorf("%s env var is not defined", agent.KubernetesServiceHost)
+		}
+
+		port := os.Getenv(agent.KubernetesServicePortHttps)
+		if port == "" {
+			return nil, fmt.Errorf("%s env var is not defined", agent.KubernetesServicePortHttps)
+		}
+
+		server := fmt.Sprintf("https://%s:%s", host, port)
+
+		args = append(args, "--token", token)
+		args = append(args, "--server", server)
+		args = append(args, "--insecure-skip-tls-verify")
+	}
+
 	args = append(args, "--namespace", namespace)
 	args = append(args, "apply", "-f", "-")
 
