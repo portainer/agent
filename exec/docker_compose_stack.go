@@ -4,7 +4,7 @@ import (
 	"context"
 
 	libstack "github.com/portainer/docker-compose-wrapper"
-	"github.com/portainer/docker-compose-wrapper/composebinary"
+	"github.com/portainer/docker-compose-wrapper/compose"
 )
 
 // DockerComposeStackService represents a service for managing stacks by using the Docker binary.
@@ -16,7 +16,7 @@ type DockerComposeStackService struct {
 // NewDockerComposeStackService initializes a new DockerStackService service.
 // It also updates the configuration of the Docker CLI binary.
 func NewDockerComposeStackService(binaryPath string) (*DockerComposeStackService, error) {
-	deployer, err := composebinary.NewDockerComposeDeployer(binaryPath, "")
+	deployer, err := compose.NewComposeDeployer(binaryPath, "")
 	if err != nil {
 		return nil, err
 	}

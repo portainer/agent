@@ -22,18 +22,12 @@ require (
 	github.com/koding/websocketproxy v0.0.0-20181220232114-7ed82d81a28c
 	github.com/miekg/dns v1.1.14 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/portainer/docker-compose-wrapper v0.0.0-20210714130647-c385c84eee52
+	github.com/portainer/docker-compose-wrapper v0.0.0-20210719115040-b82f1d4be772
 	github.com/portainer/libcrypto v0.0.0-20190723020511-2cfe5519d14f
 	github.com/portainer/libhttp v0.0.0-20190806161840-cde6e97fcd52
 	k8s.io/api v0.20.6
 	k8s.io/client-go v0.20.6
 )
-
-// replace github.com/docker/docker => github.com/docker/engine v1.4.2-0.20200204220554-5f6d6f3f2203
-
-// replace golang.org/x/sys => golang.org/x/sys v0.0.0-20190826190057-c7b8b68b1456
-
-// replace github.com/Microsoft/go-winio => github.com/Microsoft/go-winio v0.4.14
 
 replace github.com/jaguilar/vt100 => github.com/tonistiigi/vt100 v0.0.0-20190402012908-ad4c4a574305
 
