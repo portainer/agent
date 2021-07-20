@@ -117,12 +117,12 @@ func getDockerHubLimits(httpClient *http.Client, token string) (*dockerhubStatus
 
 	rateLimit, err := parseNumericHeader(resp.Header, "RateLimit-Limit")
 	if err != nil {
-		return nil, fmt.Errorf("Failed fetching RateLimit-Limit header: %w", err)
+		return nil, nil
 	}
 
 	rateLimitRemaining, err := parseNumericHeader(resp.Header, "RateLimit-Remaining")
 	if err != nil {
-		return nil, fmt.Errorf("Failed fetching RateLimit-Remaining header: %w", err)
+		return nil, nil
 	}
 
 	return &dockerhubStatusResponse{
