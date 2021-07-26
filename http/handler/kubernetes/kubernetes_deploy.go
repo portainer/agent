@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"errors"
+	"github.com/portainer/agent"
 	"net/http"
 
 	httperror "github.com/portainer/libhttp/error"
@@ -39,7 +40,9 @@ func (handler *Handler) kubernetesDeploy(rw http.ResponseWriter, r *http.Request
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
 	}
 
-	output, err := handler.kubernetesDeployer.Deploy(payload.StackConfig, payload.Namespace)
+	token := r.Header.Get(agent.HTTPKubernetesSATokenHeaderName)
+
+	output, err := handler.kubernetesDeployer.Deploy(token, payload.StackConfig, payload.Namespace)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Failed deploying", err}
 	}
