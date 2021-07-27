@@ -179,7 +179,8 @@ The following information is only relevant for an Agent that was not started in 
 By default, an agent will automatically generate its own set of TLS certificate and key. It will then use these to start the web
 server where the agent API is exposed. By using self-signed certificates, each agent client and proxy will skip the TLS server verification when executing a request against another agent.
 
-### Authentication
+## Authentication
+(Update Jul 28 2021: Authentication is enabled in Edge mode)
 
 Each request to an agent must include a digital signature in the `X-PortainerAgent-Signature` header encoded using the `base64` format (without the padding characters).
 
@@ -198,11 +199,11 @@ For each HTTP request received from the agent:
 1. The agent will check that the `X-PortainerAgent-PublicKey` and `X-PortainerAgent-Signature` headers are available in the request otherwise it returns a 403
 2. The agent will then trigger the signature verification process. If the signature is not valid it returns a 403
 
-#### Signature verification
+### Signature verification
 
 The signature verification process can follow two different paths based on how the agent was deployed.
 
-##### Default mode
+#### Default mode
 
 By default, the agent will wait for a valid request from a Portainer instance and automatically associate the first Portainer instance that communicates with it by registering the public key found in the `X-PortainerAgent-PublicKey` header inside memory.
 
@@ -212,7 +213,7 @@ Once a Portainer instance is registered by the agent, the agent will not try to 
 
 Finally, the agent uses the associated public key and a default message that is known by both entities to verify the signature available in the `X-PortainerAgent-Signature` header.
 
-##### Secret mode
+#### Secret mode (Only for non Edge mode)
 
 When the `AGENT_SECRET` environment variable is set in the execution context of the agent (`-e AGENT_SECRET=mysecret` when started as a container for example), the digital signature verification process will be slightly different.
 
