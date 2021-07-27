@@ -41,7 +41,7 @@ type (
 
 	// KubernetesDeployer represents a service to deploy a manifest inside a Kubernetes endpoint
 	KubernetesDeployer interface {
-		Deploy(data string, namespace string) ([]byte, error)
+		Deploy(token, data string, namespace string) ([]byte, error)
 	}
 
 	// KubernetesRuntimeConfiguration represents the runtime configuration of an agent running on the Kubernetes platform
@@ -181,7 +181,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "2.6.1"
+	Version = "2.7.0"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.
@@ -252,6 +252,10 @@ const (
 	EdgeStackFilesPath = "/tmp/edge_stacks"
 	// EdgeStackQueueSleepInterval is the interval used to check if there's an Edge stack to deploy
 	EdgeStackQueueSleepInterval = "5s"
+	// KubernetesServiceHost is the environment variable name of the kubernetes API server host
+	KubernetesServiceHost = "KUBERNETES_SERVICE_HOST"
+	// KubernetesServicePortHttps is the environment variable of the kubernetes API server https port
+	KubernetesServicePortHttps = "KUBERNETES_SERVICE_PORT_HTTPS"
 )
 
 const (
