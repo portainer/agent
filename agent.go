@@ -181,7 +181,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "2.6.1"
+	Version = "2.6.2"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.
