@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"github.com/portainer/agent"
 	"io"
 	"log"
 	"net/http"
@@ -32,6 +33,8 @@ func (handler *Handler) websocketPodExec(w http.ResponseWriter, r *http.Request)
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: command", err}
 	}
 
+	token := r.Header.Get(agent.HTTPKubernetesSATokenHeaderName)
+
 	commandArray := strings.Split(command, " ")
 
 	websocketConn, err := handler.connectionUpgrader.Upgrade(w, r, nil)
@@ -49,7 +52,7 @@ func (handler *Handler) websocketPodExec(w http.ResponseWriter, r *http.Request)
 	go streamFromWebsocketToWriter(websocketConn, stdinWriter, errorChan)
 	go streamFromReaderToWebsocket(websocketConn, stdoutReader, errorChan)
 
-	err = handler.kubeClient.StartExecProcess(namespace, podName, containerName, commandArray, stdinReader, stdoutWriter)
+	err = handler.kubeClient.StartExecProcess(token, namespace, podName, containerName, commandArray, stdinReader, stdoutWriter)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to start exec process inside container", err}
 	}
