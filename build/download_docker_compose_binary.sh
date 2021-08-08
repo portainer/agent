@@ -44,6 +44,11 @@ function download_docker_compose_plugin() {
         ARCH="arm64"
     fi
     
+    
+    if [ "$ARCH" = "armhf" ]; then
+        ARCH="armv7"
+    fi
+    
     FILENAME="docker-compose-${PLATFORM}-${ARCH}"
     TARGET_FILENAME="docker-compose.plugin"
     if [[ "$PLATFORM" == "windows" ]]; then
