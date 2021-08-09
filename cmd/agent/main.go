@@ -160,9 +160,9 @@ func main() {
 
 	// Security
 
-	var signatureService agent.DigitalSignatureService
+	signatureService := crypto.NewECDSAService(options.SharedSecret)
+
 	if !options.EdgeMode {
-		signatureService = crypto.NewECDSAService(options.SharedSecret)
 		tlsService := crypto.TLSService{}
 
 		err := tlsService.GenerateCertsForHost(advertiseAddr)

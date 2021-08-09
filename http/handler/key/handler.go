@@ -26,9 +26,9 @@ func NewHandler(notaryService *security.NotaryService, edgeManager *edge.Manager
 	}
 
 	h.Handle("/key",
-		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.keyInspect))).Methods(http.MethodGet)
+		httperror.LoggerHandler(h.keyInspect)).Methods(http.MethodGet)
 	h.Handle("/key",
-		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.keyCreate))).Methods(http.MethodPost)
+		httperror.LoggerHandler(h.keyCreate)).Methods(http.MethodPost)
 
 	return h
 }

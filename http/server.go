@@ -65,6 +65,7 @@ func (server *APIServer) StartUnsecured() error {
 	config := &handler.Config{
 		SystemService:        server.systemService,
 		ClusterService:       server.clusterService,
+		SignatureService:     server.signatureService,
 		RuntimeConfiguration: server.agentTags,
 		AgentOptions:         server.agentOptions,
 		EdgeManager:          server.edgeManager,
