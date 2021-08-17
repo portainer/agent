@@ -200,7 +200,7 @@ function parse_deploy_params() {
     if [[ ($edge -eq 1) && (-z "${edge_id}") ]]; then
         die "Missing edge id"
     fi
-    exit 0
+    
     return 0
 }
 
