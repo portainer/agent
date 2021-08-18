@@ -31,7 +31,7 @@ func NewKubernetesDeployer(binaryPath string) *KubernetesDeployer {
 	}
 }
 
-// Deploy will deploy a Kubernetes manifest inside a specific namespace
+// Deploy will deploy a Kubernetes manifest inside the default namespace
 // it will use kubectl to deploy the manifest.
 // kubectl uses in-cluster config.
 func (deployer *KubernetesDeployer) Deploy(ctx context.Context, name string, filePaths []string, prune bool) error {
@@ -42,8 +42,6 @@ func (deployer *KubernetesDeployer) Deploy(ctx context.Context, name string, fil
 	stackFilePath := filePaths[0]
 
 	args := make([]string, 0)
-	// Specifying "--insecure-skip-tls-verify" make kubectl return error "default cluster has no server defined"
-	//args = append(args, "--insecure-skip-tls-verify")
 	args = append(args, "--namespace", "default")
 	args = append(args, "apply", "-f", stackFilePath)
 
