@@ -1,16 +1,13 @@
 package exec
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"runtime"
-	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 )
 
@@ -41,20 +38,17 @@ func (deployer *KubernetesDeployer) Deploy(ctx context.Context, name string, fil
 
 	stackFilePath := filePaths[0]
 
-	args := make([]string, 0)
-	args = append(args, "--namespace", "default")
-	args = append(args, "apply", "-f", stackFilePath)
-
-	var stderr bytes.Buffer
-	cmd := exec.Command(deployer.command, args...)
-	cmd.Stderr = &stderr
-
-	_, err := cmd.Output()
+	args, err := buildArgs(&argOptions{
+		Namespace: "default",
+	})
 	if err != nil {
-		return fmt.Errorf("failed deploying kubernetes stack %w: %s", err, stderr.String())
+		return err
 	}
 
-	return nil
+	args = append(args, "apply", "-f", stackFilePath)
+
+	_, err = runCommandAndCaptureStdErr(deployer.command, args, nil)
+	return err
 }
 
 func (deployer *KubernetesDeployer) Remove(ctx context.Context, name string, filePaths []string) error {
@@ -64,59 +58,78 @@ func (deployer *KubernetesDeployer) Remove(ctx context.Context, name string, fil
 
 	stackFilePath := filePaths[0]
 
-	args := []string{}
-
-	args = append(args, "--namespace", "default")
-	args = append(args, "delete", "-f", stackFilePath)
-
-	var stderr bytes.Buffer
-	cmd := exec.Command(deployer.command, args...)
-	cmd.Stderr = &stderr
-
-	_, err := cmd.Output()
+	args, err := buildArgs(&argOptions{
+		Namespace: "default",
+	})
 	if err != nil {
-		return fmt.Errorf("failed removing kubernetes stack %w: %s", err, stderr.String())
+		return err
 	}
 
-	return nil
+	args = append(args, "delete", "-f", stackFilePath)
+
+	_, err = runCommandAndCaptureStdErr(deployer.command, args, nil)
+	return err
+
 }
 
 // DeployRawConfig will deploy a Kubernetes manifest inside a specific namespace
 // it will use kubectl to deploy the manifest and receives a raw config.
 // kubectl uses in-cluster config.
 func (deployer *KubernetesDeployer) DeployRawConfig(token, config string, namespace string) ([]byte, error) {
-	args := make([]string, 0)
-
-	if token != "" {
-		host := os.Getenv(agent.KubernetesServiceHost)
-		if host == "" {
-			return nil, fmt.Errorf("%s env var is not defined", agent.KubernetesServiceHost)
-		}
-
-		port := os.Getenv(agent.KubernetesServicePortHttps)
-		if port == "" {
-			return nil, fmt.Errorf("%s env var is not defined", agent.KubernetesServicePortHttps)
-		}
-
-		server := fmt.Sprintf("https://%s:%s", host, port)
-
-		args = append(args, "--token", token)
-		args = append(args, "--server", server)
-		args = append(args, "--insecure-skip-tls-verify")
+	args, err := buildArgs(&argOptions{
+		Namespace: namespace,
+		Token:     token,
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	args = append(args, "--namespace", namespace)
 	args = append(args, "apply", "-f", "-")
 
-	var stderr bytes.Buffer
-	cmd := exec.Command(deployer.command, args...)
-	cmd.Stderr = &stderr
-	cmd.Stdin = strings.NewReader(config)
+	return runCommandAndCaptureStdErr(deployer.command, args, &cmdOpts{Input: config})
+}
 
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", err, stderr.String())
+type argOptions struct {
+	Namespace string
+	Token     string
+}
+
+func buildArgs(opts *argOptions) ([]string, error) {
+	args := []string{}
+
+	if opts.Namespace != "" {
+		args = append(args, "--namespace", opts.Namespace)
 	}
 
-	return output, nil
+	if opts.Token != "" {
+		tokenArgs, err := buildTokenArgs(opts.Token)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed building token args")
+		}
+
+		args = append(args, tokenArgs...)
+	}
+
+	return args, nil
+}
+
+func buildTokenArgs(token string) ([]string, error) {
+	host := os.Getenv(agent.KubernetesServiceHost)
+	if host == "" {
+		return nil, fmt.Errorf("%s env var is not defined", agent.KubernetesServiceHost)
+	}
+
+	port := os.Getenv(agent.KubernetesServicePortHttps)
+	if port == "" {
+		return nil, fmt.Errorf("%s env var is not defined", agent.KubernetesServicePortHttps)
+	}
+
+	server := fmt.Sprintf("https://%s:%s", host, port)
+
+	return []string{
+		"--token", token,
+		"--server", server,
+		"--insecure-skip-tls-verify",
+	}, nil
+
 }
