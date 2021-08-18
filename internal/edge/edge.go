@@ -144,7 +144,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 					return
 				}
 
-				err = manager.stackManager.setEngineStatus(engineStatusKubernetes)
+				err = manager.stackManager.setEngineStatus(engineTypeKubernetes)
 				if err != nil {
 					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
 					return
@@ -191,9 +191,9 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 	log.Printf("[DEBUG] [internal,edge,runtime,docker] [message: Docker runtime configuration check] [engine_status: %d] [leader_node: %t]", runtimeConfiguration.DockerConfiguration.EngineStatus, agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
-		engineStatus := engineStatusDockerStandalone
+		engineStatus := engineTypeDockerStandalone
 		if agentRunsOnSwarm {
-			engineStatus = engineStatusDockerSwarm
+			engineStatus = engineTypeDockerSwarm
 		}
 
 		err = manager.pollService.start()

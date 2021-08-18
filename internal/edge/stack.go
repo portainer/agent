@@ -52,18 +52,18 @@ const (
 	edgeStackStatusAcknowledged
 )
 
-type engineStatus int
+type engineType int
 
 const (
-	_ engineStatus = iota
-	engineStatusDockerStandalone
-	engineStatusDockerSwarm
-	engineStatusKubernetes
+	_ engineType = iota
+	engineTypeDockerStandalone
+	engineTypeDockerSwarm
+	engineTypeKubernetes
 )
 
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
-	engineStatus *engineStatus
+	engineType   *engineType
 	stacks       map[edgeStackID]*edgeStack
 	stopSignal   chan struct{}
 	deployer     agent.Deployer
@@ -122,7 +122,7 @@ func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
 
 		folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 		fileName := "docker-compose.yml"
-		if *manager.engineStatus == engineStatusKubernetes {
+		if *manager.engineType == engineTypeKubernetes {
 			fileName = fmt.Sprintf("%s.yml", stack.Name)
 		}
 
@@ -218,12 +218,12 @@ func (manager *StackManager) next() *edgeStack {
 	return nil
 }
 
-func (manager *StackManager) setEngineStatus(engineStatus engineStatus) error {
-	if manager.engineStatus != nil && engineStatus == *manager.engineStatus {
+func (manager *StackManager) setEngineStatus(engineStatus engineType) error {
+	if manager.engineType != nil && engineStatus == *manager.engineType {
 		return nil
 	}
 
-	manager.engineStatus = &engineStatus
+	manager.engineType = &engineStatus
 
 	err := manager.stop()
 	if err != nil {
@@ -281,13 +281,13 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	delete(manager.stacks, stack.ID)
 }
 
-func buildDeployerService(engineStatus engineStatus) (agent.Deployer, error) {
+func buildDeployerService(engineStatus engineType) (agent.Deployer, error) {
 	switch engineStatus {
-	case engineStatusDockerStandalone:
+	case engineTypeDockerStandalone:
 		return exec.NewDockerComposeStackService(agent.DockerBinaryPath)
-	case engineStatusDockerSwarm:
+	case engineTypeDockerSwarm:
 		return exec.NewDockerSwarmStackService(agent.DockerBinaryPath)
-	case engineStatusKubernetes:
+	case engineTypeKubernetes:
 		return exec.NewKubernetesDeployer(agent.DockerBinaryPath), nil
 	}
 
