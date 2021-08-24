@@ -63,7 +63,7 @@ const (
 
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
-	engineType   *engineType
+	engineType   engineType
 	stacks       map[edgeStackID]*edgeStack
 	stopSignal   chan struct{}
 	deployer     agent.Deployer
@@ -122,7 +122,7 @@ func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
 
 		folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 		fileName := "docker-compose.yml"
-		if *manager.engineType == engineTypeKubernetes {
+		if manager.engineType == engineTypeKubernetes {
 			fileName = fmt.Sprintf("%s.yml", stack.Name)
 		}
 
@@ -219,11 +219,11 @@ func (manager *StackManager) next() *edgeStack {
 }
 
 func (manager *StackManager) setEngineStatus(engineStatus engineType) error {
-	if manager.engineType != nil && engineStatus == *manager.engineType {
+	if engineStatus == manager.engineType {
 		return nil
 	}
 
-	manager.engineType = &engineStatus
+	manager.engineType = engineStatus
 
 	err := manager.stop()
 	if err != nil {
