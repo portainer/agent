@@ -51,7 +51,9 @@ func (deployer *KubernetesDeployer) Deploy(token, data string, namespace string)
 		args = append(args, "--insecure-skip-tls-verify")
 	}
 
-	args = append(args, "--namespace", namespace)
+	if namespace != "" {
+		args = append(args, "--namespace", namespace)
+	}
 	args = append(args, "apply", "-f", "-")
 
 	var stderr bytes.Buffer
