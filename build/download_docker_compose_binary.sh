@@ -1,23 +1,61 @@
-#!/usr/bin/env bash
-function download_docker_compose_binary(){
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+
+
+function download_docker_compose_binary() {
     local PLATFORM=$1
     local ARCH=$2
-    local DOCKER_COMPOSE_VERSION=$3
+    local BINARY_VERSION=$3
     
-    echo "Downloading docker-compose binary for ${PLATFORM} ${ARCH}"
-    
-    
-    if [ "${PLATFORM}" == 'linux' ] && [[ ("${ARCH}" == 'amd64') || ("${ARCH}" == 'x86_64')  ]]; then
-        wget -O "dist/docker-compose" "https://github.com/portainer/docker-compose-linux-amd64-static-binary/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose"
-        chmod +x "dist/docker-compose"
-        elif [ "${PLATFORM}" == 'mac' ]; then
-        wget -O "dist/docker-compose" "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-Darwin-x86_64"
-        chmod +x "dist/docker-compose"
-        elif [ "${PLATFORM}" == 'win' ]; then
-        wget -O "dist/docker-compose.exe" "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-Windows-x86_64.exe"
-        chmod +x "dist/docker-compose.exe"
+    if [ "$ARCH" = "x86_64" ]; then
+        ARCH="amd64"
     fi
     
-    echo "Docker-compose binary download to dist/"
+    if [ "${PLATFORM}" == 'linux' ] && [ "${ARCH}" == 'amd64' ]; then
+        wget -O "dist/docker-compose" "https://github.com/portainer/docker-compose-linux-amd64-static-binary/releases/download/${BINARY_VERSION}/docker-compose"
+        chmod +x "dist/docker-compose"
+        return
+    fi
     
+    if [ "${PLATFORM}" == 'mac' ]; then
+        wget -O "dist/docker-compose" "https://github.com/docker/compose/releases/download/${BINARY_VERSION}/docker-compose-Darwin-x86_64"
+        chmod +x "dist/docker-compose"
+        return
+    fi
+    
+    if [ "${PLATFORM}" == 'win' ]; then
+        wget -O "dist/docker-compose.exe" "https://github.com/docker/compose/releases/download/${BINARY_VERSION}/docker-compose-Windows-x86_64.exe"
+        chmod +x "dist/docker-compose.exe"
+        return
+    fi
+}
+
+function download_docker_compose_plugin() {
+    local PLATFORM=$1
+    local ARCH=$2
+    local PLUGIN_VERSION=$3
+    
+    if [ "${PLATFORM}" == 'mac' ]; then
+        PLATFORM="darwin"
+    fi
+    
+    if [ "$ARCH" = "aarch64" ]; then
+        ARCH="arm64"
+    fi
+    
+    
+    if [ "$ARCH" = "armhf" ]; then
+        ARCH="armv7"
+    fi
+    
+    FILENAME="docker-compose-${PLATFORM}-${ARCH}"
+    TARGET_FILENAME="docker-compose.plugin"
+    if [[ "$PLATFORM" == "windows" ]]; then
+        FILENAME="$FILENAME.exe"
+        TARGET_FILENAME="$TARGET_FILENAME.exe"
+    fi
+    
+    wget -O "dist/$TARGET_FILENAME" "https://github.com/docker/compose-cli/releases/download/v$PLUGIN_VERSION/$FILENAME"
+    chmod +x "dist/$TARGET_FILENAME"
 }

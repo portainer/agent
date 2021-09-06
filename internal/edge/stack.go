@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -9,8 +10,6 @@ import (
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/http/client"
-	"github.com/portainer/agent/libcompose"
-	wrapper "github.com/portainer/docker-compose-wrapper"
 )
 
 type edgeStackID int
@@ -185,10 +184,12 @@ func (manager *StackManager) start() error {
 				stackName := fmt.Sprintf("edge_%s", stack.Name)
 				stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
 
+				ctx := context.TODO()
+
 				if stack.Action == actionDeploy || stack.Action == actionUpdate {
-					manager.deployStack(stack, stackName, stackFileLocation)
+					manager.deployStack(ctx, stack, stackName, stackFileLocation)
 				} else if stack.Action == actionDelete {
-					manager.deleteStack(stack, stackName, stackFileLocation)
+					manager.deleteStack(ctx, stack, stackName, stackFileLocation)
 				}
 			}
 		}
@@ -227,14 +228,14 @@ func (manager *StackManager) setEngineStatus(isSwarm bool) error {
 	return nil
 }
 
-func (manager *StackManager) deployStack(stack *edgeStack, stackName, stackFileLocation string) {
+func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
 	log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
 	stack.Status = statusDone
 	stack.Action = actionIdle
 	responseStatus := int(edgeStackStatusOk)
 	errorMessage := ""
 
-	err := manager.dockerStackService.Deploy(stackName, stackFileLocation, stack.Prune)
+	err := manager.dockerStackService.Deploy(ctx, stackName, stackFileLocation, stack.Prune)
 	if err != nil {
 		log.Printf("[ERROR] [internal,edge,stack] [message: stack deployment failed] [error: %s]", err)
 		stack.Status = statusError
@@ -252,7 +253,7 @@ func (manager *StackManager) deployStack(stack *edgeStack, stackName, stackFileL
 	}
 }
 
-func (manager *StackManager) deleteStack(stack *edgeStack, stackName, stackFileLocation string) {
+func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
 	log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: removing stack]", stack.ID)
 	err := filesystem.RemoveFile(stackFileLocation)
 	if err != nil {
@@ -260,7 +261,7 @@ func (manager *StackManager) deleteStack(stack *edgeStack, stackName, stackFileL
 		return
 	}
 
-	err = manager.dockerStackService.Remove(stackName)
+	err = manager.dockerStackService.Remove(ctx, stackName)
 	if err != nil {
 		log.Printf("[ERROR] [internal,edge,stack] [message: unable to remove stack] [error: %s]", err)
 		return
@@ -274,15 +275,5 @@ func buildDockerStackService(isSwarm bool) (agent.DockerStackService, error) {
 		return exec.NewDockerSwarmStackService(agent.DockerBinaryPath)
 	}
 
-	service, err := exec.NewDockerComposeStackService(agent.DockerBinaryPath)
-	if err != nil {
-		if err == wrapper.ErrBinaryNotFound {
-			log.Printf("[INFO] [internal,edge,stack] [message: docker-compose binary not found, falling back to libcompose]")
-			return libcompose.NewDockerComposeStackService(), nil
-		}
-
-		return nil, err
-	}
-
-	return service, nil
+	return exec.NewDockerComposeStackService(agent.DockerBinaryPath)
 }

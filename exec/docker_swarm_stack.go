@@ -2,6 +2,7 @@ package exec
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os/exec"
 	"path"
@@ -38,7 +39,7 @@ func (service *DockerSwarmStackService) Logout() error {
 }
 
 // Deploy executes the docker stack deploy command.
-func (service *DockerSwarmStackService) Deploy(name, stackFilePath string, prune bool) error {
+func (service *DockerSwarmStackService) Deploy(ctx context.Context, name, stackFilePath string, prune bool) error {
 	command := service.prepareDockerCommand(service.binaryPath)
 
 	args := []string{}
@@ -53,7 +54,7 @@ func (service *DockerSwarmStackService) Deploy(name, stackFilePath string, prune
 }
 
 // Remove executes the docker stack rm command.
-func (service *DockerSwarmStackService) Remove(name string) error {
+func (service *DockerSwarmStackService) Remove(ctx context.Context, name string) error {
 	command := service.prepareDockerCommand(service.binaryPath)
 	args := []string{"stack", "rm", name}
 	return runCommandAndCaptureStdErr(command, args, "")

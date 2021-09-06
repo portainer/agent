@@ -1,5 +1,7 @@
 package agent
 
+import "context"
+
 type (
 	// ClusterMember is the representation of an agent inside a cluster.
 	ClusterMember struct {
@@ -140,8 +142,8 @@ type (
 	DockerStackService interface {
 		Login() error
 		Logout() error
-		Deploy(name, stackFileContent string, prune bool) error
-		Remove(name string) error
+		Deploy(ctx context.Context, name, stackFileContent string, prune bool) error
+		Remove(ctx context.Context, name string) error
 	}
 
 	// KubernetesInfoService is used to retrieve information from a Kubernetes environment.

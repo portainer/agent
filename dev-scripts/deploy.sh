@@ -38,6 +38,9 @@ function deploy() {
         exit 0
     fi
     
+    if [[ "$build" == "1" ]]; then
+        build "$IMAGE_NAME"
+    fi
     
     
     if [[ "$local" == "1" ]]; then
