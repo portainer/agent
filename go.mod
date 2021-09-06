@@ -33,7 +33,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/portainer/docker-compose-wrapper v0.0.0-20210810092435-e5e64edf3a60
+	github.com/portainer/docker-compose-wrapper v0.0.0-20210906052132-ef24824f7548
 	github.com/portainer/libcrypto v0.0.0-20190723020511-2cfe5519d14f
 	github.com/portainer/libhttp v0.0.0-20190806161840-cde6e97fcd52
 	github.com/sirupsen/logrus v1.8.1 // indirect

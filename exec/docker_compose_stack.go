@@ -43,10 +43,10 @@ func (service *DockerComposeStackService) Logout() error {
 
 // Deploy executes the docker stack deploy command.
 func (service *DockerComposeStackService) Deploy(ctx context.Context, name, stackFilePath string, prune bool) error {
-	return service.deployer.Deploy(ctx, "", name, []string{stackFilePath}, "")
+	return service.deployer.Deploy(ctx, "", "", name, []string{stackFilePath}, "")
 }
 
 // Remove executes the docker stack rm command.
 func (service *DockerComposeStackService) Remove(ctx context.Context, name string) error {
-	return service.deployer.Remove(ctx, "", name, []string{""})
+	return service.deployer.Remove(ctx, "", "", name, []string{""})
 }
