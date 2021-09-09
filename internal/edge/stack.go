@@ -20,7 +20,6 @@ type edgeStack struct {
 	Version    int
 	FileFolder string
 	FileName   string
-	Prune      bool
 	Status     edgeStackStatus
 	Action     edgeStackAction
 }
@@ -53,21 +52,30 @@ const (
 	edgeStackStatusAcknowledged
 )
 
+type engineType int
+
+const (
+	_ engineType = iota
+	engineTypeDockerStandalone
+	engineTypeDockerSwarm
+	engineTypeKubernetes
+)
+
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
-	isSwarm            *bool
-	stacks             map[edgeStackID]*edgeStack
-	stopSignal         chan struct{}
-	dockerStackService agent.DockerStackService
-	portainerURL       string
-	endpointID         string
-	isEnabled          bool
-	httpClient         *client.PortainerClient
+	engineType   engineType
+	stacks       map[edgeStackID]*edgeStack
+	stopSignal   chan struct{}
+	deployer     agent.Deployer
+	portainerURL string
+	endpointID   string
+	isEnabled    bool
+	httpClient   *client.PortainerClient
 }
 
 // newStackManager returns a pointer to a new instance of StackManager
-func newStackManager(portainerURL, endpointID, edgeID string) (*StackManager, error) {
-	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID)
+func newStackManager(portainerURL, endpointID, edgeID string, insecurePoll bool) (*StackManager, error) {
+	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll)
 
 	stackManager := &StackManager{
 		stacks:     map[edgeStackID]*edgeStack{},
@@ -110,11 +118,14 @@ func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
 			return err
 		}
 
-		stack.Prune = stackConfig.Prune
 		stack.Name = stackConfig.Name
 
 		folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 		fileName := "docker-compose.yml"
+		if manager.engineType == engineTypeKubernetes {
+			fileName = fmt.Sprintf("%s.yml", stack.Name)
+		}
+
 		err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 644)
 		if err != nil {
 			return err
@@ -207,23 +218,23 @@ func (manager *StackManager) next() *edgeStack {
 	return nil
 }
 
-func (manager *StackManager) setEngineStatus(isSwarm bool) error {
-	if manager.isSwarm != nil && isSwarm == *manager.isSwarm {
+func (manager *StackManager) setEngineStatus(engineStatus engineType) error {
+	if engineStatus == manager.engineType {
 		return nil
 	}
 
-	manager.isSwarm = &isSwarm
+	manager.engineType = engineStatus
 
 	err := manager.stop()
 	if err != nil {
 		return err
 	}
 
-	dockerStackService, err := buildDockerStackService(isSwarm)
+	deployer, err := buildDeployerService(engineStatus)
 	if err != nil {
 		return err
 	}
-	manager.dockerStackService = dockerStackService
+	manager.deployer = deployer
 
 	return nil
 }
@@ -235,7 +246,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	responseStatus := int(edgeStackStatusOk)
 	errorMessage := ""
 
-	err := manager.dockerStackService.Deploy(ctx, stackName, stackFileLocation, stack.Prune)
+	err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
 	if err != nil {
 		log.Printf("[ERROR] [internal,edge,stack] [message: stack deployment failed] [error: %s]", err)
 		stack.Status = statusError
@@ -255,25 +266,30 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
 	log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: removing stack]", stack.ID)
-	err := filesystem.RemoveFile(stackFileLocation)
+	err := manager.deployer.Remove(ctx, stackName, []string{stackFileLocation})
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: unable to delete Edge stack file] [error: %s]", err)
+		log.Printf("[ERROR] [internal,edge,stack] [message: unable to remove stack] [error: %s]", err)
 		return
 	}
 
-	err = manager.dockerStackService.Remove(ctx, stackName)
+	err = filesystem.RemoveFile(stackFileLocation)
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: unable to remove stack] [error: %s]", err)
+		log.Printf("[ERROR] [internal,edge,stack] [message: unable to delete Edge stack file] [error: %s]", err)
 		return
 	}
 
 	delete(manager.stacks, stack.ID)
 }
 
-func buildDockerStackService(isSwarm bool) (agent.DockerStackService, error) {
-	if isSwarm {
+func buildDeployerService(engineStatus engineType) (agent.Deployer, error) {
+	switch engineStatus {
+	case engineTypeDockerStandalone:
+		return exec.NewDockerComposeStackService(agent.DockerBinaryPath)
+	case engineTypeDockerSwarm:
 		return exec.NewDockerSwarmStackService(agent.DockerBinaryPath)
+	case engineTypeKubernetes:
+		return exec.NewKubernetesDeployer(agent.DockerBinaryPath), nil
 	}
 
-	return exec.NewDockerComposeStackService(agent.DockerBinaryPath)
+	return nil, fmt.Errorf("engine status %d not supported", engineStatus)
 }

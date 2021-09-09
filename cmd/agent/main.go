@@ -116,7 +116,7 @@ func main() {
 	// !Docker
 
 	// Kubernetes
-	var kubernetesDeployer agent.KubernetesDeployer
+	var kubernetesDeployer *exec.KubernetesDeployer
 	if containerPlatform == agent.PlatformKubernetes {
 		log.Println("[INFO] [main] [message: Agent running on Kubernetes platform]")
 		kubeClient, err = kubernetes.NewKubeClient()

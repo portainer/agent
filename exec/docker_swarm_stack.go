@@ -1,10 +1,8 @@
 package exec
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"os/exec"
 	"path"
 	"runtime"
 )
@@ -12,6 +10,10 @@ import (
 // DockerSwarmStackService represents a service for managing stacks by using the Docker binary.
 type DockerSwarmStackService struct {
 	binaryPath string
+}
+
+type DockerSwarmDeployOpts struct {
+	Prune bool
 }
 
 // NewDockerSwarmStackService initializes a new DockerStackService service.
@@ -34,12 +36,19 @@ func (service *DockerSwarmStackService) Login() error {
 func (service *DockerSwarmStackService) Logout() error {
 	command := service.prepareDockerCommand(service.binaryPath)
 	args := []string{"logout"}
-	return runCommandAndCaptureStdErr(command, args, "")
 
+	_, err := runCommandAndCaptureStdErr(command, args, nil)
+	return err
 }
 
 // Deploy executes the docker stack deploy command.
-func (service *DockerSwarmStackService) Deploy(ctx context.Context, name, stackFilePath string, prune bool) error {
+func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string, filePaths []string, prune bool) error {
+	if len(filePaths) == 0 {
+		return errors.New("missing file paths")
+	}
+
+	stackFilePath := filePaths[0]
+
 	command := service.prepareDockerCommand(service.binaryPath)
 
 	args := []string{}
@@ -50,28 +59,17 @@ func (service *DockerSwarmStackService) Deploy(ctx context.Context, name, stackF
 	}
 
 	stackFolder := path.Dir(stackFilePath)
-	return runCommandAndCaptureStdErr(command, args, stackFolder)
+	_, err := runCommandAndCaptureStdErr(command, args, &cmdOpts{WorkingDir: stackFolder})
+	return err
 }
 
 // Remove executes the docker stack rm command.
-func (service *DockerSwarmStackService) Remove(ctx context.Context, name string) error {
+func (service *DockerSwarmStackService) Remove(ctx context.Context, name string, filePaths []string) error {
 	command := service.prepareDockerCommand(service.binaryPath)
 	args := []string{"stack", "rm", name}
-	return runCommandAndCaptureStdErr(command, args, "")
-}
 
-func runCommandAndCaptureStdErr(command string, args []string, workingDir string) error {
-	var stderr bytes.Buffer
-	cmd := exec.Command(command, args...)
-	cmd.Stderr = &stderr
-	cmd.Dir = workingDir
-
-	err := cmd.Run()
-	if err != nil {
-		return errors.New(stderr.String())
-	}
-
-	return nil
+	_, err := runCommandAndCaptureStdErr(command, args, nil)
+	return err
 }
 
 func (service *DockerSwarmStackService) prepareDockerCommand(binaryPath string) string {

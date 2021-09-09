@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,21 +23,30 @@ type PortainerClient struct {
 }
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress, endpointID, edgeID string) *PortainerClient {
+func NewPortainerClient(serverAddress, endpointID, edgeID string, insecurePoll bool) *PortainerClient {
+	httpCli := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	if insecurePoll {
+		httpCli.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+
 	return &PortainerClient{
 		serverAddress: serverAddress,
 		endpointID:    endpointID,
 		edgeID:        edgeID,
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		httpClient:    httpCli,
 	}
 }
 
 type stackConfigResponse struct {
 	Name             string
 	StackFileContent string
-	Prune            bool
 }
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
@@ -67,7 +77,7 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeS
 		return nil, err
 	}
 
-	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent, Prune: data.Prune}, nil
+	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent}, nil
 }
 
 type setEdgeStackStatusPayload struct {
