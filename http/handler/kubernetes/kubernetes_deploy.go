@@ -27,10 +27,6 @@ func (payload *deployPayload) Validate(r *http.Request) error {
 		return errors.New("Missing deployment config")
 	}
 
-	if payload.Namespace == "" {
-		return errors.New("Missing namespace")
-	}
-
 	return nil
 }
 
