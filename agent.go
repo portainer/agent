@@ -1,5 +1,7 @@
 package agent
 
+import "context"
+
 type (
 	// ClusterMember is the representation of an agent inside a cluster.
 	ClusterMember struct {
@@ -30,18 +32,12 @@ type (
 	EdgeStackConfig struct {
 		Name        string
 		FileContent string
-		Prune       bool
 	}
 
 	// HostInfo is the representation of the collection of host information
 	HostInfo struct {
 		PCIDevices    []PciDevice
 		PhysicalDisks []PhysicalDisk
-	}
-
-	// KubernetesDeployer represents a service to deploy a manifest inside a Kubernetes endpoint
-	KubernetesDeployer interface {
-		Deploy(data string, namespace string) ([]byte, error)
 	}
 
 	// KubernetesRuntimeConfiguration represents the runtime configuration of an agent running on the Kubernetes platform
@@ -136,12 +132,9 @@ type (
 		GetServiceNameFromDockerEngine(containerName string) (string, error)
 	}
 
-	// DockerStackService is a service used to deploy and remove Docker stacks
-	DockerStackService interface {
-		Login() error
-		Logout() error
-		Deploy(name, stackFileContent string, prune bool) error
-		Remove(name string) error
+	Deployer interface {
+		Deploy(ctx context.Context, name string, filePaths []string, prune bool) error
+		Remove(ctx context.Context, name string, filePaths []string) error
 	}
 
 	// KubernetesInfoService is used to retrieve information from a Kubernetes environment.
@@ -172,16 +165,11 @@ type (
 		GetDiskInfo() ([]PhysicalDisk, error)
 		GetPciDevices() ([]PciDevice, error)
 	}
-
-	// TLSService is used to create TLS certificates to use enable HTTPS.
-	TLSService interface {
-		GenerateCertsForHost(host string) error
-	}
 )
 
 const (
 	// Version represents the version of the agent.
-	Version = "2.7.0"
+	Version = "2.9.0"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.
@@ -252,6 +240,10 @@ const (
 	EdgeStackFilesPath = "/tmp/edge_stacks"
 	// EdgeStackQueueSleepInterval is the interval used to check if there's an Edge stack to deploy
 	EdgeStackQueueSleepInterval = "5s"
+	// KubernetesServiceHost is the environment variable name of the kubernetes API server host
+	KubernetesServiceHost = "KUBERNETES_SERVICE_HOST"
+	// KubernetesServicePortHttps is the environment variable of the kubernetes API server https port
+	KubernetesServicePortHttps = "KUBERNETES_SERVICE_PORT_HTTPS"
 )
 
 const (

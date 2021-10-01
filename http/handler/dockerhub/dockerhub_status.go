@@ -115,14 +115,16 @@ func getDockerHubLimits(httpClient *http.Client, token string) (*dockerhubStatus
 		return nil, errors.New("failed fetching dockerhub limits")
 	}
 
+	// don't return an error if these headers are missing.  Dockerhub Pro accounts
+	// do not have these headers.  Returning an error adds confusing debug into the browser window.
 	rateLimit, err := parseNumericHeader(resp.Header, "RateLimit-Limit")
 	if err != nil {
-		return nil, fmt.Errorf("Failed fetching RateLimit-Limit header: %w", err)
+		return nil, nil
 	}
 
 	rateLimitRemaining, err := parseNumericHeader(resp.Header, "RateLimit-Remaining")
 	if err != nil {
-		return nil, fmt.Errorf("Failed fetching RateLimit-Remaining header: %w", err)
+		return nil, nil
 	}
 
 	return &dockerhubStatusResponse{

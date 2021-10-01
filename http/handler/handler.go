@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/exec"
 	httpagenthandler "github.com/portainer/agent/http/handler/agent"
 	"github.com/portainer/agent/http/handler/browse"
 	"github.com/portainer/agent/http/handler/docker"
@@ -51,7 +52,7 @@ type Config struct {
 	ClusterService       agent.ClusterService
 	SignatureService     agent.DigitalSignatureService
 	KubeClient           *kubecli.KubeClient
-	KubernetesDeployer   agent.KubernetesDeployer
+	KubernetesDeployer   *exec.KubernetesDeployer
 	EdgeManager          *edge.Manager
 	RuntimeConfiguration *agent.RuntimeConfiguration
 	AgentOptions         *agent.Options
@@ -64,7 +65,7 @@ var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 // NewHandler returns a pointer to a Handler.
 func NewHandler(config *Config) *Handler {
 	agentProxy := proxy.NewAgentProxy(config.ClusterService, config.RuntimeConfiguration, config.Secured)
-	notaryService := security.NewNotaryService(config.SignatureService, config.Secured)
+	notaryService := security.NewNotaryService(config.SignatureService, true)
 
 	return &Handler{
 		agentHandler:           httpagenthandler.NewHandler(config.ClusterService, notaryService),

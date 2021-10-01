@@ -11,7 +11,7 @@ DOCKER_VERSION_WINDOWS="19-03-12"
 
 DOCKER_COMPOSE_VERSION_LINUX="1.29.2"
 DOCKER_COMPOSE_VERSION_WINDOWS="1.29.2"
-
+DOCKER_COMPOSE_PLUGIN_VERSION="2.0.0-beta.6"
 KUBECTL_VERSION="v1.18.0"
 
 DOCKER_VERSION=$DOCKER_VERSION_LINUX
@@ -25,10 +25,18 @@ then
     DOCKER_COMPOSE_VERSION=$DOCKER_COMPOSE_VERSION_WINDOWS
 fi
 
+
+
 source ./build/download_docker_binary.sh
 source ./build/download_kubectl_binary.sh
 source ./build/download_docker_compose_binary.sh
 
 download_docker_binary "$PLATFORM" "$ARCH" "$DOCKER_VERSION"
 download_kubectl_binary "$PLATFORM" "$ARCH" "$KUBECTL_VERSION"
-download_docker_compose_binary "$PLATFORM" "$ARCH" "$DOCKER_COMPOSE_VERSION"
+
+if [ "$PLATFORM" == "linux" ] && [ "$ARCH" != "amd64" ] && [ "$ARCH" != "x86_64" ]; then
+    download_docker_compose_plugin "$PLATFORM" "$ARCH" "$DOCKER_COMPOSE_PLUGIN_VERSION"
+else
+    download_docker_compose_binary "$PLATFORM" "$ARCH" "$DOCKER_COMPOSE_VERSION"
+fi
+
