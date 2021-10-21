@@ -7,8 +7,6 @@ import (
 	"path"
 	"strings"
 	"time"
-
-	"github.com/portainer/agent/constants"
 )
 
 // FileInfo represents information about a file on the filesystem
@@ -123,7 +121,7 @@ func BuildPathToFileInsideVolume(volumeID, filePath string) (string, error) {
 		return "", errors.New("Invalid path. Ensure that the path do not contain '..' elements")
 	}
 
-	return path.Join(constants.SystemVolumePath, volumeID, "_data", filePath), nil
+	return path.Join("/var/lib/docker/volumes", volumeID, "_data", filePath), nil
 }
 
 func isValidPath(path string) bool {
