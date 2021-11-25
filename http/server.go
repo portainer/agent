@@ -84,7 +84,7 @@ func (server *APIServer) StartUnsecured() error {
 	httpServer := &http.Server{
 		Addr:         listenAddr,
 		Handler:      h,
-		ReadTimeout:  5 * time.Second,
+		ReadTimeout:  120 * time.Second,
 		WriteTimeout: 30 * time.Minute,
 	}
 
@@ -129,7 +129,7 @@ func (server *APIServer) StartSecured() error {
 	httpServer := &http.Server{
 		Addr:         listenAddr,
 		Handler:      h,
-		ReadTimeout:  5 * time.Second,
+		ReadTimeout:  120 * time.Second,
 		TLSConfig:    tlsConfig,
 		WriteTimeout: 30 * time.Minute,
 	}
