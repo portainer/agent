@@ -2,6 +2,7 @@ package browse
 
 import (
 	"errors"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/portainer/agent/filesystem"
@@ -11,9 +12,10 @@ import (
 )
 
 type browsePutPayload struct {
-	Path     string
-	Filename string
-	File     []byte
+	Path       string
+	Filename   string
+	File       []byte
+	Fileheader *multipart.FileHeader
 }
 
 func (payload *browsePutPayload) Validate(r *http.Request) error {
@@ -23,12 +25,13 @@ func (payload *browsePutPayload) Validate(r *http.Request) error {
 	}
 	payload.Path = path
 
-	file, filename, err := request.RetrieveMultiPartFormFile(r, "file")
+	file, headers, err := r.FormFile("file")
 	if err != nil {
 		return errors.New("Invalid uploaded file")
 	}
-	payload.File = file
-	payload.Filename = filename
+	defer file.Close()
+	payload.Fileheader = headers
+	payload.Filename = headers.Filename
 
 	return nil
 }
@@ -58,11 +61,10 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 		}
 	}
 
-	err = filesystem.WriteFile(payload.Path, payload.Filename, payload.File, 0755)
+	err = filesystem.WriteBigFile(payload.Path, payload.Filename, payload.Fileheader, 0755)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Error saving file to disk", err}
 	}
-
 	return response.Empty(rw)
 }
 
