@@ -1,7 +1,9 @@
 package browse
 
 import (
+	"bufio"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/portainer/agent"
@@ -10,10 +12,19 @@ import (
 	httperror "github.com/portainer/libhttp/error"
 )
 
+type chunkFile struct {
+	path      string
+	name      string
+	chunkSize int64
+	dstFile   *os.File
+	dstWriter *bufio.Writer
+}
+
 // Handler is the HTTP handler used to handle volume browsing operations.
 type Handler struct {
 	*mux.Router
 	agentOptions *agent.Options
+	recvFile     chunkFile
 }
 
 // NewHandler returns a pointer to an Handler
@@ -22,6 +33,7 @@ func NewHandler(agentProxy *proxy.AgentProxy, notaryService *security.NotaryServ
 	h := &Handler{
 		Router:       mux.NewRouter(),
 		agentOptions: agentOptions,
+		recvFile:     chunkFile{path: "", name: ""},
 	}
 
 	h.Handle("/browse/ls",
