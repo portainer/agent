@@ -45,12 +45,7 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 	r.ParseMultipartForm(1024 * 1024 * 32)
 	if r.MultipartForm != nil && r.MultipartForm.File != nil {
 		if fhs := r.MultipartForm.File["file"]; len(fhs) > 0 {
-			f, err := fhs[0].Open()
-			if err != nil {
-				return &httperror.HandlerError{http.StatusBadRequest, "Invalid file", err}
-			}
-			defer f.Close()
-			//return f, fhs[0], err
+
 			payload.Fileheader = fhs[0]
 			payload.Filename = payload.Fileheader.Filename
 
