@@ -2,6 +2,7 @@ package browse
 
 import (
 	"errors"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 
@@ -38,17 +39,38 @@ func (payload *browsePutPayload) Validate(r *http.Request) error {
 
 // POST request on /browse/put?volumeID=:id
 func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
-	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
-		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", errors.New("This agent feature is not enabled")}
-	}
-
+	fmt.Println("here comes a request")
 	var payload browsePutPayload
-	err := payload.Validate(r)
-	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
+	values := r.URL.Query()
+	volumeID := values.Get("volumeID")
+	r.ParseMultipartForm(1024 * 1024 * 32)
+	if r.MultipartForm != nil && r.MultipartForm.File != nil {
+		if fhs := r.MultipartForm.File["file"]; len(fhs) > 0 {
+			f, err := fhs[0].Open()
+			if err != nil {
+				return &httperror.HandlerError{http.StatusBadRequest, "Invalid file", err}
+			}
+			defer f.Close()
+			//return f, fhs[0], err
+			payload.Fileheader = fhs[0]
+			payload.Filename = payload.Fileheader.Filename
+
+			fmt.Printf("payload filename is %s !\n", payload.Filename)
+		}
+	} else {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", errors.New("Invalid uploaded file")}
+	}
+	payload.Path = "/"
+	if vs := r.Form["Path"]; len(vs) > 0 {
+		payload.Path = vs[0]
+		fmt.Printf("file path is %s !\n", payload.Path)
+	} else {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", errors.New("Invalid file path")}
 	}
 
+	fmt.Println("ready to transfer")
+
+	err := errors.New("")
 	if volumeID != "" {
 		payload.Path, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.Path)
 		if err != nil {
