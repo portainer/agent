@@ -54,7 +54,7 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 	} else {
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", errors.New("Invalid uploaded file")}
 	}
-	payload.Path = "/"
+
 	if vs := r.Form["Path"]; len(vs) > 0 {
 		payload.Path = vs[0]
 		fmt.Printf("file path is %s !\n", payload.Path)
