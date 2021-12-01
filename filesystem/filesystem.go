@@ -153,12 +153,20 @@ func WriteBigFile(folder, filename string, fileheader *multipart.FileHeader, mod
 		if err != nil && err != io.EOF {
 			return err
 		}
-		if 0 == n {
-			break // get EOF
-		}
-		_, err = writer.Write(buf)
-		if err != nil && err != io.EOF {
-			return err
+		if int64(n) < chunkSize {
+			// get EOF
+			if n > 0 {
+				_, err = writer.Write(buf[:n])
+				if err != nil && err != io.EOF {
+					return err
+				}
+			}
+			break
+		} else {
+			_, err = writer.Write(buf)
+			if err != nil && err != io.EOF {
+				return err
+			}
 		}
 	}
 	writer.Flush()
