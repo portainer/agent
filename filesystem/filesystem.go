@@ -147,17 +147,18 @@ func WriteBigFile(folder, filename string, fileheader *multipart.FileHeader, mod
 	reader := bufio.NewReader(srcfile)
 	writer := bufio.NewWriter(dstfile)
 
+	var n int
 	for {
-		n, err := reader.Read(buf)
+		n, err = reader.Read(buf)
 		if err != nil && err != io.EOF {
 			return err
 		}
 		if 0 == n {
 			break // get EOF
 		}
-		_, err2 := writer.Write(buf)
-		if err2 != nil && err != io.EOF {
-			return err2
+		_, err = writer.Write(buf)
+		if err != nil && err != io.EOF {
+			return err
 		}
 	}
 	writer.Flush()
