@@ -30,9 +30,11 @@ fi
 source ./build/download_docker_binary.sh
 source ./build/download_kubectl_binary.sh
 source ./build/download_docker_compose_binary.sh
+source ./build/download_rpc_binary.sh
 
 download_docker_binary "$PLATFORM" "$ARCH" "$DOCKER_VERSION"
 download_kubectl_binary "$PLATFORM" "$ARCH" "$KUBECTL_VERSION"
+download_rpc_binary
 
 if [ "$PLATFORM" == "linux" ] && [ "$ARCH" != "amd64" ] && [ "$ARCH" != "x86_64" ]; then
     download_docker_compose_plugin "$PLATFORM" "$ARCH" "$DOCKER_COMPOSE_PLUGIN_VERSION"
