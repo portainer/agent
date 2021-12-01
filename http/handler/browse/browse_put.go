@@ -26,13 +26,12 @@ func (payload *browsePutPayload) Validate(r *http.Request) error {
 	}
 	payload.Path = path
 
-	file, headers, err := r.FormFile("file")
+	file, filename, err := request.RetrieveMultiPartFormFile(r, "file")
 	if err != nil {
 		return errors.New("Invalid uploaded file")
 	}
-	defer file.Close()
-	payload.Fileheader = headers
-	payload.Filename = headers.Filename
+	payload.File = file
+	payload.Filename = filename
 
 	return nil
 }
