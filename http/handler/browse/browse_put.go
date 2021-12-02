@@ -2,7 +2,6 @@ package browse
 
 import (
 	"errors"
-	"fmt"
 	"mime/multipart"
 	"net/http"
 
@@ -38,7 +37,6 @@ func (payload *browsePutPayload) Validate(r *http.Request) error {
 
 // POST request on /browse/put?volumeID=:id
 func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-	fmt.Println("here comes a request")
 	var payload browsePutPayload
 	values := r.URL.Query()
 	volumeID := values.Get("volumeID")
