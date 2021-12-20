@@ -2,6 +2,7 @@ package browse
 
 import (
 	"errors"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/portainer/agent/filesystem"
@@ -11,9 +12,10 @@ import (
 )
 
 type browsePutPayload struct {
-	Path     string
-	Filename string
-	File     []byte
+	Path       string
+	Filename   string
+	File       []byte
+	Fileheader *multipart.FileHeader
 }
 
 func (payload *browsePutPayload) Validate(r *http.Request) error {
@@ -35,17 +37,27 @@ func (payload *browsePutPayload) Validate(r *http.Request) error {
 
 // POST request on /browse/put?volumeID=:id
 func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
-	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
-		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", errors.New("This agent feature is not enabled")}
-	}
-
 	var payload browsePutPayload
-	err := payload.Validate(r)
-	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
+	values := r.URL.Query()
+	volumeID := values.Get("volumeID")
+
+	r.ParseMultipartForm(1024 * 1024 * 32)
+	if r.MultipartForm != nil && r.MultipartForm.File != nil {
+		if fhs := r.MultipartForm.File["file"]; len(fhs) > 0 {
+			payload.Fileheader = fhs[0]
+			payload.Filename = payload.Fileheader.Filename
+		}
+	} else {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", errors.New("Invalid uploaded file")}
 	}
 
+	if vs := r.Form["Path"]; len(vs) > 0 {
+		payload.Path = vs[0]
+	} else {
+		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", errors.New("Invalid file path")}
+	}
+
+	err := errors.New("")
 	if volumeID != "" {
 		payload.Path, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.Path)
 		if err != nil {
@@ -58,11 +70,10 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 		}
 	}
 
-	err = filesystem.WriteFile(payload.Path, payload.Filename, payload.File, 0755)
+	err = filesystem.WriteBigFile(payload.Path, payload.Filename, payload.Fileheader, 0755)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Error saving file to disk", err}
 	}
-
 	return response.Empty(rw)
 }
 
