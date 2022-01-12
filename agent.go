@@ -1,6 +1,9 @@
 package agent
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type (
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -55,6 +58,7 @@ type (
 	Options struct {
 		AgentServerAddr       string
 		AgentServerPort       string
+		AgentSecurityShutdown time.Duration
 		ClusterAddress        string
 		HostManagementEnabled bool
 		SharedSecret          string

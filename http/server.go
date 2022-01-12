@@ -136,13 +136,12 @@ func (server *APIServer) StartSecured() error {
 	}
 
 	go func() {
-		agentSecurityShutdown := 10
-
-		timer1 := time.NewTimer(time.Duration(agentSecurityShutdown) * time.Second)
+		securityShutdown := config.AgentOptions.AgentSecurityShutdown
+		timer1 := time.NewTimer(securityShutdown)
 		<-timer1.C
 
 		if !server.signatureService.IsAssociated() {
-			log.Printf("[INFO] [main,http] [message: Shutting down API server as no client was associated after %d minutes , keeping alive to prevent restart by docker/kubernetes]", agentSecurityShutdown)
+			log.Printf("[INFO] [main,http] [message: Shutting down API server as no client was associated after %s, keeping alive to prevent restart by docker/kubernetes]", securityShutdown)
 
 			err := httpServer.Shutdown(context.Background())
 			if err != nil {
