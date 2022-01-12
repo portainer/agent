@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"crypto/tls"
 	"log"
 	"net/http"
@@ -133,6 +134,27 @@ func (server *APIServer) StartSecured() error {
 		TLSConfig:    tlsConfig,
 		WriteTimeout: 30 * time.Minute,
 	}
+
+	go func() {
+		agentSecurityShutdown := 10
+
+		timer1 := time.NewTimer(time.Duration(agentSecurityShutdown) * time.Second)
+		<-timer1.C
+
+		if !server.signatureService.IsAssociated() {
+			log.Printf("[INFO] [main,http] [message: Shutting down API server as no client was associated after %d minutes , keeping alive to prevent restart by docker/kubernetes]", agentSecurityShutdown)
+
+			err := httpServer.Shutdown(context.Background())
+			if err != nil {
+				log.Fatalf("[ERROR] [server] [message: failed shutting down server] [error: %s]", err)
+			}
+
+			// Keep alive
+			for {
+				time.Sleep(time.Second)
+			}
+		}
+	}()
 
 	return httpServer.ListenAndServeTLS(agent.TLSCertPath, agent.TLSKeyPath)
 }

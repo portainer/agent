@@ -1,8 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	gohttp "net/http"
+	"runtime"
 	"time"
 
 	"github.com/portainer/agent"
@@ -232,9 +235,11 @@ func main() {
 	}
 
 	err = startAPIServer(config)
-	if err != nil {
+	if err != nil && !errors.Is(err, gohttp.ErrServerClosed) {
 		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
 	}
+
+	runtime.Goexit()
 
 	// !API
 }
