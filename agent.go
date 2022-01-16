@@ -184,7 +184,7 @@ const (
 	// DefaultLogLevel is the default logging level.
 	DefaultLogLevel = "INFO"
 	// DefaultAgentSecurityShutdown is the default time after which the API server will shutdown if not associated with a Portainer instance
-	DefaultAgentSecurityShutdown = "3d"
+	DefaultAgentSecurityShutdown = "72h"
 	// DefaultEdgeSecurityShutdown is the default time after which the Edge server will shutdown if no key is specified
 	DefaultEdgeSecurityShutdown = 15
 	// DefaultEdgeServerAddr is the default address used by the Edge server.
