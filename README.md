@@ -225,7 +225,7 @@ This mode will allow multiple instances of Portainer to connect to a single agen
 
 Note: Due to the fact that the agent will now decode and parse the public key associated to each request, this mode might be less performant than the default mode.
 
-If `AGENT_SECRET` isn't supplied, the agent will turn off after 3 days if not associated to any Portainer instance. This duration can be changed by supplying `AGENT_SECURITY_SHUTDOWN` environment variable in the format "3d5h2s"
+If `AGENT_SECRET` isn't supplied, the agent will turn off after 3 days if not associated to any Portainer instance. This duration can be changed by supplying `AGENT_SECRET_TIMEOUT` environment variable in the format "20h2s" (https://pkg.go.dev/time#ParseDuration)
 
 ## Deployment options
 
@@ -236,7 +236,7 @@ we can leverage the internal Docker DNS to automatically join existing agents or
 * AGENT_HOST (*optional*): address on which the agent API will be exposed (default to `0.0.0.0`)
 * AGENT_PORT (*optional*): port on which the agent API will be exposed (default to `9001`)
 * AGENT_SECRET (*optional*): shared secret used in the signature verification process
-* AGENT_SECURITY_SHUTDOWN (*optional*): the duration after which the agent will be shutdown if not associated or secured by `AGENT_SECRET`. (defaults to `3d`)
+* AGENT_SECRET_TIMEOUT (*optional*): the duration after which the agent will be shutdown if not associated or secured by `AGENT_SECRET`. (defaults to `72h`)
 * LOG_LEVEL (*optional*): defines the log output verbosity (default to `INFO`)
 * EDGE (*optional*): enable Edge mode. Disabled by default, set to `1` to enable it
 * EDGE_KEY (*optional*): specify an Edge key to use at startup

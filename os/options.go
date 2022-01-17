@@ -15,7 +15,7 @@ const (
 	EnvKeyAgentPort             = "AGENT_PORT"
 	EnvKeyClusterAddr           = "AGENT_CLUSTER_ADDR"
 	EnvKeyAgentSecret           = "AGENT_SECRET"
-	EnvKeyAgentSecurityShutdown = "AGENT_SECURITY_SHUTDOWN"
+	EnvKeyAgentSecurityShutdown = "AGENT_SECRET_TIMEOUT"
 	EnvKeyCapHostManagement     = "CAP_HOST_MANAGEMENT"
 	EnvKeyEdge                  = "EDGE"
 	EnvKeyEdgeKey               = "EDGE_KEY"
