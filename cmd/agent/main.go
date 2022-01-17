@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	gohttp "net/http"
-	"runtime"
+	goos "os"
+	"os/signal"
 	"time"
 
 	"github.com/portainer/agent"
@@ -239,7 +240,9 @@ func main() {
 		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
 	}
 
-	runtime.Goexit()
+	sigs := make(chan goos.Signal, 1)
+	signal.Notify(sigs)
+	<-sigs
 
 	// !API
 }

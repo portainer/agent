@@ -147,10 +147,6 @@ func (server *APIServer) StartSecured() error {
 				log.Fatalf("[ERROR] [server] [message: failed shutting down server] [error: %s]", err)
 			}
 
-			// Keep alive
-			for {
-				time.Sleep(time.Second)
-			}
 		}
 	}()
 
