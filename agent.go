@@ -1,6 +1,9 @@
 package agent
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type (
 	// ClusterMember is the representation of an agent inside a cluster.
@@ -55,6 +58,7 @@ type (
 	Options struct {
 		AgentServerAddr       string
 		AgentServerPort       string
+		AgentSecurityShutdown time.Duration
 		ClusterAddress        string
 		HostManagementEnabled bool
 		SharedSecret          string
@@ -122,6 +126,7 @@ type (
 
 	// DigitalSignatureService is used to validate digital signatures.
 	DigitalSignatureService interface {
+		IsAssociated() bool
 		VerifySignature(signature, key string) (bool, error)
 	}
 
@@ -178,6 +183,8 @@ const (
 	DefaultAgentPort = "9001"
 	// DefaultLogLevel is the default logging level.
 	DefaultLogLevel = "INFO"
+	// DefaultAgentSecurityShutdown is the default time after which the API server will shutdown if not associated with a Portainer instance
+	DefaultAgentSecurityShutdown = "72h"
 	// DefaultEdgeSecurityShutdown is the default time after which the Edge server will shutdown if no key is specified
 	DefaultEdgeSecurityShutdown = 15
 	// DefaultEdgeServerAddr is the default address used by the Edge server.

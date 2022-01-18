@@ -26,6 +26,12 @@ func NewECDSAService(secret string) *ECDSAService {
 	}
 }
 
+// IsAssociated tells if the service is associated with a public key
+// or if it's secured behind  a secret
+func (service *ECDSAService) IsAssociated() bool {
+	return service.publicKey != nil || service.secret != ""
+}
+
 // VerifySignature is used to verify a digital signature using a specified public
 // key. The public key specified as a parameter must be hexadecimal encoded.
 // The public key will be decoded and parsed as DER data. If the service is not

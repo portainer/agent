@@ -15,6 +15,7 @@ const (
 	EnvKeyAgentPort             = "AGENT_PORT"
 	EnvKeyClusterAddr           = "AGENT_CLUSTER_ADDR"
 	EnvKeyAgentSecret           = "AGENT_SECRET"
+	EnvKeyAgentSecurityShutdown = "AGENT_SECRET_TIMEOUT"
 	EnvKeyCapHostManagement     = "CAP_HOST_MANAGEMENT"
 	EnvKeyEdge                  = "EDGE"
 	EnvKeyEdgeKey               = "EDGE_KEY"
@@ -47,6 +48,13 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeInsecurePoll:      false,
 		LogLevel:              agent.DefaultLogLevel,
 	}
+
+	agentSecurityShutdown, err := parseAgentSecurityShutdown()
+	if err != nil {
+		return nil, err
+	}
+
+	options.AgentSecurityShutdown = agentSecurityShutdown
 
 	if os.Getenv(EnvKeyCapHostManagement) != "" {
 		log.Println("[WARN] [os,options] [message: the CAP_HOST_MANAGEMENT environment variable is deprecated and will likely be removed in a future version of Portainer agent]")
@@ -112,4 +120,18 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	}
 
 	return options, nil
+}
+
+func parseAgentSecurityShutdown() (time.Duration, error) {
+	agentSecurityShutdownStr := agent.DefaultAgentSecurityShutdown
+	if value := os.Getenv(EnvKeyAgentSecurityShutdown); value != "" {
+		agentSecurityShutdownStr = value
+	}
+
+	duration, err := time.ParseDuration(agentSecurityShutdownStr)
+	if err != nil {
+		return time.Second, errors.New("invalid time duration format in " + EnvKeyAgentSecurityShutdown + " environment variable")
+	}
+
+	return duration, nil
 }
