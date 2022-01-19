@@ -7,6 +7,7 @@ import (
 	gohttp "net/http"
 	goos "os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/portainer/agent"
@@ -241,9 +242,10 @@ func main() {
 	}
 
 	sigs := make(chan goos.Signal, 1)
-	signal.Notify(sigs)
-	<-sigs
+	signal.Notify(sigs, goos.Interrupt, syscall.SIGTERM, goos.Kill)
+	s := <-sigs
 
+	fmt.Printf("[DEBUG] [main] [message: shutting down] [signal: %s]", s)
 	// !API
 }
 
