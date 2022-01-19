@@ -241,12 +241,13 @@ func main() {
 		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
 	}
 
+	// !API
+
 	sigs := make(chan goos.Signal, 1)
-	signal.Notify(sigs, goos.Interrupt, syscall.SIGTERM, goos.Kill)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	s := <-sigs
 
 	fmt.Printf("[DEBUG] [main] [message: shutting down] [signal: %s]", s)
-	// !API
 }
 
 func startAPIServer(config *http.APIServerConfig) error {
