@@ -13,7 +13,7 @@ const (
 	EnvKeyClusterAddr           = "AGENT_CLUSTER_ADDR"
 	EnvKeyAgentSecret           = "AGENT_SECRET"
 	EnvKeyAgentSecurityShutdown = "AGENT_SECRET_TIMEOUT"
-	EnvKeyCapHostManagement     = "CAP_HOST_MANAGEMENT"
+	//EnvKeyCapHostManagement     = "CAP_HOST_MANAGEMENT"  // deprecated and unused
 	EnvKeyEdge                  = "EDGE"
 	EnvKeyEdgeKey               = "EDGE_KEY"
 	EnvKeyEdgeID                = "EDGE_ID"
@@ -22,7 +22,7 @@ const (
 	EnvKeyEdgeInactivityTimeout = "EDGE_INACTIVITY_TIMEOUT"
 	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
 	EnvKeyLogLevel              = "LOG_LEVEL"
-	EnvKeyDockerBinaryPath      = "DOCKER_BINARY_PATH"
+	//EnvKeyDockerBinaryPath      = "DOCKER_BINARY_PATH" //unused
 )
 
 type EnvOptionParser struct{}
