@@ -1,13 +1,10 @@
 package os
 
 import (
-	"errors"
-	"log"
-	"os"
 	"strconv"
-	"time"
 
 	"github.com/portainer/agent"
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
@@ -34,104 +31,40 @@ func NewEnvOptionParser() *EnvOptionParser {
 	return &EnvOptionParser{}
 }
 
+var (
+	fAgentServerAddr       = kingpin.Flag("AgentServerAddr", "").Envar(EnvKeyAgentHost).Default(agent.DefaultAgentAddr).IP()
+	fAgentServerPort       = kingpin.Flag("AgentServerPort", "").Envar(EnvKeyAgentPort).Default(agent.DefaultAgentPort).Int()
+	fAgentSecurityShutdown = kingpin.Flag("AgentSecurityShutdown", "").Envar(EnvKeyAgentSecurityShutdown).Default(agent.DefaultAgentSecurityShutdown).Duration()
+	fClusterAddress        = kingpin.Flag("ClusterAddress", "").Envar(EnvKeyClusterAddr).String()
+	fSharedSecret          = kingpin.Flag("SharedSecret", "").Envar(EnvKeyAgentSecret).String()
+	fLogLevel              = kingpin.Flag("LogLevel", "").Envar(EnvKeyLogLevel).Default(agent.DefaultLogLevel).Enum("INFO", "")
+
+	// Edge mode
+	fEdgeMode              = kingpin.Flag("EdgeMode", "").Envar(EnvKeyEdge).Bool()
+	fEdgeKey               = kingpin.Flag("EdgeKey", "").Envar(EnvKeyEdgeKey).String()
+	fEdgeID                = kingpin.Flag("EdgeID", "").Envar(EnvKeyEdgeID).String()
+	fEdgeServerAddr        = kingpin.Flag("EdgeServerAddr", "").Envar(EnvKeyEdgeServerHost).Default(agent.DefaultEdgeServerAddr).IP()
+	fEdgeServerPort        = kingpin.Flag("EdgeServerPort", "").Envar(EnvKeyEdgeServerPort).Default(agent.DefaultEdgeServerPort).Int()
+	fEdgeInactivityTimeout = kingpin.Flag("EdgeInactivityTimeout", "").Envar(EnvKeyEdgeInactivityTimeout).Default(agent.DefaultEdgeSleepInterval).String()
+	fEdgeInsecurePoll      = kingpin.Flag("EdgeInsecurePoll", "").Envar(EnvKeyEdgeInsecurePoll).Bool()
+)
+
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
-	options := &agent.Options{
-		AgentServerAddr:       agent.DefaultAgentAddr,
-		AgentServerPort:       agent.DefaultAgentPort,
-		ClusterAddress:        os.Getenv(EnvKeyClusterAddr),
-		HostManagementEnabled: true,
-		SharedSecret:          os.Getenv(EnvKeyAgentSecret),
-		EdgeID:                os.Getenv(EnvKeyEdgeID),
-		EdgeServerAddr:        agent.DefaultEdgeServerAddr,
-		EdgeServerPort:        agent.DefaultEdgeServerPort,
-		EdgeInactivityTimeout: agent.DefaultEdgeSleepInterval,
-		EdgeInsecurePoll:      false,
-		LogLevel:              agent.DefaultLogLevel,
-	}
-
-	agentSecurityShutdown, err := parseAgentSecurityShutdown()
-	if err != nil {
-		return nil, err
-	}
-
-	options.AgentSecurityShutdown = agentSecurityShutdown
-
-	if os.Getenv(EnvKeyCapHostManagement) != "" {
-		log.Println("[WARN] [os,options] [message: the CAP_HOST_MANAGEMENT environment variable is deprecated and will likely be removed in a future version of Portainer agent]")
-	}
-
-	if os.Getenv(EnvKeyEdge) == "1" {
-		options.EdgeMode = true
-	}
-
-	if os.Getenv(EnvKeyEdgeInsecurePoll) == "1" {
-		options.EdgeInsecurePoll = true
-	}
-
-	if options.EdgeMode && options.EdgeID == "" {
-		return nil, errors.New("missing mandatory " + EnvKeyEdgeID + " environment variable")
-	}
-
-	agentAddrEnv := os.Getenv(EnvKeyAgentHost)
-	if agentAddrEnv != "" {
-		options.AgentServerAddr = agentAddrEnv
-	}
-
-	agentPortEnv := os.Getenv(EnvKeyAgentPort)
-	if agentPortEnv != "" {
-		_, err := strconv.Atoi(agentPortEnv)
-		if err != nil {
-			return nil, errors.New("invalid port format in " + EnvKeyAgentPort + " environment variable")
-		}
-		options.AgentServerPort = agentPortEnv
-	}
-
-	edgeAddrEnv := os.Getenv(EnvKeyEdgeServerHost)
-	if edgeAddrEnv != "" {
-		options.EdgeServerAddr = edgeAddrEnv
-	}
-
-	edgePortEnv := os.Getenv(EnvKeyEdgeServerPort)
-	if edgePortEnv != "" {
-		_, err := strconv.Atoi(edgePortEnv)
-		if err != nil {
-			return nil, errors.New("invalid port format in " + EnvKeyEdgeServerPort + " environment variable")
-		}
-		options.EdgeServerPort = edgePortEnv
-	}
-
-	edgeKeyEnv := os.Getenv(EnvKeyEdgeKey)
-	if edgeKeyEnv != "" {
-		options.EdgeKey = edgeKeyEnv
-	}
-
-	edgeSleepIntervalEnv := os.Getenv(EnvKeyEdgeInactivityTimeout)
-	if edgeSleepIntervalEnv != "" {
-		_, err := time.ParseDuration(edgeSleepIntervalEnv)
-		if err != nil {
-			return nil, errors.New("invalid time duration format in " + EnvKeyEdgeInactivityTimeout + " environment variable")
-		}
-		options.EdgeInactivityTimeout = edgeSleepIntervalEnv
-	}
-
-	logLevelEnv := os.Getenv(EnvKeyLogLevel)
-	if logLevelEnv != "" {
-		options.LogLevel = logLevelEnv
-	}
-
-	return options, nil
-}
-
-func parseAgentSecurityShutdown() (time.Duration, error) {
-	agentSecurityShutdownStr := agent.DefaultAgentSecurityShutdown
-	if value := os.Getenv(EnvKeyAgentSecurityShutdown); value != "" {
-		agentSecurityShutdownStr = value
-	}
-
-	duration, err := time.ParseDuration(agentSecurityShutdownStr)
-	if err != nil {
-		return time.Second, errors.New("invalid time duration format in " + EnvKeyAgentSecurityShutdown + " environment variable")
-	}
-
-	return duration, nil
+	kingpin.Parse()
+	return &agent.Options{
+		AgentServerAddr:       fAgentServerAddr.String(),
+		AgentServerPort:       strconv.Itoa(*fAgentServerPort),
+		AgentSecurityShutdown: *fAgentSecurityShutdown,
+		ClusterAddress:        *fClusterAddress,
+		HostManagementEnabled: true, // TODO: is this a constant? can we get rid of it?
+		SharedSecret:          *fSharedSecret,
+		EdgeMode:              *fEdgeMode,
+		EdgeKey:               *fEdgeKey,
+		EdgeID:                *fEdgeID,
+		EdgeServerAddr:        fEdgeServerAddr.String(), // TODO: really, an agent can't be both edge and non-edge, so we don't need both AgentServerAddr and EdgeServerAddr ?
+		EdgeServerPort:        strconv.Itoa(*fEdgeServerPort),
+		EdgeInactivityTimeout: *fEdgeInactivityTimeout,
+		EdgeInsecurePoll:      *fEdgeInsecurePoll,
+		LogLevel:              *fLogLevel,
+	}, nil
 }
