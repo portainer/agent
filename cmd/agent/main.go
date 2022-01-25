@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	http2 "github.com/portainer/agent/edge/http"
 	"log"
 	gohttp "net/http"
 	goos "os"
@@ -267,7 +268,7 @@ func parseOptions() (*agent.Options, error) {
 }
 
 func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
-	edgeServer := http.NewEdgeServer(edgeManager)
+	edgeServer := http2.NewEdgeServer(edgeManager)
 
 	go func() {
 		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", serverAddr, serverPort)
