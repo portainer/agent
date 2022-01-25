@@ -91,12 +91,12 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	if !h.securedProtocol && !h.edgeManager.IsKeySet() {
+	if !h.securedProtocol && !(h.edgeManager != nil && h.edgeManager.IsKeySet()) {
 		httperror.WriteError(rw, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
 		return
 	}
 
-	if h.edgeManager.IsEdgeModeEnabled() {
+	if h.edgeManager != nil {
 		h.edgeManager.ResetActivityTimer()
 	}
 
