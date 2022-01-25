@@ -38,7 +38,7 @@ type PollService struct {
 	endpointID              string
 	tunnelServerAddr        string
 	tunnelServerFingerprint string
-	logsManager             *logsManager
+	logsManager             *scheduler.LogsManager
 	containerPlatform       agent.ContainerPlatform
 }
 
@@ -56,7 +56,7 @@ type pollServiceConfig struct {
 }
 
 // newPollService returns a pointer to a new instance of PollService
-func newPollService(edgeStackManager *StackManager, logsManager *logsManager, config *pollServiceConfig) (*PollService, error) {
+func newPollService(edgeStackManager *StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ func (service *PollService) poll() error {
 		}
 	}
 
-	service.logsManager.handleReceivedLogsRequests(logsToCollect)
+	service.logsManager.HandleReceivedLogsRequests(logsToCollect)
 
 	if responseData.CheckinInterval != service.pollIntervalInSeconds {
 		log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
