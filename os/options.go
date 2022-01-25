@@ -56,7 +56,6 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		AgentServerPort:       strconv.Itoa(*fAgentServerPort),
 		AgentSecurityShutdown: *fAgentSecurityShutdown,
 		ClusterAddress:        *fClusterAddress,
-		HostManagementEnabled: true, // TODO: is this a constant? can we get rid of it?
 		SharedSecret:          *fSharedSecret,
 		EdgeMode:              *fEdgeMode,
 		EdgeKey:               *fEdgeKey,
