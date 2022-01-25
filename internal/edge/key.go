@@ -20,15 +20,26 @@ type edgeKey struct {
 
 // SetKey parses and associates an Edge key to the agent.
 // If the agent is running inside a Swarm cluster, it will also set the "set" flag to specify that a key is set on this agent in the cluster.
+// Don't overwrite the file if it exists - this only appears to work, because our container runs as root
 func (manager *Manager) SetKey(key string) error {
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
 		return err
 	}
 
-	err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
-	if err != nil {
-		return err
+	// TODO: yeah, we don't know if we got it from the fs, so lets try again :/
+	keyRetrieval, _ := retrieveEdgeKeyFromFilesystem()
+	if keyRetrieval == "" {
+		// key not previously saved
+		err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
+		if err != nil {
+			return err
+		}
+		keyRetrieval = key
+	}
+	if keyRetrieval != key {
+		// TODO: ok, I'm not sure if it should die, or delete the file and re-write it.
+		log.Fatalf("EdgeKey modified from %s to %s", keyRetrieval, key)
 	}
 
 	manager.key = edgeKey
