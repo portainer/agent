@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/http/handler"
-	"github.com/portainer/agent/internal/edge"
 	"github.com/portainer/agent/kubernetes"
 )
 

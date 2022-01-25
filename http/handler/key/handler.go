@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/http/security"
-	"github.com/portainer/agent/internal/edge"
 	httperror "github.com/portainer/libhttp/error"
 )
 
