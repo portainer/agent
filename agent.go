@@ -60,7 +60,7 @@ type (
 		AgentServerPort       string
 		AgentSecurityShutdown time.Duration
 		ClusterAddress        string
-		HostManagementEnabled bool
+		//HostManagementEnabled bool
 		SharedSecret          string
 		EdgeMode              bool
 		EdgeKey               string
