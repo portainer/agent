@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/exec"
 	httpagenthandler "github.com/portainer/agent/http/handler/agent"
 	"github.com/portainer/agent/http/handler/browse"
@@ -21,7 +22,6 @@ import (
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
-	"github.com/portainer/agent/internal/edge"
 	kubecli "github.com/portainer/agent/kubernetes"
 	httperror "github.com/portainer/libhttp/error"
 )
