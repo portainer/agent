@@ -41,7 +41,7 @@ type Handler struct {
 	hostHandler            *host.Handler
 	pingHandler            *ping.Handler
 	securedProtocol        bool
-	edgeManager            *edge.Manager
+	edgeManager            *edge.Manager // TODO: I suspect we should not store this here
 	containerPlatform      agent.ContainerPlatform
 }
 
