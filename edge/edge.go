@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/portainer/agent/edge/scheduler"
+	"github.com/portainer/agent/edge/stack"
 	"log"
 	"time"
 
@@ -22,7 +23,7 @@ type (
 		logsManager       *scheduler.LogsManager
 		pollService       *PollService
 		pollServiceConfig *pollServiceConfig
-		stackManager      *StackManager
+		stackManager      *stack.StackManager
 	}
 
 	// ManagerParameters represents an object used to create a Manager
@@ -69,7 +70,7 @@ func (manager *Manager) Start() error {
 
 	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll)
 
-	stackManager, err := newStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	stackManager, err := stack.NewStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
 	if err != nil {
 		return err
 	}
@@ -138,13 +139,13 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 					return
 				}
 
-				err = manager.stackManager.setEngineStatus(engineTypeKubernetes)
+				err = manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
 				if err != nil {
 					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
 					return
 				}
 
-				err = manager.stackManager.start()
+				err = manager.stackManager.Start()
 				if err != nil {
 					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
 					return
@@ -185,9 +186,9 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 	log.Printf("[DEBUG] [internal,edge,runtime,docker] [message: Docker runtime configuration check] [engine_status: %d] [leader_node: %t]", runtimeConfiguration.DockerConfiguration.EngineStatus, agentRunsOnLeaderNode)
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
-		engineStatus := engineTypeDockerStandalone
+		engineStatus := stack.EngineTypeDockerStandalone
 		if agentRunsOnSwarm {
-			engineStatus = engineTypeDockerSwarm
+			engineStatus = stack.EngineTypeDockerSwarm
 		}
 
 		err = manager.pollService.start()
@@ -195,12 +196,12 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 			return err
 		}
 
-		err = manager.stackManager.setEngineStatus(engineStatus)
+		err = manager.stackManager.SetEngineStatus(engineStatus)
 		if err != nil {
 			return err
 		}
 
-		err = manager.stackManager.start()
+		err = manager.stackManager.Start()
 		if err != nil {
 			return err
 		}
@@ -211,7 +212,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 			return err
 		}
 
-		err = manager.stackManager.stop()
+		err = manager.stackManager.Stop()
 		if err != nil {
 			return err
 		}

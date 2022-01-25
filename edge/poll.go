@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/portainer/agent/edge/scheduler"
+	"github.com/portainer/agent/edge/stack"
 	"log"
 	"net/http"
 	"strconv"
@@ -33,7 +34,7 @@ type PollService struct {
 	scheduleManager         agent.Scheduler
 	lastActivity            time.Time
 	refreshSignal           chan struct{}
-	edgeStackManager        *StackManager
+	edgeStackManager        *stack.StackManager
 	portainerURL            string
 	endpointID              string
 	tunnelServerAddr        string
@@ -56,7 +57,7 @@ type pollServiceConfig struct {
 }
 
 // newPollService returns a pointer to a new instance of PollService
-func newPollService(edgeStackManager *StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig) (*PollService, error) {
+func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -308,7 +309,7 @@ func (service *PollService) poll() error {
 			stacks[stack.ID] = stack.Version
 		}
 
-		err := service.edgeStackManager.updateStacksStatus(stacks)
+		err := service.edgeStackManager.UpdateStacksStatus(stacks)
 		if err != nil {
 			log.Printf("[ERROR] [internal,edge,stack] [message: an error occurred during stack management] [error: %s]", err)
 			return err

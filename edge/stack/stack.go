@@ -1,4 +1,4 @@
-package edge
+package stack
 
 import (
 	"context"
@@ -56,9 +56,9 @@ type engineType int
 
 const (
 	_ engineType = iota
-	engineTypeDockerStandalone
-	engineTypeDockerSwarm
-	engineTypeKubernetes
+	EngineTypeDockerStandalone
+	EngineTypeDockerSwarm
+	EngineTypeKubernetes
 )
 
 // StackManager represents a service for managing Edge stacks
@@ -73,8 +73,8 @@ type StackManager struct {
 	httpClient   *client.PortainerClient
 }
 
-// newStackManager returns a pointer to a new instance of StackManager
-func newStackManager(portainerURL, endpointID, edgeID string, insecurePoll bool) (*StackManager, error) {
+// NewStackManager returns a pointer to a new instance of StackManager
+func NewStackManager(portainerURL, endpointID, edgeID string, insecurePoll bool) (*StackManager, error) {
 	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll)
 
 	stackManager := &StackManager{
@@ -86,7 +86,7 @@ func newStackManager(portainerURL, endpointID, edgeID string, insecurePoll bool)
 	return stackManager, nil
 }
 
-func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
+func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 	if !manager.isEnabled {
 		return nil
 	}
@@ -122,7 +122,7 @@ func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
 
 		folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 		fileName := "docker-compose.yml"
-		if manager.engineType == engineTypeKubernetes {
+		if manager.engineType == EngineTypeKubernetes {
 			fileName = fmt.Sprintf("%s.yml", stack.Name)
 		}
 
@@ -155,7 +155,7 @@ func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
 	return nil
 }
 
-func (manager *StackManager) stop() error {
+func (manager *StackManager) Stop() error {
 	if manager.stopSignal != nil {
 		close(manager.stopSignal)
 		manager.stopSignal = nil
@@ -165,7 +165,7 @@ func (manager *StackManager) stop() error {
 	return nil
 }
 
-func (manager *StackManager) start() error {
+func (manager *StackManager) Start() error {
 	if manager.stopSignal != nil {
 		return nil
 	}
@@ -218,14 +218,14 @@ func (manager *StackManager) next() *edgeStack {
 	return nil
 }
 
-func (manager *StackManager) setEngineStatus(engineStatus engineType) error {
+func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
 	if engineStatus == manager.engineType {
 		return nil
 	}
 
 	manager.engineType = engineStatus
 
-	err := manager.stop()
+	err := manager.Stop()
 	if err != nil {
 		return err
 	}
@@ -283,11 +283,11 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 
 func buildDeployerService(engineStatus engineType) (agent.Deployer, error) {
 	switch engineStatus {
-	case engineTypeDockerStandalone:
+	case EngineTypeDockerStandalone:
 		return exec.NewDockerComposeStackService(agent.DockerBinaryPath)
-	case engineTypeDockerSwarm:
+	case EngineTypeDockerSwarm:
 		return exec.NewDockerSwarmStackService(agent.DockerBinaryPath)
-	case engineTypeKubernetes:
+	case EngineTypeKubernetes:
 		return exec.NewKubernetesDeployer(agent.DockerBinaryPath), nil
 	}
 
