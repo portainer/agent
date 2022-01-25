@@ -16,7 +16,6 @@ type (
 		advertiseAddr     string
 		agentOptions      *agent.Options
 		clusterService    agent.ClusterService
-		edgeMode          bool
 		dockerInfoService agent.DockerInfoService
 		key               *edgeKey
 		logsManager       *logsManager
@@ -42,7 +41,6 @@ func NewManager(parameters *ManagerParameters) *Manager {
 		dockerInfoService: parameters.DockerInfoService,
 		agentOptions:      parameters.Options,
 		advertiseAddr:     parameters.AdvertiseAddr,
-		edgeMode:          parameters.Options.EdgeMode,
 		containerPlatform: parameters.ContainerPlatform,
 	}
 }
@@ -95,7 +93,7 @@ func (manager *Manager) Start() error {
 
 // IsEdgeModeEnabled returns true if edge mode is enabled
 func (manager *Manager) IsEdgeModeEnabled() bool {
-	return manager.edgeMode
+	return manager.agentOptions.EdgeMode
 }
 
 // ResetActivityTimer resets the activity timer
