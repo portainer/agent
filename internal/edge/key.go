@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/portainer/agent"
@@ -132,4 +133,72 @@ func encodeKey(edgeKey *edgeKey) string {
 	keyInfo := fmt.Sprintf("%s|%s|%s|%s", edgeKey.PortainerInstanceURL, edgeKey.TunnelServerAddr, edgeKey.TunnelServerFingerprint, edgeKey.EndpointID)
 	encodedKey := base64.RawStdEncoding.EncodeToString([]byte(keyInfo))
 	return encodedKey
+}
+
+func RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (string, error) {
+
+	if edgeKey != "" {
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from options]")
+		return edgeKey, nil
+	}
+
+	var keyRetrievalError error
+
+	edgeKey, keyRetrievalError = retrieveEdgeKeyFromFilesystem()
+	if keyRetrievalError != nil {
+		return "", keyRetrievalError
+	}
+
+	if edgeKey == "" && clusterService != nil {
+		edgeKey, keyRetrievalError = retrieveEdgeKeyFromCluster(clusterService)
+		if keyRetrievalError != nil {
+			return "", keyRetrievalError
+		}
+	}
+
+	return edgeKey, nil
+}
+
+func retrieveEdgeKeyFromFilesystem() (string, error) {
+	var edgeKey string
+
+	edgeKeyFilePath := fmt.Sprintf("%s/%s", agent.DataDirectory, agent.EdgeKeyFile)
+
+	keyFileExists, err := filesystem.FileExists(edgeKeyFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	if keyFileExists {
+		filesystemKey, err := filesystem.ReadFromFile(edgeKeyFilePath)
+		if err != nil {
+			return "", err
+		}
+
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
+		edgeKey = string(filesystemKey)
+	}
+
+	return edgeKey, nil
+}
+
+func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, error) {
+	var edgeKey string
+
+	member := clusterService.GetMemberWithEdgeKeySet()
+	if member != nil {
+		httpCli := client.NewAPIClient()
+
+		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
+		memberKey, err := httpCli.GetEdgeKey(memberAddr)
+		if err != nil {
+			log.Printf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
+			return "", err
+		}
+
+		log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
+		edgeKey = memberKey
+	}
+
+	return edgeKey, nil
 }
