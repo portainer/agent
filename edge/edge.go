@@ -3,6 +3,7 @@ package edge
 import (
 	"errors"
 	"fmt"
+	"github.com/portainer/agent/edge/scheduler"
 	"log"
 	"time"
 
@@ -18,7 +19,7 @@ type (
 		clusterService    agent.ClusterService
 		dockerInfoService agent.DockerInfoService
 		key               *edgeKey
-		logsManager       *logsManager
+		logsManager       *scheduler.LogsManager
 		pollService       *PollService
 		pollServiceConfig *pollServiceConfig
 		stackManager      *StackManager
@@ -74,8 +75,8 @@ func (manager *Manager) Start() error {
 	}
 	manager.stackManager = stackManager
 
-	manager.logsManager = newLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
-	manager.logsManager.start()
+	manager.logsManager = scheduler.NewLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	manager.logsManager.Start()
 
 	pollService, err := newPollService(manager.stackManager, manager.logsManager, pollServiceConfig)
 	if err != nil {
