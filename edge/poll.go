@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/portainer/agent/edge/scheduler"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
-	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/libcrypto"
 )
 
@@ -74,7 +74,7 @@ func newPollService(edgeStackManager *StackManager, logsManager *logsManager, co
 		insecurePoll:            config.InsecurePoll,
 		inactivityTimeout:       inactivityTimeout,
 		tunnelClient:            chisel.NewClient(),
-		scheduleManager:         filesystem.NewCronManager(),
+		scheduleManager:         scheduler.NewCronManager(),
 		refreshSignal:           nil,
 		edgeStackManager:        edgeStackManager,
 		portainerURL:            config.PortainerURL,
