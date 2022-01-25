@@ -178,16 +178,17 @@ func main() {
 	// !Security
 
 	// Edge
-	edgeManagerParameters := &edge.ManagerParameters{
-		Options:           options,
-		AdvertiseAddr:     advertiseAddr,
-		ClusterService:    clusterService,
-		DockerInfoService: dockerInfoService,
-		ContainerPlatform: containerPlatform,
-	}
-	edgeManager := edge.NewManager(edgeManagerParameters)
-
+	var edgeManager *edge.Manager
 	if options.EdgeMode {
+		edgeManagerParameters := &edge.ManagerParameters{
+			Options:           options,
+			AdvertiseAddr:     advertiseAddr,
+			ClusterService:    clusterService,
+			DockerInfoService: dockerInfoService,
+			ContainerPlatform: containerPlatform,
+		}
+		edgeManager = edge.NewManager(edgeManagerParameters)
+
 		edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, clusterService)
 		if err != nil {
 			log.Printf("[ERROR] [main,edge] [message: Unable to retrieve Edge key] [error: %s]", err)
@@ -196,6 +197,7 @@ func main() {
 		if edgeKey != "" {
 			log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key]")
 
+			// TODO: this fails when RetreiveEdgeKey came from an existing file, as mode 0444 can't be written to - unless you're root...
 			err := edgeManager.SetKey(edgeKey)
 			if err != nil {
 				log.Fatalf("[ERROR] [main,edge] [message: Unable to associate Edge key] [error: %s]", err)
@@ -231,7 +233,7 @@ func main() {
 		ContainerPlatform:    containerPlatform,
 	}
 
-	if edgeManager.IsEdgeModeEnabled() {
+	if options.EdgeMode {
 		config.Addr = advertiseAddr
 	}
 
@@ -252,7 +254,7 @@ func main() {
 func startAPIServer(config *http.APIServerConfig) error {
 	server := http.NewAPIServer(config)
 
-	if config.EdgeManager.IsEdgeModeEnabled() {
+	if config.EdgeManager != nil {
 		return server.StartUnsecured()
 	}
 

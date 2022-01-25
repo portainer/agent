@@ -91,11 +91,6 @@ func (manager *Manager) Start() error {
 	return nil
 }
 
-// IsEdgeModeEnabled returns true if edge mode is enabled
-func (manager *Manager) IsEdgeModeEnabled() bool {
-	return manager.agentOptions.EdgeMode
-}
-
 // ResetActivityTimer resets the activity timer
 func (manager *Manager) ResetActivityTimer() {
 	manager.pollService.resetActivityTimer()
