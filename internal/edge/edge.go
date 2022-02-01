@@ -61,6 +61,7 @@ func (manager *Manager) Start() error {
 		PollFrequency:           agent.DefaultEdgePollInterval,
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
 		InsecurePoll:            manager.agentOptions.EdgeInsecurePoll,
+		TunnelDisabled:          manager.agentOptions.EdgeTunnelDisabled,
 		PortainerURL:            manager.key.PortainerInstanceURL,
 		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
@@ -68,15 +69,15 @@ func (manager *Manager) Start() error {
 		ContainerPlatform:       manager.containerPlatform,
 	}
 
-	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll)
+	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll, pollServiceConfig.TunnelDisabled)
 
-	stackManager, err := newStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	stackManager, err := newStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll, pollServiceConfig.TunnelDisabled)
 	if err != nil {
 		return err
 	}
 	manager.stackManager = stackManager
 
-	manager.logsManager = newLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	manager.logsManager = newLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll, pollServiceConfig.TunnelDisabled)
 	manager.logsManager.start()
 
 	pollService, err := newPollService(manager.stackManager, manager.logsManager, pollServiceConfig)
