@@ -47,6 +47,7 @@ func NewPortainerClient(serverAddress, endpointID, edgeID string, insecurePoll b
 type stackConfigResponse struct {
 	Name             string
 	StackFileContent string
+	ImageMapping     map[string]string // a map of stackfile image to imageCache url(with sha)
 }
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
@@ -77,7 +78,7 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeS
 		return nil, err
 	}
 
-	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent}, nil
+	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent, ImageMapping: data.ImageMapping}, nil
 }
 
 type setEdgeStackStatusPayload struct {
