@@ -69,7 +69,7 @@ type (
 		EdgeServerPort        string
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
-		EdgeTunnelDisabled    bool
+		EdgeTunnel            bool
 		LogLevel              string
 	}
 
