@@ -2,9 +2,10 @@ package scheduler
 
 import (
 	"fmt"
-	"github.com/portainer/agent/edge/client"
 	"log"
 	"time"
+
+	"github.com/portainer/agent/edge/client"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
@@ -25,9 +26,7 @@ const (
 	logFailed
 )
 
-func NewLogsManager(portainerURL, endpointID, edgeID string, insecurePoll bool) *LogsManager {
-	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll)
-
+func NewLogsManager(cli *client.PortainerClient) *LogsManager {
 	return &LogsManager{
 		httpClient: cli,
 		stopSignal: nil,

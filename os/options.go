@@ -47,6 +47,11 @@ var (
 	fEdgeServerPort        = kingpin.Flag("EdgeServerPort", EnvKeyEdgeServerPort+" port on which the Edge UI will be exposed (default to 80)").Envar(EnvKeyEdgeServerPort).Default(agent.DefaultEdgeServerPort).Int()
 	fEdgeInactivityTimeout = kingpin.Flag("EdgeInactivityTimeout", EnvKeyEdgeInactivityTimeout+" timeout used by the agent to close the reverse tunnel after inactivity (default to 5m)").Envar(EnvKeyEdgeInactivityTimeout).Default(agent.DefaultEdgeSleepInterval).String()
 	fEdgeInsecurePoll      = kingpin.Flag("EdgeInsecurePoll", EnvKeyEdgeInsecurePoll+" enable this option if you need the agent to poll a HTTPS Portainer instance with self-signed certificates. Disabled by default, set to 1 to enable it").Envar(EnvKeyEdgeInsecurePoll).Bool()
+
+	// mTLS edge agent certs
+	fSSLCert   = kingpin.Flag("sslcert", "Path to the SSL certificate used to identify the agent to Portainer").String()
+	fSSLKey    = kingpin.Flag("sslkey", "Path to the SSL key used to identify the agent to Portainer").String()
+	fSSLCacert = kingpin.Flag("sslcacert", "Path to the SSL CA certificate used to validate the Portainer server").String()
 )
 
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
@@ -65,5 +70,8 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeInactivityTimeout: *fEdgeInactivityTimeout,
 		EdgeInsecurePoll:      *fEdgeInsecurePoll,
 		LogLevel:              *fLogLevel,
+		SSLCert:               *fSSLCert,
+		SSLKey:                *fSSLKey,
+		SSLCacert:             *fSSLCacert,
 	}, nil
 }

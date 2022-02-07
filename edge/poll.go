@@ -1,17 +1,17 @@
 package edge
 
 import (
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/portainer/agent/edge/scheduler"
-	"github.com/portainer/agent/edge/stack"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/portainer/agent/edge/scheduler"
+	"github.com/portainer/agent/edge/stack"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
@@ -26,7 +26,6 @@ const tunnelActivityCheckInterval = 30 * time.Second
 type PollService struct {
 	apiServerAddr           string
 	pollIntervalInSeconds   float64
-	insecurePoll            bool
 	inactivityTimeout       time.Duration
 	edgeID                  string
 	httpClient              *http.Client
@@ -44,11 +43,11 @@ type PollService struct {
 }
 
 type pollServiceConfig struct {
-	APIServerAddr           string
-	EdgeID                  string
-	InactivityTimeout       string
-	PollFrequency           string
-	InsecurePoll            bool
+	APIServerAddr     string
+	EdgeID            string
+	InactivityTimeout string
+	PollFrequency     string
+	//InsecurePoll            bool
 	PortainerURL            string
 	EndpointID              string
 	TunnelServerAddr        string
@@ -57,7 +56,7 @@ type pollServiceConfig struct {
 }
 
 // newPollService returns a pointer to a new instance of PollService
-func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig) (*PollService, error) {
+func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, httpClient *http.Client) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -72,7 +71,6 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		apiServerAddr:           config.APIServerAddr,
 		edgeID:                  config.EdgeID,
 		pollIntervalInSeconds:   pollFrequency.Seconds(),
-		insecurePoll:            config.InsecurePoll,
 		inactivityTimeout:       inactivityTimeout,
 		tunnelClient:            chisel.NewClient(),
 		scheduleManager:         scheduler.NewCronManager(),
@@ -84,6 +82,7 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		tunnelServerFingerprint: config.TunnelServerFingerprint,
 		logsManager:             logsManager,
 		containerPlatform:       config.ContainerPlatform,
+		httpClient:              httpClient, //client.GetNewHttpClient(clientDefaultPollTimeout, config.InsecurePoll),
 	}, nil
 }
 
@@ -204,22 +203,6 @@ type pollStatusResponse struct {
 	Stacks          []stackStatus    `json:"stacks"`
 }
 
-func (service *PollService) createHTTPClient(timeout float64) {
-	httpCli := &http.Client{
-		Timeout: time.Duration(timeout) * time.Second,
-	}
-
-	if service.insecurePoll {
-		httpCli.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
-	}
-
-	service.httpClient = httpCli
-}
-
 func (service *PollService) poll() error {
 
 	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", service.portainerURL, service.endpointID)
@@ -239,10 +222,6 @@ func (service *PollService) poll() error {
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
 
 	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(agentPlatformIdentifier)))
-
-	if service.httpClient == nil {
-		service.createHTTPClient(clientDefaultPollTimeout)
-	}
 
 	resp, err := service.httpClient.Do(req)
 	if err != nil {
@@ -299,7 +278,7 @@ func (service *PollService) poll() error {
 	if responseData.CheckinInterval != service.pollIntervalInSeconds {
 		log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
 		service.pollIntervalInSeconds = responseData.CheckinInterval
-		service.createHTTPClient(responseData.CheckinInterval)
+		service.httpClient.Timeout = time.Duration(responseData.CheckinInterval) * time.Second
 		go service.restartStatusPollLoop()
 	}
 

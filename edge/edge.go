@@ -1,12 +1,18 @@
 package edge
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
-	"log"
-	"time"
 
 	"github.com/portainer/agent"
 )
@@ -60,7 +66,6 @@ func (manager *Manager) Start() error {
 		EdgeID:                  manager.agentOptions.EdgeID,
 		PollFrequency:           agent.DefaultEdgePollInterval,
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
-		InsecurePoll:            manager.agentOptions.EdgeInsecurePoll,
 		PortainerURL:            manager.key.PortainerInstanceURL,
 		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
@@ -68,18 +73,37 @@ func (manager *Manager) Start() error {
 		ContainerPlatform:       manager.containerPlatform,
 	}
 
-	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll)
+	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll)
 
-	stackManager, err := stack.NewStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	stackManager, err := stack.NewStackManager(
+		client.NewPortainerClient(
+			manager.key.PortainerInstanceURL,
+			manager.key.EndpointID,
+			manager.agentOptions.EdgeID,
+			GetNewHttpClient(10, manager.agentOptions),
+		),
+	)
 	if err != nil {
 		return err
 	}
 	manager.stackManager = stackManager
 
-	manager.logsManager = scheduler.NewLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	manager.logsManager = scheduler.NewLogsManager(
+		client.NewPortainerClient(
+			manager.key.PortainerInstanceURL,
+			manager.key.EndpointID,
+			manager.agentOptions.EdgeID,
+			GetNewHttpClient(10, manager.agentOptions),
+		),
+	)
 	manager.logsManager.Start()
 
-	pollService, err := newPollService(manager.stackManager, manager.logsManager, pollServiceConfig)
+	pollService, err := newPollService(
+		manager.stackManager,
+		manager.logsManager,
+		pollServiceConfig,
+		GetNewHttpClient(clientDefaultPollTimeout, manager.agentOptions),
+	)
 	if err != nil {
 		return err
 	}
@@ -219,4 +243,47 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 	}
 
 	return nil
+}
+
+func GetNewHttpClient(timeout float64, options *agent.Options) *http.Client {
+	httpCli := &http.Client{
+		Timeout: time.Duration(timeout) * time.Second,
+	}
+
+	if options.EdgeInsecurePoll {
+		httpCli.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+
+	// if ssl certs for edge agent are set
+	if options.SSLCert != "" && options.SSLKey != "" {
+		// Read the key pair to create certificate
+		cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var caCertPool *x509.CertPool
+		// Create a CA certificate pool and add cert.pem to it
+		if options.SSLCacert != "" {
+			caCert, err := ioutil.ReadFile(options.SSLCacert)
+			if err != nil {
+				log.Fatal(err)
+			}
+			caCertPool = x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+		}
+
+		// Create a HTTPS client and supply the created CA pool and certificate
+		httpCli.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs:      caCertPool,
+				Certificates: []tls.Certificate{cert},
+			},
+		}
+	}
+	return httpCli
 }

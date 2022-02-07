@@ -70,6 +70,9 @@ type (
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
 		LogLevel              string
+		SSLCert               string
+		SSLKey                string
+		SSLCacert             string
 	}
 
 	// PciDevice is the representation of a physical pci device on a host
