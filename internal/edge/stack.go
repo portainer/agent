@@ -11,6 +11,7 @@ import (
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/http/client"
+	"github.com/portainer/agent/nomad"
 )
 
 type edgeStackID int
@@ -60,6 +61,7 @@ const (
 	engineTypeDockerStandalone
 	engineTypeDockerSwarm
 	engineTypeKubernetes
+	engineTypeNomad
 )
 
 // StackManager represents a service for managing Edge stacks
@@ -129,6 +131,9 @@ func (manager *StackManager) updateStacksStatus(stacks map[int]int) error {
 		fileName := "docker-compose.yml"
 		if manager.engineType == engineTypeKubernetes {
 			fileName = fmt.Sprintf("%s.yml", stack.Name)
+		}
+		if manager.engineType == engineTypeNomad {
+			fileName = fmt.Sprintf("%s.hcl", stack.Name)
 		}
 
 		err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 644)
@@ -304,6 +309,8 @@ func buildDeployerService(engineStatus engineType) (agent.Deployer, error) {
 		return exec.NewDockerSwarmStackService(agent.DockerBinaryPath)
 	case engineTypeKubernetes:
 		return exec.NewKubernetesDeployer(agent.DockerBinaryPath), nil
+	case engineTypeNomad:
+		return nomad.NewDeployer()
 	}
 
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)
