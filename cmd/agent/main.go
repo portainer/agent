@@ -173,7 +173,6 @@ func main() {
 	// !Nomad
 
 	// Security
-
 	signatureService := crypto.NewECDSAService(options.SharedSecret)
 
 	if !options.EdgeMode {
