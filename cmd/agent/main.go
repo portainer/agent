@@ -163,6 +163,15 @@ func main() {
 	}
 	// !Kubernetes
 
+	// Nomad
+	if containerPlatform == agent.PlatformNomad {
+		advertiseAddr, err = net.GetLocalIP()
+		if err != nil {
+			log.Fatalf("[ERROR] [main,nomad] [message: Unable to retrieve local IP associated to the agent] [error: %s]", err)
+		}
+	}
+	// !Nomad
+
 	// Security
 
 	signatureService := crypto.NewECDSAService(options.SharedSecret)
