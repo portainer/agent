@@ -269,6 +269,8 @@ const (
 	PlatformKubernetes
 	// PlatformPodman represent the Podman platform (Standalone)
 	PlatformPodman
+	// PlatformNomad represent the Nomad platform (Standalone)
+	PlatformNomad
 )
 
 const (

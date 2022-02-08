@@ -62,6 +62,7 @@ const (
 	EngineTypeDockerStandalone
 	EngineTypeDockerSwarm
 	EngineTypeKubernetes
+	EngineTypeNomad
 )
 
 // StackManager represents a service for managing Edge stacks
@@ -306,6 +307,8 @@ func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Dep
 		return exec.NewDockerSwarmStackService(assetsPath)
 	case EngineTypeKubernetes:
 		return exec.NewKubernetesDeployer(assetsPath), nil
+	case EngineTypeNomad:
+		return nil, nil
 	}
 
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)
