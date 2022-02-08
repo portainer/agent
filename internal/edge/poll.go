@@ -274,7 +274,7 @@ func (service *PollService) poll() error {
 		}
 	}
 
-	if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() && !service.tunnel {
+	if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() && service.tunnel {
 		log.Println("[DEBUG] [internal,edge,poll] [message: Required status detected, creating reverse tunnel]")
 
 		err := service.createTunnel(responseData.Credentials, responseData.Port)
