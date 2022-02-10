@@ -213,7 +213,7 @@ Once a Portainer instance is registered by the agent, the agent will not try to 
 
 Finally, the agent uses the associated public key and a default message that is known by both entities to verify the signature available in the `X-PortainerAgent-Signature` header.
 
-#### Secret mode (Only for non Edge mode)
+#### Secret mode
 
 When the `AGENT_SECRET` environment variable is set in the execution context of the agent (`-e AGENT_SECRET=mysecret` when started as a container for example), the digital signature verification process will be slightly different.
 
