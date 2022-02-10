@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
+#!/bin/bash
 
-local=0
+# strict mode - based on http://redsymbol.net/articles/unofficial-bash-strict-mode/
+set -euo pipefail
+IFS=$'\n\t'
+
+mode='' # standalone or swarm
 podman=0
-swarm=0
 build=0
 compile=0
-swarm_ips=()
+ips=()
 edge=0
 edge_id=""
 edge_key=""
@@ -42,27 +46,55 @@ function deploy() {
         build "$IMAGE_NAME"
     fi
     
-    
-    if [[ "$local" == "1" ]]; then
-        deploy_local
+    url_prefix=""
+    if [ ${#ips[@]} -ne 0 ]; then
+        url_prefix="-H "${ips[0]}:2375""
     fi
     
-    if [[ "$swarm" == "1" ]]; then
-        deploy_swarm "${swarm_ips[@]}"
+    if [ -z "$mode" ] || [ "$mode" == "standalone" ]; then
+        deploy_standalone "$url_prefix"
+    fi
+    
+    if [[ "$mode" == "swarm" ]]; then
+        deploy_swarm "$url_prefix"
     fi
 }
 
-function deploy_local() {
-    if [[ "$swarm" == "1" ]]; then
-        run_swarm
-        exit 0
+
+function load_image() {
+    local image_name=$1
+    local url_prefix=${2:-''}
+    local node_ips=("${@:3}")
+    
+    if [ -z "$url_prefix" ]; then
+        return 0
     fi
     
-    msg "Running local agent $IMAGE_NAME"
+    msg "Exporting image to machine..."
+    docker save "${image_name}" -o "/tmp/portainer-agent.tar"
     
-    docker rm -f portainer-agent-dev
+    docker "$url_prefix" rmi -f "${IMAGE_NAME}" || true
+    docker "$url_prefix" load -i "/tmp/portainer-agent.tar"
     
-    docker run -d --name portainer-agent-dev \
+    if [ ${#node_ips[@]} -eq 0 ]; then
+        return 0
+    fi
+    
+    for node_ip in "${node_ips[@]}"; do
+        docker -H "${node_ip}:2375" rmi -f "${IMAGE_NAME}" || true
+        docker -H "${node_ip}:2375" load -i "/tmp/portainer-agent.tar"
+    done
+}
+
+function deploy_standalone() {
+    local url_prefix=$1
+    msg "Running standalone agent $IMAGE_NAME"
+    
+    docker "$url_prefix" rm -f portainer-agent-dev
+    
+    load_image "$IMAGE_NAME" "$url_prefix"
+    
+    docker "$url_prefix" run -d --name portainer-agent-dev \
     -e LOG_LEVEL=${LOG_LEVEL} \
     -e EDGE=${edge} \
     -e EDGE_ID="${edge_id}" \
@@ -74,7 +106,7 @@ function deploy_local() {
     -p 80:80 \
     "${IMAGE_NAME}"
     
-    docker logs -f portainer-agent-dev
+    docker "$url_prefix" logs -f portainer-agent-dev
 }
 
 function deploy_podman() {
@@ -100,44 +132,28 @@ function deploy_podman() {
 
 function deploy_swarm() {
     if [ $# -eq 0 ]; then
-        die "Swarm expects at least manager ip"
+        die "Swarm expects a manager ip"
     fi
     
-    run_swarm "$@"
-}
-
-function run_swarm() {
-    local URL_PREFIX=""
-    if [ $# -ne 0 ]; then
-        URL_PREFIX="-H "${1}:2375""
-    fi
+    local url_prefix="$1"
     
     local node_ips=()
-    if [ $# -gt 1 ]; then
+    if [ ${#ips[@]} -gt 1 ]; then
         node_ips=("${@:2}")
     fi
-    
     
     msg "Cleaning..."
     rm "/tmp/portainer-agent.tar" || true
     
-    docker "$URL_PREFIX" service rm portainer-agent-dev || true
-    docker "$URL_PREFIX" network rm portainer-agent-dev-net || true
+    docker "$url_prefix" service rm portainer-agent-dev || true
+    docker "$url_prefix" network rm portainer-agent-dev-net || true
     
-    for node_ip in "${node_ips[@]}"; do
-        docker -H "${node_ip}:2375" rmi -f "${IMAGE_NAME}" || true
-    done
+    load_image "$IMAGE_NAME" "$url_prefix" "${node_ips[@]}"
     
-    msg "Exporting image to Swarm cluster..."
-    docker save "${IMAGE_NAME}" -o "/tmp/portainer-agent.tar"
-    docker "$URL_PREFIX" load -i "/tmp/portainer-agent.tar"
+    sleep 2
     
-    for node_ip in "${node_ips[@]}"; do
-        docker -H "${node_ip}:2375" load -i "/tmp/portainer-agent.tar"
-    done
-    
-    docker "$URL_PREFIX" network create --driver overlay portainer-agent-dev-net
-    docker "$URL_PREFIX" service create --name portainer-agent-dev \
+    docker "$url_prefix" network create --driver overlay portainer-agent-dev-net
+    docker "$url_prefix" service create --name portainer-agent-dev \
     --network portainer-agent-dev-net \
     -e LOG_LEVEL="${LOG_LEVEL}" \
     -e EDGE=${edge} \
@@ -151,7 +167,7 @@ function run_swarm() {
     --publish mode=host,published=80,target=80 \
     "${IMAGE_NAME}"
     
-    docker "$URL_PREFIX" service logs -f portainer-agent-dev
+    docker "$url_prefix" service logs -f portainer-agent-dev
 }
 
 function parse_deploy_params() {
@@ -166,8 +182,8 @@ function parse_deploy_params() {
                 msg "verbose"
                 set -x
             ;;
-            --local) local=1 ;;
-            -s | --swarm) swarm=1 ;;
+            --standalone) mode='standalone' ;;
+            -s | --swarm) mode='swarm' ;;
             -p | --podman) podman=1 ;;
             -c | --compile) compile=1 ;;
             -b | --build) build=1 ;;
@@ -191,7 +207,7 @@ function parse_deploy_params() {
                 shift
             ;;
             --ip)
-                swarm_ips+=("$2")
+                ips+=("$2")
                 shift
             ;;
             -?*) die "Unknown option: $1" ;;
@@ -219,8 +235,7 @@ This script is intended to help with deploying of dev enviroment
 Available flags:
 -h, --help                              Print this help and exit
 -v, --verbose                           Verbose output
---local                                 Deploy to a local docker
--s, --swarm                             Deploy to a swarm cluster
+-s, --swarm                             Deploy to a swarm cluster (by default deploys to standalone)
 -p, --podman                            Deploy to a local podman
 -c, --compile                           Compile the code before deployment (will also build a docker image)
 -b, --build                             Build the image before deployment
@@ -228,7 +243,8 @@ Available flags:
 --edge-e, --edge  [EDGE_ID EDGE_KEY]    Deploy an edge agent
 id EDGE_ID                              Set agent edge id to EDGE_ID (required when using -e without edge-id)
 --edge-key EDGE_KEY                     Set agent edge key to EDGE_KEY
---ip IP                                 Swarm IP, the first will always be the manager ip
+--ip IP                                 can be provided zero, once or more times. for standalone only the first ip is considered
+                                            for swarm the first ip is the manager and the rest are nodes
 EOF
     exit
 }
