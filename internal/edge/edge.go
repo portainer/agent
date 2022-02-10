@@ -77,7 +77,7 @@ func (manager *Manager) Start() error {
 	}
 	manager.stackManager = stackManager
 
-	manager.logsManager = newLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll, pollServiceconfig.Tunnel)
+	manager.logsManager = newLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll, pollServiceConfig.Tunnel)
 	manager.logsManager.start()
 
 	pollService, err := newPollService(manager.stackManager, manager.logsManager, pollServiceConfig)
