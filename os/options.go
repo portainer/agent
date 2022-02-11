@@ -24,6 +24,7 @@ const (
 	EnvKeyEdgeServerPort        = "EDGE_SERVER_PORT"
 	EnvKeyEdgeInactivityTimeout = "EDGE_INACTIVITY_TIMEOUT"
 	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
+	EnvKeyEdgeTunnel            = "EDGE_TUNNEL"
 	EnvKeyLogLevel              = "LOG_LEVEL"
 	EnvKeyDockerBinaryPath      = "DOCKER_BINARY_PATH"
 )
@@ -46,6 +47,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeServerPort:        agent.DefaultEdgeServerPort,
 		EdgeInactivityTimeout: agent.DefaultEdgeSleepInterval,
 		EdgeInsecurePoll:      false,
+		EdgeTunnel:            true,
 		LogLevel:              agent.DefaultLogLevel,
 	}
 
@@ -66,6 +68,10 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 
 	if os.Getenv(EnvKeyEdgeInsecurePoll) == "1" {
 		options.EdgeInsecurePoll = true
+	}
+
+	if os.Getenv(EnvKeyEdgeTunnel) == "0" {
+		options.EdgeTunnel = false
 	}
 
 	if options.EdgeMode && options.EdgeID == "" {
