@@ -128,6 +128,37 @@ func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus i
 	return nil
 }
 
+// DeleteEdgeStackStatus deletes the status of an Edge stack on the Portainer server
+func (client *PortainerClient) DeleteEdgeStackStatus(edgeStackID int) error {
+	endpointID, err := strconv.Atoi(client.endpointID)
+	if err != nil {
+		return err
+	}
+
+	requestURL := fmt.Sprintf("%s/api/edge_stacks/%d/status/%d", client.serverAddress, edgeStackID, endpointID)
+
+	req, err := http.NewRequest(http.MethodDelete, requestURL, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: DeleteEdgeStackStatus operation failed]", resp.StatusCode)
+		return errors.New("DeleteEdgeStackStatus operation failed")
+	}
+
+	return nil
+}
+
 type logFilePayload struct {
 	FileContent string
 }

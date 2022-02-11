@@ -278,6 +278,12 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		return
 	}
 
+	err = manager.httpClient.DeleteEdgeStackStatus(int(stack.ID))
+	if err != nil {
+		log.Printf("[ERROR] [internal,edge,stack] [message: unable to delete Edge stack status] [error: %s]", err)
+		return
+	}
+
 	delete(manager.stacks, stack.ID)
 }
 
