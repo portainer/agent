@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/nomad/api"
 	nomadapi "github.com/hashicorp/nomad/api"
 	"github.com/pkg/errors"
 )
@@ -54,7 +53,7 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 	multiregion := job.IsMultiregion()
 
 	// Set the register options
-	runOpts := &api.RegisterOptions{
+	runOpts := &nomadapi.RegisterOptions{
 		PolicyOverride: false,
 		PreserveCounts: false,
 		EvalPriority:   0,
@@ -91,14 +90,14 @@ func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string) 
 	if len(jobs) == 0 {
 		return errors.New(fmt.Sprintf("no job(s) with prefix or id %s found", jobID))
 	}
-	q := &api.QueryOptions{Namespace: jobs[0].JobSummary.Namespace}
+	q := &nomadapi.QueryOptions{Namespace: jobs[0].JobSummary.Namespace}
 	job, _, err := d.client.Jobs().Info(jobs[0].ID, q)
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve nomad job info")
 	}
 
-	opts := &api.DeregisterOptions{Purge: true}
-	wq := &api.WriteOptions{Namespace: jobs[0].JobSummary.Namespace}
+	opts := &nomadapi.DeregisterOptions{Purge: true}
+	wq := &nomadapi.WriteOptions{Namespace: jobs[0].JobSummary.Namespace}
 	_, _, err = d.client.Jobs().DeregisterOpts(*job.ID, opts, wq)
 	if err != nil {
 		return errors.Wrap(err, "failed to purge nomad job")
