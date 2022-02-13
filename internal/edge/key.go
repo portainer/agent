@@ -27,19 +27,9 @@ func (manager *Manager) SetKey(key string) error {
 		return err
 	}
 
-	// TODO: yeah, we don't know if we got it from the fs, so lets try again :/
-	keyRetrieval, _ := retrieveEdgeKeyFromFilesystem()
-	if keyRetrieval == "" {
-		// key not previously saved
-		err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
-		if err != nil {
-			return err
-		}
-		keyRetrieval = key
-	}
-	if keyRetrieval != key {
-		// TODO: ok, I'm not sure if it should die, or delete the file and re-write it.
-		log.Fatalf("EdgeKey modified from %s to %s", keyRetrieval, key)
+	err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
+	if err != nil {
+		return err
 	}
 
 	manager.key = edgeKey
