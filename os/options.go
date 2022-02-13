@@ -60,7 +60,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeMode:              *fEdgeMode,
 		EdgeKey:               *fEdgeKey,
 		EdgeID:                *fEdgeID,
-		EdgeServerAddr:        fEdgeServerAddr.String(), // TODO: really, an agent can't be both edge and non-edge, so we don't need both AgentServerAddr and EdgeServerAddr ?
+		EdgeServerAddr:        fEdgeServerAddr.String(),
 		EdgeServerPort:        strconv.Itoa(*fEdgeServerPort),
 		EdgeInactivityTimeout: *fEdgeInactivityTimeout,
 		EdgeInsecurePoll:      *fEdgeInsecurePoll,
