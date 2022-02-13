@@ -20,7 +20,6 @@ type edgeKey struct {
 
 // SetKey parses and associates an Edge key to the agent.
 // If the agent is running inside a Swarm cluster, it will also set the "set" flag to specify that a key is set on this agent in the cluster.
-// Don't overwrite the file if it exists - this only appears to work, because our container runs as root
 func (manager *Manager) SetKey(key string) error {
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
