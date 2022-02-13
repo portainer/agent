@@ -13,7 +13,6 @@ const (
 	EnvKeyClusterAddr           = "AGENT_CLUSTER_ADDR"
 	EnvKeyAgentSecret           = "AGENT_SECRET"
 	EnvKeyAgentSecurityShutdown = "AGENT_SECRET_TIMEOUT"
-	//EnvKeyCapHostManagement     = "CAP_HOST_MANAGEMENT"  // deprecated and unused
 	EnvKeyEdge                  = "EDGE"
 	EnvKeyEdgeKey               = "EDGE_KEY"
 	EnvKeyEdgeID                = "EDGE_ID"
@@ -21,8 +20,8 @@ const (
 	EnvKeyEdgeServerPort        = "EDGE_SERVER_PORT"
 	EnvKeyEdgeInactivityTimeout = "EDGE_INACTIVITY_TIMEOUT"
 	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
+	EnvKeyEdgeTunnel            = "EDGE_TUNNEL"
 	EnvKeyLogLevel              = "LOG_LEVEL"
-	//EnvKeyDockerBinaryPath      = "DOCKER_BINARY_PATH" //unused
 )
 
 type EnvOptionParser struct{}
@@ -47,6 +46,7 @@ var (
 	fEdgeServerPort        = kingpin.Flag("EdgeServerPort", EnvKeyEdgeServerPort+" port on which the Edge UI will be exposed (default to 80)").Envar(EnvKeyEdgeServerPort).Default(agent.DefaultEdgeServerPort).Int()
 	fEdgeInactivityTimeout = kingpin.Flag("EdgeInactivityTimeout", EnvKeyEdgeInactivityTimeout+" timeout used by the agent to close the reverse tunnel after inactivity (default to 5m)").Envar(EnvKeyEdgeInactivityTimeout).Default(agent.DefaultEdgeSleepInterval).String()
 	fEdgeInsecurePoll      = kingpin.Flag("EdgeInsecurePoll", EnvKeyEdgeInsecurePoll+" enable this option if you need the agent to poll a HTTPS Portainer instance with self-signed certificates. Disabled by default, set to 1 to enable it").Envar(EnvKeyEdgeInsecurePoll).Bool()
+	fEdgeTunnel            = kingpin.Flag("EdgeTunnel", EnvKeyEdgeTunnel+" disable this option if you wish to prevent the agent from opening tunnels over websockets").Envar(EnvKeyEdgeTunnel).Default("true").Bool()
 )
 
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
@@ -60,10 +60,11 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeMode:              *fEdgeMode,
 		EdgeKey:               *fEdgeKey,
 		EdgeID:                *fEdgeID,
-		EdgeServerAddr:        fEdgeServerAddr.String(), // TODO: really, an agent can't be both edge and non-edge, so we don't need both AgentServerAddr and EdgeServerAddr ?
+		EdgeServerAddr:        fEdgeServerAddr.String(),
 		EdgeServerPort:        strconv.Itoa(*fEdgeServerPort),
 		EdgeInactivityTimeout: *fEdgeInactivityTimeout,
 		EdgeInsecurePoll:      *fEdgeInsecurePoll,
+		EdgeTunnel:            *fEdgeTunnel,
 		LogLevel:              *fLogLevel,
 	}, nil
 }

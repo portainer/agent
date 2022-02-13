@@ -68,6 +68,7 @@ type (
 		EdgeServerPort        string
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
+		EdgeTunnel            bool
 		LogLevel              string
 	}
 
@@ -173,7 +174,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "2.11.0"
+	Version = "2.11.1"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.

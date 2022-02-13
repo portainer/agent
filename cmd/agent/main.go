@@ -79,8 +79,7 @@ func main() {
 				log.Printf("[WARN] [main,podman] [message: Unable to retrieve local agent IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
 				advertiseAddr = options.AgentServerAddr
 			} else {
-				log.Printf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
-				advertiseAddr = options.AgentServerAddr
+				log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 			}
 		}
 

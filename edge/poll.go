@@ -27,6 +27,7 @@ type PollService struct {
 	apiServerAddr           string
 	pollIntervalInSeconds   float64
 	insecurePoll            bool
+	tunnel                  bool
 	inactivityTimeout       time.Duration
 	edgeID                  string
 	httpClient              *http.Client
@@ -49,6 +50,7 @@ type pollServiceConfig struct {
 	InactivityTimeout       string
 	PollFrequency           string
 	InsecurePoll            bool
+	Tunnel                  bool
 	PortainerURL            string
 	EndpointID              string
 	TunnelServerAddr        string
@@ -73,6 +75,7 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		edgeID:                  config.EdgeID,
 		pollIntervalInSeconds:   pollFrequency.Seconds(),
 		insecurePoll:            config.InsecurePoll,
+		tunnel:                  config.Tunnel,
 		inactivityTimeout:       inactivityTimeout,
 		tunnelClient:            chisel.NewClient(),
 		scheduleManager:         scheduler.NewCronManager(),
@@ -272,13 +275,15 @@ func (service *PollService) poll() error {
 		}
 	}
 
-	if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
-		log.Println("[DEBUG] [internal,edge,poll] [message: Required status detected, creating reverse tunnel]")
-
-		err := service.createTunnel(responseData.Credentials, responseData.Port)
-		if err != nil {
-			log.Printf("[ERROR] [internal,edge,poll] [message: Unable to create tunnel] [error: %s]", err)
-			return err
+	if service.tunnel == true {
+		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen(){
+			log.Println("[DEBUG] [internal,edge,poll] [message: Required status detected, creating reverse tunnel]")
+	
+			err := service.createTunnel(responseData.Credentials, responseData.Port)
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,poll] [message: Unable to create tunnel] [error: %s]", err)
+				return err
+			}
 		}
 	}
 
