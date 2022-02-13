@@ -77,12 +77,8 @@ func main() {
 
 		advertiseAddr, err = dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
-			if containerPlatform == agent.PlatformPodman {
-				log.Printf("[WARN] [main,podman] [message: Unable to retrieve local agent IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
-				advertiseAddr = options.AgentServerAddr
-			} else {
-				log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
-			}
+			log.Printf("[WARN] [main,docker] [message: Unable to retrieve agent container IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
+			advertiseAddr = options.AgentServerAddr
 		}
 
 		if containerPlatform == agent.PlatformDocker && clusterMode {
