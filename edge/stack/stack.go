@@ -11,6 +11,7 @@ import (
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
+	"github.com/portainer/agent/nomad"
 )
 
 type edgeStackID int
@@ -308,7 +309,7 @@ func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Dep
 	case EngineTypeKubernetes:
 		return exec.NewKubernetesDeployer(assetsPath), nil
 	case EngineTypeNomad:
-		return nil, nil
+		return nomad.NewDeployer()
 	}
 
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)
