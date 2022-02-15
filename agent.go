@@ -60,6 +60,8 @@ type (
 		AgentServerPort       string
 		AgentSecurityShutdown time.Duration
 		ClusterAddress        string
+		ClusterProbeTimeout   time.Duration
+		ClusterProbeInterval  time.Duration
 		SharedSecret          string
 		EdgeMode              bool
 		EdgeKey               string
@@ -114,7 +116,7 @@ type (
 
 	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
-		Create(advertiseAddr string, joinAddr []string) error
+		Create(advertiseAddr string, joinAddr []string, probeTimeout, probeInterval time.Duration) error
 		Members() []ClusterMember
 		Leave()
 		GetMemberByRole(role DockerNodeRole) *ClusterMember
@@ -199,6 +201,10 @@ const (
 	DefaultConfigCheckInterval = "5s"
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
+	// DefaultClusterProbeTimeout is the default member list ping probe timeout.
+	DefaultClusterProbeTimeout = "500ms"
+	// DefaultClusterProbeInterval is the interval for repeating failed node checks.
+	DefaultClusterProbeInterval = "1s"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.
 	HTTPTargetHeaderName = "X-PortainerAgent-Target"
 	// HTTPEdgeIdentifierHeaderName is the name of the header used to specify the Docker identifier associated to

@@ -11,6 +11,8 @@ const (
 	EnvKeyAgentHost             = "AGENT_HOST"
 	EnvKeyAgentPort             = "AGENT_PORT"
 	EnvKeyClusterAddr           = "AGENT_CLUSTER_ADDR"
+	EnvKeyClusterProbeTimeout   = "AGENT_CLUSTER_PROBE_TIMEOUT"
+	EnvKeyClusterProbeInterval  = "AGENT_CLUSTER_PROBE_INTERVAL"
 	EnvKeyAgentSecret           = "AGENT_SECRET"
 	EnvKeyAgentSecurityShutdown = "AGENT_SECRET_TIMEOUT"
 	EnvKeyEdge                  = "EDGE"
@@ -35,6 +37,8 @@ var (
 	fAgentServerPort       = kingpin.Flag("port", EnvKeyAgentPort+" port on which the agent API will be exposed").Envar(EnvKeyAgentPort).Default(agent.DefaultAgentPort).Int()
 	fAgentSecurityShutdown = kingpin.Flag("secret-timeout", EnvKeyAgentSecurityShutdown+" the duration after which the agent will be shutdown if not associated or secured by AGENT_SECRET. (defaults to 72h)").Envar(EnvKeyAgentSecurityShutdown).Default(agent.DefaultAgentSecurityShutdown).Duration()
 	fClusterAddress        = kingpin.Flag("cluster-addr", EnvKeyClusterAddr+" address (in the IP:PORT format) of an existing agent to join the agent cluster. When deploying the agent as a Docker Swarm service, we can leverage the internal Docker DNS to automatically join existing agents or form a cluster by using tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT> as the address").Envar(EnvKeyClusterAddr).String()
+	fClusterProbeTimeout   = kingpin.Flag("cluster-timeout", EnvKeyClusterProbeTimeout+" timeout interval for receiving agent member probe responses").Envar(EnvKeyClusterProbeTimeout).Default(agent.DefaultClusterProbeTimeout).Duration()
+	fClusterProbeInterval  = kingpin.Flag("cluster-interval", EnvKeyClusterProbeInterval+" interval for repeating failed agent member probe").Envar(EnvKeyClusterProbeInterval).Default(agent.DefaultClusterProbeInterval).Duration()
 	fSharedSecret          = kingpin.Flag("secret", EnvKeyAgentSecret+" shared secret used in the signature verification process").Envar(EnvKeyAgentSecret).String()
 	fLogLevel              = kingpin.Flag("log-level", EnvKeyLogLevel+" defines the log output verbosity (default to INFO)").Envar(EnvKeyLogLevel).Default(agent.DefaultLogLevel).Enum("ERROR", "WARN", "INFO", "DEBUG")
 
@@ -56,6 +60,8 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		AgentServerPort:       strconv.Itoa(*fAgentServerPort),
 		AgentSecurityShutdown: *fAgentSecurityShutdown,
 		ClusterAddress:        *fClusterAddress,
+		ClusterProbeTimeout:   *fClusterProbeTimeout,
+		ClusterProbeInterval:  *fClusterProbeInterval,
 		SharedSecret:          *fSharedSecret,
 		EdgeMode:              *fEdgeMode,
 		EdgeKey:               *fEdgeKey,

@@ -47,7 +47,7 @@ func (service *ClusterService) Leave() {
 }
 
 // Create will create the agent configuration and automatically join the cluster.
-func (service *ClusterService) Create(advertiseAddr string, joinAddr []string) error {
+func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, probeTimeout, probeInterval time.Duration) error {
 	filter := &logutils.LevelFilter{
 		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
 		MinLevel: logutils.LogLevel("INFO"),
@@ -61,6 +61,8 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string) e
 	conf.MemberlistConfig.LogOutput = filter
 	conf.LogOutput = filter
 	conf.MemberlistConfig.AdvertiseAddr = advertiseAddr
+	conf.MemberlistConfig.ProbeTimeout = probeTimeout
+	conf.MemberlistConfig.ProbeInterval = probeInterval
 
 	// Override default Serf configuration with Swarm/overlay sane defaults
 	conf.ReconnectInterval = 10 * time.Second
