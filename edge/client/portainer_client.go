@@ -8,26 +8,81 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/portainer/agent"
 )
 
 // PortainerClient is used to execute HTTP requests against the Portainer API
 type PortainerClient struct {
-	httpClient    *http.Client
-	serverAddress string
-	endpointID    string
-	edgeID        string
+	httpClient              *http.Client
+	serverAddress           string
+	endpointID              string
+	edgeID                  string
+	agentPlatformIdentifier agent.ContainerPlatform
 }
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress, endpointID, edgeID string, httpClient *http.Client) *PortainerClient {
+func NewPortainerClient(serverAddress, endpointID, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerClient {
 	return &PortainerClient{
-		serverAddress: serverAddress,
-		endpointID:    endpointID,
-		edgeID:        edgeID,
-		httpClient:    httpClient, //GetNewHttpClient(10, insecurePoll),
+		serverAddress:           serverAddress,
+		endpointID:              endpointID,
+		edgeID:                  edgeID,
+		httpClient:              httpClient,
+		agentPlatformIdentifier: containerPlatform,
 	}
+}
+
+func (client *PortainerClient) SetTimeout(t time.Duration) {
+	client.httpClient.Timeout = t
+}
+
+type StackStatus struct {
+	ID      int
+	Version int
+}
+
+type PollStatusResponse struct {
+	Status          string           `json:"status"`
+	Port            int              `json:"port"`
+	Schedules       []agent.Schedule `json:"schedules"`
+	CheckinInterval float64          `json:"checkin"`
+	Credentials     string           `json:"credentials"`
+	Stacks          []StackStatus    `json:"stacks"`
+}
+
+func (client *PortainerClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
+
+	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", client.serverAddress, client.endpointID)
+	req, err := http.NewRequest("GET", pollURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+
+	// TODO: should this be set for all requests? (and should all the common code be extracted...)
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
+
+	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(client.agentPlatformIdentifier)))
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[DEBUG] [internal,edge,poll] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
+		return nil, errors.New("short poll request failed")
+	}
+
+	var responseData PollStatusResponse
+	err = json.NewDecoder(resp.Body).Decode(&responseData)
+	if err != nil {
+		return nil, err
+	}
+	return &responseData, nil
 }
 
 type stackConfigResponse struct {

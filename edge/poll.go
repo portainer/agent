@@ -2,14 +2,11 @@ package edge
 
 import (
 	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
-	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 
@@ -28,7 +25,7 @@ type PollService struct {
 	pollIntervalInSeconds   float64
 	inactivityTimeout       time.Duration
 	edgeID                  string
-	httpClient              *http.Client
+	portainerClient         *client.PortainerClient
 	tunnelClient            agent.ReverseTunnelClient
 	scheduleManager         agent.Scheduler
 	lastActivity            time.Time
@@ -39,7 +36,6 @@ type PollService struct {
 	tunnelServerAddr        string
 	tunnelServerFingerprint string
 	logsManager             *scheduler.LogsManager
-	containerPlatform       agent.ContainerPlatform
 }
 
 type pollServiceConfig struct {
@@ -52,11 +48,10 @@ type pollServiceConfig struct {
 	EndpointID              string
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
-	ContainerPlatform       agent.ContainerPlatform
 }
 
 // newPollService returns a pointer to a new instance of PollService
-func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, httpClient *http.Client) (*PollService, error) {
+func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, httpClient *client.PortainerClient) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -81,8 +76,7 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		tunnelServerAddr:        config.TunnelServerAddr,
 		tunnelServerFingerprint: config.TunnelServerFingerprint,
 		logsManager:             logsManager,
-		containerPlatform:       config.ContainerPlatform,
-		httpClient:              httpClient, //client.GetNewHttpClient(clientDefaultPollTimeout, config.InsecurePoll),
+		portainerClient:         httpClient,
 	}, nil
 }
 
@@ -189,53 +183,8 @@ func (service *PollService) startActivityMonitoringLoop() {
 
 const clientDefaultPollTimeout = 5
 
-type stackStatus struct {
-	ID      int
-	Version int
-}
-
-type pollStatusResponse struct {
-	Status          string           `json:"status"`
-	Port            int              `json:"port"`
-	Schedules       []agent.Schedule `json:"schedules"`
-	CheckinInterval float64          `json:"checkin"`
-	Credentials     string           `json:"credentials"`
-	Stacks          []stackStatus    `json:"stacks"`
-}
-
 func (service *PollService) poll() error {
-
-	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", service.portainerURL, service.endpointID)
-	req, err := http.NewRequest("GET", pollURL, nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, service.edgeID)
-
-	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
-	// However, Portainer should handle podman agents the same way as docker agents.
-	agentPlatformIdentifier := service.containerPlatform
-	if service.containerPlatform == agent.PlatformPodman {
-		agentPlatformIdentifier = agent.PlatformDocker
-	}
-	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
-
-	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(agentPlatformIdentifier)))
-
-	resp, err := service.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("[DEBUG] [internal,edge,poll] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
-		return errors.New("short poll request failed")
-	}
-
-	var responseData pollStatusResponse
-	err = json.NewDecoder(resp.Body).Decode(&responseData)
+	responseData, err := service.portainerClient.GetEnvironmentStatus()
 	if err != nil {
 		return err
 	}
@@ -278,7 +227,7 @@ func (service *PollService) poll() error {
 	if responseData.CheckinInterval != service.pollIntervalInSeconds {
 		log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
 		service.pollIntervalInSeconds = responseData.CheckinInterval
-		service.httpClient.Timeout = time.Duration(responseData.CheckinInterval) * time.Second
+		service.portainerClient.SetTimeout(time.Duration(responseData.CheckinInterval) * time.Second)
 		go service.restartStatusPollLoop()
 	}
 

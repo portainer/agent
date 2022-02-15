@@ -13,7 +13,7 @@ function compile() {
     mkdir -p $TARGET_DIST
 
     cd cmd/agent || exit 1
-    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s'
+    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags '-s' -tags "containers_image_openpgp,-containers_image_ostree,btrfs_noversion,libdm_no_deferred_remove"
     rc=$?
     if [[ $rc != 0 ]]; then exit $rc; fi
     cd ../..
