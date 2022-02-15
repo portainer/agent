@@ -62,7 +62,7 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, p
 	conf.LogOutput = filter
 	conf.MemberlistConfig.AdvertiseAddr = advertiseAddr
 
-	// These parameters should only be overriden if experiencing cluster instability
+	// These parameters should only be overriden if experiencing agent cluster instability
 	// Default memberlist values should work in most clustering use cases but some
 	// cluster/network topologies might cause the agent cluster to be unstable and
 	// seeing a lot of agent join/leave cluster events.
