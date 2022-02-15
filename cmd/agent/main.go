@@ -3,13 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
-	http2 "github.com/portainer/agent/edge/http"
 	"log"
 	gohttp "net/http"
 	goos "os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	http2 "github.com/portainer/agent/edge/http"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
@@ -181,6 +182,7 @@ func main() {
 	// Edge
 	var edgeManager *edge.Manager
 	if options.EdgeMode {
+		// Original Edge mode.
 		edgeManagerParameters := &edge.ManagerParameters{
 			Options:           options,
 			AdvertiseAddr:     advertiseAddr,
@@ -219,30 +221,31 @@ func main() {
 	// !Edge
 
 	// API
+	if !options.EdgeAsyncMode {
+		// No web server if in async edge mode.
+		config := &http.APIServerConfig{
+			Addr:                 options.AgentServerAddr,
+			Port:                 options.AgentServerPort,
+			SystemService:        systemService,
+			ClusterService:       clusterService,
+			EdgeManager:          edgeManager,
+			SignatureService:     signatureService,
+			RuntimeConfiguration: runtimeConfiguration,
+			AgentOptions:         options,
+			KubeClient:           kubeClient,
+			KubernetesDeployer:   kubernetesDeployer,
+			ContainerPlatform:    containerPlatform,
+		}
 
-	config := &http.APIServerConfig{
-		Addr:                 options.AgentServerAddr,
-		Port:                 options.AgentServerPort,
-		SystemService:        systemService,
-		ClusterService:       clusterService,
-		EdgeManager:          edgeManager,
-		SignatureService:     signatureService,
-		RuntimeConfiguration: runtimeConfiguration,
-		AgentOptions:         options,
-		KubeClient:           kubeClient,
-		KubernetesDeployer:   kubernetesDeployer,
-		ContainerPlatform:    containerPlatform,
+		if options.EdgeMode {
+			config.Addr = advertiseAddr
+		}
+
+		err = startAPIServer(config)
+		if err != nil && !errors.Is(err, gohttp.ErrServerClosed) {
+			log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
+		}
 	}
-
-	if options.EdgeMode {
-		config.Addr = advertiseAddr
-	}
-
-	err = startAPIServer(config)
-	if err != nil && !errors.Is(err, gohttp.ErrServerClosed) {
-		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
-	}
-
 	// !API
 
 	sigs := make(chan goos.Signal, 1)

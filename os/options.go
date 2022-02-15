@@ -15,6 +15,7 @@ const (
 	EnvKeyAgentSecurityShutdown = "AGENT_SECRET_TIMEOUT"
 	//EnvKeyCapHostManagement     = "CAP_HOST_MANAGEMENT"  // deprecated and unused
 	EnvKeyEdge                  = "EDGE"
+	EnvKeyEdgeAsync             = "EDGE_ASYNC"
 	EnvKeyEdgeKey               = "EDGE_KEY"
 	EnvKeyEdgeID                = "EDGE_ID"
 	EnvKeyEdgeServerHost        = "EDGE_SERVER_HOST"
@@ -40,7 +41,11 @@ var (
 	fLogLevel              = kingpin.Flag("LogLevel", EnvKeyLogLevel+" defines the log output verbosity (default to INFO)").Envar(EnvKeyLogLevel).Default(agent.DefaultLogLevel).Enum("ERROR", "WARN", "INFO", "DEBUG")
 
 	// Edge mode
-	fEdgeMode              = kingpin.Flag("EdgeMode", EnvKeyEdge+" enable Edge mode. Disabled by default, set to 1 or true to enable it").Envar(EnvKeyEdge).Bool()
+	fEdgeMode = kingpin.Flag("EdgeMode", EnvKeyEdge+" enable Edge mode. Disabled by default, set to 1 or true to enable it").Envar(EnvKeyEdge).Bool()
+
+	// TODO: yup, I would make the `--EdgeMode=async`, but not today
+	fEdgeAsyncMode = kingpin.Flag("EdgeAsyncMode", EnvKeyEdgeAsync+" enable Edge Async mode. Disabled by default, set to 1 or true to enable it").Envar(EnvKeyEdgeAsync).Bool()
+
 	fEdgeKey               = kingpin.Flag("EdgeKey", EnvKeyEdgeKey+" specify an Edge key to use at startup").Envar(EnvKeyEdgeKey).String()
 	fEdgeID                = kingpin.Flag("EdgeID", EnvKeyEdgeID+" a unique identifier associated to this agent cluster").Envar(EnvKeyEdgeID).String()
 	fEdgeServerAddr        = kingpin.Flag("EdgeServerAddr", EnvKeyEdgeServerHost+" address on which the Edge UI will be exposed (default to 0.0.0.0)").Envar(EnvKeyEdgeServerHost).Default(agent.DefaultEdgeServerAddr).IP()
@@ -63,6 +68,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		ClusterAddress:        *fClusterAddress,
 		SharedSecret:          *fSharedSecret,
 		EdgeMode:              *fEdgeMode,
+		EdgeAsyncMode:         *fEdgeAsyncMode,
 		EdgeKey:               *fEdgeKey,
 		EdgeID:                *fEdgeID,
 		EdgeServerAddr:        fEdgeServerAddr.String(), // TODO: really, an agent can't be both edge and non-edge, so we don't need both AgentServerAddr and EdgeServerAddr ?

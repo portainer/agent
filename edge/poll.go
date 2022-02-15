@@ -25,7 +25,7 @@ type PollService struct {
 	pollIntervalInSeconds   float64
 	inactivityTimeout       time.Duration
 	edgeID                  string
-	portainerClient         *client.PortainerClient
+	portainerClient         client.PortainerClient
 	tunnelClient            agent.ReverseTunnelClient
 	scheduleManager         agent.Scheduler
 	lastActivity            time.Time
@@ -48,10 +48,11 @@ type pollServiceConfig struct {
 	EndpointID              string
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
+	EdgeAsyncMode           bool
 }
 
 // newPollService returns a pointer to a new instance of PollService
-func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, httpClient *client.PortainerClient) (*PollService, error) {
+func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, httpClient client.PortainerClient) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -61,13 +62,17 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 	if err != nil {
 		return nil, err
 	}
+	var tunnel agent.ReverseTunnelClient
+	if !config.EdgeAsyncMode {
+		tunnel = chisel.NewClient()
+	}
 
 	return &PollService{
 		apiServerAddr:           config.APIServerAddr,
 		edgeID:                  config.EdgeID,
 		pollIntervalInSeconds:   pollFrequency.Seconds(),
 		inactivityTimeout:       inactivityTimeout,
-		tunnelClient:            chisel.NewClient(),
+		tunnelClient:            tunnel,
 		scheduleManager:         scheduler.NewCronManager(),
 		refreshSignal:           nil,
 		edgeStackManager:        edgeStackManager,
@@ -81,10 +86,16 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 }
 
 func (service *PollService) closeTunnel() error {
+	if service.tunnelClient == nil {
+		return nil
+	}
 	return service.tunnelClient.CloseTunnel()
 }
 
 func (service *PollService) resetActivityTimer() {
+	if service.tunnelClient == nil {
+		return
+	}
 	if service.tunnelClient.IsTunnelOpen() {
 		service.lastActivity = time.Now()
 	}
@@ -146,6 +157,10 @@ func (service *PollService) startStatusPollLoop() error {
 }
 
 func (service *PollService) startActivityMonitoringLoop() {
+	if service.tunnelClient == nil {
+		return
+	}
+
 	ticker := time.NewTicker(tunnelActivityCheckInterval)
 	quit := make(chan struct{})
 
@@ -191,7 +206,7 @@ func (service *PollService) poll() error {
 
 	log.Printf("[DEBUG] [internal,edge,poll] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", responseData.Status, responseData.Port, len(responseData.Schedules), responseData.CheckinInterval)
 
-	if responseData.Status == "IDLE" && service.tunnelClient.IsTunnelOpen() {
+	if service.tunnelClient != nil && responseData.Status == "IDLE" && service.tunnelClient.IsTunnelOpen() {
 		log.Printf("[DEBUG] [internal,edge,poll] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
 
 		err := service.tunnelClient.CloseTunnel()
@@ -200,7 +215,7 @@ func (service *PollService) poll() error {
 		}
 	}
 
-	if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
+	if service.tunnelClient != nil && responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
 		log.Println("[DEBUG] [internal,edge,poll] [message: Required status detected, creating reverse tunnel]")
 
 		err := service.createTunnel(responseData.Credentials, responseData.Port)
@@ -224,7 +239,7 @@ func (service *PollService) poll() error {
 
 	service.logsManager.HandleReceivedLogsRequests(logsToCollect)
 
-	if responseData.CheckinInterval != service.pollIntervalInSeconds {
+	if responseData.CheckinInterval > 0 && responseData.CheckinInterval != service.pollIntervalInSeconds {
 		log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
 		service.pollIntervalInSeconds = responseData.CheckinInterval
 		service.portainerClient.SetTimeout(time.Duration(responseData.CheckinInterval) * time.Second)
@@ -248,6 +263,9 @@ func (service *PollService) poll() error {
 }
 
 func (service *PollService) createTunnel(encodedCredentials string, remotePort int) error {
+	if service.tunnelClient == nil {
+		return nil
+	}
 	decodedCredentials, err := base64.RawStdEncoding.DecodeString(encodedCredentials)
 	if err != nil {
 		return err

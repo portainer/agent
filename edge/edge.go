@@ -77,6 +77,7 @@ func (manager *Manager) Start() error {
 		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
 		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
+		EdgeAsyncMode:           manager.agentOptions.EdgeAsyncMode,
 	}
 
 	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll)
@@ -86,6 +87,7 @@ func (manager *Manager) Start() error {
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
 			manager.agentOptions.EdgeID,
+			manager.agentOptions.EdgeAsyncMode,
 			agentPlatformIdentifier,
 			GetNewHttpClient(10, manager.agentOptions),
 		),
@@ -100,6 +102,7 @@ func (manager *Manager) Start() error {
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
 			manager.agentOptions.EdgeID,
+			manager.agentOptions.EdgeAsyncMode,
 			agentPlatformIdentifier,
 			GetNewHttpClient(10, manager.agentOptions),
 		),
@@ -114,6 +117,7 @@ func (manager *Manager) Start() error {
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
 			manager.agentOptions.EdgeID,
+			manager.agentOptions.EdgeAsyncMode,
 			agentPlatformIdentifier,
 			GetNewHttpClient(clientDefaultPollTimeout, manager.agentOptions),
 		),

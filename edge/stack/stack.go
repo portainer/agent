@@ -72,11 +72,11 @@ type StackManager struct {
 	portainerURL    string
 	endpointID      string
 	isEnabled       bool
-	portainerClient *client.PortainerClient
+	portainerClient client.PortainerClient
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(cli *client.PortainerClient) (*StackManager, error) {
+func NewStackManager(cli client.PortainerClient) (*StackManager, error) {
 	stackManager := &StackManager{
 		stacks:          map[edgeStackID]*edgeStack{},
 		stopSignal:      nil,

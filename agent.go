@@ -63,6 +63,7 @@ type (
 		ClusterAddress        string
 		SharedSecret          string
 		EdgeMode              bool
+		EdgeAsyncMode         bool
 		EdgeKey               string
 		EdgeID                string
 		EdgeServerAddr        string

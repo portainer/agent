@@ -13,8 +13,8 @@ import (
 	"github.com/portainer/agent"
 )
 
-// PortainerClient is used to execute HTTP requests against the Portainer API
-type PortainerClient struct {
+// PortainerEdgeClient is used to execute HTTP requests against the Portainer API
+type PortainerEdgeClient struct {
 	httpClient              *http.Client
 	serverAddress           string
 	endpointID              string
@@ -22,9 +22,9 @@ type PortainerClient struct {
 	agentPlatformIdentifier agent.ContainerPlatform
 }
 
-// NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress, endpointID, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerClient {
-	return &PortainerClient{
+// NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
+func NewPortainerEdgeClient(serverAddress, endpointID, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
+	return &PortainerEdgeClient{
 		serverAddress:           serverAddress,
 		endpointID:              endpointID,
 		edgeID:                  edgeID,
@@ -33,25 +33,11 @@ func NewPortainerClient(serverAddress, endpointID, edgeID string, containerPlatf
 	}
 }
 
-func (client *PortainerClient) SetTimeout(t time.Duration) {
+func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
 	client.httpClient.Timeout = t
 }
 
-type StackStatus struct {
-	ID      int
-	Version int
-}
-
-type PollStatusResponse struct {
-	Status          string           `json:"status"`
-	Port            int              `json:"port"`
-	Schedules       []agent.Schedule `json:"schedules"`
-	CheckinInterval float64          `json:"checkin"`
-	Credentials     string           `json:"credentials"`
-	Stacks          []StackStatus    `json:"stacks"`
-}
-
-func (client *PortainerClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
+func (client *PortainerEdgeClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
 
 	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", client.serverAddress, client.endpointID)
 	req, err := http.NewRequest("GET", pollURL, nil)
@@ -85,14 +71,8 @@ func (client *PortainerClient) GetEnvironmentStatus() (*PollStatusResponse, erro
 	return &responseData, nil
 }
 
-type stackConfigResponse struct {
-	Name             string
-	StackFileContent string
-	ImageMapping     map[string]string // a map of stackfile image to imageCache url(with sha)
-}
-
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
-func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
+func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
 	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/stacks/%d", client.serverAddress, client.endpointID, edgeStackID)
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
@@ -122,14 +102,8 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeS
 	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent, ImageMapping: data.ImageMapping}, nil
 }
 
-type setEdgeStackStatusPayload struct {
-	Error      string
-	Status     int
-	EndpointID int
-}
-
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
-func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
+func (client *PortainerEdgeClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
 	endpointID, err := strconv.Atoi(client.endpointID)
 	if err != nil {
 		return err
@@ -170,12 +144,8 @@ func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus i
 	return nil
 }
 
-type logFilePayload struct {
-	FileContent string
-}
-
 // SendJobLogFile sends the jobID log to the Portainer server
-func (client *PortainerClient) SendJobLogFile(jobID int, fileContent []byte) error {
+func (client *PortainerEdgeClient) SendJobLogFile(jobID int, fileContent []byte) error {
 	payload := logFilePayload{
 		FileContent: string(fileContent),
 	}
