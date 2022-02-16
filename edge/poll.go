@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/portainer/agent/edge/scheduler"
-	"github.com/portainer/agent/edge/stack"
 	"log"
 	"net/http"
 	"strconv"
@@ -15,6 +13,8 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
+	"github.com/portainer/agent/edge/scheduler"
+	"github.com/portainer/agent/edge/stack"
 	"github.com/portainer/libcrypto"
 )
 
@@ -276,9 +276,9 @@ func (service *PollService) poll() error {
 	}
 
 	if service.tunnel == true {
-		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen(){
+		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
 			log.Println("[DEBUG] [internal,edge,poll] [message: Required status detected, creating reverse tunnel]")
-	
+
 			err := service.createTunnel(responseData.Credentials, responseData.Port)
 			if err != nil {
 				log.Printf("[ERROR] [internal,edge,poll] [message: Unable to create tunnel] [error: %s]", err)
