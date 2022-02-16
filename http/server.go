@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/http/handler"
 	"github.com/portainer/agent/kubernetes"
+	httperror "github.com/portainer/libhttp/error"
 )
 
 // APIServer is the web server exposing the API of an agent.
@@ -62,6 +64,30 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 	}
 }
 
+func (server *APIServer) serveSecuredEdgeAPI(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if server.edgeManager != nil {
+			server.edgeManager.ResetActivityTimer()
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (server *APIServer) serveUnsecuredEdgeAPI(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if server.edgeManager != nil && !server.edgeManager.IsKeySet() {
+			httperror.WriteError(w, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
+			return
+		}
+
+		if server.edgeManager != nil {
+			server.edgeManager.ResetActivityTimer()
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Start starts a new web server by listening on the specified listenAddr.
 func (server *APIServer) StartUnsecured() error {
 	config := &handler.Config{
@@ -71,9 +97,9 @@ func (server *APIServer) StartUnsecured() error {
 		RuntimeConfiguration: server.agentTags,
 		AgentOptions:         server.agentOptions,
 		EdgeManager:          server.edgeManager,
-		Secured:              false,
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
+		Secured:              false,
 		ContainerPlatform:    server.containerPlatform,
 	}
 
@@ -84,7 +110,7 @@ func (server *APIServer) StartUnsecured() error {
 
 	httpServer := &http.Server{
 		Addr:         listenAddr,
-		Handler:      h,
+		Handler:      server.serveUnsecuredEdgeAPI(h),
 		ReadTimeout:  120 * time.Second,
 		WriteTimeout: 30 * time.Minute,
 	}
@@ -101,9 +127,9 @@ func (server *APIServer) StartSecured() error {
 		RuntimeConfiguration: server.agentTags,
 		AgentOptions:         server.agentOptions,
 		EdgeManager:          server.edgeManager,
-		Secured:              true,
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
+		Secured:              true,
 		ContainerPlatform:    server.containerPlatform,
 	}
 
@@ -129,7 +155,7 @@ func (server *APIServer) StartSecured() error {
 
 	httpServer := &http.Server{
 		Addr:         listenAddr,
-		Handler:      h,
+		Handler:      server.serveSecuredEdgeAPI(h),
 		ReadTimeout:  120 * time.Second,
 		TLSConfig:    tlsConfig,
 		WriteTimeout: 30 * time.Minute,
