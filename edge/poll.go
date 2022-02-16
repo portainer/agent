@@ -90,10 +90,6 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 	}, nil
 }
 
-func (service *PollService) closeTunnel() error {
-	return service.tunnelClient.CloseTunnel()
-}
-
 func (service *PollService) resetActivityTimer() {
 	if service.tunnelClient.IsTunnelOpen() {
 		service.lastActivity = time.Now()
@@ -275,7 +271,7 @@ func (service *PollService) poll() error {
 		}
 	}
 
-	if service.tunnel == true {
+	if service.tunnel {
 		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
 			log.Println("[DEBUG] [internal,edge,poll] [message: Required status detected, creating reverse tunnel]")
 

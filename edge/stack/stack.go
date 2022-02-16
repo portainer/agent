@@ -55,6 +55,8 @@ const (
 type engineType int
 
 const (
+	// TODO: consider defining this in agent.go or re-use/enhance some of the existing constants
+	// that are declared in agent.go
 	_ engineType = iota
 	EngineTypeDockerStandalone
 	EngineTypeDockerSwarm
@@ -63,14 +65,12 @@ const (
 
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
-	engineType   engineType
-	stacks       map[edgeStackID]*edgeStack
-	stopSignal   chan struct{}
-	deployer     agent.Deployer
-	portainerURL string
-	endpointID   string
-	isEnabled    bool
-	httpClient   *client.PortainerClient
+	engineType engineType
+	stacks     map[edgeStackID]*edgeStack
+	stopSignal chan struct{}
+	deployer   agent.Deployer
+	isEnabled  bool
+	httpClient *client.PortainerClient
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
