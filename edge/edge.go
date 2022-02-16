@@ -6,10 +6,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
-
-	"github.com/portainer/agent"
 )
 
 type (
