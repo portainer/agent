@@ -3,10 +3,11 @@ package edge
 import (
 	"errors"
 	"fmt"
-	"github.com/portainer/agent/edge/scheduler"
-	"github.com/portainer/agent/edge/stack"
 	"log"
 	"time"
+
+	"github.com/portainer/agent/edge/scheduler"
+	"github.com/portainer/agent/edge/stack"
 
 	"github.com/portainer/agent"
 )
@@ -22,7 +23,6 @@ type (
 		key               *edgeKey
 		logsManager       *scheduler.LogsManager
 		pollService       *PollService
-		pollServiceConfig *pollServiceConfig
 		stackManager      *stack.StackManager
 	}
 
@@ -50,7 +50,7 @@ func NewManager(parameters *ManagerParameters) *Manager {
 // Start starts the manager
 func (manager *Manager) Start() error {
 	if !manager.IsKeySet() {
-		return errors.New("Unable to start Edge manager without key")
+		return errors.New("unable to start Edge manager without key")
 	}
 
 	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
