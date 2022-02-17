@@ -1,4 +1,4 @@
-package edge
+package scheduler
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"github.com/portainer/agent/http/client"
 )
 
-type logsManager struct {
+type LogsManager struct {
 	httpClient *client.PortainerClient
 	stopSignal chan struct{}
 	jobs       map[int]logStatus
@@ -25,17 +25,17 @@ const (
 	logFailed
 )
 
-func newLogsManager(portainerURL, endpointID, edgeID string, insecurePoll bool, tunnel bool) *logsManager {
-	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll, tunnel)
+func NewLogsManager(portainerURL, endpointID, edgeID string, insecurePoll bool) *LogsManager {
+	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll)
 
-	return &logsManager{
+	return &LogsManager{
 		httpClient: cli,
 		stopSignal: nil,
 		jobs:       map[int]logStatus{},
 	}
 }
 
-func (manager *logsManager) start() error {
+func (manager *LogsManager) Start() error {
 	if manager.stopSignal != nil {
 		return nil
 	}
@@ -100,7 +100,7 @@ func (manager *logsManager) start() error {
 	return nil
 }
 
-func (manager *logsManager) stop() {
+func (manager *LogsManager) stop() {
 	if manager.stopSignal != nil {
 		log.Printf("[DEBUG] [internal,edge,logs] [message: logs manager stopped]")
 		close(manager.stopSignal)
@@ -108,7 +108,7 @@ func (manager *logsManager) stop() {
 	}
 }
 
-func (manager *logsManager) handleReceivedLogsRequests(jobs []int) {
+func (manager *LogsManager) HandleReceivedLogsRequests(jobs []int) {
 	for _, jobID := range jobs {
 		if _, ok := manager.jobs[jobID]; !ok {
 			log.Printf("[DEBUG] [internal,edge,logs] [job_identifier: %d] [message: added job to queue]", jobID)
@@ -117,7 +117,7 @@ func (manager *logsManager) handleReceivedLogsRequests(jobs []int) {
 	}
 }
 
-func (manager *logsManager) next() int {
+func (manager *LogsManager) next() int {
 	for jobID, status := range manager.jobs {
 		if status == logPending {
 			return jobID

@@ -3,15 +3,17 @@ package http
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/http/handler"
-	"github.com/portainer/agent/internal/edge"
 	"github.com/portainer/agent/kubernetes"
+	httperror "github.com/portainer/libhttp/error"
 )
 
 // APIServer is the web server exposing the API of an agent.
@@ -62,8 +64,21 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 	}
 }
 
+func (server *APIServer) enhanceAPIForEdgeMode(next http.Handler, isSecure bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isSecure && !server.edgeManager.IsKeySet() {
+			httperror.WriteError(w, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
+			return
+		}
+
+		server.edgeManager.ResetActivityTimer()
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Start starts a new web server by listening on the specified listenAddr.
-func (server *APIServer) StartUnsecured() error {
+func (server *APIServer) StartUnsecured(edgeMode bool) error {
 	config := &handler.Config{
 		SystemService:        server.systemService,
 		ClusterService:       server.clusterService,
@@ -71,14 +86,18 @@ func (server *APIServer) StartUnsecured() error {
 		RuntimeConfiguration: server.agentTags,
 		AgentOptions:         server.agentOptions,
 		EdgeManager:          server.edgeManager,
-		Secured:              false,
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
+		Secured:              false,
 		ContainerPlatform:    server.containerPlatform,
 	}
 
-	h := handler.NewHandler(config)
+	var h http.Handler = handler.NewHandler(config)
 	listenAddr := server.addr + ":" + server.port
+
+	if edgeMode {
+		h = server.enhanceAPIForEdgeMode(h, false)
+	}
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 
@@ -93,7 +112,7 @@ func (server *APIServer) StartUnsecured() error {
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
-func (server *APIServer) StartSecured() error {
+func (server *APIServer) StartSecured(edgeMode bool) error {
 	config := &handler.Config{
 		SystemService:        server.systemService,
 		ClusterService:       server.clusterService,
@@ -101,14 +120,18 @@ func (server *APIServer) StartSecured() error {
 		RuntimeConfiguration: server.agentTags,
 		AgentOptions:         server.agentOptions,
 		EdgeManager:          server.edgeManager,
-		Secured:              true,
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
+		Secured:              true,
 		ContainerPlatform:    server.containerPlatform,
 	}
 
-	h := handler.NewHandler(config)
+	var h http.Handler = handler.NewHandler(config)
 	listenAddr := server.addr + ":" + server.port
+
+	if edgeMode {
+		h = server.enhanceAPIForEdgeMode(h, true)
+	}
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 
