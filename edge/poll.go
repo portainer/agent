@@ -27,7 +27,6 @@ type PollService struct {
 	apiServerAddr           string
 	pollIntervalInSeconds   float64
 	insecurePoll            bool
-	tunnel                  bool
 	inactivityTimeout       time.Duration
 	edgeID                  string
 	httpClient              *http.Client
@@ -50,7 +49,7 @@ type pollServiceConfig struct {
 	InactivityTimeout       string
 	PollFrequency           string
 	InsecurePoll            bool
-	Tunnel                  bool
+	TunneCapability         bool
 	PortainerURL            string
 	EndpointID              string
 	TunnelServerAddr        string
@@ -59,6 +58,7 @@ type pollServiceConfig struct {
 }
 
 // newPollService returns a pointer to a new instance of PollService
+// If TunneCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
 func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
@@ -70,14 +70,12 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		return nil, err
 	}
 
-	return &PollService{
+	pollService := &PollService{
 		apiServerAddr:           config.APIServerAddr,
 		edgeID:                  config.EdgeID,
 		pollIntervalInSeconds:   pollFrequency.Seconds(),
 		insecurePoll:            config.InsecurePoll,
-		tunnel:                  config.Tunnel,
 		inactivityTimeout:       inactivityTimeout,
-		tunnelClient:            chisel.NewClient(),
 		scheduleManager:         scheduler.NewCronManager(),
 		refreshSignal:           nil,
 		edgeStackManager:        edgeStackManager,
@@ -87,11 +85,17 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		tunnelServerFingerprint: config.TunnelServerFingerprint,
 		logsManager:             logsManager,
 		containerPlatform:       config.ContainerPlatform,
-	}, nil
+	}
+
+	if config.TunneCapability {
+		pollService.tunnelClient = chisel.NewClient()
+	}
+
+	return pollService, nil
 }
 
 func (service *PollService) resetActivityTimer() {
-	if service.tunnelClient.IsTunnelOpen() {
+	if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() {
 		service.lastActivity = time.Now()
 	}
 }
@@ -169,7 +173,7 @@ func (service *PollService) startActivityMonitoringLoop() {
 				elapsed := time.Since(service.lastActivity)
 				log.Printf("[DEBUG] [internal,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: tunnel activity monitoring]", elapsed.Seconds())
 
-				if service.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > service.inactivityTimeout.Seconds() {
+				if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > service.inactivityTimeout.Seconds() {
 
 					log.Printf("[INFO] [internal,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: shutting down tunnel after inactivity period]", elapsed.Seconds())
 
@@ -262,16 +266,16 @@ func (service *PollService) poll() error {
 
 	log.Printf("[DEBUG] [internal,edge,poll] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", responseData.Status, responseData.Port, len(responseData.Schedules), responseData.CheckinInterval)
 
-	if responseData.Status == "IDLE" && service.tunnelClient.IsTunnelOpen() {
-		log.Printf("[DEBUG] [internal,edge,poll] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
+	if service.tunnelClient != nil {
+		if responseData.Status == "IDLE" && service.tunnelClient.IsTunnelOpen() {
+			log.Printf("[DEBUG] [internal,edge,poll] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
 
-		err := service.tunnelClient.CloseTunnel()
-		if err != nil {
-			log.Printf("[ERROR] [internal,edge,poll] [message: Unable to shutdown tunnel] [error: %s]", err)
+			err := service.tunnelClient.CloseTunnel()
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,poll] [message: Unable to shutdown tunnel] [error: %s]", err)
+			}
 		}
-	}
 
-	if service.tunnel {
 		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
 			log.Println("[DEBUG] [internal,edge,poll] [message: Required status detected, creating reverse tunnel]")
 

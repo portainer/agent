@@ -23,7 +23,7 @@ type PortainerClient struct {
 }
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress, endpointID, edgeID string, insecurePoll, tunnel bool) *PortainerClient {
+func NewPortainerClient(serverAddress, endpointID, edgeID string, insecurePoll bool) *PortainerClient {
 	httpCli := &http.Client{
 		Timeout: 10 * time.Second,
 	}
