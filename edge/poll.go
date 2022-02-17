@@ -49,7 +49,7 @@ type pollServiceConfig struct {
 	InactivityTimeout       string
 	PollFrequency           string
 	InsecurePoll            bool
-	TunneCapability         bool
+	TunnelCapability        bool
 	PortainerURL            string
 	EndpointID              string
 	TunnelServerAddr        string
@@ -87,7 +87,7 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		containerPlatform:       config.ContainerPlatform,
 	}
 
-	if config.TunneCapability {
+	if config.TunnelCapability {
 		pollService.tunnelClient = chisel.NewClient()
 	}
 

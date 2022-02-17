@@ -60,7 +60,7 @@ func (manager *Manager) Start() error {
 		PollFrequency:           agent.DefaultEdgePollInterval,
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
 		InsecurePoll:            manager.agentOptions.EdgeInsecurePoll,
-		TunneCapability:         manager.agentOptions.EdgeTunnel,
+		TunnelCapability:        manager.agentOptions.EdgeTunnel,
 		PortainerURL:            manager.key.PortainerInstanceURL,
 		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
