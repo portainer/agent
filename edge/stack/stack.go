@@ -134,6 +134,9 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 		if manager.engineType == EngineTypeKubernetes {
 			fileName = fmt.Sprintf("%s.yml", stack.Name)
 		}
+		if manager.engineType == engineTypeNomad {
+			fileName = fmt.Sprintf("%s.hcl", stack.Name)
+		}
 
 		err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 0644)
 		if err != nil {
