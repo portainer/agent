@@ -64,32 +64,21 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 	}
 }
 
-func (server *APIServer) serveSecuredEdgeAPI(next http.Handler) http.Handler {
+func (server *APIServer) enhanceAPIForEdgeMode(next http.Handler, isSecure bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if server.edgeManager != nil {
-			server.edgeManager.ResetActivityTimer()
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (server *APIServer) serveUnsecuredEdgeAPI(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if server.edgeManager != nil && !server.edgeManager.IsKeySet() {
+		if !isSecure && !server.edgeManager.IsKeySet() {
 			httperror.WriteError(w, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
 			return
 		}
 
-		if server.edgeManager != nil {
-			server.edgeManager.ResetActivityTimer()
-		}
+		server.edgeManager.ResetActivityTimer()
 
 		next.ServeHTTP(w, r)
 	})
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
-func (server *APIServer) StartUnsecured() error {
+func (server *APIServer) StartUnsecured(edgeMode bool) error {
 	config := &handler.Config{
 		SystemService:        server.systemService,
 		ClusterService:       server.clusterService,
@@ -103,14 +92,18 @@ func (server *APIServer) StartUnsecured() error {
 		ContainerPlatform:    server.containerPlatform,
 	}
 
-	h := handler.NewHandler(config)
+	var h http.Handler = handler.NewHandler(config)
 	listenAddr := server.addr + ":" + server.port
+
+	if edgeMode {
+		h = server.enhanceAPIForEdgeMode(h, false)
+	}
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 
 	httpServer := &http.Server{
 		Addr:         listenAddr,
-		Handler:      server.serveUnsecuredEdgeAPI(h),
+		Handler:      h,
 		ReadTimeout:  120 * time.Second,
 		WriteTimeout: 30 * time.Minute,
 	}
@@ -119,7 +112,7 @@ func (server *APIServer) StartUnsecured() error {
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
-func (server *APIServer) StartSecured() error {
+func (server *APIServer) StartSecured(edgeMode bool) error {
 	config := &handler.Config{
 		SystemService:        server.systemService,
 		ClusterService:       server.clusterService,
@@ -133,8 +126,12 @@ func (server *APIServer) StartSecured() error {
 		ContainerPlatform:    server.containerPlatform,
 	}
 
-	h := handler.NewHandler(config)
+	var h http.Handler = handler.NewHandler(config)
 	listenAddr := server.addr + ":" + server.port
+
+	if edgeMode {
+		h = server.enhanceAPIForEdgeMode(h, true)
+	}
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 
@@ -155,7 +152,7 @@ func (server *APIServer) StartSecured() error {
 
 	httpServer := &http.Server{
 		Addr:         listenAddr,
-		Handler:      server.serveSecuredEdgeAPI(h),
+		Handler:      h,
 		ReadTimeout:  120 * time.Second,
 		TLSConfig:    tlsConfig,
 		WriteTimeout: 30 * time.Minute,
