@@ -17,7 +17,7 @@ func LookupIPAddresses(host string) ([]string, error) {
 
 	for idx, ip := range ips {
 		ipAddresses = append(ipAddresses, ip.String())
-		log.Printf("[DEBUG] [main,net] [host: %s] [result: %d] [ip: %s]", host, idx+1, ip.String())
+		log.Printf("[DEBUG] [net] [host: %s] [result: %d] [ip: %s]", host, idx+1, ip.String())
 	}
 
 	return ipAddresses, nil

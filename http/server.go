@@ -166,11 +166,11 @@ func (server *APIServer) StartSecured() error {
 		time.Sleep(securityShutdown)
 
 		if !server.signatureService.IsAssociated() {
-			log.Printf("[INFO] [main,http] [message: Shutting down API server as no client was associated after %s, keeping alive to prevent restart by docker/kubernetes]", securityShutdown)
+			log.Printf("[INFO] [http] [message: Shutting down API server as no client was associated after %s, keeping alive to prevent restart by docker/kubernetes]", securityShutdown)
 
 			err := httpServer.Shutdown(context.Background())
 			if err != nil {
-				log.Fatalf("[ERROR] [server] [message: failed shutting down server] [error: %s]", err)
+				log.Fatalf("[ERROR] [http] [message: failed shutting down server] [error: %s]", err)
 			}
 
 		}
