@@ -55,8 +55,6 @@ const (
 type engineType int
 
 const (
-	// TODO: consider defining this in agent.go or re-use/enhance some of the existing constants
-	// that are declared in agent.go
 	_ engineType = iota
 	EngineTypeDockerStandalone
 	EngineTypeDockerSwarm
