@@ -197,7 +197,6 @@ func main() {
 		if edgeKey != "" {
 			log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key]")
 
-			// TODO: this fails when RetreiveEdgeKey came from an existing file, as mode 0444 can't be written to - unless you're root...
 			err := edgeManager.SetKey(edgeKey)
 			if err != nil {
 				log.Fatalf("[ERROR] [main,edge] [message: Unable to associate Edge key] [error: %s]", err)
