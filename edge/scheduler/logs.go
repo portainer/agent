@@ -5,9 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/portainer/agent/edge/client"
-
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/filesystem"
 )
 

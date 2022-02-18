@@ -46,8 +46,6 @@ func (manager *Manager) SetKey(key string) error {
 	return nil
 }
 
-
-// GetKey returns the Edge key associated to the agent
 func (manager *Manager) GetKey() string {
 	var encodedKey string
 
