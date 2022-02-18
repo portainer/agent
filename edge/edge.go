@@ -102,7 +102,8 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 	go func() {
 		ticker := time.NewTicker(runtimeCheckFrequency)
 		for range ticker.C {
-			if err := manager.checkDockerRuntimeConfig(); err != nil {
+			err := manager.checkDockerRuntimeConfig()
+			if err != nil {
 				log.Printf("[ERROR] [internal,edge,runtime,docker] [message: an error occurred during Docker runtime configuration check] [error: %s]", err)
 			}
 		}
