@@ -112,12 +112,7 @@ func WriteFile(folder, filename string, file []byte, mode uint32) error {
 
 	filePath := path.Join(folder, filename)
 
-	err = ioutil.WriteFile(filePath, file, os.FileMode(mode))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ioutil.WriteFile(filePath, file, os.FileMode(mode))
 }
 
 // WriteFile takes a path, filename, a file and the mode that should be associated
@@ -182,10 +177,7 @@ func BuildPathToFileInsideVolume(volumeID, filePath string) (string, error) {
 }
 
 func isValidPath(path string) bool {
-	if containsDotDot(path) {
-		return false
-	}
-	return true
+	return !containsDotDot(path)
 }
 
 func containsDotDot(v string) bool {

@@ -108,12 +108,7 @@ func (manager *Manager) Start() error {
 	}
 	manager.pollService = pollService
 
-	err = manager.startEdgeBackgroundProcess()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return manager.startEdgeBackgroundProcess()
 }
 
 // ResetActivityTimer resets the activity timer
@@ -127,16 +122,12 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 		return err
 	}
 
-	ticker := time.NewTicker(runtimeCheckFrequency)
-
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				err := manager.checkDockerRuntimeConfig()
-				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime,docker] [message: an error occurred during Docker runtime configuration check] [error: %s]", err)
-				}
+		ticker := time.NewTicker(runtimeCheckFrequency)
+		for range ticker.C {
+			err := manager.checkDockerRuntimeConfig()
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime,docker] [message: an error occurred during Docker runtime configuration check] [error: %s]", err)
 			}
 		}
 	}()
@@ -150,30 +141,25 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 		return err
 	}
 
-	ticker := time.NewTicker(runtimeCheckFrequency)
-
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				err := manager.pollService.start()
-				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start short-poll service] [error: %s]", err)
-					return
-				}
+		ticker := time.NewTicker(runtimeCheckFrequency)
+		for range ticker.C {
+			err := manager.pollService.start()
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start short-poll service] [error: %s]", err)
+				return
+			}
 
-				err = manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
-				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
-					return
-				}
+			err = manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
+				return
+			}
 
-				err = manager.stackManager.Start()
-				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
-					return
-				}
-
+			err = manager.stackManager.Start()
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
+				return
 			}
 		}
 	}()
@@ -224,24 +210,15 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 			return err
 		}
 
-		err = manager.stackManager.Start()
-		if err != nil {
-			return err
-		}
-
-	} else {
-		err = manager.pollService.stop()
-		if err != nil {
-			return err
-		}
-
-		err = manager.stackManager.Stop()
-		if err != nil {
-			return err
-		}
+		return manager.stackManager.Start()
 	}
 
-	return nil
+	err = manager.pollService.stop()
+	if err != nil {
+		return err
+	}
+
+	return manager.stackManager.Stop()
 }
 
 func buildHTTPClient(timeout float64, options *agent.Options) *http.Client {
