@@ -10,11 +10,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
-
-	"github.com/portainer/agent"
 )
 
 type (
@@ -28,7 +27,6 @@ type (
 		key               *edgeKey
 		logsManager       *scheduler.LogsManager
 		pollService       *PollService
-		pollServiceConfig *pollServiceConfig
 		stackManager      *stack.StackManager
 	}
 
@@ -56,7 +54,7 @@ func NewManager(parameters *ManagerParameters) *Manager {
 // Start starts the manager
 func (manager *Manager) Start() error {
 	if !manager.IsKeySet() {
-		return errors.New("Unable to start Edge manager without key")
+		return errors.New("unable to start Edge manager without key")
 	}
 
 	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
@@ -66,6 +64,7 @@ func (manager *Manager) Start() error {
 		EdgeID:                  manager.agentOptions.EdgeID,
 		PollFrequency:           agent.DefaultEdgePollInterval,
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
+		TunnelCapability:        manager.agentOptions.EdgeTunnel,
 		PortainerURL:            manager.key.PortainerInstanceURL,
 		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
@@ -73,7 +72,7 @@ func (manager *Manager) Start() error {
 		ContainerPlatform:       manager.containerPlatform,
 	}
 
-	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll)
+	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll, manager.agentOptions.EdgeTunnel)
 
 	stackManager, err := stack.NewStackManager(
 		client.NewPortainerClient(

@@ -4,11 +4,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/portainer/agent/edge/client"
 	"log"
 	"strings"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/filesystem"
 )
 
@@ -20,27 +20,16 @@ type edgeKey struct {
 }
 
 // SetKey parses and associates an Edge key to the agent.
-// If the agent is running inside a Swarm cluster, it will also set the "set" flag to specify that a key is set on this agent in the cluster.
-// Don't overwrite the file if it exists - this only appears to work, because our container runs as root
+// If the agent is running inside a cluster, it will also set the "set" flag to specify that a key is set on this agent in the cluster.
 func (manager *Manager) SetKey(key string) error {
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
 		return err
 	}
 
-	// TODO: yeah, we don't know if we got it from the fs, so lets try again :/
-	keyRetrieval, _ := retrieveEdgeKeyFromFilesystem()
-	if keyRetrieval == "" {
-		// key not previously saved
-		err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
-		if err != nil {
-			return err
-		}
-		keyRetrieval = key
-	}
-	if keyRetrieval != key {
-		// TODO: ok, I'm not sure if it should die, or delete the file and re-write it.
-		log.Fatalf("EdgeKey modified from %s to %s", keyRetrieval, key)
+	err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
+	if err != nil {
+		return err
 	}
 
 	manager.key = edgeKey
@@ -57,6 +46,7 @@ func (manager *Manager) SetKey(key string) error {
 	return nil
 }
 
+
 // GetKey returns the Edge key associated to the agent
 func (manager *Manager) GetKey() string {
 	var encodedKey string
@@ -70,10 +60,7 @@ func (manager *Manager) GetKey() string {
 
 // IsKeySet returns true if an Edge key is associated to the agent
 func (manager *Manager) IsKeySet() bool {
-	if manager.key == nil {
-		return false
-	}
-	return true
+	return manager.key != nil
 }
 
 // PropagateKeyInCluster propagates the Edge key associated to the agent to all the other agents inside the cluster
@@ -106,7 +93,6 @@ func (manager *Manager) PropagateKeyInCluster() error {
 
 // parseEdgeKey decodes a base64 encoded key and extract the decoded information from the following
 // format: <portainer_instance_url>|<tunnel_server_addr>|<tunnel_server_fingerprint>|<endpoint_id>
-// <client_credentials> are expected in the user:password format
 func parseEdgeKey(key string) (*edgeKey, error) {
 	decodedKey, err := base64.RawStdEncoding.DecodeString(key)
 	if err != nil {
@@ -136,7 +122,6 @@ func encodeKey(edgeKey *edgeKey) string {
 }
 
 func RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (string, error) {
-
 	if edgeKey != "" {
 		log.Println("[INFO] [main,edge] [message: Edge key loaded from options]")
 		return edgeKey, nil
@@ -160,8 +145,6 @@ func RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (strin
 }
 
 func retrieveEdgeKeyFromFilesystem() (string, error) {
-	var edgeKey string
-
 	edgeKeyFilePath := fmt.Sprintf("%s/%s", agent.DataDirectory, agent.EdgeKeyFile)
 
 	keyFileExists, err := filesystem.FileExists(edgeKeyFilePath)
@@ -169,36 +152,34 @@ func retrieveEdgeKeyFromFilesystem() (string, error) {
 		return "", err
 	}
 
-	if keyFileExists {
-		filesystemKey, err := filesystem.ReadFromFile(edgeKeyFilePath)
-		if err != nil {
-			return "", err
-		}
-
-		log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
-		edgeKey = string(filesystemKey)
+	if !keyFileExists {
+		return "", nil
 	}
 
-	return edgeKey, nil
+	filesystemKey, err := filesystem.ReadFromFile(edgeKeyFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
+	return string(filesystemKey), nil
 }
 
 func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, error) {
-	var edgeKey string
-
 	member := clusterService.GetMemberWithEdgeKeySet()
-	if member != nil {
-		httpCli := client.NewAPIClient()
-
-		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
-		memberKey, err := httpCli.GetEdgeKey(memberAddr)
-		if err != nil {
-			log.Printf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
-			return "", err
-		}
-
-		log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
-		edgeKey = memberKey
+	if member == nil {
+		return "", nil
 	}
 
-	return edgeKey, nil
+	httpCli := client.NewAPIClient()
+
+	memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
+	memberKey, err := httpCli.GetEdgeKey(memberAddr)
+	if err != nil {
+		log.Printf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
+		return "", err
+	}
+
+	log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
+	return memberKey, nil
 }

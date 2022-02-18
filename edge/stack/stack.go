@@ -65,14 +65,12 @@ const (
 
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
-	engineType   engineType
-	stacks       map[edgeStackID]*edgeStack
-	stopSignal   chan struct{}
-	deployer     agent.Deployer
-	portainerURL string
-	endpointID   string
-	isEnabled    bool
-	httpClient   *client.PortainerClient
+	engineType engineType
+	stacks     map[edgeStackID]*edgeStack
+	stopSignal chan struct{}
+	deployer   agent.Deployer
+	isEnabled  bool
+	httpClient *client.PortainerClient
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager

@@ -6,11 +6,11 @@ package scheduler
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/portainer/agent/filesystem"
 	"log"
 	"strings"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/filesystem"
 )
 
 const (

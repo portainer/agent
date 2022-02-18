@@ -238,7 +238,7 @@ func main() {
 		config.Addr = advertiseAddr
 	}
 
-	err = startAPIServer(config)
+	err = startAPIServer(config, options.EdgeMode)
 	if err != nil && !errors.Is(err, gohttp.ErrServerClosed) {
 		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
 	}
@@ -252,14 +252,14 @@ func main() {
 	fmt.Printf("[DEBUG] [main] [message: shutting down] [signal: %s]", s)
 }
 
-func startAPIServer(config *http.APIServerConfig) error {
+func startAPIServer(config *http.APIServerConfig, edgeMode bool) error {
 	server := http.NewAPIServer(config)
 
-	if config.EdgeManager != nil {
-		return server.StartUnsecured()
+	if edgeMode {
+		return server.StartUnsecured(edgeMode)
 	}
 
-	return server.StartSecured()
+	return server.StartSecured(edgeMode)
 }
 
 func parseOptions() (*agent.Options, error) {
