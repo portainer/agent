@@ -124,7 +124,7 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 			fileName = fmt.Sprintf("%s.yml", stack.Name)
 		}
 
-		err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 644)
+		err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 0644)
 		if err != nil {
 			return err
 		}
