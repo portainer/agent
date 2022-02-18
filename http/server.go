@@ -27,6 +27,7 @@ type APIServer struct {
 	kubeClient         *kubernetes.KubeClient
 	kubernetesDeployer *exec.KubernetesDeployer
 	containerPlatform  agent.ContainerPlatform
+	nomadConfig        agent.NomadConfig
 }
 
 // APIServerConfig represents a server configuration
@@ -43,6 +44,7 @@ type APIServerConfig struct {
 	RuntimeConfiguration *agent.RuntimeConfiguration
 	AgentOptions         *agent.Options
 	ContainerPlatform    agent.ContainerPlatform
+	NomadConfig          agent.NomadConfig
 }
 
 // NewAPIServer returns a pointer to a APIServer.
@@ -59,6 +61,7 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 		kubeClient:         config.KubeClient,
 		kubernetesDeployer: config.KubernetesDeployer,
 		containerPlatform:  config.ContainerPlatform,
+		nomadConfig:        config.NomadConfig,
 	}
 }
 
@@ -75,6 +78,7 @@ func (server *APIServer) StartUnsecured() error {
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
 		ContainerPlatform:    server.containerPlatform,
+		NomadConfig:          server.nomadConfig,
 	}
 
 	h := handler.NewHandler(config)
@@ -105,6 +109,7 @@ func (server *APIServer) StartSecured() error {
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
 		ContainerPlatform:    server.containerPlatform,
+		NomadConfig:          server.nomadConfig,
 	}
 
 	h := handler.NewHandler(config)
