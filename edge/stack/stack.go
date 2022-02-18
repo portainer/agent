@@ -15,13 +15,14 @@ import (
 type edgeStackID int
 
 type edgeStack struct {
-	ID         edgeStackID
-	Name       string
-	Version    int
-	FileFolder string
-	FileName   string
-	Status     edgeStackStatus
-	Action     edgeStackAction
+	ID           edgeStackID
+	Name         string
+	Version      int
+	FileFolder   string
+	FileName     string
+	Status       edgeStackStatus
+	Action       edgeStackAction
+	ImageMapping map[string]string // a map of stackfile image to imageCache url(with sha)
 }
 
 type edgeStackStatus int
@@ -131,6 +132,7 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 
 		stack.FileFolder = folder
 		stack.FileName = fileName
+		stack.ImageMapping = stackConfig.ImageMapping
 
 		manager.stacks[stack.ID] = stack
 
@@ -196,6 +198,19 @@ func (manager *StackManager) Start() error {
 				ctx := context.TODO()
 
 				if stack.Action == actionDeploy || stack.Action == actionUpdate {
+					for stackImage, cacheImage := range stack.ImageMapping {
+						//pull cache image
+						//push stackImage to docker
+						// TODO (on server too): this code doesn't like image tag == "<none>", so we need to default that to ":latest"
+						// TODO: make sure the image is right for this agent's arch.
+						// see `skopeo inspect --raw docker://nginx | jq`
+						// TODO: might need to be able to retry this, as the server may not have finished syncing
+						err := copyImage(ctx, cacheImage, stackImage)
+						if err != nil {
+							log.Println("[ERROR] copying image %s -> %s: %s", cacheImage, stackImage, err.Error())
+						}
+					}
+					// TODO: either make copyImage blocking, add a doneChannel, make it retry					
 					manager.deployStack(ctx, stack, stackName, stackFileLocation)
 				} else if stack.Action == actionDelete {
 					manager.deleteStack(ctx, stack, stackName, stackFileLocation)
