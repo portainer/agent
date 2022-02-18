@@ -22,6 +22,7 @@ import (
 	"github.com/portainer/agent/net"
 	"github.com/portainer/agent/os"
 	cluster "github.com/portainer/agent/serf"
+	httpEdge "github.com/portainer/agent/edge/http"
 )
 
 func main() {
@@ -265,7 +266,7 @@ func parseOptions() (*agent.Options, error) {
 }
 
 func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
-	edgeServer := http.NewEdgeServer(edgeManager)
+	edgeServer := httpEdge.NewEdgeServer(edgeManager)
 
 	go func() {
 		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", serverAddr, serverPort)
