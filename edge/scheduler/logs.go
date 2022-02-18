@@ -25,9 +25,7 @@ const (
 	logFailed
 )
 
-func NewLogsManager(portainerURL, endpointID, edgeID string, insecurePoll bool) *LogsManager {
-	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll)
-
+func NewLogsManager(cli *client.PortainerClient) *LogsManager {
 	return &LogsManager{
 		httpClient: cli,
 		stopSignal: nil,

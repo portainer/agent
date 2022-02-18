@@ -2,14 +2,12 @@ package client
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/portainer/agent"
 )
@@ -23,24 +21,12 @@ type PortainerClient struct {
 }
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress, endpointID, edgeID string, insecurePoll bool) *PortainerClient {
-	httpCli := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	if insecurePoll {
-		httpCli.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
-	}
-
+func NewPortainerClient(serverAddress, endpointID, edgeID string, httpClient *http.Client) *PortainerClient {
 	return &PortainerClient{
 		serverAddress: serverAddress,
 		endpointID:    endpointID,
 		edgeID:        edgeID,
-		httpClient:    httpCli,
+		httpClient:    httpClient,
 	}
 }
 

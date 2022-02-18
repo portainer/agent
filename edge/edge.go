@@ -1,12 +1,17 @@
 package edge
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 )
@@ -59,7 +64,6 @@ func (manager *Manager) Start() error {
 		EdgeID:                  manager.agentOptions.EdgeID,
 		PollFrequency:           agent.DefaultEdgePollInterval,
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
-		InsecurePoll:            manager.agentOptions.EdgeInsecurePoll,
 		TunnelCapability:        manager.agentOptions.EdgeTunnel,
 		PortainerURL:            manager.key.PortainerInstanceURL,
 		EndpointID:              manager.key.EndpointID,
@@ -68,18 +72,37 @@ func (manager *Manager) Start() error {
 		ContainerPlatform:       manager.containerPlatform,
 	}
 
-	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll, manager.agentOptions.EdgeTunnel)
+	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll, manager.agentOptions.EdgeTunnel)
 
-	stackManager, err := stack.NewStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	stackManager, err := stack.NewStackManager(
+		client.NewPortainerClient(
+			manager.key.PortainerInstanceURL,
+			manager.key.EndpointID,
+			manager.agentOptions.EdgeID,
+			buildHTTPClient(10, manager.agentOptions),
+		),
+	)
 	if err != nil {
 		return err
 	}
 	manager.stackManager = stackManager
 
-	manager.logsManager = scheduler.NewLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	manager.logsManager = scheduler.NewLogsManager(
+		client.NewPortainerClient(
+			manager.key.PortainerInstanceURL,
+			manager.key.EndpointID,
+			manager.agentOptions.EdgeID,
+			buildHTTPClient(10, manager.agentOptions),
+		),
+	)
 	manager.logsManager.Start()
 
-	pollService, err := newPollService(manager.stackManager, manager.logsManager, pollServiceConfig)
+	pollService, err := newPollService(
+		manager.stackManager,
+		manager.logsManager,
+		pollServiceConfig,
+		buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
+	)
 	if err != nil {
 		return err
 	}
@@ -215,6 +238,55 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 		err = manager.stackManager.Stop()
 		if err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func buildHTTPClient(timeout float64, options *agent.Options) *http.Client {
+	httpCli := &http.Client{
+		Timeout: time.Duration(timeout) * time.Second,
+	}
+
+	httpCli.Transport = buildTransport(options)
+	return httpCli
+}
+
+func buildTransport(options *agent.Options) *http.Transport {
+	if options.EdgeInsecurePoll {
+		return &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+
+	// if ssl certs for edge agent are set
+	if options.SSLCert != "" && options.SSLKey != "" {
+		// Read the key pair to create certificate
+		cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var caCertPool *x509.CertPool
+		// Create a CA certificate pool and add cert.pem to it
+		if options.SSLCACert != "" {
+			caCert, err := ioutil.ReadFile(options.SSLCACert)
+			if err != nil {
+				log.Fatal(err)
+			}
+			caCertPool = x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+		}
+
+		// Create a HTTPS client and supply the created CA pool and certificate
+		return &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs:      caCertPool,
+				Certificates: []tls.Certificate{cert},
+			},
 		}
 	}
 
