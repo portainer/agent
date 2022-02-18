@@ -73,7 +73,7 @@ type (
 		LogLevel              string
 		SSLCert               string
 		SSLKey                string
-		SSLCacert             string
+		SSLCACert             string
 	}
 
 	// PciDevice is the representation of a physical pci device on a host

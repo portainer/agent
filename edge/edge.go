@@ -267,8 +267,8 @@ func GetNewHttpClient(timeout float64, options *agent.Options) *http.Client {
 
 		var caCertPool *x509.CertPool
 		// Create a CA certificate pool and add cert.pem to it
-		if options.SSLCacert != "" {
-			caCert, err := ioutil.ReadFile(options.SSLCacert)
+		if options.SSLCACert != "" {
+			caCert, err := ioutil.ReadFile(options.SSLCACert)
 			if err != nil {
 				log.Fatal(err)
 			}
