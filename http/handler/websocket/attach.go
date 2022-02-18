@@ -86,12 +86,7 @@ func hijackAttachStartOperation(websocketConn *websocket.Conn, attachID string) 
 		return err
 	}
 
-	err = hijackRequest(websocketConn, httpConn, attachStartRequest)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return hijackRequest(websocketConn, httpConn, attachStartRequest)
 }
 
 func createAttachStartRequest(attachID string) (*http.Request, error) {
