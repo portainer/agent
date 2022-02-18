@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	http2 "github.com/portainer/agent/edge/http"
 	"log"
 	gohttp "net/http"
 	goos "os"
@@ -23,6 +22,7 @@ import (
 	"github.com/portainer/agent/net"
 	"github.com/portainer/agent/os"
 	cluster "github.com/portainer/agent/serf"
+	httpEdge "github.com/portainer/agent/edge/http"
 )
 
 func main() {
@@ -80,8 +80,7 @@ func main() {
 				log.Printf("[WARN] [main,podman] [message: Unable to retrieve local agent IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
 				advertiseAddr = options.AgentServerAddr
 			} else {
-				log.Printf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
-				advertiseAddr = options.AgentServerAddr
+				log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 			}
 		}
 
@@ -268,7 +267,7 @@ func parseOptions() (*agent.Options, error) {
 }
 
 func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
-	edgeServer := http2.NewEdgeServer(edgeManager)
+	edgeServer := httpEdge.NewEdgeServer(edgeManager)
 
 	go func() {
 		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", serverAddr, serverPort)
