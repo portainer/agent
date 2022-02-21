@@ -46,40 +46,41 @@ function deploy() {
         build "$IMAGE_NAME"
     fi
     
-    url_prefix=""
+    url=""
     if [ ${#ips[@]} -ne 0 ]; then
-        url_prefix="-H "${ips[0]}:2375""
+        url="${ips[0]}:2375"
     fi
     
     if [ -z "$mode" ] || [ "$mode" == "standalone" ]; then
-        deploy_standalone "$url_prefix"
+        deploy_standalone "$url"
     fi
     
     if [[ "$mode" == "swarm" ]]; then
-        deploy_swarm "$url_prefix"
+        deploy_swarm "$url"
     fi
 }
 
 
 function load_image() {
     local image_name=$1
-    local url_prefix=${2:-''}
+    local url=${2:-''}
     local node_ips=("${@:3}")
     
-    if [ -z "$url_prefix" ]; then
+    if [ -z "$url" ]; then
         return 0
     fi
     
     msg "Exporting image to machine..."
     docker save "${image_name}" -o "/tmp/portainer-agent.tar"
     
-    docker "$url_prefix" rmi -f "${IMAGE_NAME}" || true
-    docker "$url_prefix" load -i "/tmp/portainer-agent.tar"
+    docker -H "$url" rmi -f "${IMAGE_NAME}" || true
+    docker -H "$url" load -i "/tmp/portainer-agent.tar"
     
     if [ ${#node_ips[@]} -eq 0 ]; then
         return 0
     fi
     
+    msg "Exporting image to nodes..."
     for node_ip in "${node_ips[@]}"; do
         docker -H "${node_ip}:2375" rmi -f "${IMAGE_NAME}" || true
         docker -H "${node_ip}:2375" load -i "/tmp/portainer-agent.tar"
@@ -87,14 +88,14 @@ function load_image() {
 }
 
 function deploy_standalone() {
-    local url_prefix=$1
+    local url=${1:-""}
     msg "Running standalone agent $IMAGE_NAME"
     
-    docker "$url_prefix" rm -f portainer-agent-dev
+    docker -H "$url" rm -f portainer-agent-dev || true
     
-    load_image "$IMAGE_NAME" "$url_prefix"
+    load_image "$IMAGE_NAME" "$url"
     
-    docker "$url_prefix" run -d --name portainer-agent-dev \
+    docker -H "$url" run -d --name portainer-agent-dev \
     -e LOG_LEVEL=${LOG_LEVEL} \
     -e EDGE=${edge} \
     -e EDGE_ID="${edge_id}" \
@@ -106,7 +107,7 @@ function deploy_standalone() {
     -p 80:80 \
     "${IMAGE_NAME}"
     
-    docker "$url_prefix" logs -f portainer-agent-dev
+    docker -H "$url" logs -f portainer-agent-dev
 }
 
 function deploy_podman() {
@@ -135,25 +136,27 @@ function deploy_swarm() {
         die "Swarm expects a manager ip"
     fi
     
-    local url_prefix="$1"
+    msg "Deploying swarm"
+    
+    local url="$1"
     
     local node_ips=()
-    if [ ${#ips[@]} -gt 1 ]; then
-        node_ips=("${@:2}")
+    if [[ ${#ips[@]} -gt 1 ]]; then
+        node_ips=("${ips[@]:1}")
     fi
     
     msg "Cleaning..."
     rm "/tmp/portainer-agent.tar" || true
     
-    docker "$url_prefix" service rm portainer-agent-dev || true
-    docker "$url_prefix" network rm portainer-agent-dev-net || true
+    docker -H "$url" service rm portainer-agent-dev || true
+    docker -H "$url" network rm portainer-agent-dev-net || true
     
-    load_image "$IMAGE_NAME" "$url_prefix" "${node_ips[@]}"
+    load_image "$IMAGE_NAME" "$url" "${node_ips[@]}"
     
     sleep 2
     
-    docker "$url_prefix" network create --driver overlay portainer-agent-dev-net
-    docker "$url_prefix" service create --name portainer-agent-dev \
+    docker -H "$url" network create --driver overlay portainer-agent-dev-net
+    docker -H "$url" service create --name portainer-agent-dev \
     --network portainer-agent-dev-net \
     -e LOG_LEVEL="${LOG_LEVEL}" \
     -e EDGE=${edge} \
@@ -167,14 +170,10 @@ function deploy_swarm() {
     --publish mode=host,published=80,target=80 \
     "${IMAGE_NAME}"
     
-    docker "$url_prefix" service logs -f portainer-agent-dev
+    docker -H "$url" service logs -f portainer-agent-dev
 }
 
 function parse_deploy_params() {
-    if [[ "${1-}" == "" ]]; then
-        usage_deploy
-    fi
-    
     while :; do
         case "${1-}" in
             -h | --help) usage_deploy ;;
@@ -239,9 +238,8 @@ Available flags:
 -p, --podman                            Deploy to a local podman
 -c, --compile                           Compile the code before deployment (will also build a docker image)
 -b, --build                             Build the image before deployment
--e, --edge                              Deploy an edge agent
---edge-e, --edge  [EDGE_ID EDGE_KEY]    Deploy an edge agent
-id EDGE_ID                              Set agent edge id to EDGE_ID (required when using -e without edge-id)
+-e, --edge  [EDGE_ID EDGE_KEY]          Deploy an edge agent (optional with EDGE_ID and EDGE_KEY)
+--edge-id EDGE_ID                       Set agent edge id to EDGE_ID (required when using -e without edge-id)
 --edge-key EDGE_KEY                     Set agent edge key to EDGE_KEY
 --ip IP                                 can be provided zero, once or more times. for standalone only the first ip is considered
                                             for swarm the first ip is the manager and the rest are nodes
