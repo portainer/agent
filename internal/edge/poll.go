@@ -79,7 +79,6 @@ func newPollService(edgeStackManager *StackManager, logsManager *logsManager, co
 		inactivityTimeout:       inactivityTimeout,
 		tunnelClient:            chisel.NewClient(),
 		scheduleManager:         filesystem.NewCronManager(),
-		refreshSignal:           nil,
 		updateLastActivity:      make(chan struct{}),
 		edgeStackManager:        edgeStackManager,
 		portainerURL:            config.PortainerURL,
@@ -89,10 +88,6 @@ func newPollService(edgeStackManager *StackManager, logsManager *logsManager, co
 		logsManager:             logsManager,
 		containerPlatform:       config.ContainerPlatform,
 	}, nil
-}
-
-func (service *PollService) closeTunnel() error {
-	return service.tunnelClient.CloseTunnel()
 }
 
 func (service *PollService) resetActivityTimer() {
@@ -272,9 +267,9 @@ func (service *PollService) poll() error {
 	}
 
 	if service.tunnel == true {
-		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen(){
+		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
 			log.Println("[DEBUG] [internal,edge,poll] [message: Required status detected, creating reverse tunnel]")
-	
+
 			err := service.createTunnel(responseData.Credentials, responseData.Port)
 			if err != nil {
 				log.Printf("[ERROR] [internal,edge,poll] [message: Unable to create tunnel] [error: %s]", err)
