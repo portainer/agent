@@ -13,7 +13,8 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
-	"github.com/portainer/agent/filesystem"
+	"github.com/portainer/agent/edge/scheduler"
+	"github.com/portainer/agent/edge/stack"
 	"github.com/portainer/libcrypto"
 )
 
@@ -26,7 +27,6 @@ type PollService struct {
 	apiServerAddr           string
 	pollIntervalInSeconds   float64
 	insecurePoll            bool
-	tunnel                  bool
 	inactivityTimeout       time.Duration
 	edgeID                  string
 	httpClient              *http.Client
@@ -34,12 +34,12 @@ type PollService struct {
 	scheduleManager         agent.Scheduler
 	lastActivity            time.Time
 	refreshSignal           chan struct{}
-	edgeStackManager        *StackManager
+	edgeStackManager        *stack.StackManager
 	portainerURL            string
 	endpointID              string
 	tunnelServerAddr        string
 	tunnelServerFingerprint string
-	logsManager             *logsManager
+	logsManager             *scheduler.LogsManager
 	containerPlatform       agent.ContainerPlatform
 }
 
@@ -49,7 +49,7 @@ type pollServiceConfig struct {
 	InactivityTimeout       string
 	PollFrequency           string
 	InsecurePoll            bool
-	Tunnel                  bool
+	TunnelCapability        bool
 	PortainerURL            string
 	EndpointID              string
 	TunnelServerAddr        string
@@ -58,7 +58,8 @@ type pollServiceConfig struct {
 }
 
 // newPollService returns a pointer to a new instance of PollService
-func newPollService(edgeStackManager *StackManager, logsManager *logsManager, config *pollServiceConfig) (*PollService, error) {
+// If TunneCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
+func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -69,15 +70,13 @@ func newPollService(edgeStackManager *StackManager, logsManager *logsManager, co
 		return nil, err
 	}
 
-	return &PollService{
+	pollService := &PollService{
 		apiServerAddr:           config.APIServerAddr,
 		edgeID:                  config.EdgeID,
 		pollIntervalInSeconds:   pollFrequency.Seconds(),
 		insecurePoll:            config.InsecurePoll,
-		tunnel:                  config.Tunnel,
 		inactivityTimeout:       inactivityTimeout,
-		tunnelClient:            chisel.NewClient(),
-		scheduleManager:         filesystem.NewCronManager(),
+		scheduleManager:         scheduler.NewCronManager(),
 		refreshSignal:           nil,
 		edgeStackManager:        edgeStackManager,
 		portainerURL:            config.PortainerURL,
@@ -86,15 +85,17 @@ func newPollService(edgeStackManager *StackManager, logsManager *logsManager, co
 		tunnelServerFingerprint: config.TunnelServerFingerprint,
 		logsManager:             logsManager,
 		containerPlatform:       config.ContainerPlatform,
-	}, nil
-}
+	}
 
-func (service *PollService) closeTunnel() error {
-	return service.tunnelClient.CloseTunnel()
+	if config.TunnelCapability {
+		pollService.tunnelClient = chisel.NewClient()
+	}
+
+	return pollService, nil
 }
 
 func (service *PollService) resetActivityTimer() {
-	if service.tunnelClient.IsTunnelOpen() {
+	if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() {
 		service.lastActivity = time.Now()
 	}
 }
@@ -172,7 +173,7 @@ func (service *PollService) startActivityMonitoringLoop() {
 				elapsed := time.Since(service.lastActivity)
 				log.Printf("[DEBUG] [internal,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: tunnel activity monitoring]", elapsed.Seconds())
 
-				if service.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > service.inactivityTimeout.Seconds() {
+				if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > service.inactivityTimeout.Seconds() {
 
 					log.Printf("[INFO] [internal,edge,monitoring] [tunnel_last_activity_seconds: %f] [message: shutting down tunnel after inactivity period]", elapsed.Seconds())
 
@@ -265,19 +266,19 @@ func (service *PollService) poll() error {
 
 	log.Printf("[DEBUG] [internal,edge,poll] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", responseData.Status, responseData.Port, len(responseData.Schedules), responseData.CheckinInterval)
 
-	if responseData.Status == "IDLE" && service.tunnelClient.IsTunnelOpen() {
-		log.Printf("[DEBUG] [internal,edge,poll] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
+	if service.tunnelClient != nil {
+		if responseData.Status == "IDLE" && service.tunnelClient.IsTunnelOpen() {
+			log.Printf("[DEBUG] [internal,edge,poll] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
 
-		err := service.tunnelClient.CloseTunnel()
-		if err != nil {
-			log.Printf("[ERROR] [internal,edge,poll] [message: Unable to shutdown tunnel] [error: %s]", err)
+			err := service.tunnelClient.CloseTunnel()
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,poll] [message: Unable to shutdown tunnel] [error: %s]", err)
+			}
 		}
-	}
 
-	if service.tunnel == true {
-		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen(){
+		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
 			log.Println("[DEBUG] [internal,edge,poll] [message: Required status detected, creating reverse tunnel]")
-	
+
 			err := service.createTunnel(responseData.Credentials, responseData.Port)
 			if err != nil {
 				log.Printf("[ERROR] [internal,edge,poll] [message: Unable to create tunnel] [error: %s]", err)
@@ -298,7 +299,7 @@ func (service *PollService) poll() error {
 		}
 	}
 
-	service.logsManager.handleReceivedLogsRequests(logsToCollect)
+	service.logsManager.HandleReceivedLogsRequests(logsToCollect)
 
 	if responseData.CheckinInterval != service.pollIntervalInSeconds {
 		log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
@@ -313,7 +314,7 @@ func (service *PollService) poll() error {
 			stacks[stack.ID] = stack.Version
 		}
 
-		err := service.edgeStackManager.updateStacksStatus(stacks)
+		err := service.edgeStackManager.UpdateStacksStatus(stacks)
 		if err != nil {
 			log.Printf("[ERROR] [internal,edge,stack] [message: an error occurred during stack management] [error: %s]", err)
 			return err

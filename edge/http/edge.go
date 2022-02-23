@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/portainer/agent/internal/edge"
+	"github.com/portainer/agent/edge"
 
 	"github.com/gorilla/mux"
 )

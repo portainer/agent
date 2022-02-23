@@ -1,7 +1,6 @@
 package browse
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/portainer/agent/filesystem"
@@ -12,10 +11,6 @@ import (
 // GET request on /browse/get?volumeID=:id&path=:path
 func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
-	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
-		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", errors.New("This agent feature is not enabled")}
-	}
-
 	path, err := request.RetrieveQueryParameter(r, "path", false)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
