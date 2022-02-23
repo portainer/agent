@@ -33,8 +33,9 @@ type (
 
 	// EdgeStackConfig represent an Edge stack config
 	EdgeStackConfig struct {
-		Name        string
-		FileContent string
+		Name         string
+		FileContent  string
+		ImageMapping map[string]string // a map of stackfile image to imageCache url(with sha)
 	}
 
 	// HostInfo is the representation of the collection of host information
