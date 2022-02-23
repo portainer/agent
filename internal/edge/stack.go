@@ -72,7 +72,7 @@ type StackManager struct {
 	endpointID   string
 	isEnabled    bool
 	httpClient   *client.PortainerClient
-	mu           *sync.Mutex
+	mu           sync.Mutex
 }
 
 // newStackManager returns a pointer to a new instance of StackManager
@@ -83,7 +83,6 @@ func newStackManager(portainerURL, endpointID, edgeID string, insecurePoll bool,
 		stacks:     map[edgeStackID]*edgeStack{},
 		stopSignal: nil,
 		httpClient: cli,
-		mu:         &sync.Mutex{},
 	}
 
 	return stackManager, nil
