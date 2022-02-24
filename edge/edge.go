@@ -74,7 +74,7 @@ func (manager *Manager) Start() error {
 
 	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll, manager.agentOptions.EdgeTunnel)
 
-	stackManager, err := stack.NewStackManager(
+	stackManager := stack.NewStackManager(
 		client.NewPortainerClient(
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
@@ -82,9 +82,6 @@ func (manager *Manager) Start() error {
 			buildHTTPClient(10, manager.agentOptions),
 		),
 	)
-	if err != nil {
-		return err
-	}
 	manager.stackManager = stackManager
 
 	manager.logsManager = scheduler.NewLogsManager(
@@ -258,11 +255,13 @@ func buildTransport(options *agent.Options) *http.Transport {
 			caCertPool.AppendCertsFromPEM(caCert)
 		}
 
-		// Create a HTTPS client and supply the created CA pool and certificate
+		// Create an HTTPS client and supply the created CA pool and certificate
 		return &http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs:      caCertPool,
 				Certificates: []tls.Certificate{cert},
+				MinVersion:   tls.VersionTLS13,
+				MaxVersion:   tls.VersionTLS13,
 			},
 		}
 	}

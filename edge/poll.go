@@ -55,7 +55,7 @@ type pollServiceConfig struct {
 }
 
 // newPollService returns a pointer to a new instance of PollService
-// If TunneCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
+// if TunnelCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
 func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, httpClient *http.Client) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {

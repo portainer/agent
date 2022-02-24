@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/portainer/agent"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (

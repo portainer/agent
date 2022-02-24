@@ -72,15 +72,12 @@ type StackManager struct {
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-// TODO: REVIEW no point in returning error
-func NewStackManager(cli *client.PortainerClient) (*StackManager, error) {
-	stackManager := &StackManager{
+func NewStackManager(cli *client.PortainerClient) *StackManager {
+	return &StackManager{
 		stacks:     map[edgeStackID]*edgeStack{},
 		stopSignal: nil,
 		httpClient: cli,
 	}
-
-	return stackManager, nil
 }
 
 func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
