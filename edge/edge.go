@@ -183,12 +183,6 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 		}
 
 		err = manager.stackManager.SetEngineStatus(engineStatus)
-
-		if err != nil {
-			return err
-		}
-
-		err = manager.stackManager.Start()
 		if err != nil {
 			return err
 		}
