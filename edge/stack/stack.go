@@ -55,6 +55,8 @@ const (
 type engineType int
 
 const (
+	// TODO: consider defining this in agent.go or re-use/enhance some of the existing constants
+	// that are declared in agent.go
 	_ engineType = iota
 	EngineTypeDockerStandalone
 	EngineTypeDockerSwarm
@@ -95,13 +97,13 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 			if stack.Version == version {
 				continue
 			}
-			log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: marking stack for update]", stackID)
+			log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for update]", stackID)
 
 			stack.Action = actionUpdate
 			stack.Version = version
 			stack.Status = statusPending
 		} else {
-			log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: marking stack for deployment]", stackID)
+			log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for deployment]", stackID)
 
 			stack = &edgeStack{
 				Action:  actionDeploy,
@@ -142,7 +144,7 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 
 	for stackID, stack := range manager.stacks {
 		if _, ok := stacks[int(stackID)]; !ok {
-			log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: marking stack for deletion]", stackID)
+			log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for deletion]", stackID)
 			stack.Action = actionDelete
 			stack.Status = statusPending
 
@@ -180,7 +182,7 @@ func (manager *StackManager) Start() error {
 		for {
 			select {
 			case <-manager.stopSignal:
-				log.Println("[DEBUG] [internal,edge,stack] [message: shutting down Edge stack manager]")
+				log.Println("[DEBUG] [edge,stack] [message: shutting down Edge stack manager]")
 				return
 			default:
 				stack := manager.next()
@@ -238,7 +240,7 @@ func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
 }
 
 func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
-	log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
+	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
 	stack.Status = statusDone
 	stack.Action = actionIdle
 	responseStatus := int(edgeStackStatusOk)
@@ -246,33 +248,33 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 	err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: stack deployment failed] [error: %s]", err)
+		log.Printf("[ERROR] [edge,stack] [message: stack deployment failed] [error: %s]", err)
 		stack.Status = statusError
 		responseStatus = int(edgeStackStatusError)
 		errorMessage = err.Error()
 	} else {
-		log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [stack_version: %d] [message: stack deployed]", stack.ID, stack.Version)
+		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [stack_version: %d] [message: stack deployed]", stack.ID, stack.Version)
 	}
 
 	manager.stacks[stack.ID] = stack
 
 	err = manager.httpClient.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: unable to update Edge stack status] [error: %s]", err)
+		log.Printf("[ERROR] [edge,stack] [message: unable to update Edge stack status] [error: %s]", err)
 	}
 }
 
 func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
-	log.Printf("[DEBUG] [internal,edge,stack] [stack_identifier: %d] [message: removing stack]", stack.ID)
+	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: removing stack]", stack.ID)
 	err := manager.deployer.Remove(ctx, stackName, []string{stackFileLocation})
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: unable to remove stack] [error: %s]", err)
+		log.Printf("[ERROR] [edge,stack] [message: unable to remove stack] [error: %s]", err)
 		return
 	}
 
 	err = filesystem.RemoveFile(stackFileLocation)
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: unable to delete Edge stack file] [error: %s]", err)
+		log.Printf("[ERROR] [edge,stack] [message: unable to delete Edge stack file] [error: %s]", err)
 		return
 	}
 

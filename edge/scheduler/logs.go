@@ -46,13 +46,13 @@ func (manager *LogsManager) Start() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("[DEBUG] [internal,edge,logs] [message: logs manager started]")
+	log.Printf("[DEBUG] [edge,scheduler] [message: logs manager started]")
 
 	go func() {
 		for {
 			select {
 			case <-manager.stopSignal:
-				log.Println("[DEBUG] [internal,edge,logs] [message: shutting down Edge logs manager]")
+				log.Println("[DEBUG] [edge,scheduler] [message: shutting down Edge logs manager]")
 				return
 			default:
 				jobID := manager.next()
@@ -62,25 +62,25 @@ func (manager *LogsManager) Start() error {
 					continue
 				}
 
-				log.Printf("[DEBUG] [internal,edge,logs] [job_identifier: %d] [message: started job log collection]", jobID)
+				log.Printf("[DEBUG] [edge,scheduler] [job_identifier: %d] [message: started job log collection]", jobID)
 
 				logFileLocation := fmt.Sprintf("%s%s/schedule_%d.log", agent.HostRoot, agent.ScheduleScriptDirectory, jobID)
 				exist, err := filesystem.FileExists(logFileLocation)
 				if err != nil {
 					manager.jobs[jobID] = logFailed
-					log.Printf("[ERROR] [internal,edge,logs] [error: %s] [message: Failed fetching log file]", err)
+					log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed fetching log file]", err)
 					continue
 				}
 
 				var file []byte
 				if !exist {
 					file = []byte("")
-					log.Printf("[DEBUG] [internal,edge,logs] [job_identifier: %d] [message: file doesn't exist]", jobID)
+					log.Printf("[DEBUG] [edge,scheduler] [job_identifier: %d] [message: file doesn't exist]", jobID)
 				} else {
 					file, err = filesystem.ReadFromFile(logFileLocation)
 					if err != nil {
 						manager.jobs[jobID] = logFailed
-						log.Printf("[ERROR] [internal,edge,logs] [error: %s] [message: Failed fetching log file]", err)
+						log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed fetching log file]", err)
 						continue
 					}
 				}
@@ -88,7 +88,7 @@ func (manager *LogsManager) Start() error {
 				err = manager.httpClient.SendJobLogFile(jobID, file)
 				if err != nil {
 					manager.jobs[jobID] = logFailed
-					log.Printf("[ERROR] [internal,edge,logs] [error: %s] [message: Failed sending log file to portainer]", err)
+					log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed sending log file to portainer]", err)
 					continue
 				}
 
@@ -102,7 +102,7 @@ func (manager *LogsManager) Start() error {
 
 func (manager *LogsManager) stop() {
 	if manager.stopSignal != nil {
-		log.Printf("[DEBUG] [internal,edge,logs] [message: logs manager stopped]")
+		log.Printf("[DEBUG] [edge,scheduler] [message: logs manager stopped]")
 		close(manager.stopSignal)
 		manager.stopSignal = nil
 	}
@@ -111,7 +111,7 @@ func (manager *LogsManager) stop() {
 func (manager *LogsManager) HandleReceivedLogsRequests(jobs []int) {
 	for _, jobID := range jobs {
 		if _, ok := manager.jobs[jobID]; !ok {
-			log.Printf("[DEBUG] [internal,edge,logs] [job_identifier: %d] [message: added job to queue]", jobID)
+			log.Printf("[DEBUG] [edge,scheduler] [job_identifier: %d] [message: added job to queue]", jobID)
 			manager.jobs[jobID] = logPending
 		}
 	}

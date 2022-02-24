@@ -71,7 +71,7 @@ func (clusterProxy *ClusterProxy) ClusterOperation(request *http.Request, cluste
 
 	for result := range dataChannel {
 		if result.err != nil {
-			log.Printf("[WARN] [http,docker,cluster] [node: %s] [message: Unable to retrieve node resources for aggregation] [error: %s]", result.nodeName, result.err)
+			log.Printf("[WARN] [http,proxy] [node: %s] [message: Unable to retrieve node resources for aggregation] [error: %s]", result.nodeName, result.err)
 			continue
 		}
 

@@ -157,7 +157,7 @@ func (server *APIServer) StartSecured(edgeMode bool) error {
 		TLSConfig:    tlsConfig,
 		WriteTimeout: 30 * time.Minute,
 	}
-
+	
 	go func() {
 		securityShutdown := config.AgentOptions.AgentSecurityShutdown
 		time.Sleep(securityShutdown)
