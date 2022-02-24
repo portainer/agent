@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"time"
 
+	httpError "github.com/portainer/libhttp/error"
+
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/http/handler"
 	"github.com/portainer/agent/kubernetes"
-	httperror "github.com/portainer/libhttp/error"
 )
 
 // APIServer is the web server exposing the API of an agent.
@@ -64,30 +65,6 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 	}
 }
 
-func (server *APIServer) serveSecuredEdgeAPI(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if server.edgeManager != nil {
-			server.edgeManager.ResetActivityTimer()
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (server *APIServer) serveUnsecuredEdgeAPI(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if server.edgeManager != nil && !server.edgeManager.IsKeySet() {
-			httperror.WriteError(w, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
-			return
-		}
-
-		if server.edgeManager != nil {
-			server.edgeManager.ResetActivityTimer()
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
 // Start starts a new web server by listening on the specified listenAddr.
 func (server *APIServer) Start(edgeMode bool) error {
 	config := &handler.Config{
@@ -103,7 +80,7 @@ func (server *APIServer) Start(edgeMode bool) error {
 		ContainerPlatform:    server.containerPlatform,
 	}
 
-	var h http.Handler = handler.NewHandler(config)
+	var httpHandler http.Handler = handler.NewHandler(config)
 	listenAddr := server.addr + ":" + server.port
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
@@ -111,7 +88,7 @@ func (server *APIServer) Start(edgeMode bool) error {
 	if edgeMode {
 		httpServer := &http.Server{
 			Addr:         listenAddr,
-			Handler:      server.serveUnsecuredEdgeAPI(h),
+			Handler:      server.edgeHandler(httpHandler),
 			ReadTimeout:  120 * time.Second,
 			WriteTimeout: 30 * time.Minute,
 		}
@@ -135,7 +112,7 @@ func (server *APIServer) Start(edgeMode bool) error {
 
 	httpServer := &http.Server{
 		Addr:         listenAddr,
-		Handler:      server.serveSecuredEdgeAPI(h),
+		Handler:      server.nonEdgeHandler(httpHandler),
 		ReadTimeout:  120 * time.Second,
 		TLSConfig:    tlsConfig,
 		WriteTimeout: 30 * time.Minute,
@@ -157,4 +134,23 @@ func (server *APIServer) Start(edgeMode bool) error {
 	}()
 
 	return httpServer.ListenAndServeTLS(agent.TLSCertPath, agent.TLSKeyPath)
+}
+
+func (server *APIServer) edgeHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !server.edgeManager.IsKeySet() {
+			httpError.WriteError(w, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
+			return
+		}
+
+		server.edgeManager.ResetActivityTimer()
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (server *APIServer) nonEdgeHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r)
+	})
 }
