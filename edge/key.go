@@ -122,7 +122,7 @@ func encodeKey(edgeKey *edgeKey) string {
 
 func RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (string, error) {
 	if edgeKey != "" {
-		log.Println("[INFO] [main,edge] [message: Edge key loaded from options]")
+		log.Println("[INFO] [edge] [message: Edge key loaded from options]")
 		return edgeKey, nil
 	}
 
@@ -160,7 +160,7 @@ func retrieveEdgeKeyFromFilesystem() (string, error) {
 		return "", err
 	}
 
-	log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
+	log.Println("[INFO] [edge] [message: Edge key loaded from the filesystem]")
 	return string(filesystemKey), nil
 }
 
@@ -175,10 +175,10 @@ func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, er
 	memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
 	memberKey, err := httpCli.GetEdgeKey(memberAddr)
 	if err != nil {
-		log.Printf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
+		log.Printf("[ERROR] [edge] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
 		return "", err
 	}
 
-	log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
+	log.Println("[INFO] [edge] [message: Edge key loaded from cluster]")
 	return memberKey, nil
 }

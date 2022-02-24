@@ -42,7 +42,7 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 	if len(schedules) == 0 {
 		manager.managedSchedules = schedules
 		if manager.cronFileExists {
-			log.Println("[DEBUG] [filesystem,cron] [message: no schedules available, removing cron file]")
+			log.Println("[DEBUG] [edge,scheduler] [message: no schedules available, removing cron file]")
 			manager.cronFileExists = false
 			return filesystem.RemoveFile(fmt.Sprintf("%s%s/%s", agent.HostRoot, cronDirectory, cronFile))
 		}
@@ -58,7 +58,7 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 	for _, schedule := range schedules {
 		for _, managed := range manager.managedSchedules {
 			if schedule.ID == managed.ID && schedule.Version != managed.Version {
-				log.Printf("[DEBUG] [filesystem,cron] [schedule_id: %d] [version: %d] [message: Found schedule with new version]", schedule.ID, schedule.Version)
+				log.Printf("[DEBUG] [edge,scheduler] [schedule_id: %d] [version: %d] [message: Found schedule with new version]", schedule.ID, schedule.Version)
 				updateRequired = true
 				break
 			}
@@ -110,13 +110,13 @@ func (manager *CronManager) flushEntries() error {
 	for _, schedule := range manager.managedSchedules {
 		cronEntry, err := createCronEntry(&schedule)
 		if err != nil {
-			log.Printf("[ERROR] [filesystem,cron] [schedule_id: %d] [message: Unable to create cron entry] [err: %s]", schedule.ID, err)
+			log.Printf("[ERROR] [edge,scheduler] [schedule_id: %d] [message: Unable to create cron entry] [err: %s]", schedule.ID, err)
 			continue
 		}
 		cronEntries = append(cronEntries, cronEntry)
 	}
 
-	log.Printf("[DEBUG] [filesystem,cron] [schedule_count: %d] [message: Writing cron file on disk]", len(manager.managedSchedules))
+	log.Printf("[DEBUG] [edge,scheduler] [schedule_count: %d] [message: Writing cron file on disk]", len(manager.managedSchedules))
 
 	cronEntries = append(cronEntries, "")
 	cronFileContent := strings.Join(cronEntries, "\n")
