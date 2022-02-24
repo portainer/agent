@@ -14,6 +14,7 @@ import (
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge"
+	httpEdge "github.com/portainer/agent/edge/http"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
@@ -235,7 +236,7 @@ func main() {
 		config.Addr = advertiseAddr
 	}
 
-	err = startAPIServer(config)
+	err = startAPIServer(config, options.EdgeMode)
 	if err != nil && !errors.Is(err, gohttp.ErrServerClosed) {
 		log.Fatalf("[ERROR] [main] [message: Unable to start Agent API server] [error: %s]", err)
 	}
@@ -249,14 +250,10 @@ func main() {
 	fmt.Printf("[DEBUG] [main] [message: shutting down] [signal: %s]", s)
 }
 
-func startAPIServer(config *http.APIServerConfig) error {
+func startAPIServer(config *http.APIServerConfig, edgeMode bool) error {
 	server := http.NewAPIServer(config)
 
-	if config.EdgeManager != nil {
-		return server.StartUnsecured()
-	}
-
-	return server.StartSecured()
+	return server.Start(edgeMode)
 }
 
 func parseOptions() (*agent.Options, error) {
@@ -265,7 +262,7 @@ func parseOptions() (*agent.Options, error) {
 }
 
 func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
-	edgeServer := http.NewEdgeServer(edgeManager)
+	edgeServer := httpEdge.NewEdgeServer(edgeManager)
 
 	go func() {
 		log.Printf("[INFO] [main] [server_address: %s] [server_port: %s] [message: Starting Edge server]", serverAddr, serverPort)

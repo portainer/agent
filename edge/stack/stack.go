@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
-	"github.com/portainer/agent/http/client"
 )
 
 type edgeStackID int
@@ -126,7 +126,7 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 			fileName = fmt.Sprintf("%s.yml", stack.Name)
 		}
 
-		err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 644)
+		err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 0644)
 		if err != nil {
 			return err
 		}

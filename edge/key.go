@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/filesystem"
-	"github.com/portainer/agent/http/client"
 )
 
 type edgeKey struct {
