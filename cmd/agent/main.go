@@ -253,7 +253,11 @@ func main() {
 func startAPIServer(config *http.APIServerConfig, edgeMode bool) error {
 	server := http.NewAPIServer(config)
 
-	return server.Start(edgeMode)
+	if edgeMode {
+		return server.StartUnsecured(edgeMode)
+	}
+
+	return server.StartSecured(edgeMode)
 }
 
 func parseOptions() (*agent.Options, error) {
