@@ -1,6 +1,8 @@
 package os
 
 import (
+	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/portainer/agent"
@@ -57,10 +59,19 @@ var (
 	fSSLCert   = kingpin.Flag("sslcert", "Path to the SSL certificate used to identify the agent to Portainer").String()
 	fSSLKey    = kingpin.Flag("sslkey", "Path to the SSL key used to identify the agent to Portainer").String()
 	fSSLCacert = kingpin.Flag("sslcacert", "Path to the SSL CA certificate used to validate the Portainer server").String()
+
+	// info
+	fVersion = kingpin.Flag("version", "Show agent version information").Bool()
 )
 
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	kingpin.Parse()
+
+	if *fVersion {
+		fmt.Printf("Portainer Agent version %s\n", agent.Version)
+		os.Exit(0)
+	}
+
 	return &agent.Options{
 		AgentServerAddr:       fAgentServerAddr.String(),
 		AgentServerPort:       strconv.Itoa(*fAgentServerPort),
