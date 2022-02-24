@@ -64,21 +64,32 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 	}
 }
 
-func (server *APIServer) enhanceAPIForEdgeMode(next http.Handler, isSecure bool) http.Handler {
+func (server *APIServer) serveSecuredEdgeAPI(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isSecure && !server.edgeManager.IsKeySet() {
+		if server.edgeManager != nil {
+			server.edgeManager.ResetActivityTimer()
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (server *APIServer) serveUnsecuredEdgeAPI(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if server.edgeManager != nil && !server.edgeManager.IsKeySet() {
 			httperror.WriteError(w, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
 			return
 		}
 
-		server.edgeManager.ResetActivityTimer()
+		if server.edgeManager != nil {
+			server.edgeManager.ResetActivityTimer()
+		}
 
 		next.ServeHTTP(w, r)
 	})
 }
 
 // Start starts a new web server by listening on the specified listenAddr.
-func (server *APIServer) StartUnsecured(edgeMode bool) error {
+func (server *APIServer) Start(edgeMode bool) error {
 	config := &handler.Config{
 		SystemService:        server.systemService,
 		ClusterService:       server.clusterService,
@@ -88,55 +99,27 @@ func (server *APIServer) StartUnsecured(edgeMode bool) error {
 		EdgeManager:          server.edgeManager,
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
-		Secured:              false,
+		Secured:              !edgeMode,
 		ContainerPlatform:    server.containerPlatform,
 	}
 
 	var h http.Handler = handler.NewHandler(config)
 	listenAddr := server.addr + ":" + server.port
 
-	if edgeMode {
-		h = server.enhanceAPIForEdgeMode(h, false)
-	}
-
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 
-	httpServer := &http.Server{
-		Addr:         listenAddr,
-		Handler:      h,
-		ReadTimeout:  120 * time.Second,
-		WriteTimeout: 30 * time.Minute,
-	}
-
-	return httpServer.ListenAndServe()
-}
-
-// Start starts a new web server by listening on the specified listenAddr.
-func (server *APIServer) StartSecured(edgeMode bool) error {
-	config := &handler.Config{
-		SystemService:        server.systemService,
-		ClusterService:       server.clusterService,
-		SignatureService:     server.signatureService,
-		RuntimeConfiguration: server.agentTags,
-		AgentOptions:         server.agentOptions,
-		EdgeManager:          server.edgeManager,
-		KubeClient:           server.kubeClient,
-		KubernetesDeployer:   server.kubernetesDeployer,
-		Secured:              true,
-		ContainerPlatform:    server.containerPlatform,
-	}
-
-	var h http.Handler = handler.NewHandler(config)
-	listenAddr := server.addr + ":" + server.port
-
 	if edgeMode {
-		h = server.enhanceAPIForEdgeMode(h, true)
+		httpServer := &http.Server{
+			Addr:         listenAddr,
+			Handler:      server.serveUnsecuredEdgeAPI(h),
+			ReadTimeout:  120 * time.Second,
+			WriteTimeout: 30 * time.Minute,
+		}
+		return httpServer.ListenAndServe()
 	}
-
-	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 
 	tlsConfig := &tls.Config{
-		MinVersion: tls.VersionTLS12,
+		MinVersion: tls.VersionTLS13,
 		CipherSuites: []uint16{
 			tls.TLS_AES_128_GCM_SHA256,
 			tls.TLS_AES_256_GCM_SHA384,
@@ -152,22 +135,22 @@ func (server *APIServer) StartSecured(edgeMode bool) error {
 
 	httpServer := &http.Server{
 		Addr:         listenAddr,
-		Handler:      h,
+		Handler:      server.serveSecuredEdgeAPI(h),
 		ReadTimeout:  120 * time.Second,
 		TLSConfig:    tlsConfig,
 		WriteTimeout: 30 * time.Minute,
 	}
-	
+
 	go func() {
 		securityShutdown := config.AgentOptions.AgentSecurityShutdown
 		time.Sleep(securityShutdown)
 
 		if !server.signatureService.IsAssociated() {
-			log.Printf("[INFO] [main,http] [message: Shutting down API server as no client was associated after %s, keeping alive to prevent restart by docker/kubernetes]", securityShutdown)
+			log.Printf("[INFO] [http] [message: Shutting down API server as no client was associated after %s, keeping alive to prevent restart by docker/kubernetes]", securityShutdown)
 
 			err := httpServer.Shutdown(context.Background())
 			if err != nil {
-				log.Fatalf("[ERROR] [server] [message: failed shutting down server] [error: %s]", err)
+				log.Fatalf("[ERROR] [http] [message: failed shutting down server] [error: %s]", err)
 			}
 
 		}
