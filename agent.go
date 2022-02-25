@@ -65,8 +65,8 @@ type (
 		EdgeAsyncMode         bool
 		EdgeKey               string
 		EdgeID                string
-		EdgeServerAddr        string
-		EdgeServerPort        string
+		EdgeUIServerAddr      string
+		EdgeUIServerPort      string
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
 		EdgeTunnel            bool

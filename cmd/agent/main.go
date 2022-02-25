@@ -210,7 +210,7 @@ func main() {
 		} else {
 			log.Println("[DEBUG] [main] [message: Edge key not specified. Serving Edge UI]")
 
-			serveEdgeUI(edgeManager, options.EdgeServerAddr, options.EdgeServerPort)
+			serveEdgeUI(edgeManager, options.EdgeUIServerAddr, options.EdgeUIServerPort)
 		}
 	}
 
