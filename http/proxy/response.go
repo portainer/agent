@@ -47,7 +47,7 @@ func responseToJSONArray(response *http.Response, requestPath string) ([]interfa
 	} else {
 		responseData, ok = responseObject.([]interface{})
 		if !ok {
-			log.Printf("[ERROR] [http,proxy,cluster] [message: unexpected response from Docker daemon] [response: %+v]", responseData)
+			log.Printf("[ERROR] [http,proxy] [message: unexpected response from Docker daemon] [response: %+v]", responseData)
 			return nil, errors.New("invalid response from Docker daemon")
 		}
 	}
