@@ -49,6 +49,8 @@ func main() {
 
 	// !Generic
 
+	log.Printf("[INFO] [main] [message: Starting Agent version %s]\n", agent.Version)
+
 	// Docker & Podman
 
 	if containerPlatform == agent.PlatformDocker || containerPlatform == agent.PlatformPodman {
@@ -75,6 +77,12 @@ func main() {
 			log.Fatalf("[ERROR] [main,os] [message: Unable to retrieve container name] [error: %s]", err)
 		}
 
+		agent.StopperFunction = func(reason string) {
+			fmt.Printf("SVEN: (docker rm -f %s) %s\n", containerName, reason)
+			// and then docker rm -f the container..
+			dockerInfoService.StopContainer(containerName)
+		}
+
 		advertiseAddr, err = dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
 			if containerPlatform == agent.PlatformPodman {
@@ -83,6 +91,10 @@ func main() {
 			} else {
 				log.Printf("[ERROR] [main,docker] [message: Unable to retrieve local agent IP address] [error: %s]", err)
 				advertiseAddr = options.AgentServerAddr
+			}
+			agent.StopperFunction = func(reason string) {
+				fmt.Printf("SVEN: (I think this may be running outside a container %s) %s\n", containerName, reason)
+				// the os.Exit will take care of it?
 			}
 		}
 
@@ -97,6 +109,12 @@ func main() {
 				}
 
 				clusterAddr = fmt.Sprintf("tasks.%s", serviceName)
+				agent.StopperFunction = func(reason string) {
+					fmt.Printf("SVEN Swarm (docker service rm %s): %s\n", serviceName, reason)
+					// and then docker service rm -f the container..
+					dockerInfoService.StopContainer(containerName)
+				}
+
 			}
 
 			// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
@@ -128,6 +146,12 @@ func main() {
 		kubeClient, err = kubernetes.NewKubeClient()
 		if err != nil {
 			log.Fatalf("[ERROR] [main,kubernetes] [message: Unable to create Kubernetes client] [error: %s]", err)
+		}
+
+		agent.StopperFunction = func(reason string) {
+			fmt.Printf("SVEN: (kubectl rm -f %s) %s\n", "podname", reason)
+			// TODO: add a kube StopPod..
+			// and then kubectl rm -f the container..
 		}
 
 		kubernetesDeployer = exec.NewKubernetesDeployer(agent.DockerBinaryPath)

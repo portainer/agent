@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -81,6 +82,7 @@ type AsyncResponse struct {
 	ServerCommandId      string      // should be easy to detect if its larger / smaller:  this is the response that tells the agent there are new commands waiting for it
 	SendDiffSnapshotTime time.Time   `json: optional` // might be optional
 	Commands             []JSONPatch `json: optional` // todo
+	Status               string      // give the agent some idea if the server thinks its OK, or if it should STOP
 }
 
 // TODO: how to make "command list be only the things that have versions newer than the commandid.."
@@ -125,6 +127,9 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+	req.Header.Set(agent.HTTPAgentVersionHeaderName, agent.Version)
+	req.Header.Set(agent.HTTPAgentPIDName, fmt.Sprintf("%d", os.Getpid()))
+	//req.Header.Set(agent.HTTPAgentUUIDHeaderName, agent.getUUID())	// TODO: this needs to be unique to the orchestrator deployment - so its possible to disceren the difference between multiple orchestrators on the same system
 
 	// TODO: should this be set for all requests? (and should all the common code be extracted...)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
@@ -147,6 +152,23 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 	if err != nil {
 		return nil, err
 	}
+
+	if strings.HasPrefix(asyncResponse.Status, "STOP") {
+		// TODO: if we're a container, we need to actually stop the container, otherwise, exiting will cause Docker to re-start
+		// testing with:
+		// docker run --name agent-2.11.3 -dit --restart always -v /var/run:/var/run -v /home/sven:/home/sven -v $(pwd)/dist:/app/ --workdir $(pwd) ubuntu bash -c "pwd && ls -al ./dist && ./dist/agent-2.11.3 --EdgeMode --EdgeAsyncMode --EdgeKey aHR0cHM6Ly9wb3J0YWluZXIucDEuYWxoby5zdDo5NDQzfHBvcnRhaW5lci5wMS5hbGhvLnN0OjgwMDB8Yzk6NWM6NmM6ZGI6MjM6ODk6ZjQ6NWY6NDQ6YjE6ZmE6MjM6NGI6MTM6MTM6MGR8Mw --EdgeID 7e2b0143-c511-43c3-844c-a7a91ab0bedc --LogLevel DEBUG --sslcert /home/sven/.config/portainer/certs/agent-cert.pem --sslkey /home/sven/.config/portainer/certs/agent-key.pem --sslcacert /home/sven/.config/portainer/certs/ca.pem"
+		// Should really share /tmp /data etc for a real test...
+		// TODO: consider telling the agent what other container there is, so it can introspect?
+		log.Printf("Portainer server has asked us to %s - likely because there are 2 agents talking to it for this endpoint", asyncResponse.Status)
+		agent.StopThisAgent(asyncResponse.Status)
+
+		return &PollStatusResponse{
+			Status:          asyncResponse.Status,
+			CheckinInterval: asyncResponse.PingInterval.Seconds(),
+		}, nil
+	}
+	log.Printf("[DEBUG] [internal,edge,poll] [message: Portainer agent status: %s]", asyncResponse.Status)
+
 	// TODO: Store the other parts of the response to use for the other "requests"
 	lastAsyncResponseMutex.Lock()
 	lastAsyncResponse = asyncResponse

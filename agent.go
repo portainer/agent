@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"os"
 	"time"
 )
 
@@ -139,6 +140,7 @@ type (
 		GetRuntimeConfigurationFromDockerEngine() (*RuntimeConfiguration, error)
 		GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error)
 		GetServiceNameFromDockerEngine(containerName string) (string, error)
+		StopContainer(containerName string)
 	}
 
 	Deployer interface {
@@ -178,7 +180,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "2.11.1"
+	Version = "2.11.4"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.
@@ -226,7 +228,11 @@ const (
 	// Portainer Agent API Version.
 	HTTPResponseAgentApiVersion = "Portainer-Agent-API-Version"
 	// HTTPResponseAgentPlatform is the name of the header that will have the Portainer agent platform
-	HTTPResponseAgentPlatform = "Portainer-Agent-Platform"
+	HTTPResponseAgentPlatform  = "Portainer-Agent-Platform"
+	HTTPAgentVersionHeaderName = "X-Portainer-Agent-Version"
+	HTTPAgentPIDName           = "X-Portainer-Process-Id"
+	HTTPAgentUUIDHeaderName    = "X-Portainer-Agent-UUID"
+
 	// PortainerAgentSignatureMessage is the unhashed content that is signed by the Portainer instance.
 	// It is used by the agent during the signature verification process.
 	PortainerAgentSignatureMessage = "Portainer-App"
@@ -282,3 +288,14 @@ const (
 	// NodeRoleWorker represent a Docker swarm worker node role
 	NodeRoleWorker
 )
+
+var StopperFunction func(string)
+
+// Escape hatch - if we're a container, try stoping the container first, and then exit if needed
+func StopThisAgent(reason string) {
+	StopperFunction(reason)
+
+	time.Sleep(time.Duration(time.Millisecond * 100))
+
+	os.Exit(0)
+}

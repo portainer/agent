@@ -136,3 +136,23 @@ func getSwarmConfiguration(config *agent.RuntimeConfiguration, dockerInfo types.
 
 	return nil
 }
+
+func (service *InfoService) StopContainer(containerName string) {
+	// TODO: add swarm service support - need to detect if _this_ container was started as a service, or a container - you can do both in swarm dockerd's
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	if err != nil {
+		log.Printf("[DEBUG] [internal,edge,poll] [message: StopContainer get client] [error: %s]", err.Error())
+		return
+	}
+	defer cli.Close()
+
+	//	containerInspect, err := cli.ContainerInspect(context.Background(), containerName)
+	cli.ContainerRemove(context.Background(), containerName, types.ContainerRemoveOptions{
+		Force: true,
+	})
+	if err != nil {
+		log.Printf("[DEBUG] [internal,edge,poll] [message: StopContainer Remove] [error: %s]", err.Error())
+		return
+	}
+}
