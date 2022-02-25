@@ -1,6 +1,7 @@
+//go:build windows
 // +build windows
 
-package filesystem
+package scheduler
 
 import "github.com/portainer/agent"
 

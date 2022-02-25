@@ -13,12 +13,11 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/edge"
+	httpEdge "github.com/portainer/agent/edge/http"
 	"github.com/portainer/agent/exec"
-	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
-	"github.com/portainer/agent/http/client"
-	"github.com/portainer/agent/internal/edge"
 	"github.com/portainer/agent/kubernetes"
 	"github.com/portainer/agent/logutils"
 	"github.com/portainer/agent/net"
@@ -31,7 +30,7 @@ func main() {
 
 	options, err := parseOptions()
 	if err != nil {
-		log.Fatalf("[ERROR] [main,configuration] [message: Invalid agent configuration] [error: %s]", err)
+		log.Fatalf("[ERROR] [main] [message: Invalid agent configuration] [error: %s]", err)
 	}
 
 	logutils.SetupLogger(options.LogLevel)
@@ -58,11 +57,11 @@ func main() {
 
 		runtimeConfiguration, err = dockerInfoService.GetRuntimeConfigurationFromDockerEngine()
 		if err != nil {
-			log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve information from Docker] [error: %s]", err)
+			log.Fatalf("[ERROR] [main] [message: Unable to retrieve information from Docker] [error: %s]", err)
 		}
 
 		runtimeConfiguration.AgentPort = options.AgentServerPort
-		log.Printf("[DEBUG] [main,configuration] [Member tags: %+v]", runtimeConfiguration)
+		log.Printf("[DEBUG] [main] [Member tags: %+v]", runtimeConfiguration)
 
 		clusterMode := false
 		if runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm {
@@ -72,12 +71,12 @@ func main() {
 
 		containerName, err := os.GetHostName()
 		if err != nil {
-			log.Fatalf("[ERROR] [main,os] [message: Unable to retrieve container name] [error: %s]", err)
+			log.Fatalf("[ERROR] [main] [message: Unable to retrieve container name] [error: %s]", err)
 		}
 
 		advertiseAddr, err = dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
-			log.Printf("[WARN] [main,docker] [message: Unable to retrieve agent container IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
+			log.Printf("[WARN] [main] [message: Unable to retrieve agent container IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
 			advertiseAddr = options.AgentServerAddr
 		}
 
@@ -88,7 +87,7 @@ func main() {
 			if clusterAddr == "" {
 				serviceName, err := dockerInfoService.GetServiceNameFromDockerEngine(containerName)
 				if err != nil {
-					log.Fatalf("[ERROR] [main,docker] [message: Unable to retrieve agent service name from Docker] [error: %s]", err)
+					log.Fatalf("[ERROR] [main] [message: Unable to retrieve agent service name from Docker] [error: %s]", err)
 				}
 
 				clusterAddr = fmt.Sprintf("tasks.%s", serviceName)
@@ -100,15 +99,15 @@ func main() {
 
 			joinAddr, err := net.LookupIPAddresses(clusterAddr)
 			if err != nil {
-				log.Fatalf("[ERROR] [main,net] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
+				log.Fatalf("[ERROR] [main] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
 			}
 
 			err = clusterService.Create(advertiseAddr, joinAddr)
 			if err != nil {
-				log.Fatalf("[ERROR] [main,cluster] [message: Unable to create cluster] [error: %s]", err)
+				log.Fatalf("[ERROR] [main] [message: Unable to create cluster] [error: %s]", err)
 			}
 
-			log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, clusterAddr, advertiseAddr)
+			log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, clusterAddr, advertiseAddr)
 
 			defer clusterService.Leave()
 		}
@@ -122,7 +121,7 @@ func main() {
 		log.Println("[INFO] [main] [message: Agent running on Kubernetes platform]")
 		kubeClient, err = kubernetes.NewKubeClient()
 		if err != nil {
-			log.Fatalf("[ERROR] [main,kubernetes] [message: Unable to create Kubernetes client] [error: %s]", err)
+			log.Fatalf("[ERROR] [main] [message: Unable to create Kubernetes client] [error: %s]", err)
 		}
 
 		kubernetesDeployer = exec.NewKubernetesDeployer(agent.DockerBinaryPath)
@@ -131,7 +130,7 @@ func main() {
 
 		advertiseAddr = os.GetKubernetesPodIP()
 		if advertiseAddr == "" {
-			log.Fatalf("[ERROR] [main,kubernetes,env] [message: KUBERNETES_POD_IP env var must be specified when running on Kubernetes] [error: %s]", err)
+			log.Fatalf("[ERROR] [main] [message: KUBERNETES_POD_IP env var must be specified when running on Kubernetes] [error: %s]", err)
 		}
 
 		clusterAddr := options.ClusterAddress
@@ -145,15 +144,15 @@ func main() {
 
 		joinAddr, err := net.LookupIPAddresses(clusterAddr)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,net] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
+			log.Fatalf("[ERROR] [main] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
 		}
 
 		err = clusterService.Create(advertiseAddr, joinAddr)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,cluster] [message: Unable to create cluster] [error: %s]", err)
+			log.Fatalf("[ERROR] [main] [message: Unable to create cluster] [error: %s]", err)
 		}
 
-		log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, clusterAddr, advertiseAddr)
+		log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, clusterAddr, advertiseAddr)
 
 		defer clusterService.Leave()
 	}
@@ -168,43 +167,44 @@ func main() {
 
 		err := tlsService.GenerateCertsForHost(advertiseAddr)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,tls] [message: Unable to generate self-signed certificates] [error: %s]", err)
+			log.Fatalf("[ERROR] [main] [message: Unable to generate self-signed certificates] [error: %s]", err)
 		}
 	}
 
 	// !Security
 
 	// Edge
-	edgeManagerParameters := &edge.ManagerParameters{
-		Options:           options,
-		AdvertiseAddr:     advertiseAddr,
-		ClusterService:    clusterService,
-		DockerInfoService: dockerInfoService,
-		ContainerPlatform: containerPlatform,
-	}
-	edgeManager := edge.NewManager(edgeManagerParameters)
-
+	var edgeManager *edge.Manager
 	if options.EdgeMode {
-		edgeKey, err := retrieveEdgeKey(options.EdgeKey, clusterService)
+		edgeManagerParameters := &edge.ManagerParameters{
+			Options:           options,
+			AdvertiseAddr:     advertiseAddr,
+			ClusterService:    clusterService,
+			DockerInfoService: dockerInfoService,
+			ContainerPlatform: containerPlatform,
+		}
+		edgeManager = edge.NewManager(edgeManagerParameters)
+
+		edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, clusterService)
 		if err != nil {
-			log.Printf("[ERROR] [main,edge] [message: Unable to retrieve Edge key] [error: %s]", err)
+			log.Printf("[ERROR] [main] [message: Unable to retrieve Edge key] [error: %s]", err)
 		}
 
 		if edgeKey != "" {
-			log.Println("[DEBUG] [main,edge] [message: Edge key found in environment. Associating Edge key]")
+			log.Println("[DEBUG] [main] [message: Edge key found in environment. Associating Edge key]")
 
 			err := edgeManager.SetKey(edgeKey)
 			if err != nil {
-				log.Fatalf("[ERROR] [main,edge] [message: Unable to associate Edge key] [error: %s]", err)
+				log.Fatalf("[ERROR] [main] [message: Unable to associate Edge key] [error: %s]", err)
 			}
 
 			err = edgeManager.Start()
 			if err != nil {
-				log.Fatalf("[ERROR] [main,edge] [message: Unable to start Edge manager] [error: %s]", err)
+				log.Fatalf("[ERROR] [main] [message: Unable to start Edge manager] [error: %s]", err)
 			}
 
 		} else {
-			log.Println("[DEBUG] [main,edge] [message: Edge key not specified. Serving Edge UI]")
+			log.Println("[DEBUG] [main] [message: Edge key not specified. Serving Edge UI]")
 
 			serveEdgeUI(edgeManager, options.EdgeServerAddr, options.EdgeServerPort)
 		}
@@ -228,13 +228,13 @@ func main() {
 		ContainerPlatform:    containerPlatform,
 	}
 
-	if edgeManager.IsEdgeModeEnabled() {
+	if options.EdgeMode {
 		config.Addr = advertiseAddr
 	}
 
-	err = startAPIServer(config)
+	err = startAPIServer(config, options.EdgeMode)
 	if err != nil && !errors.Is(err, gohttp.ErrServerClosed) {
-		log.Fatalf("[ERROR] [main,http] [message: Unable to start Agent API server] [error: %s]", err)
+		log.Fatalf("[ERROR] [main] [message: Unable to start Agent API server] [error: %s]", err)
 	}
 
 	// !API
@@ -246,14 +246,14 @@ func main() {
 	fmt.Printf("[DEBUG] [main] [message: shutting down] [signal: %s]", s)
 }
 
-func startAPIServer(config *http.APIServerConfig) error {
+func startAPIServer(config *http.APIServerConfig, edgeMode bool) error {
 	server := http.NewAPIServer(config)
 
-	if config.EdgeManager.IsEdgeModeEnabled() {
-		return server.StartUnsecured()
+	if edgeMode {
+		return server.StartUnsecured(edgeMode)
 	}
 
-	return server.StartSecured()
+	return server.StartSecured(edgeMode)
 }
 
 func parseOptions() (*agent.Options, error) {
@@ -262,17 +262,17 @@ func parseOptions() (*agent.Options, error) {
 }
 
 func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
-	edgeServer := http.NewEdgeServer(edgeManager)
+	edgeServer := httpEdge.NewEdgeServer(edgeManager)
 
 	go func() {
-		log.Printf("[INFO] [main,edge,http] [server_address: %s] [server_port: %s] [message: Starting Edge server]", serverAddr, serverPort)
+		log.Printf("[INFO] [main] [server_address: %s] [server_port: %s] [message: Starting Edge server]", serverAddr, serverPort)
 
 		err := edgeServer.Start(serverAddr, serverPort)
 		if err != nil {
-			log.Fatalf("[ERROR] [main,edge,http] [message: Unable to start Edge server] [error: %s]", err)
+			log.Fatalf("[ERROR] [main] [message: Unable to start Edge server] [error: %s]", err)
 		}
 
-		log.Println("[INFO] [main,edge,http] [message: Edge server shutdown]")
+		log.Println("[INFO] [main] [message: Edge server shutdown]")
 	}()
 
 	go func() {
@@ -280,76 +280,8 @@ func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
 		<-timer1.C
 
 		if !edgeManager.IsKeySet() {
-			log.Printf("[INFO] [main,edge,http] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
+			log.Printf("[INFO] [main] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
 			edgeServer.Shutdown()
 		}
 	}()
-}
-
-func retrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (string, error) {
-
-	if edgeKey != "" {
-		log.Println("[INFO] [main,edge] [message: Edge key loaded from options]")
-		return edgeKey, nil
-	}
-
-	var keyRetrievalError error
-
-	edgeKey, keyRetrievalError = retrieveEdgeKeyFromFilesystem()
-	if keyRetrievalError != nil {
-		return "", keyRetrievalError
-	}
-
-	if edgeKey == "" && clusterService != nil {
-		edgeKey, keyRetrievalError = retrieveEdgeKeyFromCluster(clusterService)
-		if keyRetrievalError != nil {
-			return "", keyRetrievalError
-		}
-	}
-
-	return edgeKey, nil
-}
-
-func retrieveEdgeKeyFromFilesystem() (string, error) {
-	var edgeKey string
-
-	edgeKeyFilePath := fmt.Sprintf("%s/%s", agent.DataDirectory, agent.EdgeKeyFile)
-
-	keyFileExists, err := filesystem.FileExists(edgeKeyFilePath)
-	if err != nil {
-		return "", err
-	}
-
-	if keyFileExists {
-		filesystemKey, err := filesystem.ReadFromFile(edgeKeyFilePath)
-		if err != nil {
-			return "", err
-		}
-
-		log.Println("[INFO] [main,edge] [message: Edge key loaded from the filesystem]")
-		edgeKey = string(filesystemKey)
-	}
-
-	return edgeKey, nil
-}
-
-func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, error) {
-	var edgeKey string
-
-	member := clusterService.GetMemberWithEdgeKeySet()
-	if member != nil {
-		httpCli := client.NewAPIClient()
-
-		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
-		memberKey, err := httpCli.GetEdgeKey(memberAddr)
-		if err != nil {
-			log.Printf("[ERROR] [main,edge,http,cluster] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
-			return "", err
-		}
-
-		log.Println("[INFO] [main,edge] [message: Edge key loaded from cluster]")
-		edgeKey = memberKey
-	}
-
-	return edgeKey, nil
 }
