@@ -64,10 +64,8 @@ func (manager *Manager) Start() error {
 		agentPlatformIdentifier = agent.PlatformDocker
 	}
 
-	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
-
 	pollServiceConfig := &pollServiceConfig{
-		APIServerAddr:           apiServerAddr,
+		APIServerAddr:           fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort),
 		EdgeID:                  manager.agentOptions.EdgeID,
 		PollFrequency:           agent.DefaultEdgePollInterval,
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,

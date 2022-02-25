@@ -73,7 +73,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	}
 
 	if *fEdgeAsyncMode && !*fEdgeMode {
-		fmt.Print("Edge Async mode cannot be enabled if Edge mode is not enabled")
+		fmt.Print("Edge Async mode cannot be enabled if Edge mode is not enabled\n")
 		os.Exit(0)
 	}
 

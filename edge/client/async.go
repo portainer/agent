@@ -217,7 +217,6 @@ func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*agent.
 				config = agent.EdgeStackConfig{
 					Name:        stack.Name,
 					FileContent: stack.StackFileContent,
-					//ImageMapping: ,
 				}
 				log.Printf("[DEBUG] [http,client,portainer] GetEdgeStackConfig %s", config.Name)
 

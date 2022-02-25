@@ -32,7 +32,6 @@ type PollStatusResponse struct {
 type stackConfigResponse struct {
 	Name             string
 	StackFileContent string
-	ImageMapping     map[string]string // a map of stackfile image to imageCache url(with sha)
 }
 
 type setEdgeStackStatusPayload struct {

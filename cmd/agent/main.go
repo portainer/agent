@@ -76,12 +76,8 @@ func main() {
 
 		advertiseAddr, err = dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
-			if containerPlatform == agent.PlatformPodman {
-				log.Printf("[WARN] [main] [message: Unable to retrieve local agent IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
-				advertiseAddr = options.AgentServerAddr
-			} else {
-				log.Fatalf("[ERROR] [main] [message: Unable to retrieve local agent IP address] [error: %s]", err)
-			}
+			log.Printf("[WARN] [main] [message: Unable to retrieve agent container IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
+			advertiseAddr = options.AgentServerAddr
 		}
 
 		if containerPlatform == agent.PlatformDocker && clusterMode {
@@ -270,7 +266,7 @@ func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
 	edgeServer := httpEdge.NewEdgeServer(edgeManager)
 
 	go func() {
-		log.Printf("[INFO] [main] [server_address: %s] [server_port: %s] [message: Starting Edge server]", serverAddr, serverPort)
+		log.Printf("[INFO] [main] [server_address: %s] [server_port: %s] [message: Starting Edge UI server]", serverAddr, serverPort)
 
 		err := edgeServer.Start(serverAddr, serverPort)
 		if err != nil {
