@@ -57,6 +57,13 @@ func (manager *Manager) Start() error {
 		return errors.New("unable to start Edge manager without key")
 	}
 
+	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
+	// However, Portainer should handle podman agents the same way as docker agents.
+	agentPlatformIdentifier := manager.containerPlatform
+	if manager.containerPlatform == agent.PlatformPodman {
+		agentPlatformIdentifier = agent.PlatformDocker
+	}
+
 	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
 
 	pollServiceConfig := &pollServiceConfig{
@@ -69,26 +76,29 @@ func (manager *Manager) Start() error {
 		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
 		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
-		ContainerPlatform:       manager.containerPlatform,
+		EdgeAsyncMode:           manager.agentOptions.EdgeAsyncMode,
 	}
 
-	log.Printf("[DEBUG] [internal,edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll, manager.agentOptions.EdgeTunnel)
+	log.Printf("[DEBUG] [edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll, manager.agentOptions.EdgeTunnel)
 
-	stackManager := stack.NewStackManager(
+	manager.stackManager = stack.NewStackManager(
 		client.NewPortainerClient(
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
 			manager.agentOptions.EdgeID,
+			manager.agentOptions.EdgeAsyncMode,
+			agentPlatformIdentifier,
 			buildHTTPClient(10, manager.agentOptions),
 		),
 	)
-	manager.stackManager = stackManager
 
 	manager.logsManager = scheduler.NewLogsManager(
 		client.NewPortainerClient(
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
 			manager.agentOptions.EdgeID,
+			manager.agentOptions.EdgeAsyncMode,
+			agentPlatformIdentifier,
 			buildHTTPClient(10, manager.agentOptions),
 		),
 	)
@@ -98,7 +108,14 @@ func (manager *Manager) Start() error {
 		manager.stackManager,
 		manager.logsManager,
 		pollServiceConfig,
-		buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
+		client.NewPortainerClient(
+			manager.key.PortainerInstanceURL,
+			manager.key.EndpointID,
+			manager.agentOptions.EdgeID,
+			manager.agentOptions.EdgeAsyncMode,
+			agentPlatformIdentifier,
+			buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
+		),
 	)
 	if err != nil {
 		return err

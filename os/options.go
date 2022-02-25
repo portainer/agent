@@ -1,6 +1,8 @@
 package os
 
 import (
+	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/portainer/agent"
@@ -14,6 +16,7 @@ const (
 	EnvKeyAgentSecret           = "AGENT_SECRET"
 	EnvKeyAgentSecurityShutdown = "AGENT_SECRET_TIMEOUT"
 	EnvKeyEdge                  = "EDGE"
+	EnvKeyEdgeAsync             = "EDGE_ASYNC"
 	EnvKeyEdgeKey               = "EDGE_KEY"
 	EnvKeyEdgeID                = "EDGE_ID"
 	EnvKeyEdgeServerHost        = "EDGE_SERVER_HOST"
@@ -43,6 +46,7 @@ var (
 
 	// Edge mode
 	fEdgeMode              = kingpin.Flag("edge", EnvKeyEdge+" enable Edge mode. Disabled by default, set to 1 or true to enable it").Envar(EnvKeyEdge).Bool()
+	fEdgeAsyncMode         = kingpin.Flag("EdgeAsyncMode", EnvKeyEdgeAsync+" enable Edge Async mode. Disabled by default, set to 1 or true to enable it").Envar(EnvKeyEdgeAsync).Bool()
 	fEdgeKey               = kingpin.Flag("edge-key", EnvKeyEdgeKey+" specify an Edge key to use at startup").Envar(EnvKeyEdgeKey).String()
 	fEdgeID                = kingpin.Flag("edge-id", EnvKeyEdgeID+" a unique identifier associated to this agent cluster").Envar(EnvKeyEdgeID).String()
 	fEdgeServerAddr        = kingpin.Flag("edge-host", EnvKeyEdgeServerHost+" address on which the Edge UI will be exposed (default to 0.0.0.0)").Envar(EnvKeyEdgeServerHost).Default(agent.DefaultEdgeServerAddr).IP()
@@ -55,10 +59,19 @@ var (
 	fSSLCert   = kingpin.Flag("sslcert", "Path to the SSL certificate used to identify the agent to Portainer").Envar(EnvKeySSLCert).String()
 	fSSLKey    = kingpin.Flag("sslkey", "Path to the SSL key used to identify the agent to Portainer").Envar(EnvKeySSLKey).String()
 	fSSLCACert = kingpin.Flag("sslcacert", "Path to the SSL CA certificate used to validate the Portainer server").Envar(EnvKeySSLCACert).String()
+
+	// info
+	fVersion = kingpin.Flag("version", "Show agent version information").Bool()
 )
 
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	kingpin.Parse()
+
+	if *fVersion {
+		fmt.Printf("Portainer Agent version %s\n", agent.Version)
+		os.Exit(0)
+	}
+
 	return &agent.Options{
 		AgentServerAddr:       fAgentServerAddr.String(),
 		AgentServerPort:       strconv.Itoa(*fAgentServerPort),
@@ -66,9 +79,10 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		ClusterAddress:        *fClusterAddress,
 		SharedSecret:          *fSharedSecret,
 		EdgeMode:              *fEdgeMode,
+		EdgeAsyncMode:         *fEdgeAsyncMode,
 		EdgeKey:               *fEdgeKey,
 		EdgeID:                *fEdgeID,
-		EdgeServerAddr:        fEdgeServerAddr.String(),
+		EdgeServerAddr:        fEdgeServerAddr.String(), // TODO: really, an agent can't be both edge and non-edge, so we don't need both AgentServerAddr and EdgeServerAddr ?
 		EdgeServerPort:        strconv.Itoa(*fEdgeServerPort),
 		EdgeInactivityTimeout: *fEdgeInactivityTimeout,
 		EdgeInsecurePoll:      *fEdgeInsecurePoll,

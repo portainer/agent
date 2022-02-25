@@ -11,7 +11,7 @@ import (
 )
 
 type LogsManager struct {
-	httpClient *client.PortainerClient
+	httpClient client.PortainerClient
 	stopSignal chan struct{}
 	jobs       map[int]logStatus
 }
@@ -25,7 +25,7 @@ const (
 	logFailed
 )
 
-func NewLogsManager(cli *client.PortainerClient) *LogsManager {
+func NewLogsManager(cli client.PortainerClient) *LogsManager {
 	return &LogsManager{
 		httpClient: cli,
 		stopSignal: nil,

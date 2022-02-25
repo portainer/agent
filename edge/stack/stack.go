@@ -63,20 +63,20 @@ const (
 
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
-	engineType engineType
-	stacks     map[edgeStackID]*edgeStack
-	stopSignal chan struct{}
-	deployer   agent.Deployer
-	isEnabled  bool
-	httpClient *client.PortainerClient
+	engineType      engineType
+	stacks          map[edgeStackID]*edgeStack
+	stopSignal      chan struct{}
+	deployer        agent.Deployer
+	isEnabled       bool
+	portainerClient client.PortainerClient
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(cli *client.PortainerClient) *StackManager {
+func NewStackManager(cli client.PortainerClient) *StackManager {
 	return &StackManager{
-		stacks:     map[edgeStackID]*edgeStack{},
-		stopSignal: nil,
-		httpClient: cli,
+		stacks:          map[edgeStackID]*edgeStack{},
+		stopSignal:      nil,
+		portainerClient: cli,
 	}
 }
 
@@ -107,7 +107,7 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 			}
 		}
 
-		stackConfig, err := manager.httpClient.GetEdgeStackConfig(int(stack.ID))
+		stackConfig, err := manager.portainerClient.GetEdgeStackConfig(int(stack.ID))
 		if err != nil {
 			return err
 		}
@@ -130,7 +130,7 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 
 		manager.stacks[stack.ID] = stack
 
-		err = manager.httpClient.SetEdgeStackStatus(int(stack.ID), int(edgeStackStatusAcknowledged), "")
+		err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), int(edgeStackStatusAcknowledged), "")
 		if err != nil {
 			return err
 		}
@@ -252,7 +252,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 	manager.stacks[stack.ID] = stack
 
-	err = manager.httpClient.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
+	err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
 	if err != nil {
 		log.Printf("[ERROR] [internal,edge,stack] [message: unable to update Edge stack status] [error: %s]", err)
 	}

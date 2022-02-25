@@ -2,11 +2,8 @@ package edge
 
 import (
 	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
+	"github.com/portainer/agent/edge/client"
 	"log"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -27,7 +24,7 @@ type PollService struct {
 	pollIntervalInSeconds   float64
 	inactivityTimeout       time.Duration
 	edgeID                  string
-	httpClient              *http.Client
+	portainerClient         client.PortainerClient
 	tunnelClient            agent.ReverseTunnelClient
 	scheduleManager         agent.Scheduler
 	lastActivity            time.Time
@@ -38,7 +35,6 @@ type PollService struct {
 	tunnelServerAddr        string
 	tunnelServerFingerprint string
 	logsManager             *scheduler.LogsManager
-	containerPlatform       agent.ContainerPlatform
 }
 
 type pollServiceConfig struct {
@@ -51,12 +47,12 @@ type pollServiceConfig struct {
 	EndpointID              string
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
-	ContainerPlatform       agent.ContainerPlatform
+	EdgeAsyncMode           bool
 }
 
 // newPollService returns a pointer to a new instance of PollService
 // if TunnelCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
-func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, httpClient *http.Client) (*PollService, error) {
+func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, portainerClient client.PortainerClient) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -67,11 +63,17 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		return nil, err
 	}
 
+	var tunnel agent.ReverseTunnelClient
+	if config.TunnelCapability && !config.EdgeAsyncMode {
+		tunnel = chisel.NewClient()
+	}
+
 	pollService := &PollService{
 		apiServerAddr:           config.APIServerAddr,
 		edgeID:                  config.EdgeID,
 		pollIntervalInSeconds:   pollFrequency.Seconds(),
 		inactivityTimeout:       inactivityTimeout,
+		tunnelClient:            tunnel,
 		scheduleManager:         scheduler.NewCronManager(),
 		refreshSignal:           nil,
 		edgeStackManager:        edgeStackManager,
@@ -80,12 +82,7 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		tunnelServerAddr:        config.TunnelServerAddr,
 		tunnelServerFingerprint: config.TunnelServerFingerprint,
 		logsManager:             logsManager,
-		containerPlatform:       config.ContainerPlatform,
-		httpClient:              httpClient,
-	}
-
-	if config.TunnelCapability {
-		pollService.tunnelClient = chisel.NewClient()
+		portainerClient:         portainerClient,
 	}
 
 	return pollService, nil
@@ -153,6 +150,10 @@ func (service *PollService) startStatusPollLoop() error {
 }
 
 func (service *PollService) startActivityMonitoringLoop() {
+	if service.tunnelClient == nil {
+		return
+	}
+
 	ticker := time.NewTicker(tunnelActivityCheckInterval)
 	quit := make(chan struct{})
 
@@ -190,53 +191,8 @@ func (service *PollService) startActivityMonitoringLoop() {
 
 const clientDefaultPollTimeout = 5
 
-type stackStatus struct {
-	ID      int
-	Version int
-}
-
-type pollStatusResponse struct {
-	Status          string           `json:"status"`
-	Port            int              `json:"port"`
-	Schedules       []agent.Schedule `json:"schedules"`
-	CheckinInterval float64          `json:"checkin"`
-	Credentials     string           `json:"credentials"`
-	Stacks          []stackStatus    `json:"stacks"`
-}
-
 func (service *PollService) poll() error {
-
-	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", service.portainerURL, service.endpointID)
-	req, err := http.NewRequest("GET", pollURL, nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, service.edgeID)
-
-	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
-	// However, Portainer should handle podman agents the same way as docker agents.
-	agentPlatformIdentifier := service.containerPlatform
-	if service.containerPlatform == agent.PlatformPodman {
-		agentPlatformIdentifier = agent.PlatformDocker
-	}
-	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
-
-	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(agentPlatformIdentifier)))
-
-	resp, err := service.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("[DEBUG] [internal,edge,poll] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
-		return errors.New("short poll request failed")
-	}
-
-	var responseData pollStatusResponse
-	err = json.NewDecoder(resp.Body).Decode(&responseData)
+	responseData, err := service.portainerClient.GetEnvironmentStatus()
 	if err != nil {
 		return err
 	}
@@ -278,10 +234,10 @@ func (service *PollService) poll() error {
 
 	service.logsManager.HandleReceivedLogsRequests(logsToCollect)
 
-	if responseData.CheckinInterval != service.pollIntervalInSeconds {
+	if responseData.CheckinInterval > 0 && responseData.CheckinInterval != service.pollIntervalInSeconds {
 		log.Printf("[DEBUG] [internal,edge,poll] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
 		service.pollIntervalInSeconds = responseData.CheckinInterval
-		service.httpClient.Timeout = time.Duration(responseData.CheckinInterval) * time.Second
+		service.portainerClient.SetTimeout(time.Duration(responseData.CheckinInterval) * time.Second)
 		go service.restartStatusPollLoop()
 	}
 
@@ -302,6 +258,10 @@ func (service *PollService) poll() error {
 }
 
 func (service *PollService) createTunnel(encodedCredentials string, remotePort int) error {
+	if service.tunnelClient == nil {
+		return nil
+	}
+
 	decodedCredentials, err := base64.RawStdEncoding.DecodeString(encodedCredentials)
 	if err != nil {
 		return err
