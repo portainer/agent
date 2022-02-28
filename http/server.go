@@ -80,7 +80,7 @@ func (server *APIServer) Start(edgeMode bool) error {
 		ContainerPlatform:    server.containerPlatform,
 	}
 
-	var httpHandler http.Handler = handler.NewHandler(config)
+	httpHandler := handler.NewHandler(config)
 	listenAddr := server.addr + ":" + server.port
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
@@ -112,9 +112,9 @@ func (server *APIServer) Start(edgeMode bool) error {
 
 	httpServer := &http.Server{
 		Addr:         listenAddr,
-		Handler:      server.nonEdgeHandler(httpHandler),
-		ReadTimeout:  120 * time.Second,
+		Handler:      httpHandler,
 		TLSConfig:    tlsConfig,
+		ReadTimeout:  120 * time.Second,
 		WriteTimeout: 30 * time.Minute,
 	}
 
@@ -145,12 +145,6 @@ func (server *APIServer) edgeHandler(next http.Handler) http.Handler {
 
 		server.edgeManager.ResetActivityTimer()
 
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (server *APIServer) nonEdgeHandler(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, r)
 	})
 }
