@@ -34,7 +34,8 @@ func (manager *Manager) SetKey(key string) error {
 		// key not previously saved
 		err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
 		if err != nil {
-			return err
+			log.Println("unable to write the key file", err)
+			// return err
 		}
 		keyRetrieval = key
 	}

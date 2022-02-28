@@ -240,13 +240,13 @@ const (
 	// HostRoot is the folder mapping to the underlying host filesystem that is mounted inside the container.
 	HostRoot = "/host"
 	// DataDirectory is the folder where the data associated to the agent is persisted.
-	DataDirectory = "/data"
+	DataDirectory = "./agent-data/data"
 	// ScheduleScriptDirectory is the folder where schedules are saved on the host
 	ScheduleScriptDirectory = "/opt/portainer/scripts"
 	// EdgeKeyFile is the name of the file used to persist the Edge key associated to the agent.
 	EdgeKeyFile = "agent_edge_key"
 	// DockerBinaryPath is the path of the docker binary
-	DockerBinaryPath = "/app"
+	DockerBinaryPath = "./"
 	// EdgeStackFilesPath is the path where edge stack files are saved
 	EdgeStackFilesPath = "/tmp/edge_stacks"
 	// EdgeStackQueueSleepInterval is the interval used to check if there's an Edge stack to deploy

@@ -251,35 +251,41 @@ func buildTransport(options *agent.Options) *http.Transport {
 		}
 	}
 
-	// if ssl certs for edge agent are set
-	if options.SSLCert != "" && options.SSLKey != "" {
-		// Read the key pair to create certificate
-		cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		var caCertPool *x509.CertPool
-		// Create a CA certificate pool and add cert.pem to it
-		if options.SSLCACert != "" {
-			caCert, err := ioutil.ReadFile(options.SSLCACert)
-			if err != nil {
-				log.Fatal(err)
-			}
-			caCertPool = x509.NewCertPool()
-			caCertPool.AppendCertsFromPEM(caCert)
-		}
-
-		// Create an HTTPS client and supply the created CA pool and certificate
-		return &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs:      caCertPool,
-				Certificates: []tls.Certificate{cert},
-				MinVersion:   tls.VersionTLS13,
-				MaxVersion:   tls.VersionTLS13,
-			},
-		}
+	if !options.EdgeAsyncMode {
+		return nil
 	}
 
-	return nil
+	if options.SSLCert == "" {
+		log.Fatal("SSLCert must be provided when using Edge Async mode")
+	}
+	if options.SSLKey == "" {
+		log.Fatal("SSLKey must be provided when using Edge Async mode")
+	}
+	if options.SSLCACert == "" {
+		log.Fatal("SSLCACert must be provided when using Edge Async mode")
+	}
+
+	// Read the key pair to create certificate
+	mTLSCert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create a CA certificate pool and add cert.pem to it
+	caCert, err := ioutil.ReadFile(options.SSLCACert)
+	if err != nil {
+		log.Fatal(err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	// Create an HTTPS client and supply the created CA pool and certificate
+	return &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs:      caCertPool,
+			Certificates: []tls.Certificate{mTLSCert},
+			MinVersion:   tls.VersionTLS13,
+			MaxVersion:   tls.VersionTLS13,
+		},
+	}
 }
