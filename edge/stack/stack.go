@@ -72,17 +72,19 @@ type StackManager struct {
 	deployer   agent.Deployer
 	isEnabled  bool
 	httpClient *client.PortainerClient
+	assetsPath string
 	mu         sync.Mutex
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(portainerURL, endpointID, edgeID string, insecurePoll bool) (*StackManager, error) {
+func NewStackManager(portainerURL, endpointID, edgeID, assetsPath string, insecurePoll bool) (*StackManager, error) {
 	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll)
 
 	stackManager := &StackManager{
 		stacks:     map[edgeStackID]*edgeStack{},
 		stopSignal: nil,
 		httpClient: cli,
+		assetsPath: assetsPath,
 	}
 
 	return stackManager, nil
@@ -240,7 +242,7 @@ func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
 		return err
 	}
 
-	deployer, err := buildDeployerService(engineStatus)
+	deployer, err := buildDeployerService(manager.assetsPath, engineStatus)
 	if err != nil {
 		return err
 	}
@@ -296,14 +298,14 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	manager.mu.Unlock()
 }
 
-func buildDeployerService(engineStatus engineType) (agent.Deployer, error) {
+func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Deployer, error) {
 	switch engineStatus {
 	case EngineTypeDockerStandalone:
-		return exec.NewDockerComposeStackService(agent.DockerBinaryPath)
+		return exec.NewDockerComposeStackService(assetsPath)
 	case EngineTypeDockerSwarm:
-		return exec.NewDockerSwarmStackService(agent.DockerBinaryPath)
+		return exec.NewDockerSwarmStackService(assetsPath)
 	case EngineTypeKubernetes:
-		return exec.NewKubernetesDeployer(agent.DockerBinaryPath), nil
+		return exec.NewKubernetesDeployer(assetsPath), nil
 	}
 
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)

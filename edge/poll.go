@@ -77,7 +77,6 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		pollIntervalInSeconds:   pollFrequency.Seconds(),
 		insecurePoll:            config.InsecurePoll,
 		inactivityTimeout:       inactivityTimeout,
-		tunnelClient:            chisel.NewClient(),
 		scheduleManager:         scheduler.NewCronManager(),
 		updateLastActivity:      make(chan struct{}),
 		edgeStackManager:        edgeStackManager,

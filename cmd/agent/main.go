@@ -76,12 +76,8 @@ func main() {
 
 		advertiseAddr, err = dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
-			if containerPlatform == agent.PlatformPodman {
-				log.Printf("[WARN] [main] [message: Unable to retrieve local agent IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
-				advertiseAddr = options.AgentServerAddr
-			} else {
-				log.Fatalf("[ERROR] [main] [message: Unable to retrieve local agent IP address] [error: %s]", err)
-			}
+			log.Printf("[WARN] [main] [message: Unable to retrieve agent container IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
+			advertiseAddr = options.AgentServerAddr
 		}
 
 		if containerPlatform == agent.PlatformDocker && clusterMode {
@@ -128,7 +124,7 @@ func main() {
 			log.Fatalf("[ERROR] [main] [message: Unable to create Kubernetes client] [error: %s]", err)
 		}
 
-		kubernetesDeployer = exec.NewKubernetesDeployer(agent.DockerBinaryPath)
+		kubernetesDeployer = exec.NewKubernetesDeployer(options.AssetsPath)
 
 		clusterService = cluster.NewClusterService(runtimeConfiguration)
 
@@ -189,7 +185,7 @@ func main() {
 		}
 		edgeManager = edge.NewManager(edgeManagerParameters)
 
-		edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, clusterService)
+		edgeKey, err := edgeManager.RetrieveEdgeKey(options.EdgeKey, clusterService)
 		if err != nil {
 			log.Printf("[ERROR] [main] [message: Unable to retrieve Edge key] [error: %s]", err)
 		}
