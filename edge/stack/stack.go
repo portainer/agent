@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/portainer/agent"
@@ -72,6 +73,7 @@ type StackManager struct {
 	isEnabled  bool
 	httpClient *client.PortainerClient
 	assetsPath string
+	mu         sync.Mutex
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
@@ -92,6 +94,9 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 	if !manager.isEnabled {
 		return nil
 	}
+
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
 
 	for stackID, version := range stacks {
 		stack, ok := manager.stacks[edgeStackID(stackID)]
@@ -194,10 +199,12 @@ func (manager *StackManager) Start() error {
 					continue
 				}
 
+				ctx := context.TODO()
+
+				manager.mu.Lock()
 				stackName := fmt.Sprintf("edge_%s", stack.Name)
 				stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
-
-				ctx := context.TODO()
+				manager.mu.Unlock()
 
 				if stack.Action == actionDeploy || stack.Action == actionUpdate {
 					manager.deployStack(ctx, stack, stackName, stackFileLocation)
@@ -212,6 +219,9 @@ func (manager *StackManager) Start() error {
 }
 
 func (manager *StackManager) next() *edgeStack {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	for _, stack := range manager.stacks {
 		if stack.Status == statusPending {
 			return stack
@@ -242,6 +252,9 @@ func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
 }
 
 func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
 	stack.Status = statusDone
 	stack.Action = actionIdle
@@ -280,7 +293,9 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		return
 	}
 
+	manager.mu.Lock()
 	delete(manager.stacks, stack.ID)
+	manager.mu.Unlock()
 }
 
 func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Deployer, error) {
