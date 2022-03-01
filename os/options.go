@@ -56,10 +56,12 @@ var (
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	kingpin.Parse()
 	return &agent.Options{
+		AssetsPath:            *fAssetsPath,
 		AgentServerAddr:       fAgentServerAddr.String(),
 		AgentServerPort:       strconv.Itoa(*fAgentServerPort),
 		AgentSecurityShutdown: *fAgentSecurityShutdown,
 		ClusterAddress:        *fClusterAddress,
+		DataPath:              *fDataPath,
 		SharedSecret:          *fSharedSecret,
 		EdgeMode:              *fEdgeMode,
 		EdgeKey:               *fEdgeKey,
