@@ -86,6 +86,7 @@ type AsyncResponse struct {
 // TODO: how to make "command list be only the things that have versions newer than the commandid.."
 
 func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
+	client.serverAddress = "https://127.0.0.1:9443"
 	pollURL := fmt.Sprintf("%s/api/endpoints/edge/async/", client.serverAddress)
 
 	payload := AsyncRequest{

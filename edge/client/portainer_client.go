@@ -39,7 +39,7 @@ func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
 
 func (client *PortainerEdgeClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
 
-	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", client.serverAddress, client.endpointID)
+	pollURL := fmt.Sprintf("%s/api/endpoints/%s/edge/status", client.serverAddress, client.endpointID)
 	req, err := http.NewRequest("GET", pollURL, nil)
 	if err != nil {
 		return nil, err
