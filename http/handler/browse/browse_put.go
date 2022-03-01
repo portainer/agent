@@ -57,7 +57,7 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", errors.New("Invalid file path")}
 	}
 
-	err := errors.New("")
+	var err error
 	if volumeID != "" {
 		payload.Path, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.Path)
 		if err != nil {

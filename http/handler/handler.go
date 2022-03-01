@@ -1,13 +1,13 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/exec"
 	httpagenthandler "github.com/portainer/agent/http/handler/agent"
 	"github.com/portainer/agent/http/handler/browse"
@@ -21,9 +21,7 @@ import (
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
-	"github.com/portainer/agent/internal/edge"
 	kubecli "github.com/portainer/agent/kubernetes"
-	httperror "github.com/portainer/libhttp/error"
 )
 
 // Handler is the main handler of the application.
@@ -40,8 +38,6 @@ type Handler struct {
 	webSocketHandler       *websocket.Handler
 	hostHandler            *host.Handler
 	pingHandler            *ping.Handler
-	securedProtocol        bool
-	edgeManager            *edge.Manager
 	containerPlatform      agent.ContainerPlatform
 }
 
@@ -79,8 +75,6 @@ func NewHandler(config *Config) *Handler {
 		webSocketHandler:       websocket.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.KubeClient),
 		hostHandler:            host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:            ping.NewHandler(),
-		securedProtocol:        config.Secured,
-		edgeManager:            config.EdgeManager,
 		containerPlatform:      config.ContainerPlatform,
 	}
 }
@@ -89,15 +83,6 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	if strings.HasPrefix(request.URL.Path, "/key") {
 		h.keyHandler.ServeHTTP(rw, request)
 		return
-	}
-
-	if !h.securedProtocol && !h.edgeManager.IsKeySet() {
-		httperror.WriteError(rw, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
-		return
-	}
-
-	if h.edgeManager.IsEdgeModeEnabled() {
-		h.edgeManager.ResetActivityTimer()
 	}
 
 	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
