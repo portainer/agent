@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"mime/multipart"
 	"os"
@@ -100,6 +101,34 @@ func ListFilesInsideDirectory(directoryPath string) ([]FileInfo, error) {
 // RenameFile will rename a file
 func RenameFile(oldPath, newPath string) error {
 	return os.Rename(oldPath, newPath)
+}
+
+// AtomicWriteFile takes a path, filename, a file and the mode that should be
+// associated to the file and writes it atomically to the disk
+func AtomicWriteFile(folder, filename string, file []byte, mode uint32) error {
+	err := os.MkdirAll(folder, 0755)
+	if err != nil {
+		return err
+	}
+
+	tmp, err := ioutil.TempFile(folder, ".tmp*")
+	if err != nil {
+		return err
+	}
+	defer tmp.Close()
+	defer os.Remove(tmp.Name())
+
+	_, err = tmp.Write(file)
+	if err != nil {
+		return err
+	}
+
+	err = os.Chmod(tmp.Name(), fs.FileMode(mode))
+	if err != nil {
+		return err
+	}
+
+	return RenameFile(tmp.Name(), path.Join(folder, filename))
 }
 
 // WriteFile takes a path, filename, a file and the mode that should be associated

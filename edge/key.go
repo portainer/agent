@@ -19,19 +19,17 @@ type edgeKey struct {
 	EndpointID              string
 }
 
-// SetKey parses and associates an Edge key to the agent. The key will be written to the filesystem when persist is true.
+// SetKey parses and associates an Edge key to the agent.
 // If the agent is running inside a cluster, it will also set the "set" flag to specify that a key is set on this agent in the cluster.
-func (manager *Manager) SetKey(key string, persist bool) error {
+func (manager *Manager) SetKey(key string) error {
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
 		return err
 	}
 
-	if persist {
-		err = filesystem.WriteFile(manager.agentOptions.DataPath, agent.EdgeKeyFile, []byte(key), 0444)
-		if err != nil {
-			return err
-		}
+	err = filesystem.AtomicWriteFile(manager.agentOptions.DataPath, agent.EdgeKeyFile, []byte(key), 0444)
+	if err != nil {
+		return err
 	}
 
 	manager.key = edgeKey

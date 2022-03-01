@@ -55,7 +55,7 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 			return
 		}
 
-		err = server.edgeManager.SetKey(key, true)
+		err = server.edgeManager.SetKey(key)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

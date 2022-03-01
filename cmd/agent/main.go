@@ -193,7 +193,7 @@ func main() {
 		if edgeKey != "" {
 			log.Println("[DEBUG] [main] [message: Edge key found in environment. Associating Edge key]")
 
-			err := edgeManager.SetKey(edgeKey, false)
+			err := edgeManager.SetKey(edgeKey)
 			if err != nil {
 				log.Fatalf("[ERROR] [main] [message: Unable to associate Edge key] [error: %s]", err)
 			}
