@@ -23,7 +23,7 @@ type PortainerClient struct {
 }
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress, endpointID, edgeID string, insecurePoll bool, tunnel bool) *PortainerClient {
+func NewPortainerClient(serverAddress, endpointID, edgeID string, insecurePoll bool) *PortainerClient {
 	httpCli := &http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -67,7 +67,7 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeS
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: GetEdgeStackConfig operation failed]", resp.StatusCode)
+		log.Printf("[ERROR] [http,client] [response_code: %d] [message: GetEdgeStackConfig operation failed]", resp.StatusCode)
 		return nil, errors.New("GetEdgeStackConfig operation failed")
 	}
 
@@ -121,7 +121,7 @@ func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus i
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: SetEdgeStackStatus operation failed]", resp.StatusCode)
+		log.Printf("[ERROR] [http,client] [response_code: %d] [message: SetEdgeStackStatus operation failed]", resp.StatusCode)
 		return errors.New("SetEdgeStackStatus operation failed")
 	}
 
@@ -191,7 +191,7 @@ func (client *PortainerClient) SendJobLogFile(jobID int, fileContent []byte) err
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: SendJobLogFile operation failed]", resp.StatusCode)
+		log.Printf("[ERROR] [http,client] [response_code: %d] [message: SendJobLogFile operation failed]", resp.StatusCode)
 		return errors.New("SendJobLogFile operation failed")
 	}
 

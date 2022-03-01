@@ -29,10 +29,6 @@ func (payload *browseRenamePayload) Validate(r *http.Request) error {
 // PUT request on /browse/rename?volumeID=:id
 func (handler *Handler) browseRename(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
-	if volumeID == "" && !handler.agentOptions.HostManagementEnabled {
-		return &httperror.HandlerError{http.StatusServiceUnavailable, "Host management capability disabled", errors.New("This agent feature is not enabled")}
-	}
-
 	var payload browseRenamePayload
 	err := request.DecodeAndValidateJSONPayload(r, &payload)
 	if err != nil {
