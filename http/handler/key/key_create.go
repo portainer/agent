@@ -39,7 +39,7 @@ func (handler *Handler) keyCreate(w http.ResponseWriter, r *http.Request) *httpe
 		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
 	}
 
-	err = handler.edgeManager.SetKey(payload.Key)
+	err = handler.edgeManager.SetKey(payload.Key, true)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to associate Edge key", err}
 	}
