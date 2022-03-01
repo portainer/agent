@@ -185,7 +185,7 @@ func main() {
 		}
 		edgeManager = edge.NewManager(edgeManagerParameters)
 
-		edgeKey, err := edge.RetrieveEdgeKey(options.DataPath, options.EdgeKey, clusterService)
+		edgeKey, err := edgeManager.RetrieveEdgeKey(options.EdgeKey, clusterService)
 		if err != nil {
 			log.Printf("[ERROR] [main] [message: Unable to retrieve Edge key] [error: %s]", err)
 		}

@@ -71,16 +71,18 @@ type StackManager struct {
 	deployer   agent.Deployer
 	isEnabled  bool
 	httpClient *client.PortainerClient
+	assetsPath string
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(portainerURL, endpointID, edgeID string, insecurePoll bool) (*StackManager, error) {
+func NewStackManager(portainerURL, endpointID, edgeID, assetsPath string, insecurePoll bool) (*StackManager, error) {
 	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll)
 
 	stackManager := &StackManager{
 		stacks:     map[edgeStackID]*edgeStack{},
 		stopSignal: nil,
 		httpClient: cli,
+		assetsPath: assetsPath,
 	}
 
 	return stackManager, nil
@@ -218,7 +220,7 @@ func (manager *StackManager) next() *edgeStack {
 	return nil
 }
 
-func (manager *StackManager) SetEngineStatus(assetsPath string, engineStatus engineType) error {
+func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
 	if engineStatus == manager.engineType {
 		return nil
 	}
@@ -230,7 +232,7 @@ func (manager *StackManager) SetEngineStatus(assetsPath string, engineStatus eng
 		return err
 	}
 
-	deployer, err := buildDeployerService(assetsPath, engineStatus)
+	deployer, err := buildDeployerService(manager.assetsPath, engineStatus)
 	if err != nil {
 		return err
 	}

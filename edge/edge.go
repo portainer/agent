@@ -70,7 +70,7 @@ func (manager *Manager) Start() error {
 
 	log.Printf("[DEBUG] [edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll, manager.agentOptions.EdgeTunnel)
 
-	stackManager, err := stack.NewStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	stackManager, err := stack.NewStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, manager.agentOptions.AssetsPath, pollServiceConfig.InsecurePoll)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 				return
 			}
 
-			err = manager.stackManager.SetEngineStatus(manager.agentOptions.AssetsPath, stack.EngineTypeKubernetes)
+			err = manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
 			if err != nil {
 				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
 				return
@@ -182,7 +182,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 			return err
 		}
 
-		err = manager.stackManager.SetEngineStatus(manager.agentOptions.AssetsPath, engineStatus)
+		err = manager.stackManager.SetEngineStatus(engineStatus)
 		if err != nil {
 			return err
 		}
