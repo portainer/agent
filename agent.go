@@ -64,8 +64,8 @@ type (
 		EdgeMode              bool
 		EdgeKey               string
 		EdgeID                string
-		EdgeServerAddr        string
-		EdgeServerPort        string
+		EdgeUIServerAddr      string
+		EdgeUIServerPort      string
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
 		EdgeTunnel            bool
@@ -186,9 +186,9 @@ const (
 	DefaultAgentPort = "9001"
 	// DefaultLogLevel is the default logging level.
 	DefaultLogLevel = "INFO"
-	// DefaultAgentSecurityShutdown is the default time after which the API server will shutdown if not associated with a Portainer instance
+	// DefaultAgentSecurityShutdown is the default time after which the API server will shut down if not associated with a Portainer instance
 	DefaultAgentSecurityShutdown = "72h"
-	// DefaultEdgeSecurityShutdown is the default time after which the Edge server will shutdown if no key is specified
+	// DefaultEdgeSecurityShutdown is the default time after which the Edge server will shut down if no key is specified
 	DefaultEdgeSecurityShutdown = 15
 	// DefaultEdgeServerAddr is the default address used by the Edge server.
 	DefaultEdgeServerAddr = "0.0.0.0"
