@@ -27,7 +27,7 @@ func (manager *Manager) SetKey(key string) error {
 		return err
 	}
 
-	err = filesystem.AtomicWriteFile(manager.agentOptions.DataPath, agent.EdgeKeyFile, []byte(key), 0444)
+	err = filesystem.WriteFile(manager.agentOptions.DataPath, agent.EdgeKeyFile, []byte(key), 0644)
 	if err != nil {
 		return err
 	}
