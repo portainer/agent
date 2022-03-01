@@ -124,7 +124,7 @@ func main() {
 			log.Fatalf("[ERROR] [main] [message: Unable to create Kubernetes client] [error: %s]", err)
 		}
 
-		kubernetesDeployer = exec.NewKubernetesDeployer(agent.DockerBinaryPath)
+		kubernetesDeployer = exec.NewKubernetesDeployer(options.AssetsPath)
 
 		clusterService = cluster.NewClusterService(runtimeConfiguration)
 
@@ -185,7 +185,7 @@ func main() {
 		}
 		edgeManager = edge.NewManager(edgeManagerParameters)
 
-		edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, clusterService)
+		edgeKey, err := edge.RetrieveEdgeKey(options.DataPath, options.EdgeKey, clusterService)
 		if err != nil {
 			log.Printf("[ERROR] [main] [message: Unable to retrieve Edge key] [error: %s]", err)
 		}

@@ -13,6 +13,8 @@ const (
 	EnvKeyClusterAddr           = "AGENT_CLUSTER_ADDR"
 	EnvKeyAgentSecret           = "AGENT_SECRET"
 	EnvKeyAgentSecurityShutdown = "AGENT_SECRET_TIMEOUT"
+	EnvKeyAssetsPath            = "ASSETS_PATH"
+	EnvKeyDataPath              = "DATA_PATH"
 	EnvKeyEdge                  = "EDGE"
 	EnvKeyEdgeKey               = "EDGE_KEY"
 	EnvKeyEdgeID                = "EDGE_ID"
@@ -31,10 +33,12 @@ func NewEnvOptionParser() *EnvOptionParser {
 }
 
 var (
+	fAssetsPath            = kingpin.Flag("assets", EnvKeyAssetsPath+" path to the assets folder").Envar(EnvKeyAssetsPath).Default(agent.DefaultAssetsPath).String()
 	fAgentServerAddr       = kingpin.Flag("host", EnvKeyAgentHost+" address on which the agent API will be exposed").Envar(EnvKeyAgentHost).Default(agent.DefaultAgentAddr).IP()
 	fAgentServerPort       = kingpin.Flag("port", EnvKeyAgentPort+" port on which the agent API will be exposed").Envar(EnvKeyAgentPort).Default(agent.DefaultAgentPort).Int()
 	fAgentSecurityShutdown = kingpin.Flag("secret-timeout", EnvKeyAgentSecurityShutdown+" the duration after which the agent will be shutdown if not associated or secured by AGENT_SECRET. (defaults to 72h)").Envar(EnvKeyAgentSecurityShutdown).Default(agent.DefaultAgentSecurityShutdown).Duration()
 	fClusterAddress        = kingpin.Flag("cluster-addr", EnvKeyClusterAddr+" address (in the IP:PORT format) of an existing agent to join the agent cluster. When deploying the agent as a Docker Swarm service, we can leverage the internal Docker DNS to automatically join existing agents or form a cluster by using tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT> as the address").Envar(EnvKeyClusterAddr).String()
+	fDataPath              = kingpin.Flag("data", EnvKeyDataPath+" path to the data folder").Envar(EnvKeyDataPath).Default(agent.DefaultDataPath).String()
 	fSharedSecret          = kingpin.Flag("secret", EnvKeyAgentSecret+" shared secret used in the signature verification process").Envar(EnvKeyAgentSecret).String()
 	fLogLevel              = kingpin.Flag("log-level", EnvKeyLogLevel+" defines the log output verbosity (default to INFO)").Envar(EnvKeyLogLevel).Default(agent.DefaultLogLevel).Enum("ERROR", "WARN", "INFO", "DEBUG")
 

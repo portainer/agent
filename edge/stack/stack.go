@@ -218,7 +218,7 @@ func (manager *StackManager) next() *edgeStack {
 	return nil
 }
 
-func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
+func (manager *StackManager) SetEngineStatus(assetsPath string, engineStatus engineType) error {
 	if engineStatus == manager.engineType {
 		return nil
 	}
@@ -230,7 +230,7 @@ func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
 		return err
 	}
 
-	deployer, err := buildDeployerService(engineStatus)
+	deployer, err := buildDeployerService(assetsPath, engineStatus)
 	if err != nil {
 		return err
 	}
@@ -281,14 +281,14 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	delete(manager.stacks, stack.ID)
 }
 
-func buildDeployerService(engineStatus engineType) (agent.Deployer, error) {
+func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Deployer, error) {
 	switch engineStatus {
 	case EngineTypeDockerStandalone:
-		return exec.NewDockerComposeStackService(agent.DockerBinaryPath)
+		return exec.NewDockerComposeStackService(assetsPath)
 	case EngineTypeDockerSwarm:
-		return exec.NewDockerSwarmStackService(agent.DockerBinaryPath)
+		return exec.NewDockerSwarmStackService(assetsPath)
 	case EngineTypeKubernetes:
-		return exec.NewKubernetesDeployer(agent.DockerBinaryPath), nil
+		return exec.NewKubernetesDeployer(assetsPath), nil
 	}
 
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)

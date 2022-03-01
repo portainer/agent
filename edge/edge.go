@@ -127,7 +127,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 				return
 			}
 
-			err = manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
+			err = manager.stackManager.SetEngineStatus(manager.agentOptions.AssetsPath, stack.EngineTypeKubernetes)
 			if err != nil {
 				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
 				return
@@ -182,7 +182,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 			return err
 		}
 
-		err = manager.stackManager.SetEngineStatus(engineStatus)
+		err = manager.stackManager.SetEngineStatus(manager.agentOptions.AssetsPath, engineStatus)
 		if err != nil {
 			return err
 		}
