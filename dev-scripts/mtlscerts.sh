@@ -3,6 +3,7 @@
 # very much just copied from https://lemariva.com/blog/2019/12/portainer-managing-docker-engine-remotely
 # production use should involve a real external certificate management system
 
+export CURRENT=$(pwd)
 export HOST=portainer.p1.alho.st
 export CERTDIR=~/.config/portainer/certs/
 
@@ -48,3 +49,4 @@ else
 fi
 
 echo "done: Generated example mTLS certs into $(pwd)"
+cd ${CURRENT}
