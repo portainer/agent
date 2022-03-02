@@ -74,15 +74,15 @@ func (manager *Manager) Start() error {
 
 	log.Printf("[DEBUG] [edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll, manager.agentOptions.EdgeTunnel)
 
-	stackManager := stack.NewStackManager(
+	manager.stackManager = stack.NewStackManager(
 		client.NewPortainerClient(
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
 			manager.agentOptions.EdgeID,
 			buildHTTPClient(10, manager.agentOptions),
 		),
+		manager.agentOptions.AssetsPath,
 	)
-	manager.stackManager = stackManager
 
 	manager.logsManager = scheduler.NewLogsManager(
 		client.NewPortainerClient(
