@@ -110,11 +110,11 @@ type (
 	// TunnelConfig contains all the required information for the agent to establish
 	// a reverse tunnel to a Portainer instance
 	TunnelConfig struct {
-		ServerAddr       string
-		ServerFingerpint string
-		RemotePort       string
-		LocalAddr        string
-		Credentials      string
+		ServerAddr        string
+		ServerFingerprint string
+		RemotePort        string
+		LocalAddr         string
+		Credentials       string
 	}
 
 	// ClusterService is used to manage a cluster of agents.

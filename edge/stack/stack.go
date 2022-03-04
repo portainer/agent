@@ -71,13 +71,13 @@ type StackManager struct {
 	stopSignal chan struct{}
 	deployer   agent.Deployer
 	isEnabled  bool
-	httpClient *client.PortainerClient
+	httpClient client.PortainerClient
 	assetsPath string
 	mu         sync.Mutex
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(cli *client.PortainerClient, assetsPath string) *StackManager {
+func NewStackManager(cli client.PortainerClient, assetsPath string) *StackManager {
 	return &StackManager{
 		stacks:     map[edgeStackID]*edgeStack{},
 		stopSignal: nil,

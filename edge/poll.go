@@ -2,44 +2,42 @@ package edge
 
 import (
 	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
-	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 	"github.com/portainer/libcrypto"
 )
 
-const tunnelActivityCheckInterval = 30 * time.Second
+const (
+	clientDefaultPollTimeout    = 5
+	tunnelActivityCheckInterval = 30 * time.Second
+)
 
 // PollService is used to poll a Portainer instance to retrieve the status associated to the Edge endpoint.
 // It is responsible for managing the state of the reverse tunnel (open and closing after inactivity).
 // It is also responsible for retrieving the data associated to Edge stacks and schedules.
 type PollService struct {
-	apiServerAddr           string
-	pollIntervalInSeconds   float64
-	inactivityTimeout       time.Duration
-	edgeID                  string
-	httpClient              *http.Client
-	tunnelClient            agent.ReverseTunnelClient
-	scheduleManager         agent.Scheduler
-	lastActivity            time.Time
-	updateLastActivity      chan struct{}
-	refreshSignal           chan struct{}
-	edgeStackManager        *stack.StackManager
-	portainerURL            string
-	endpointID              string
-	tunnelServerAddr        string
-	tunnelServerFingerprint string
-	logsManager             *scheduler.LogsManager
-	containerPlatform       agent.ContainerPlatform
+	apiServerAddr            string
+	pollIntervalInSeconds    float64
+	inactivityTimeout        time.Duration
+	edgeID                   string
+	portainerClient          client.PortainerClient
+	tunnelClient             agent.ReverseTunnelClient
+	scheduleManager          agent.Scheduler
+	lastActivity             time.Time
+	updateLastActivitySignal chan struct{}
+	refreshSignal            chan struct{}
+	edgeStackManager         *stack.StackManager
+	portainerURL             string
+	tunnelServerAddr         string
+	tunnelServerFingerprint  string
+	logsManager              *scheduler.LogsManager
 }
 
 type pollServiceConfig struct {
@@ -57,7 +55,7 @@ type pollServiceConfig struct {
 
 // newPollService returns a pointer to a new instance of PollService
 // if TunnelCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
-func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, httpClient *http.Client) (*PollService, error) {
+func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, portainerClient client.PortainerClient) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -68,33 +66,31 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		return nil, err
 	}
 
-	pollService := &PollService{
-		apiServerAddr:           config.APIServerAddr,
-		edgeID:                  config.EdgeID,
-		pollIntervalInSeconds:   pollFrequency.Seconds(),
-		inactivityTimeout:       inactivityTimeout,
-		scheduleManager:         scheduler.NewCronManager(),
-		updateLastActivity:      make(chan struct{}),
-		edgeStackManager:        edgeStackManager,
-		portainerURL:            config.PortainerURL,
-		endpointID:              config.EndpointID,
-		tunnelServerAddr:        config.TunnelServerAddr,
-		tunnelServerFingerprint: config.TunnelServerFingerprint,
-		logsManager:             logsManager,
-		containerPlatform:       config.ContainerPlatform,
-		httpClient:              httpClient,
-	}
-
+	var tunnel agent.ReverseTunnelClient
 	if config.TunnelCapability {
-		pollService.tunnelClient = chisel.NewClient()
+		tunnel = chisel.NewClient()
 	}
 
-	return pollService, nil
+	return &PollService{
+		pollIntervalInSeconds:    pollFrequency.Seconds(),
+		inactivityTimeout:        inactivityTimeout,
+		scheduleManager:          scheduler.NewCronManager(),
+		updateLastActivitySignal: make(chan struct{}),
+		edgeStackManager:         edgeStackManager,
+		logsManager:              logsManager,
+		tunnelClient:             tunnel,
+		portainerClient:          portainerClient,
+		edgeID:                   config.EdgeID,
+		portainerURL:             config.PortainerURL,
+		apiServerAddr:            config.APIServerAddr,
+		tunnelServerAddr:         config.TunnelServerAddr,
+		tunnelServerFingerprint:  config.TunnelServerFingerprint,
+	}, nil
 }
 
 func (service *PollService) resetActivityTimer() {
 	if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() {
-		service.updateLastActivity <- struct{}{}
+		service.updateLastActivitySignal <- struct{}{}
 	}
 }
 
@@ -107,20 +103,20 @@ func (service *PollService) start() error {
 	if service.refreshSignal != nil {
 		return nil
 	}
-
 	service.refreshSignal = make(chan struct{})
+
 	service.startStatusPollLoop()
 	go service.startActivityMonitoringLoop()
 
 	return nil
 }
 
-func (service *PollService) stop() error {
-	if service.refreshSignal != nil {
-		close(service.refreshSignal)
-		service.refreshSignal = nil
+func (service *PollService) stop() {
+	if service.refreshSignal == nil {
+		return
 	}
-	return nil
+	close(service.refreshSignal)
+	service.refreshSignal = nil
 }
 
 func (service *PollService) restartStatusPollLoop() {
@@ -129,7 +125,7 @@ func (service *PollService) restartStatusPollLoop() {
 	service.startStatusPollLoop()
 }
 
-func (service *PollService) startStatusPollLoop() error {
+func (service *PollService) startStatusPollLoop() {
 	log.Printf("[DEBUG] [edge] [poll_interval_seconds: %f] [server_url: %s] [message: starting Portainer short-polling client]", service.pollIntervalInSeconds, service.portainerURL)
 
 	ticker := time.NewTicker(time.Duration(service.pollIntervalInSeconds) * time.Second)
@@ -149,8 +145,6 @@ func (service *PollService) startStatusPollLoop() error {
 			}
 		}
 	}()
-
-	return nil
 }
 
 func (service *PollService) startActivityMonitoringLoop() {
@@ -176,70 +170,20 @@ func (service *PollService) startActivityMonitoringLoop() {
 					log.Printf("[ERROR] [edge] [message: unable to shutdown tunnel] [error: %s]", err)
 				}
 			}
-		case <-service.updateLastActivity:
+		case <-service.updateLastActivitySignal:
 			service.lastActivity = time.Now()
 		}
 	}
 }
 
-const clientDefaultPollTimeout = 5
-
-type stackStatus struct {
-	ID      int
-	Version int
-}
-
-type pollStatusResponse struct {
-	Status          string           `json:"status"`
-	Port            int              `json:"port"`
-	Schedules       []agent.Schedule `json:"schedules"`
-	CheckinInterval float64          `json:"checkin"`
-	Credentials     string           `json:"credentials"`
-	Stacks          []stackStatus    `json:"stacks"`
-}
-
 func (service *PollService) poll() error {
+	environmentStatus, err := service.portainerClient.GetEnvironmentStatus()
 
-	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", service.portainerURL, service.endpointID)
-	req, err := http.NewRequest("GET", pollURL, nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, service.edgeID)
-
-	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
-	// However, Portainer should handle podman agents the same way as docker agents.
-	agentPlatformIdentifier := service.containerPlatform
-	if service.containerPlatform == agent.PlatformPodman {
-		agentPlatformIdentifier = agent.PlatformDocker
-	}
-	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
-
-	log.Printf("[DEBUG] [edge] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(agentPlatformIdentifier)))
-
-	resp, err := service.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("[DEBUG] [edge] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
-		return errors.New("short poll request failed")
-	}
-
-	var responseData pollStatusResponse
-	err = json.NewDecoder(resp.Body).Decode(&responseData)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("[DEBUG] [edge] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", responseData.Status, responseData.Port, len(responseData.Schedules), responseData.CheckinInterval)
+	log.Printf("[DEBUG] [edge] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", environmentStatus.Status, environmentStatus.Port, len(environmentStatus.Schedules), environmentStatus.CheckinInterval)
 
 	if service.tunnelClient != nil {
-		if responseData.Status == "IDLE" && service.tunnelClient.IsTunnelOpen() {
-			log.Printf("[DEBUG] [edge] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
+		if environmentStatus.Status == "IDLE" && service.tunnelClient.IsTunnelOpen() {
+			log.Printf("[DEBUG] [edge] [status: %s] [message: Idle status detected, shutting down tunnel]", environmentStatus.Status)
 
 			err := service.tunnelClient.CloseTunnel()
 			if err != nil {
@@ -247,10 +191,10 @@ func (service *PollService) poll() error {
 			}
 		}
 
-		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
+		if environmentStatus.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
 			log.Println("[DEBUG] [edge] [message: Required status detected, creating reverse tunnel]")
 
-			err := service.createTunnel(responseData.Credentials, responseData.Port)
+			err := service.createTunnel(environmentStatus.Credentials, environmentStatus.Port)
 			if err != nil {
 				log.Printf("[ERROR] [edge] [message: Unable to create tunnel] [error: %s]", err)
 				return err
@@ -258,13 +202,13 @@ func (service *PollService) poll() error {
 		}
 	}
 
-	err = service.scheduleManager.Schedule(responseData.Schedules)
+	err = service.scheduleManager.Schedule(environmentStatus.Schedules)
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: an error occurred during schedule management] [err: %s]", err)
 	}
 
 	logsToCollect := []int{}
-	for _, schedule := range responseData.Schedules {
+	for _, schedule := range environmentStatus.Schedules {
 		if schedule.CollectLogs {
 			logsToCollect = append(logsToCollect, schedule.ID)
 		}
@@ -272,16 +216,16 @@ func (service *PollService) poll() error {
 
 	service.logsManager.HandleReceivedLogsRequests(logsToCollect)
 
-	if responseData.CheckinInterval != service.pollIntervalInSeconds {
-		log.Printf("[DEBUG] [edge] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
-		service.pollIntervalInSeconds = responseData.CheckinInterval
-		service.httpClient.Timeout = time.Duration(responseData.CheckinInterval) * time.Second
+	if environmentStatus.CheckinInterval != service.pollIntervalInSeconds {
+		log.Printf("[DEBUG] [edge] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, environmentStatus.CheckinInterval)
+		service.pollIntervalInSeconds = environmentStatus.CheckinInterval
+		service.portainerClient.SetTimeout(time.Duration(environmentStatus.CheckinInterval) * time.Second)
 		go service.restartStatusPollLoop()
 	}
 
-	if responseData.Stacks != nil {
+	if environmentStatus.Stacks != nil {
 		stacks := map[int]int{}
-		for _, stack := range responseData.Stacks {
+		for _, stack := range environmentStatus.Stacks {
 			stacks[stack.ID] = stack.Version
 		}
 
@@ -307,11 +251,11 @@ func (service *PollService) createTunnel(encodedCredentials string, remotePort i
 	}
 
 	tunnelConfig := agent.TunnelConfig{
-		ServerAddr:       service.tunnelServerAddr,
-		ServerFingerpint: service.tunnelServerFingerprint,
-		Credentials:      string(credentials),
-		RemotePort:       strconv.Itoa(remotePort),
-		LocalAddr:        service.apiServerAddr,
+		LocalAddr:         service.apiServerAddr,
+		ServerAddr:        service.tunnelServerAddr,
+		ServerFingerprint: service.tunnelServerFingerprint,
+		Credentials:       string(credentials),
+		RemotePort:        strconv.Itoa(remotePort),
 	}
 
 	err = service.tunnelClient.CreateTunnel(tunnelConfig)

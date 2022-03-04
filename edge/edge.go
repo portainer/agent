@@ -74,11 +74,19 @@ func (manager *Manager) Start() error {
 
 	log.Printf("[DEBUG] [edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll, manager.agentOptions.EdgeTunnel)
 
+	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
+	// However, Portainer should handle podman agents the same way as docker agents.
+	agentPlatform := manager.containerPlatform
+	if manager.containerPlatform == agent.PlatformPodman {
+		agentPlatform = agent.PlatformDocker
+	}
+
 	manager.stackManager = stack.NewStackManager(
 		client.NewPortainerClient(
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
 			manager.agentOptions.EdgeID,
+			agentPlatform,
 			buildHTTPClient(10, manager.agentOptions),
 		),
 		manager.agentOptions.AssetsPath,
@@ -89,16 +97,26 @@ func (manager *Manager) Start() error {
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
 			manager.agentOptions.EdgeID,
+			agentPlatform,
 			buildHTTPClient(10, manager.agentOptions),
 		),
 	)
-	manager.logsManager.Start()
+	err := manager.logsManager.Start()
+	if err != nil {
+		return err
+	}
 
 	pollService, err := newPollService(
 		manager.stackManager,
 		manager.logsManager,
 		pollServiceConfig,
-		buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
+		client.NewPortainerClient(
+			manager.key.PortainerInstanceURL,
+			manager.key.EndpointID,
+			manager.agentOptions.EdgeID,
+			agentPlatform,
+			buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
+		),
 	)
 	if err != nil {
 		return err
@@ -210,10 +228,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 		return manager.stackManager.Start()
 	}
 
-	err = manager.pollService.stop()
-	if err != nil {
-		return err
-	}
+	manager.pollService.stop()
 
 	return manager.stackManager.Stop()
 }

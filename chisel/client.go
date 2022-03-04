@@ -32,12 +32,12 @@ func NewClient() *Client {
 func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 	remote := fmt.Sprintf("R:%s:%s", tunnelConfig.RemotePort, tunnelConfig.LocalAddr)
 
-	log.Printf("[DEBUG] [chisel] [remote_port: %s] [local_addr: %s] [server: %s] [server_fingerprint: %s] [message: Creating reverse tunnel client]", tunnelConfig.RemotePort, tunnelConfig.LocalAddr, tunnelConfig.ServerAddr, tunnelConfig.ServerFingerpint)
+	log.Printf("[DEBUG] [chisel] [remote_port: %s] [local_addr: %s] [server: %s] [server_fingerprint: %s] [message: Creating reverse tunnel client]", tunnelConfig.RemotePort, tunnelConfig.LocalAddr, tunnelConfig.ServerAddr, tunnelConfig.ServerFingerprint)
 
 	config := &chclient.Config{
 		Server:      tunnelConfig.ServerAddr,
 		Remotes:     []string{remote},
-		Fingerprint: tunnelConfig.ServerFingerpint,
+		Fingerprint: tunnelConfig.ServerFingerprint,
 		Auth:        tunnelConfig.Credentials,
 	}
 
