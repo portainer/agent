@@ -45,6 +45,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus() (*PollStatusResponse, 
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
 
 	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(client.agentPlatform)))
 
