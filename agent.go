@@ -283,3 +283,12 @@ const (
 	// NodeRoleWorker represent a Docker swarm worker node role
 	NodeRoleWorker
 )
+
+const (
+	// TunnelStatusIdle represents an idle state for a tunnel connected to an Edge environment(endpoint).
+	TunnelStatusIdle string = "IDLE"
+	// TunnelStatusRequired represents a required state for a tunnel connected to an Edge environment(endpoint)
+	TunnelStatusRequired string = "REQUIRED"
+	// TunnelStatusActive represents an active state for a tunnel connected to an Edge environment(endpoint)
+	TunnelStatusActive string = "ACTIVE"
+)

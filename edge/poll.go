@@ -94,24 +94,22 @@ func (service *PollService) resetActivityTimer() {
 	}
 }
 
-// start will start two loops in go routines
+// Start will Start two loops in go routines
 // The first loop will poll the Portainer instance for the status of the associated endpoint and create a reverse tunnel
 // if needed as well as manage schedules.
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
-func (service *PollService) start() error {
+func (service *PollService) Start() {
 	if service.refreshSignal != nil {
-		return nil
+		return
 	}
 	service.refreshSignal = make(chan struct{})
 
 	service.startStatusPollLoop()
 	go service.startActivityMonitoringLoop()
-
-	return nil
 }
 
-func (service *PollService) stop() {
+func (service *PollService) Stop() {
 	if service.refreshSignal == nil {
 		return
 	}
@@ -120,7 +118,7 @@ func (service *PollService) stop() {
 }
 
 func (service *PollService) restartStatusPollLoop() {
-	service.stop()
+	service.Stop()
 	service.refreshSignal = make(chan struct{})
 	service.startStatusPollLoop()
 }
@@ -178,60 +176,54 @@ func (service *PollService) startActivityMonitoringLoop() {
 
 func (service *PollService) poll() error {
 	environmentStatus, err := service.portainerClient.GetEnvironmentStatus()
+	if err != nil {
+		return err
+	}
 
 	log.Printf("[DEBUG] [edge] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", environmentStatus.Status, environmentStatus.Port, len(environmentStatus.Schedules), environmentStatus.CheckinInterval)
 
-	if service.tunnelClient != nil {
-		if environmentStatus.Status == "IDLE" && service.tunnelClient.IsTunnelOpen() {
-			log.Printf("[DEBUG] [edge] [status: %s] [message: Idle status detected, shutting down tunnel]", environmentStatus.Status)
-
-			err := service.tunnelClient.CloseTunnel()
-			if err != nil {
-				log.Printf("[ERROR] [edge] [message: Unable to shutdown tunnel] [error: %s]", err)
-			}
-		}
-
-		if environmentStatus.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
-			log.Println("[DEBUG] [edge] [message: Required status detected, creating reverse tunnel]")
-
-			err := service.createTunnel(environmentStatus.Credentials, environmentStatus.Port)
-			if err != nil {
-				log.Printf("[ERROR] [edge] [message: Unable to create tunnel] [error: %s]", err)
-				return err
-			}
-		}
+	tunnelErr := service.checkIfCreateOrCloseTunnel(*environmentStatus)
+	if tunnelErr != nil {
+		return tunnelErr
 	}
 
-	err = service.scheduleManager.Schedule(environmentStatus.Schedules)
-	if err != nil {
-		log.Printf("[ERROR] [edge] [message: an error occurred during schedule management] [err: %s]", err)
-	}
+	service.processSchedules(environmentStatus.Schedules)
 
-	logsToCollect := []int{}
-	for _, schedule := range environmentStatus.Schedules {
-		if schedule.CollectLogs {
-			logsToCollect = append(logsToCollect, schedule.ID)
-		}
-	}
-
-	service.logsManager.HandleReceivedLogsRequests(logsToCollect)
-
-	if environmentStatus.CheckinInterval != service.pollIntervalInSeconds {
+	if environmentStatus.CheckinInterval > 0 && environmentStatus.CheckinInterval != service.pollIntervalInSeconds {
 		log.Printf("[DEBUG] [edge] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, environmentStatus.CheckinInterval)
 		service.pollIntervalInSeconds = environmentStatus.CheckinInterval
 		service.portainerClient.SetTimeout(time.Duration(environmentStatus.CheckinInterval) * time.Second)
 		go service.restartStatusPollLoop()
 	}
 
-	if environmentStatus.Stacks != nil {
-		stacks := map[int]int{}
-		for _, stack := range environmentStatus.Stacks {
-			stacks[stack.ID] = stack.Version
-		}
+	stacksErr := service.processStacks(environmentStatus.Stacks)
+	if stacksErr != nil {
+		return stacksErr
+	}
 
-		err := service.edgeStackManager.UpdateStacksStatus(stacks)
+	return nil
+}
+
+func (service *PollService) checkIfCreateOrCloseTunnel(environmentStatus client.PollStatusResponse) error {
+	if service.tunnelClient == nil {
+		return nil
+	}
+
+	if environmentStatus.Status == agent.TunnelStatusIdle && service.tunnelClient.IsTunnelOpen() {
+		log.Printf("[DEBUG] [edge] [status: %s] [message: Idle status detected, shutting down tunnel]", environmentStatus.Status)
+
+		err := service.tunnelClient.CloseTunnel()
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: an error occurred during stack management] [error: %s]", err)
+			log.Printf("[ERROR] [edge] [message: Unable to shutdown tunnel] [error: %s]", err)
+		}
+	}
+
+	if environmentStatus.Status == agent.TunnelStatusRequired && !service.tunnelClient.IsTunnelOpen() {
+		log.Println("[DEBUG] [edge] [message: Required status detected, creating reverse tunnel]")
+
+		err := service.createTunnel(environmentStatus.Credentials, environmentStatus.Port)
+		if err != nil {
+			log.Printf("[ERROR] [edge] [message: Unable to create tunnel] [error: %s]", err)
 			return err
 		}
 	}
@@ -264,5 +256,39 @@ func (service *PollService) createTunnel(encodedCredentials string, remotePort i
 	}
 
 	service.resetActivityTimer()
+	return nil
+}
+
+func (service *PollService) processSchedules(schedules []agent.Schedule) {
+	err := service.scheduleManager.Schedule(schedules)
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: an error occurred during schedule management] [err: %s]", err)
+	}
+
+	logsToCollect := []int{}
+	for _, schedule := range schedules {
+		if schedule.CollectLogs {
+			logsToCollect = append(logsToCollect, schedule.ID)
+		}
+	}
+
+	service.logsManager.HandleReceivedLogsRequests(logsToCollect)
+}
+
+func (service *PollService) processStacks(pollResponseStacks []client.StackStatus) error {
+	if pollResponseStacks == nil {
+		return nil
+	}
+
+	stacks := map[int]int{}
+	for _, s := range pollResponseStacks {
+		stacks[s.ID] = s.Version
+	}
+
+	err := service.edgeStackManager.UpdateStacksStatus(stacks)
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: an error occurred during stack management] [error: %s]", err)
+		return err
+	}
 	return nil
 }

@@ -11,9 +11,9 @@ import (
 )
 
 type LogsManager struct {
-	httpClient client.PortainerClient
-	stopSignal chan struct{}
-	jobs       map[int]logStatus
+	portainerClient client.PortainerClient
+	stopSignal      chan struct{}
+	jobs            map[int]logStatus
 }
 
 type logStatus int
@@ -27,9 +27,9 @@ const (
 
 func NewLogsManager(cli client.PortainerClient) *LogsManager {
 	return &LogsManager{
-		httpClient: cli,
-		stopSignal: nil,
-		jobs:       map[int]logStatus{},
+		portainerClient: cli,
+		stopSignal:      nil,
+		jobs:            map[int]logStatus{},
 	}
 }
 
@@ -83,7 +83,7 @@ func (manager *LogsManager) Start() error {
 					}
 				}
 
-				err = manager.httpClient.SendJobLogFile(jobID, file)
+				err = manager.portainerClient.SendJobLogFile(jobID, file)
 				if err != nil {
 					manager.jobs[jobID] = logFailed
 					log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed sending log file to portainer]", err)
