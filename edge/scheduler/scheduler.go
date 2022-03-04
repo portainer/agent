@@ -50,8 +50,7 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 	}
 
 	if len(manager.managedSchedules) != len(schedules) {
-		manager.managedSchedules = schedules
-		return manager.flushEntries()
+		return manager.flushEntries(schedules)
 	}
 
 	updateRequired := false
@@ -70,8 +69,7 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 	}
 
 	if updateRequired {
-		manager.managedSchedules = schedules
-		return manager.flushEntries()
+		return manager.flushEntries(schedules)
 	}
 
 	return nil
@@ -95,7 +93,7 @@ func createCronEntry(schedule *agent.Schedule) (string, error) {
 	return fmt.Sprintf("%s %s %s > %s 2>&1", cronExpression, cronJobUser, command, logFile), nil
 }
 
-func (manager *CronManager) flushEntries() error {
+func (manager *CronManager) flushEntries(schedules []agent.Schedule) error {
 	cronEntries := make([]string, 0)
 
 	header := []string{
@@ -107,11 +105,11 @@ func (manager *CronManager) flushEntries() error {
 
 	cronEntries = append(cronEntries, header...)
 
-	for _, schedule := range manager.managedSchedules {
+	for _, schedule := range schedules {
 		cronEntry, err := createCronEntry(&schedule)
 		if err != nil {
 			log.Printf("[ERROR] [edge,scheduler] [schedule_id: %d] [message: Unable to create cron entry] [err: %s]", schedule.ID, err)
-			continue
+			return err
 		}
 		cronEntries = append(cronEntries, cronEntry)
 	}
@@ -126,6 +124,7 @@ func (manager *CronManager) flushEntries() error {
 	}
 
 	manager.cronFileExists = true
+	manager.managedSchedules = schedules
 
 	return nil
 }
