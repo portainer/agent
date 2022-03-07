@@ -73,11 +73,6 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		return nil, err
 	}
 
-	var tunnel agent.ReverseTunnelClient
-	if config.TunnelCapability {
-		tunnel = chisel.NewClient()
-	}
-
 	pollService := &PollService{
 		apiServerAddr:            config.APIServerAddr,
 		edgeID:                   config.EdgeID,
@@ -95,7 +90,10 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
 		logsManager:              logsManager,
 		portainerClient:          portainerClient,
-		tunnelClient:             tunnel,
+	}
+
+	if config.TunnelCapability {
+		pollService.tunnelClient = chisel.NewClient()
 	}
 
 	go pollService.startStatusPollLoop()
