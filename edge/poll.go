@@ -182,7 +182,7 @@ func (service *PollService) poll() error {
 
 	log.Printf("[DEBUG] [edge] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", environmentStatus.Status, environmentStatus.Port, len(environmentStatus.Schedules), environmentStatus.CheckinInterval)
 
-	tunnelErr := service.checkIfCreateOrCloseTunnel(*environmentStatus)
+	tunnelErr := service.manageUpdateTunnel(*environmentStatus)
 	if tunnelErr != nil {
 		return tunnelErr
 	}
@@ -204,7 +204,7 @@ func (service *PollService) poll() error {
 	return nil
 }
 
-func (service *PollService) checkIfCreateOrCloseTunnel(environmentStatus client.PollStatusResponse) error {
+func (service *PollService) manageUpdateTunnel(environmentStatus client.PollStatusResponse) error {
 	if service.tunnelClient == nil {
 		return nil
 	}
