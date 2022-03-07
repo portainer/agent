@@ -10,7 +10,6 @@ source ./dev-scripts/utils.sh
 source ./dev-scripts/compile.sh
 source ./dev-scripts/build.sh
 source ./dev-scripts/deploy.sh
-source ./dev-scripts/mtlscerts.sh
 
 usage() {
     cmd=$(basename "${BASH_SOURCE[0]}")
@@ -26,7 +25,6 @@ build       Build a docker image
 deploy      Deploy the agent image
 swarm       Compile, build and deploy a swarm agent
 podman      Compile, build and deploy to a local podman agent
-mtlscerts   Build self-signed certificates for mtls configuration
 
 To get help with a command use: $cmd command -h
 
@@ -46,7 +44,7 @@ if [[ "${1-}" == "" ]]; then
 fi
 
 case $1 in
-    compile | build | deploy | mtlscerts)
+    compile | build | deploy)
         "$1"_command "${@:2}"
     ;;
     swarm)
