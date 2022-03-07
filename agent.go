@@ -56,12 +56,14 @@ type (
 
 	// Options are the options used to start an agent.
 	Options struct {
+		AssetsPath            string
 		AgentServerAddr       string
 		AgentServerPort       string
 		AgentSecurityShutdown time.Duration
 		ClusterAddress        string
 		ClusterProbeTimeout   time.Duration
 		ClusterProbeInterval  time.Duration
+		DataPath              string
 		SharedSecret          string
 		EdgeMode              bool
 		EdgeKey               string
@@ -176,7 +178,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "2.11.1"
+	Version = "2.12.0"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.
@@ -241,14 +243,14 @@ const (
 	TLSKeyPath = "key.pem"
 	// HostRoot is the folder mapping to the underlying host filesystem that is mounted inside the container.
 	HostRoot = "/host"
-	// DataDirectory is the folder where the data associated to the agent is persisted.
-	DataDirectory = "/data"
+	// DefaultDataPath is the default folder where the data associated to the agent is persisted.
+	DefaultDataPath = "/data"
 	// ScheduleScriptDirectory is the folder where schedules are saved on the host
 	ScheduleScriptDirectory = "/opt/portainer/scripts"
 	// EdgeKeyFile is the name of the file used to persist the Edge key associated to the agent.
 	EdgeKeyFile = "agent_edge_key"
-	// DockerBinaryPath is the path of the docker binary
-	DockerBinaryPath = "/app"
+	// DefaultAssetsPath is the default path of the binaries
+	DefaultAssetsPath = "/app"
 	// EdgeStackFilesPath is the path where edge stack files are saved
 	EdgeStackFilesPath = "/tmp/edge_stacks"
 	// EdgeStackQueueSleepInterval is the interval used to check if there's an Edge stack to deploy

@@ -54,12 +54,7 @@ func (service *TLSService) GenerateCertsForHost(host string) error {
 		return err
 	}
 
-	err = createPEMEncodedFile(agent.TLSKeyPath, "RSA PRIVATE KEY", x509.MarshalPKCS1PrivateKey(keyPair))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return createPEMEncodedFile(agent.TLSKeyPath, "RSA PRIVATE KEY", x509.MarshalPKCS1PrivateKey(keyPair))
 }
 
 func createPEMEncodedFile(path, header string, data []byte) error {
@@ -69,10 +64,5 @@ func createPEMEncodedFile(path, header string, data []byte) error {
 	}
 	defer file.Close()
 
-	err = pem.Encode(file, &pem.Block{Type: header, Bytes: data})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return pem.Encode(file, &pem.Block{Type: header, Bytes: data})
 }

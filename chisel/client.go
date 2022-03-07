@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/portainer/agent"
@@ -17,6 +18,7 @@ const tunnelClientTimeout = 10 * time.Second
 type Client struct {
 	chiselClient *chclient.Client
 	tunnelOpen   bool
+	mu           sync.Mutex
 }
 
 // NewClient creates a new reverse tunnel client
@@ -30,7 +32,7 @@ func NewClient() *Client {
 func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 	remote := fmt.Sprintf("R:%s:%s", tunnelConfig.RemotePort, tunnelConfig.LocalAddr)
 
-	log.Printf("[DEBUG] [edge,chisel] [remote_port: %s] [local_addr: %s] [server: %s] [server_fingerprint: %s] [message: Creating reverse tunnel client]", tunnelConfig.RemotePort, tunnelConfig.LocalAddr, tunnelConfig.ServerAddr, tunnelConfig.ServerFingerpint)
+	log.Printf("[DEBUG] [chisel] [remote_port: %s] [local_addr: %s] [server: %s] [server_fingerprint: %s] [message: Creating reverse tunnel client]", tunnelConfig.RemotePort, tunnelConfig.LocalAddr, tunnelConfig.ServerAddr, tunnelConfig.ServerFingerpint)
 
 	config := &chclient.Config{
 		Server:      tunnelConfig.ServerAddr,
@@ -54,18 +56,26 @@ func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 		return err
 	}
 
+	client.mu.Lock()
 	client.tunnelOpen = true
+	client.mu.Unlock()
 
 	return nil
 }
 
 // CloseTunnel will close the associated chisel client
 func (client *Client) CloseTunnel() error {
+	client.mu.Lock()
 	client.tunnelOpen = false
+	client.mu.Unlock()
+
 	return client.chiselClient.Close()
 }
 
 // IsTunnelOpen returns true if the tunnel is created
 func (client *Client) IsTunnelOpen() bool {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+
 	return client.tunnelOpen
 }

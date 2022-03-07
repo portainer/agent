@@ -75,7 +75,7 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, p
 	conf.ReconnectInterval = 10 * time.Second
 	conf.ReconnectTimeout = 1 * time.Minute
 
-	log.Printf("[DEBUG] [cluster,serf] [advertise_address: %s] [join_address: %s]", advertiseAddr, joinAddr)
+	log.Printf("[DEBUG] [serf] [advertise_address: %s] [join_address: %s]", advertiseAddr, joinAddr)
 
 	cluster, err := serf.Create(conf)
 	if err != nil {
@@ -84,9 +84,9 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, p
 
 	nodeCount, err := cluster.Join(joinAddr, true)
 	if err != nil {
-		log.Printf("[DEBUG] [cluster,serf] [message: Unable to join cluster] [error: %s]", err)
+		log.Printf("[DEBUG] [serf] [message: Unable to join cluster] [error: %s]", err)
 	}
-	log.Printf("[DEBUG] [cluster,serf] [contacted_nodes: %d]", nodeCount)
+	log.Printf("[DEBUG] [serf] [contacted_nodes: %d]", nodeCount)
 
 	service.cluster = cluster
 
