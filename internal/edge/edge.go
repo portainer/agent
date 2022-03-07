@@ -128,35 +128,23 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency time.Duration) error {
-	err := manager.pollService.start()
-	if err != nil {
-		return err
-	}
-
-	ticker := time.NewTicker(runtimeCheckFrequency)
+	manager.pollService.start()
 
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				err := manager.pollService.start()
-				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start short-poll service] [error: %s]", err)
-					return
-				}
+		ticker := time.NewTicker(runtimeCheckFrequency)
+		for range ticker.C {
+			manager.pollService.start()
 
-				err = manager.stackManager.setEngineStatus(engineTypeKubernetes)
-				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
-					return
-				}
+			err := manager.stackManager.setEngineStatus(engineTypeKubernetes)
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
+				return
+			}
 
-				err = manager.stackManager.start()
-				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
-					return
-				}
-
+			err = manager.stackManager.start()
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
+				return
 			}
 		}
 	}()
@@ -197,10 +185,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 			engineStatus = engineTypeDockerSwarm
 		}
 
-		err = manager.pollService.start()
-		if err != nil {
-			return err
-		}
+		manager.pollService.start()
 
 		err = manager.stackManager.setEngineStatus(engineStatus)
 		if err != nil {
@@ -213,10 +198,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 		}
 
 	} else {
-		err = manager.pollService.stop()
-		if err != nil {
-			return err
-		}
+		manager.pollService.stop()
 
 		err = manager.stackManager.stop()
 		if err != nil {
