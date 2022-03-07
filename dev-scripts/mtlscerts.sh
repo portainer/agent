@@ -4,12 +4,12 @@
 # production use should involve a real external certificate management system
 
 function mtlscerts_command() {
-  export CURRENT=$(pwd)
-  export HOST=${1:-"portainer.p1.alho.st"}
-  export CERTDIR=~/.config/portainer/certs/
+  local current_dir=$(pwd)
+  local host=${1:-"portainer.p1.alho.st"}
+  local cert_dir=~/.config/portainer/certs/
 
-  mkdir -p ${CERTDIR}
-  cd ${CERTDIR}
+  mkdir -p ${cert_dir}
+  cd ${cert_dir} || exit
   echo "Generating example mTLS certs into $(pwd)"
 
   if [[ ! -f "ca.pem" ]]; then
@@ -26,8 +26,8 @@ function mtlscerts_command() {
       echo "Generate the Portainer server cert"
       openssl genrsa -out server-key.pem 4096
 
-      openssl req -subj "/CN=$HOST" -sha256 -new -key server-key.pem -out server.csr
-      echo subjectAltName = DNS:$HOST,IP:10.0.0.200,IP:127.0.0.1,IP:10.10.10.189 >> extfile.cnf
+      openssl req -subj "/CN=$host" -sha256 -new -key server-key.pem -out server.csr
+      echo subjectAltName = DNS:$host,IP:10.0.0.200,IP:127.0.0.1,IP:10.10.10.189 >> extfile.cnf
       echo extendedKeyUsage = serverAuth >> extfile.cnf
 
       openssl x509 -req -days 365 -sha256 -in server.csr -CA ca.pem -CAkey ca-key.pem \
@@ -50,5 +50,5 @@ function mtlscerts_command() {
   fi
 
   echo "done: Generated example mTLS certs into $(pwd)"
-  cd ${CURRENT}
+  cd ${current_dir} || return
 }
