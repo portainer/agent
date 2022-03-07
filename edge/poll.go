@@ -94,7 +94,7 @@ func (service *PollService) resetActivityTimer() {
 	}
 }
 
-// Start will Start two loops in go routines
+// Start will start two loops in go routines
 // The first loop will poll the Portainer instance for the status of the associated endpoint and create a reverse tunnel
 // if needed as well as manage schedules.
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
