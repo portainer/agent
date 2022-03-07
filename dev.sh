@@ -46,7 +46,7 @@ if [[ "${1-}" == "" ]]; then
 fi
 
 case $1 in
-    compile | build | deploy)
+    compile | build | deploy | mtlscerts)
         "$1"_command "${@:2}"
     ;;
     swarm)
@@ -54,8 +54,6 @@ case $1 in
     ;;
     podman)
         deploy_command -p -c "${@:2}"
-    ;;
-    mtlscerts)
     ;;
     *)
         usage
