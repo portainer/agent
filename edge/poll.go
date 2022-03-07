@@ -23,24 +23,24 @@ const (
 // It is responsible for managing the state of the reverse tunnel (open and closing after inactivity).
 // It is also responsible for retrieving the data associated to Edge stacks and schedules.
 type PollService struct {
-	apiServerAddr           string
-	pollIntervalInSeconds   float64
-	pollTicker              *time.Ticker
-	inactivityTimeout       time.Duration
-	edgeID                  string
-	httpClient              *http.Client
-	tunnelClient            agent.ReverseTunnelClient
-	scheduleManager         agent.Scheduler
-	lastActivity            time.Time
-	updateLastActivity      chan struct{}
-	startSignal             chan struct{}
-	stopSignal              chan struct{}
-	edgeStackManager        *stack.StackManager
-	portainerURL            string
-	endpointID              string
-	tunnelServerAddr        string
-	tunnelServerFingerprint string
-	logsManager             *scheduler.LogsManager
+	apiServerAddr            string
+	pollIntervalInSeconds    float64
+	pollTicker               *time.Ticker
+	inactivityTimeout        time.Duration
+	edgeID                   string
+	portainerClient          client.PortainerClient
+	tunnelClient             agent.ReverseTunnelClient
+	scheduleManager          agent.Scheduler
+	lastActivity             time.Time
+	updateLastActivitySignal chan struct{}
+	startSignal              chan struct{}
+	stopSignal               chan struct{}
+	edgeStackManager         *stack.StackManager
+	portainerURL             string
+	endpointID               string
+	tunnelServerAddr         string
+	tunnelServerFingerprint  string
+	logsManager              *scheduler.LogsManager
 }
 
 type pollServiceConfig struct {
@@ -74,27 +74,28 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 	}
 
 	var tunnel agent.ReverseTunnelClient
-  if config.TunnelCapability {
+	if config.TunnelCapability {
 		tunnel = chisel.NewClient()
 	}
 
 	pollService := &PollService{
-		apiServerAddr:           config.APIServerAddr,
-		edgeID:                  config.EdgeID,
-		pollIntervalInSeconds:   pollFrequency.Seconds(),
-		pollTicker:              time.NewTicker(pollFrequency),
-		inactivityTimeout:       inactivityTimeout,
-		scheduleManager:         scheduler.NewCronManager(),
-		updateLastActivity:      make(chan struct{}),
-		startSignal:             make(chan struct{}),
-		stopSignal:              make(chan struct{}),
-		edgeStackManager:        edgeStackManager,
-		portainerURL:            config.PortainerURL,
-		endpointID:              config.EndpointID,
-		tunnelServerAddr:        config.TunnelServerAddr,
-		tunnelServerFingerprint: config.TunnelServerFingerprint,
-		logsManager:             logsManager,
-		portainerClient:         portainerClient,
+		apiServerAddr:            config.APIServerAddr,
+		edgeID:                   config.EdgeID,
+		pollIntervalInSeconds:    pollFrequency.Seconds(),
+		pollTicker:               time.NewTicker(pollFrequency),
+		inactivityTimeout:        inactivityTimeout,
+		scheduleManager:          scheduler.NewCronManager(),
+		updateLastActivitySignal: make(chan struct{}),
+		startSignal:              make(chan struct{}),
+		stopSignal:               make(chan struct{}),
+		edgeStackManager:         edgeStackManager,
+		portainerURL:             config.PortainerURL,
+		endpointID:               config.EndpointID,
+		tunnelServerAddr:         config.TunnelServerAddr,
+		tunnelServerFingerprint:  config.TunnelServerFingerprint,
+		logsManager:              logsManager,
+		portainerClient:          portainerClient,
+		tunnelClient:             tunnel,
 	}
 
 	go pollService.startStatusPollLoop()
@@ -109,11 +110,11 @@ func (service *PollService) resetActivityTimer() {
 	}
 }
 
-func (service *PollService) start() {
+func (service *PollService) Start() {
 	service.startSignal <- struct{}{}
 }
 
-func (service *PollService) stop() {
+func (service *PollService) Stop() {
 	service.stopSignal <- struct{}{}
 }
 
