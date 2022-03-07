@@ -4,11 +4,11 @@
 # production use should involve a real external certificate management system
 
 export CURRENT=$(pwd)
-export HOST=portainer.p1.alho.st
+export HOST=${1:-"portainer.p1.alho.st"}
 export CERTDIR=~/.config/portainer/certs/
 
 mkdir -p ${CERTDIR}
-cd ${CERTDIR}
+cd ${CERTDIR} || exit
 echo "Generating example mTLS certs into $(pwd)"
 
 if [[ ! -f "ca.pem" ]]; then
@@ -49,4 +49,4 @@ else
 fi
 
 echo "done: Generated example mTLS certs into $(pwd)"
-cd ${CURRENT}
+cd "${CURRENT}" || return
