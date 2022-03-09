@@ -106,12 +106,12 @@ func main() {
 				log.Fatalf("[ERROR] [main] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
 			}
 
-			err = clusterService.Create(advertiseAddr, joinAddr)
+			err = clusterService.Create(advertiseAddr, joinAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
 			if err != nil {
 				log.Fatalf("[ERROR] [main] [message: Unable to create cluster] [error: %s]", err)
 			}
 
-			log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, clusterAddr, advertiseAddr)
+			log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s] [probe_timeout: %s] [probe_interval: %s]", options.AgentServerPort, clusterAddr, advertiseAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
 
 			defer clusterService.Leave()
 		}
@@ -151,12 +151,12 @@ func main() {
 			log.Fatalf("[ERROR] [main] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
 		}
 
-		err = clusterService.Create(advertiseAddr, joinAddr)
+		err = clusterService.Create(advertiseAddr, joinAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
 		if err != nil {
 			log.Fatalf("[ERROR] [main] [message: Unable to create cluster] [error: %s]", err)
 		}
 
-		log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, clusterAddr, advertiseAddr)
+		log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s] [probe_timeout: %s] [probe_interval: %s]", options.AgentServerPort, clusterAddr, advertiseAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
 
 		defer clusterService.Leave()
 	}
