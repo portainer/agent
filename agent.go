@@ -64,6 +64,7 @@ type (
 		DataPath              string
 		SharedSecret          string
 		EdgeMode              bool
+		EdgeAsyncMode         bool
 		EdgeKey               string
 		EdgeID                string
 		EdgeUIServerAddr      string
