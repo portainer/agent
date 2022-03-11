@@ -138,35 +138,23 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnNomad(runtimeCheckFrequency time.Duration) error {
-	err := manager.pollService.start()
-	if err != nil {
-		return err
-	}
-
-	ticker := time.NewTicker(runtimeCheckFrequency)
+	manager.pollService.start()
 
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				err := manager.pollService.start()
-				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start short-poll service] [error: %s]", err)
-					return
-				}
+		ticker := time.NewTicker(runtimeCheckFrequency)
+		for range ticker.C {
+			manager.pollService.start()
 
-				err = manager.stackManager.setEngineStatus(engineTypeNomad)
-				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
-					return
-				}
+			err := manager.stackManager.SetEngineStatus(stack.EngineTypeNomad)
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
+				return
+			}
 
-				err = manager.stackManager.start()
-				if err != nil {
-					log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
-					return
-				}
-
+			err = manager.stackManager.Start()
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
+				return
 			}
 		}
 	}()

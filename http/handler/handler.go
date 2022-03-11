@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -13,12 +12,12 @@ import (
 	httpagenthandler "github.com/portainer/agent/http/handler/agent"
 	"github.com/portainer/agent/http/handler/browse"
 	"github.com/portainer/agent/http/handler/docker"
-	"github.com/portainer/agent/http/handler/nomadproxy"
 	"github.com/portainer/agent/http/handler/dockerhub"
 	"github.com/portainer/agent/http/handler/host"
 	"github.com/portainer/agent/http/handler/key"
 	"github.com/portainer/agent/http/handler/kubernetes"
 	"github.com/portainer/agent/http/handler/kubernetesproxy"
+	"github.com/portainer/agent/http/handler/nomadproxy"
 	"github.com/portainer/agent/http/handler/ping"
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
