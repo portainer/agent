@@ -9,6 +9,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
+	"github.com/portainer/agent/edge/yaml"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 )
@@ -132,11 +133,16 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 
 		folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 		fileName := "docker-compose.yml"
+		fileContent := stackConfig.FileContent
 		if manager.engineType == EngineTypeKubernetes {
 			fileName = fmt.Sprintf("%s.yml", stack.Name)
+			if len(stackConfig.Registries) > 0 {
+				yml := yaml.NewYAML(stackConfig.FileContent, stackConfig.Registries)
+				fileContent, _ = yml.AddImagePullSecrets()
+			}
 		}
 
-		err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 0644)
+		err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
 		if err != nil {
 			return err
 		}
@@ -264,6 +270,11 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	stack.Action = actionIdle
 	responseStatus := int(edgeStackStatusOk)
 	errorMessage := ""
+
+	log.Printf("[INFO] [edge,stack] in stack deployer %v", stack)
+	log.Printf("[INFO] [edge,stack] stack deployer %T %v", manager.deployer, manager.deployer)
+
+	log.Printf("[INFO] [edge,stack] %s %s", stackName, stackFileLocation)
 
 	err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
 	if err != nil {
