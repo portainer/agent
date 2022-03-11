@@ -15,7 +15,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
-	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 )
@@ -97,7 +96,6 @@ func (y *yaml) AddImagePullSecrets() (string, error) {
 
 					pullSecret := y.getImagePullSecret(namespace, imagePullSecretName, cred)
 
-					logrus.Info(pullSecret)
 					pullSecrets = append(pullSecrets, pullSecret)
 				}
 			}
@@ -105,7 +103,7 @@ func (y *yaml) AddImagePullSecrets() (string, error) {
 
 			ymlStr, err := encodeYAML(yml)
 			if err != nil {
-				logrus.Errorf("Error while encoding YAML with imagePullSecrets")
+				log.Printf("[ERROR] [edge,stack] error while encoding YAML with imagePullSecrets")
 				continue
 			}
 			ymlFiles[i] = ymlStr
@@ -119,10 +117,9 @@ func (y *yaml) AddImagePullSecrets() (string, error) {
 	for _, yml := range pullSecrets {
 
 		y := yml.DeepCopyObject()
-		logrus.Infof("%v", y)
 		ymlStr, err := encodeYAML(y)
 		if err != nil {
-			logrus.Errorf("Error while encoding YAML with imagePullSecrets")
+			log.Printf("[ERROR] [edge,stack] error while encoding YAML with imagePullSecrets")
 			continue
 		}
 		ymlFiles = append(ymlFiles, ymlStr)
