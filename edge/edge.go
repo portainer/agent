@@ -70,7 +70,7 @@ func (manager *Manager) Start() error {
 
 	log.Printf("[DEBUG] [edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll, manager.agentOptions.EdgeTunnel)
 
-	stackManager, err := stack.NewStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	stackManager, err := stack.NewStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, manager.agentOptions.AssetsPath, pollServiceConfig.InsecurePoll)
 	if err != nil {
 		return err
 	}
@@ -113,21 +113,14 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency time.Duration) error {
-	err := manager.pollService.start()
-	if err != nil {
-		return err
-	}
+	manager.pollService.start()
 
 	go func() {
 		ticker := time.NewTicker(runtimeCheckFrequency)
 		for range ticker.C {
-			err := manager.pollService.start()
-			if err != nil {
-				log.Printf("[ERROR] [edge] [message: unable to start short-poll service] [error: %s]", err)
-				return
-			}
+			manager.pollService.start()
 
-			err = manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
+			err := manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
 			if err != nil {
 				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
 				return
@@ -177,10 +170,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 			engineStatus = stack.EngineTypeDockerSwarm
 		}
 
-		err = manager.pollService.start()
-		if err != nil {
-			return err
-		}
+		manager.pollService.start()
 
 		err = manager.stackManager.SetEngineStatus(engineStatus)
 		if err != nil {
@@ -190,10 +180,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 		return manager.stackManager.Start()
 	}
 
-	err = manager.pollService.stop()
-	if err != nil {
-		return err
-	}
+	manager.pollService.stop()
 
 	return manager.stackManager.Stop()
 }

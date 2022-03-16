@@ -76,12 +76,8 @@ func main() {
 
 		advertiseAddr, err = dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
-			if containerPlatform == agent.PlatformPodman {
-				log.Printf("[WARN] [main] [message: Unable to retrieve local agent IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
-				advertiseAddr = options.AgentServerAddr
-			} else {
-				log.Fatalf("[ERROR] [main] [message: Unable to retrieve local agent IP address] [error: %s]", err)
-			}
+			log.Printf("[WARN] [main] [message: Unable to retrieve agent container IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
+			advertiseAddr = options.AgentServerAddr
 		}
 
 		if containerPlatform == agent.PlatformDocker && clusterMode {
@@ -106,12 +102,12 @@ func main() {
 				log.Fatalf("[ERROR] [main] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
 			}
 
-			err = clusterService.Create(advertiseAddr, joinAddr)
+			err = clusterService.Create(advertiseAddr, joinAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
 			if err != nil {
 				log.Fatalf("[ERROR] [main] [message: Unable to create cluster] [error: %s]", err)
 			}
 
-			log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, clusterAddr, advertiseAddr)
+			log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s] [probe_timeout: %s] [probe_interval: %s]", options.AgentServerPort, clusterAddr, advertiseAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
 
 			defer clusterService.Leave()
 		}
@@ -128,7 +124,7 @@ func main() {
 			log.Fatalf("[ERROR] [main] [message: Unable to create Kubernetes client] [error: %s]", err)
 		}
 
-		kubernetesDeployer = exec.NewKubernetesDeployer(agent.DockerBinaryPath)
+		kubernetesDeployer = exec.NewKubernetesDeployer(options.AssetsPath)
 
 		clusterService = cluster.NewClusterService(runtimeConfiguration)
 
@@ -151,12 +147,12 @@ func main() {
 			log.Fatalf("[ERROR] [main] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
 		}
 
-		err = clusterService.Create(advertiseAddr, joinAddr)
+		err = clusterService.Create(advertiseAddr, joinAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
 		if err != nil {
 			log.Fatalf("[ERROR] [main] [message: Unable to create cluster] [error: %s]", err)
 		}
 
-		log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s]", options.AgentServerPort, clusterAddr, advertiseAddr)
+		log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s] [probe_timeout: %s] [probe_interval: %s]", options.AgentServerPort, clusterAddr, advertiseAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
 
 		defer clusterService.Leave()
 	}
@@ -189,7 +185,7 @@ func main() {
 		}
 		edgeManager = edge.NewManager(edgeManagerParameters)
 
-		edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, clusterService)
+		edgeKey, err := edgeManager.RetrieveEdgeKey(options.EdgeKey, clusterService)
 		if err != nil {
 			log.Printf("[ERROR] [main] [message: Unable to retrieve Edge key] [error: %s]", err)
 		}

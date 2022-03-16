@@ -26,6 +26,7 @@ const tunnelActivityCheckInterval = 30 * time.Second
 type PollService struct {
 	apiServerAddr           string
 	pollIntervalInSeconds   float64
+	pollTicker              *time.Ticker
 	insecurePoll            bool
 	inactivityTimeout       time.Duration
 	edgeID                  string
@@ -33,7 +34,9 @@ type PollService struct {
 	tunnelClient            agent.ReverseTunnelClient
 	scheduleManager         agent.Scheduler
 	lastActivity            time.Time
-	refreshSignal           chan struct{}
+	updateLastActivity      chan struct{}
+	startSignal             chan struct{}
+	stopSignal              chan struct{}
 	edgeStackManager        *stack.StackManager
 	portainerURL            string
 	endpointID              string
@@ -57,7 +60,11 @@ type pollServiceConfig struct {
 	ContainerPlatform       agent.ContainerPlatform
 }
 
-// newPollService returns a pointer to a new instance of PollService
+// newPollService returns a pointer to a new instance of PollService, and will start two loops in go routines.
+// The first loop will poll the Portainer instance for the status of the associated endpoint and create a reverse tunnel
+// if needed as well as manage schedules.
+// The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
+// inactivity duration.
 // If TunneCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
 func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
@@ -74,10 +81,13 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		apiServerAddr:           config.APIServerAddr,
 		edgeID:                  config.EdgeID,
 		pollIntervalInSeconds:   pollFrequency.Seconds(),
+		pollTicker:              time.NewTicker(pollFrequency),
 		insecurePoll:            config.InsecurePoll,
 		inactivityTimeout:       inactivityTimeout,
 		scheduleManager:         scheduler.NewCronManager(),
-		refreshSignal:           nil,
+		updateLastActivity:      make(chan struct{}),
+		startSignal:             make(chan struct{}),
+		stopSignal:              make(chan struct{}),
 		edgeStackManager:        edgeStackManager,
 		portainerURL:            config.PortainerURL,
 		endpointID:              config.EndpointID,
@@ -91,104 +101,74 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		pollService.tunnelClient = chisel.NewClient()
 	}
 
+	go pollService.startStatusPollLoop()
+	go pollService.startActivityMonitoringLoop()
+
 	return pollService, nil
 }
 
 func (service *PollService) resetActivityTimer() {
 	if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() {
-		service.lastActivity = time.Now()
+		service.updateLastActivity <- struct{}{}
 	}
 }
 
-// start will start two loops in go routines
-// The first loop will poll the Portainer instance for the status of the associated endpoint and create a reverse tunnel
-// if needed as well as manage schedules.
-// The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
-// inactivity duration.
-func (service *PollService) start() error {
-	if service.refreshSignal != nil {
-		return nil
-	}
-
-	service.refreshSignal = make(chan struct{})
-	service.startStatusPollLoop()
-	service.startActivityMonitoringLoop()
-
-	return nil
+func (service *PollService) start() {
+	service.startSignal <- struct{}{}
 }
 
-func (service *PollService) stop() error {
-	if service.refreshSignal != nil {
-		close(service.refreshSignal)
-		service.refreshSignal = nil
-	}
-	return nil
+func (service *PollService) stop() {
+	service.stopSignal <- struct{}{}
 }
 
-func (service *PollService) restartStatusPollLoop() {
-	service.stop()
-	service.refreshSignal = make(chan struct{})
-	service.startStatusPollLoop()
-}
+func (service *PollService) startStatusPollLoop() {
+	var pollCh <-chan time.Time
 
-func (service *PollService) startStatusPollLoop() error {
 	log.Printf("[DEBUG] [edge] [poll_interval_seconds: %f] [server_url: %s] [message: starting Portainer short-polling client]", service.pollIntervalInSeconds, service.portainerURL)
 
-	ticker := time.NewTicker(time.Duration(service.pollIntervalInSeconds) * time.Second)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				err := service.poll()
-				if err != nil {
-					log.Printf("[ERROR] [edge] [message: an error occured during short poll] [error: %s]", err)
-				}
-
-			case <-service.refreshSignal:
-				log.Println("[DEBUG] [edge] [message: shutting down Portainer short-polling client]")
-				ticker.Stop()
-				return
+	for {
+		select {
+		case <-pollCh:
+			err := service.poll()
+			if err != nil {
+				log.Printf("[ERROR] [edge] [message: an error occured during short poll] [error: %s]", err)
 			}
+		case <-service.startSignal:
+			pollCh = service.pollTicker.C
+		case <-service.stopSignal:
+			log.Println("[DEBUG] [edge] [message: stopping Portainer short-polling client]")
+			pollCh = nil
 		}
-	}()
-
-	return nil
+	}
 }
 
 func (service *PollService) startActivityMonitoringLoop() {
 	ticker := time.NewTicker(tunnelActivityCheckInterval)
-	quit := make(chan struct{})
 
 	log.Printf("[DEBUG] [edge] [monitoring_interval_seconds: %f] [inactivity_timeout: %s] [message: starting activity monitoring loop]", tunnelActivityCheckInterval.Seconds(), service.inactivityTimeout.String())
 
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-
-				if service.lastActivity.IsZero() {
-					continue
-				}
-
-				elapsed := time.Since(service.lastActivity)
-				log.Printf("[DEBUG] [edge] [tunnel_last_activity_seconds: %f] [message: tunnel activity monitoring]", elapsed.Seconds())
-
-				if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > service.inactivityTimeout.Seconds() {
-
-					log.Printf("[INFO] [edge] [tunnel_last_activity_seconds: %f] [message: shutting down tunnel after inactivity period]", elapsed.Seconds())
-
-					err := service.tunnelClient.CloseTunnel()
-					if err != nil {
-						log.Printf("[ERROR] [edge] [message: unable to shutdown tunnel] [error: %s]", err)
-					}
-				}
-
-			case <-quit:
-				ticker.Stop()
-				return
+	for {
+		select {
+		case <-ticker.C:
+			if service.lastActivity.IsZero() {
+				continue
 			}
+
+			elapsed := time.Since(service.lastActivity)
+			log.Printf("[DEBUG] [edge] [tunnel_last_activity_seconds: %f] [message: tunnel activity monitoring]", elapsed.Seconds())
+
+			if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > service.inactivityTimeout.Seconds() {
+				log.Printf("[INFO] [edge] [tunnel_last_activity_seconds: %f] [message: shutting down tunnel after inactivity period]", elapsed.Seconds())
+
+				err := service.tunnelClient.CloseTunnel()
+				if err != nil {
+					log.Printf("[ERROR] [edge] [message: unable to shutdown tunnel] [error: %s]", err)
+				}
+			}
+		case <-service.updateLastActivity:
+			service.lastActivity = time.Now()
 		}
-	}()
+	}
 }
 
 const clientDefaultPollTimeout = 5
@@ -305,7 +285,7 @@ func (service *PollService) poll() error {
 		log.Printf("[DEBUG] [edge] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
 		service.pollIntervalInSeconds = responseData.CheckinInterval
 		service.createHTTPClient(responseData.CheckinInterval)
-		go service.restartStatusPollLoop()
+		service.pollTicker.Reset(time.Duration(service.pollIntervalInSeconds) * time.Second)
 	}
 
 	if responseData.Stacks != nil {

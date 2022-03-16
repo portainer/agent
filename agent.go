@@ -56,10 +56,14 @@ type (
 
 	// Options are the options used to start an agent.
 	Options struct {
+		AssetsPath            string
 		AgentServerAddr       string
 		AgentServerPort       string
 		AgentSecurityShutdown time.Duration
 		ClusterAddress        string
+		ClusterProbeTimeout   time.Duration
+		ClusterProbeInterval  time.Duration
+		DataPath              string
 		SharedSecret          string
 		EdgeMode              bool
 		EdgeKey               string
@@ -114,7 +118,7 @@ type (
 
 	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
-		Create(advertiseAddr string, joinAddr []string) error
+		Create(advertiseAddr string, joinAddr []string, probeTimeout, probeInterval time.Duration) error
 		Members() []ClusterMember
 		Leave()
 		GetMemberByRole(role DockerNodeRole) *ClusterMember
@@ -199,6 +203,10 @@ const (
 	DefaultConfigCheckInterval = "5s"
 	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
 	SupportedDockerAPIVersion = "1.24"
+	// DefaultClusterProbeTimeout is the default member list ping probe timeout.
+	DefaultClusterProbeTimeout = "500ms"
+	// DefaultClusterProbeInterval is the interval for repeating failed node checks.
+	DefaultClusterProbeInterval = "1s"
 	// HTTPTargetHeaderName is the name of the header used to specify a target node.
 	HTTPTargetHeaderName = "X-PortainerAgent-Target"
 	// HTTPEdgeIdentifierHeaderName is the name of the header used to specify the Docker identifier associated to
@@ -235,14 +243,14 @@ const (
 	TLSKeyPath = "key.pem"
 	// HostRoot is the folder mapping to the underlying host filesystem that is mounted inside the container.
 	HostRoot = "/host"
-	// DataDirectory is the folder where the data associated to the agent is persisted.
-	DataDirectory = "/data"
+	// DefaultDataPath is the default folder where the data associated to the agent is persisted.
+	DefaultDataPath = "/data"
 	// ScheduleScriptDirectory is the folder where schedules are saved on the host
 	ScheduleScriptDirectory = "/opt/portainer/scripts"
 	// EdgeKeyFile is the name of the file used to persist the Edge key associated to the agent.
 	EdgeKeyFile = "agent_edge_key"
-	// DockerBinaryPath is the path of the docker binary
-	DockerBinaryPath = "/app"
+	// DefaultAssetsPath is the default path of the binaries
+	DefaultAssetsPath = "/app"
 	// EdgeStackFilesPath is the path where edge stack files are saved
 	EdgeStackFilesPath = "/tmp/edge_stacks"
 	// EdgeStackQueueSleepInterval is the interval used to check if there's an Edge stack to deploy
