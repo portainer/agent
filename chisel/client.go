@@ -48,10 +48,7 @@ func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 
 	client.chiselClient = chiselClient
 
-	ctx, cancel := context.WithTimeout(context.Background(), tunnelClientTimeout)
-	defer cancel()
-
-	err = chiselClient.Start(ctx)
+	err = chiselClient.Start(context.Background())
 	if err != nil {
 		return err
 	}
