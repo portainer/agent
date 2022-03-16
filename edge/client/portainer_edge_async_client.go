@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	portainer "github.com/portainer/portainer/api"
 	"log"
 	"net/http"
 	"strconv"
@@ -14,9 +13,12 @@ import (
 	"time"
 
 	"github.com/mitchellh/mapstructure"
+	portainer "github.com/portainer/portainer/api"
+
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/kubernetes"
+	"github.com/portainer/agent/os"
 )
 
 // PortainerAsyncClient is used to execute HTTP requests using only the /api/entrypoint/async api endpoint
@@ -72,10 +74,11 @@ type JSONPatch struct {
 	Path      string      `json:"path"`
 	Value     interface{} `json:"value"`
 }
+
 type AsyncResponse struct {
-	CommandInterval  time.Duration `json: optional` //TODO: these should determine when and what payloads are filled
-	PingInterval     time.Duration `json: optional`
-	SnapshotInterval time.Duration `json: optional`
+	PingInterval     string `json:"pingInterval"`
+	SnapshotInterval string `json:"snapshotInterval"`
+	CommandInterval  string `json:"commandInterval"`
 
 	ServerCommandId      string      // should be easy to detect if its larger / smaller:  this is the response that tells the agent there are new commands waiting for it
 	SendDiffSnapshotTime time.Time   `json: optional` // might be optional
@@ -128,6 +131,12 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 
 	// TODO: should this be set for all requests? (and should all the common code be extracted...)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
+
+	hostname, err := os.GetHostName()
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("portainer_hostname", hostname) // TODO use proper header
 
 	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(client.agentPlatformIdentifier)))
 
@@ -189,8 +198,8 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 	}
 
 	return &PollStatusResponse{
-		Status:          "NOTUNNEL",                           //TODO usar const especifica
-		CheckinInterval: asyncResponse.PingInterval.Seconds(), // TODO mrydel user -1 ?
+		Status:          "NOTUNNEL", //TODO usar const especifica
+		CheckinInterval: -1,         // TODO mrydel user -1 ?
 		Stacks:          stacks,
 		Schedules:       schedules,
 	}, nil
