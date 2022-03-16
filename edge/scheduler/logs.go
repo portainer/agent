@@ -3,7 +3,6 @@ package scheduler
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
@@ -12,116 +11,58 @@ import (
 
 type LogsManager struct {
 	httpClient *client.PortainerClient
-	stopSignal chan struct{}
-	jobs       map[int]logStatus
+	jobsCh     chan []int
 }
-
-type logStatus int
-
-const (
-	_ logStatus = iota
-	logPending
-	logSuccess
-	logFailed
-)
 
 func NewLogsManager(portainerURL, endpointID, edgeID string, insecurePoll bool) *LogsManager {
 	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll)
 
 	return &LogsManager{
 		httpClient: cli,
-		stopSignal: nil,
-		jobs:       map[int]logStatus{},
+		jobsCh:     make(chan []int),
 	}
 }
 
-func (manager *LogsManager) Start() error {
-	if manager.stopSignal != nil {
-		return nil
-	}
-
-	manager.stopSignal = make(chan struct{})
-
-	queueSleepInterval, err := time.ParseDuration(agent.EdgeStackQueueSleepInterval)
-	if err != nil {
-		return err
-	}
+func (manager *LogsManager) Start() {
 	log.Printf("[DEBUG] [edge,scheduler] [message: logs manager started]")
+	go manager.loop()
+}
 
-	go func() {
-		for {
-			select {
-			case <-manager.stopSignal:
-				log.Println("[DEBUG] [edge,scheduler] [message: shutting down Edge logs manager]")
-				return
-			default:
-				jobID := manager.next()
-				if jobID == 0 {
-					timer := time.NewTimer(queueSleepInterval)
-					<-timer.C
-					continue
-				}
+func (manager *LogsManager) loop() {
+	for {
+		for _, jobID := range <-manager.jobsCh {
+			log.Printf("[DEBUG] [edge,scheduler] [job_identifier: %d] [message: started job log collection]", jobID)
 
-				log.Printf("[DEBUG] [edge,scheduler] [job_identifier: %d] [message: started job log collection]", jobID)
+			logFileLocation := fmt.Sprintf("%s%s/schedule_%d.log", agent.HostRoot, agent.ScheduleScriptDirectory, jobID)
+			exist, err := filesystem.FileExists(logFileLocation)
+			if err != nil {
+				log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed fetching log file]", err)
+				continue
+			}
 
-				logFileLocation := fmt.Sprintf("%s%s/schedule_%d.log", agent.HostRoot, agent.ScheduleScriptDirectory, jobID)
-				exist, err := filesystem.FileExists(logFileLocation)
+			var file []byte
+			if !exist {
+				file = []byte("")
+				log.Printf("[DEBUG] [edge,scheduler] [job_identifier: %d] [message: file doesn't exist]", jobID)
+			} else {
+				file, err = filesystem.ReadFromFile(logFileLocation)
 				if err != nil {
-					manager.jobs[jobID] = logFailed
 					log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed fetching log file]", err)
 					continue
 				}
+			}
 
-				var file []byte
-				if !exist {
-					file = []byte("")
-					log.Printf("[DEBUG] [edge,scheduler] [job_identifier: %d] [message: file doesn't exist]", jobID)
-				} else {
-					file, err = filesystem.ReadFromFile(logFileLocation)
-					if err != nil {
-						manager.jobs[jobID] = logFailed
-						log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed fetching log file]", err)
-						continue
-					}
-				}
-
-				err = manager.httpClient.SendJobLogFile(jobID, file)
-				if err != nil {
-					manager.jobs[jobID] = logFailed
-					log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed sending log file to portainer]", err)
-					continue
-				}
-
-				delete(manager.jobs, jobID)
+			err = manager.httpClient.SendJobLogFile(jobID, file)
+			if err != nil {
+				log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed sending log file to portainer]", err)
+				continue
 			}
 		}
-	}()
-
-	return nil
-}
-
-func (manager *LogsManager) stop() {
-	if manager.stopSignal != nil {
-		log.Printf("[DEBUG] [edge,scheduler] [message: logs manager stopped]")
-		close(manager.stopSignal)
-		manager.stopSignal = nil
 	}
 }
 
 func (manager *LogsManager) HandleReceivedLogsRequests(jobs []int) {
-	for _, jobID := range jobs {
-		if _, ok := manager.jobs[jobID]; !ok {
-			log.Printf("[DEBUG] [edge,scheduler] [job_identifier: %d] [message: added job to queue]", jobID)
-			manager.jobs[jobID] = logPending
-		}
+	if len(jobs) > 0 {
+		manager.jobsCh <- jobs
 	}
-}
-
-func (manager *LogsManager) next() int {
-	for jobID, status := range manager.jobs {
-		if status == logPending {
-			return jobID
-		}
-	}
-	return 0
 }
