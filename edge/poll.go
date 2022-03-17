@@ -1,7 +1,10 @@
 package edge
 
 import (
+	"context"
 	"encoding/base64"
+	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"log"
 	"strconv"
 	"time"
@@ -172,6 +175,10 @@ func (service *PollService) poll() error {
 		return err
 	}
 
+	if len(environmentStatus.AsyncCommands) > 0 {
+		return service.processAsyncCommands(environmentStatus.AsyncCommands)
+	}
+
 	log.Printf("[DEBUG] [edge] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", environmentStatus.Status, environmentStatus.Port, len(environmentStatus.Schedules), environmentStatus.CheckinInterval)
 
 	tunnelErr := service.manageUpdateTunnel(*environmentStatus)
@@ -283,4 +290,68 @@ func (service *PollService) processStacks(pollResponseStacks []client.StackStatu
 		return err
 	}
 	return nil
+}
+
+func (service *PollService) processAsyncCommands(commands []client.AsyncCommand) error {
+	fmt.Println(commands)
+
+	ctx := context.TODO()
+
+	for _, command := range commands {
+		switch command.Type {
+		case "edgeStack":
+			err := service.processStackCommand(ctx, command)
+			if err != nil {
+				return err
+			}
+			service.portainerClient.SetLastCommandTimestamp(command.Timestamp)
+			break
+		case "edgeJob":
+			err := service.parseScheduleCommand(ctx, command)
+			if err != nil {
+				return err
+			}
+			break
+		}
+	}
+	return nil
+}
+
+func (service *PollService) processStackCommand(ctx context.Context, command client.AsyncCommand) error {
+	var stackData client.EdgeStackData
+	err := mapstructure.Decode(command.Value, &stackData)
+	if err != nil {
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeStackData", command.Value)
+		return err
+	}
+
+	if command.Operation == "add" || command.Operation == "replace" {
+		return service.edgeStackManager.DeployStack(ctx, stackData)
+	}
+
+	if command.Operation == "remove" {
+		return service.edgeStackManager.DeleteStack(ctx, stackData)
+	}
+
+	return fmt.Errorf("operation %v not supported", command.Operation)
+}
+
+// TODO mrydel
+func (service *PollService) parseScheduleCommand(ctx context.Context, command client.AsyncCommand) error {
+	var jobData agent.Schedule
+	err := mapstructure.Decode(command.Value, &jobData)
+	if err != nil {
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeStackData", command.Value)
+		return err
+	}
+
+	if command.Operation == "add" || command.Operation == "replace" {
+		//return service.edgeStackManager.DeployStack(ctx, jobData)
+	}
+
+	if command.Operation == "remove" {
+		//return service.edgeStackManager.DeleteStack(ctx, jobData)
+	}
+
+	return fmt.Errorf("operation %v not supported", command.Operation)
 }

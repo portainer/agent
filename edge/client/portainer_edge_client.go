@@ -90,13 +90,19 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 		return nil, errors.New("GetEdgeStackConfig operation failed")
 	}
 
-	var data stackConfigResponse
+	var data EdgeStackData
 	err = json.NewDecoder(resp.Body).Decode(&data)
 	if err != nil {
 		return nil, err
 	}
 
 	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent}, nil
+}
+
+type setEdgeStackStatusPayload struct {
+	Error      string
+	Status     int
+	EndpointID int
 }
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
@@ -178,4 +184,12 @@ func (client *PortainerEdgeClient) SendJobLogFile(jobID int, fileContent []byte)
 	}
 
 	return nil
+}
+
+func (client *PortainerEdgeClient) ProcessAsyncCommands() error {
+	return nil // edge mode only
+}
+
+func (client *PortainerEdgeClient) SetLastCommandTimestamp(timestamp time.Time) {
+	return // edge mode only
 }

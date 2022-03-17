@@ -312,3 +312,39 @@ func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Dep
 
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)
 }
+
+func (manager *StackManager) DeployStack(ctx context.Context, stackData client.EdgeStackData) error {
+	stackName, stackFileLocation, err := manager.buildDeployerParams(stackData, true)
+	if err != nil {
+		return err
+	}
+
+	return manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
+}
+
+func (manager *StackManager) DeleteStack(ctx context.Context, stackData client.EdgeStackData) error {
+	stackName, stackFileLocation, err := manager.buildDeployerParams(stackData, false)
+	if err != nil {
+		return err
+	}
+	return manager.deployer.Remove(ctx, stackName, []string{stackFileLocation})
+}
+
+func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData, writeFile bool) (string, string, error) {
+	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackData.ID)
+	fileName := "docker-compose.yml"
+	if manager.engineType == EngineTypeKubernetes {
+		fileName = fmt.Sprintf("%s.yml", stackData.Name)
+	}
+
+	if writeFile {
+		err := filesystem.WriteFile(folder, fileName, []byte(stackData.StackFileContent), 0644)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	stackName := fmt.Sprintf("edge_%s", stackData.Name)
+	stackFileLocation := fmt.Sprintf("%s/%s", folder, fileName)
+	return stackName, stackFileLocation, nil
+}

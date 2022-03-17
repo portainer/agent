@@ -13,11 +13,7 @@ type PortainerClient interface {
 	SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error
 	SendJobLogFile(jobID int, fileContent []byte) error
 	SetTimeout(t time.Duration)
-}
-
-type StackStatus struct {
-	ID      int
-	Version int
+	SetLastCommandTimestamp(timestamp time.Time)
 }
 
 type PollStatusResponse struct {
@@ -27,17 +23,15 @@ type PollStatusResponse struct {
 	CheckinInterval float64          `json:"checkin"`
 	Credentials     string           `json:"credentials"`
 	Stacks          []StackStatus    `json:"stacks"`
+	AsyncCommands   []AsyncCommand   `json:"commands"` // async mode only
 }
 
-type stackConfigResponse struct {
-	Name             string
-	StackFileContent string
-}
-
-type setEdgeStackStatusPayload struct {
-	Error      string
-	Status     int
-	EndpointID int
+type StackStatus struct {
+	ID               int
+	Version          int
+	Name             string // used in async mode
+	FileContent      string // used in async mode
+	CommandOperation string // used in async mode
 }
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance

@@ -8,16 +8,12 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
 	portainer "github.com/portainer/portainer/api"
 
 	"github.com/portainer/agent"
-	"github.com/portainer/agent/docker"
-	"github.com/portainer/agent/kubernetes"
 	"github.com/portainer/agent/os"
 )
 
@@ -28,16 +24,24 @@ type PortainerAsyncClient struct {
 	endpointID              string
 	edgeID                  string
 	agentPlatformIdentifier agent.ContainerPlatform
+	commandTimestamp        *time.Time
+
+	lastAsyncResponse      AsyncResponse
+	lastAsyncResponseMutex sync.Mutex
+	nextSnapshotRequest    AsyncRequest
+	nextSnapshotMutex      sync.Mutex
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
 func NewPortainerAsyncClient(serverAddress, endpointID, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerAsyncClient {
+	initialCommandTimestamp := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	return &PortainerAsyncClient{
 		serverAddress:           serverAddress,
 		endpointID:              endpointID,
 		edgeID:                  edgeID,
 		httpClient:              httpClient,
 		agentPlatformIdentifier: containerPlatform,
+		commandTimestamp:        &initialCommandTimestamp,
 	}
 }
 
@@ -45,28 +49,23 @@ func (client *PortainerAsyncClient) SetTimeout(t time.Duration) {
 	client.httpClient.Timeout = t
 }
 
-// TODO: figure out where this should be stored - or better yet, rewrite as a command/exec/diff channel that the execution system is listening to.
-var lastAsyncResponse AsyncResponse
-var lastAsyncResponseMutex sync.Mutex
-
-var nextSnapshotRequest AsyncRequest
-var nextSnapshotMutex sync.Mutex
-
-type EdgeId int
-type Snapshot struct {
-	Docker     *portainer.DockerSnapshot
-	Kubernetes *portainer.KubernetesSnapshot
-}
-type AsyncRequest struct {
-	CommandId   string                               `json: optional` // TODO: need to figure out a safe value to store - server timestamp might work - though that would require stacks&jobs to have a last modified timestamp
-	Snapshot    Snapshot                             `json: optional` // todo
-	StackStatus map[EdgeId]setEdgeStackStatusPayload `json: optional` // TODO: this should be in the snapshot interval... (probably)
-}
 type edgeStackData struct {
 	ID               int
 	Version          int
 	StackFileContent string
 	Name             string
+}
+
+type AsyncRequest struct {
+	CommandTimestamp *time.Time `json:"commandTimestamp"`
+	Snapshot         snapshot   `json:"snapshot"`
+}
+
+type snapshot struct {
+	Docker      *portainer.DockerSnapshot
+	Kubernetes  *portainer.KubernetesSnapshot
+	StackStatus map[portainer.EdgeStackID]portainer.EdgeStackStatus
+	// TODO add job logs
 }
 
 type JSONPatch struct {
@@ -80,43 +79,78 @@ type AsyncResponse struct {
 	SnapshotInterval string `json:"snapshotInterval"`
 	CommandInterval  string `json:"commandInterval"`
 
-	ServerCommandId      string      // should be easy to detect if its larger / smaller:  this is the response that tells the agent there are new commands waiting for it
-	SendDiffSnapshotTime time.Time   `json: optional` // might be optional
-	Commands             []JSONPatch `json: optional` // todo
+	ServerCommandId      string         // should be easy to detect if its larger / smaller:  this is the response that tells the agent there are new commands waiting for it
+	SendDiffSnapshotTime time.Time      `json: optional` // might be optional
+	Commands             []AsyncCommand `json:"commands"`
 }
 
-// TODO: how to make "command list be only the things that have versions newer than the commandid.."
+type AsyncCommand struct {
+	ID        int         `json:"id"`
+	Type      string      `json:"type"`
+	Timestamp time.Time   `json:"timestamp"`
+	Operation string      `json:"op"`
+	Path      string      `json:"path"`
+	Value     interface{} `json:"value"`
+}
+
+type EdgeStackData struct {
+	ID               int
+	Version          int
+	StackFileContent string
+	Name             string
+}
 
 func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
-	pollURL := fmt.Sprintf("%s/api/endpoints/edge/async/", client.serverAddress)
+	pollURL := fmt.Sprintf("%s/api/endpoints/edge/async", client.serverAddress)
 
 	payload := AsyncRequest{
-		CommandId: "9999", // TODO: this should only be set for the CommandInterval
+		CommandTimestamp: client.commandTimestamp,
+		Snapshot:         snapshot{},
 	}
 
-	// TODO: some of this this should be optional - SnapshotInterval
-	nextSnapshotMutex.Lock()
-	defer nextSnapshotMutex.Unlock()
-	if nextSnapshotRequest.StackStatus != nil {
-		payload.StackStatus = nextSnapshotRequest.StackStatus
-		nextSnapshotRequest.StackStatus = nil
+	client.nextSnapshotMutex.Lock()
+	defer client.nextSnapshotMutex.Unlock()
+	if client.nextSnapshotRequest.Snapshot.StackStatus != nil {
+		payload.Snapshot.StackStatus = client.nextSnapshotRequest.Snapshot.StackStatus
+		client.nextSnapshotRequest.Snapshot.StackStatus = nil
 	}
 
-	switch client.agentPlatformIdentifier {
-	// TODO: this switch statement is a hint that there should really be a "platform" interface that all platforms have - which would implement a "CreateSnapshot()" - tho that would change how the datamodel works too
-	case agent.PlatformDocker:
-		dockerSnapshot, _ := docker.CreateSnapshot()
-		payload.Snapshot = Snapshot{
-			Docker: dockerSnapshot,
+	/*
+		switch client.agentPlatformIdentifier {
+		case agent.PlatformDocker:
+			dockerSnapshot, _ := docker.CreateSnapshot()
+			payload.Snapshot = Snapshot{
+				Docker: dockerSnapshot,
+			}
+		case agent.PlatformKubernetes:
+			kubernetesSnapshot, _ := kubernetes.CreateSnapshot()
+			payload.Snapshot = Snapshot{
+				Kubernetes: kubernetesSnapshot,
+			}
 		}
-	case agent.PlatformKubernetes:
-		kubernetesSnapshot, _ := kubernetes.CreateSnapshot()
-		payload.Snapshot = Snapshot{
-			Kubernetes: kubernetesSnapshot,
-		}
-	}
+	*/
 	// end Snapshot
 
+	client.lastAsyncResponseMutex.Lock()
+	defer client.lastAsyncResponseMutex.Unlock()
+
+	asyncResponse, err := client.executeAsyncRequest(payload, pollURL)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PollStatusResponse{
+		AsyncCommands:   asyncResponse.Commands,
+		Status:          "NOTUNNEL", // TODO delete?
+		CheckinInterval: -1,         // TODO delete?
+	}
+
+	client.lastAsyncResponse = *asyncResponse
+
+	return response, nil
+}
+
+func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, pollURL string) (*AsyncResponse, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -128,8 +162,6 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
-
-	// TODO: should this be set for all requests? (and should all the common code be extracted...)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
 
 	hostname, err := os.GetHostName()
@@ -156,85 +188,14 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 	if err != nil {
 		return nil, err
 	}
-	// TODO: Store the other parts of the response to use for the other "requests"
-	lastAsyncResponseMutex.Lock()
-	lastAsyncResponse = asyncResponse
-	lastAsyncResponseMutex.Unlock()
-
-	var stacks []StackStatus
-	var schedules []agent.Schedule
-	for _, command := range asyncResponse.Commands {
-		if strings.HasPrefix(command.Path, "/edgestack/") {
-			// assume op:add
-			var stack edgeStackData
-			err := mapstructure.Decode(command.Value, &stack)
-			if err != nil {
-				log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeStackData", command.Value)
-				continue
-			}
-			stacks = append(stacks, StackStatus{
-				ID:      stack.ID,
-				Version: stack.Version,
-			})
-			log.Printf("[DEBUG] [http,client,portainer] GetEnvironmentStatus stack %d, version: %d", stack.ID, stack.Version)
-		} else if strings.HasPrefix(command.Path, "/edgejob/") {
-			// assume op:add
-			var job agent.Schedule
-			err := mapstructure.Decode(command.Value, &job)
-			if err != nil {
-				log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to agent.Schedule", command.Value)
-				continue
-			}
-			schedules = append(schedules, agent.Schedule{
-				ID:             job.ID,
-				Version:        job.Version,
-				CronExpression: job.CronExpression,
-				Script:         job.Script,
-				CollectLogs:    job.CollectLogs,
-			})
-			log.Printf("[DEBUG] [http,client,portainer] GetEnvironmentStatus job %d, version: %d", job.ID, job.Version)
-		}
-
-	}
-
-	return &PollStatusResponse{
-		Status:          "NOTUNNEL", //TODO usar const especifica
-		CheckinInterval: -1,         // TODO mrydel user -1 ?
-		Stacks:          stacks,
-		Schedules:       schedules,
-	}, nil
+	return &asyncResponse, nil
 }
 
+// TODO borrar todo de aca para abajo???
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
-// TODO: this should retreive the config from the internal to agent structure, not the ephemeral "lastAsyncResponse"
-// likely works ok while we're using add only..
 func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
-	lastAsyncResponseMutex.Lock()
-	defer lastAsyncResponseMutex.Unlock()
-
-	var config agent.EdgeStackConfig
-	for _, command := range lastAsyncResponse.Commands {
-		if strings.HasPrefix(command.Path, "/edgestack/") {
-			// assume op:add
-			var stack edgeStackData
-			err := mapstructure.Decode(command.Value, &stack)
-			if err != nil {
-				log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeStackData", command.Value)
-				continue
-			}
-			if stack.ID == edgeStackID {
-				config = agent.EdgeStackConfig{
-					Name:        stack.Name,
-					FileContent: stack.StackFileContent,
-					//ImageMapping: ,
-				}
-				log.Printf("[DEBUG] [http,client,portainer] GetEdgeStackConfig %s", config.Name)
-
-				return &config, nil
-			}
-		}
-
-	}
+	client.lastAsyncResponseMutex.Lock()
+	defer client.lastAsyncResponseMutex.Unlock()
 
 	log.Printf("[ERROR] [http,client,portainer] GetEdgeStackConfig(%d) not found", edgeStackID)
 
@@ -249,15 +210,15 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID, edgeStackSta
 		return err
 	}
 
-	nextSnapshotMutex.Lock()
-	defer nextSnapshotMutex.Unlock()
-	if nextSnapshotRequest.StackStatus == nil {
-		nextSnapshotRequest.StackStatus = make(map[EdgeId]setEdgeStackStatusPayload)
+	client.nextSnapshotMutex.Lock()
+	defer client.nextSnapshotMutex.Unlock()
+	if client.nextSnapshotRequest.Snapshot.StackStatus == nil {
+		client.nextSnapshotRequest.Snapshot.StackStatus = make(map[portainer.EdgeStackID]portainer.EdgeStackStatus)
 	}
-	nextSnapshotRequest.StackStatus[EdgeId(edgeStackID)] = setEdgeStackStatusPayload{
+	client.nextSnapshotRequest.Snapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = portainer.EdgeStackStatus{
 		Error:      error,
-		Status:     edgeStackStatus,
-		EndpointID: endpointID,
+		Type:       portainer.EdgeStackStatusType(edgeStackStatus),
+		EndpointID: portainer.EndpointID(endpointID),
 	}
 
 	return nil
@@ -299,5 +260,8 @@ func (client *PortainerAsyncClient) SendJobLogFile(jobID int, fileContent []byte
 	}
 
 	return nil
+}
 
+func (client *PortainerAsyncClient) SetLastCommandTimestamp(timestamp time.Time) {
+	client.commandTimestamp = &timestamp
 }
