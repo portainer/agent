@@ -304,6 +304,7 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 			if err != nil {
 				return err
 			}
+			// TODO: mrydel update stack status in snapshot
 			service.portainerClient.SetLastCommandTimestamp(command.Timestamp)
 			break
 		case "edgeJob":
