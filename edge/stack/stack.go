@@ -16,13 +16,14 @@ import (
 type edgeStackID int
 
 type edgeStack struct {
-	ID         edgeStackID
-	Name       string
-	Version    int
-	FileFolder string
-	FileName   string
-	Status     edgeStackStatus
-	Action     edgeStackAction
+	ID                  edgeStackID
+	Name                string
+	Version             int
+	FileFolder          string
+	FileName            string
+	Status              edgeStackStatus
+	Action              edgeStackAction
+	RegistryCredentials []agent.RegistryCredentials
 }
 
 type edgeStackStatus int
@@ -66,14 +67,15 @@ const (
 
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
-	engineType engineType
-	stacks     map[edgeStackID]*edgeStack
-	stopSignal chan struct{}
-	deployer   agent.Deployer
-	isEnabled  bool
-	httpClient *client.PortainerClient
-	assetsPath string
-	mu         sync.Mutex
+	engineType   engineType
+	stacks       map[edgeStackID]*edgeStack
+	currentStack edgeStackID
+	stopSignal   chan struct{}
+	deployer     agent.Deployer
+	isEnabled    bool
+	httpClient   *client.PortainerClient
+	assetsPath   string
+	mu           sync.Mutex
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
@@ -126,6 +128,7 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 		}
 
 		stack.Name = stackConfig.Name
+		stack.RegistryCredentials = stackConfig.RegistryCredentials
 
 		folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 		fileName := "docker-compose.yml"
@@ -224,6 +227,7 @@ func (manager *StackManager) next() *edgeStack {
 
 	for _, stack := range manager.stacks {
 		if stack.Status == statusPending {
+			manager.currentStack = stack.ID
 			return stack
 		}
 	}
@@ -309,4 +313,13 @@ func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Dep
 	}
 
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)
+}
+
+func (manager *StackManager) GetEdgeRegistryCredentials() []agent.RegistryCredentials {
+	stackid := manager.currentStack
+	if stackid != 0 {
+		return manager.stacks[stackid].RegistryCredentials
+	}
+
+	return nil
 }

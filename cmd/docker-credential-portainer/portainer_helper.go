@@ -33,9 +33,7 @@ func (h *portainerHelper) Get(serverURL string) (string, string, error) {
 		return "", "", credentials.NewErrCredentialsMissingServerURL()
 	}
 
-	log.Println("Get: server=", serverURL)
-
-	resp, err := http.Get("http://localhost:9001/registry?serverurl=" + serverURL)
+	resp, err := http.Get("http://localhost:9005/lookup?serverurl=" + serverURL)
 	if err != nil {
 		// TODO: probably shouldn't do this
 		log.Fatalln(err)
