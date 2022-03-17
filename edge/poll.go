@@ -304,7 +304,6 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 			if err != nil {
 				return err
 			}
-			// TODO: mrydel update stack status in snapshot
 			service.portainerClient.SetLastCommandTimestamp(command.Timestamp)
 			break
 		case "edgeJob":
@@ -328,6 +327,7 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 
 	if command.Operation == "add" || command.Operation == "replace" {
 		return service.edgeStackManager.DeployStack(ctx, stackData)
+		// TODO should we call service.portainerClient.SetEdgeStackStatus ?
 	}
 
 	if command.Operation == "remove" {
@@ -337,7 +337,6 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 	return fmt.Errorf("operation %v not supported", command.Operation)
 }
 
-// TODO mrydel
 func (service *PollService) parseScheduleCommand(ctx context.Context, command client.AsyncCommand) error {
 	var jobData agent.Schedule
 	err := mapstructure.Decode(command.Value, &jobData)
@@ -347,11 +346,11 @@ func (service *PollService) parseScheduleCommand(ctx context.Context, command cl
 	}
 
 	if command.Operation == "add" || command.Operation == "replace" {
-		//return service.edgeStackManager.DeployStack(ctx, jobData)
+		// TODO add or replace EdgeJob
 	}
 
 	if command.Operation == "remove" {
-		//return service.edgeStackManager.DeleteStack(ctx, jobData)
+		// TODO remove EdgeJob
 	}
 
 	return fmt.Errorf("operation %v not supported", command.Operation)

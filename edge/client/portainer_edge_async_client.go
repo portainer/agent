@@ -49,13 +49,6 @@ func (client *PortainerAsyncClient) SetTimeout(t time.Duration) {
 	client.httpClient.Timeout = t
 }
 
-type edgeStackData struct {
-	ID               int
-	Version          int
-	StackFileContent string
-	Name             string
-}
-
 type AsyncRequest struct {
 	CommandTimestamp *time.Time `json:"commandTimestamp"`
 	Snapshot         snapshot   `json:"snapshot"`
@@ -65,7 +58,7 @@ type snapshot struct {
 	Docker      *portainer.DockerSnapshot
 	Kubernetes  *portainer.KubernetesSnapshot
 	StackStatus map[portainer.EdgeStackID]portainer.EdgeStackStatus
-	// TODO add job logs
+	// TODO: add job logs payload
 }
 
 type JSONPatch struct {
@@ -79,9 +72,7 @@ type AsyncResponse struct {
 	SnapshotInterval string `json:"snapshotInterval"`
 	CommandInterval  string `json:"commandInterval"`
 
-	ServerCommandId      string         // should be easy to detect if its larger / smaller:  this is the response that tells the agent there are new commands waiting for it
-	SendDiffSnapshotTime time.Time      `json: optional` // might be optional
-	Commands             []AsyncCommand `json:"commands"`
+	Commands []AsyncCommand `json:"commands"`
 }
 
 type AsyncCommand struct {
@@ -116,6 +107,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 	}
 
 	/*
+		TODO: leaving this commented for faster debugging, should be called only for snapshot request
 		switch client.agentPlatformIdentifier {
 		case agent.PlatformDocker:
 			dockerSnapshot, _ := docker.CreateSnapshot()
@@ -129,7 +121,6 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 			}
 		}
 	*/
-	// end Snapshot
 
 	client.lastAsyncResponseMutex.Lock()
 	defer client.lastAsyncResponseMutex.Unlock()
@@ -140,9 +131,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 	}
 
 	response := &PollStatusResponse{
-		AsyncCommands:   asyncResponse.Commands,
-		Status:          "NOTUNNEL", // TODO delete?
-		CheckinInterval: -1,         // TODO delete?
+		AsyncCommands: asyncResponse.Commands,
 	}
 
 	client.lastAsyncResponse = *asyncResponse
@@ -191,20 +180,9 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	return &asyncResponse, nil
 }
 
-// TODO borrar todo de aca para abajo???
-// GetEdgeStackConfig retrieves the configuration associated to an Edge stack
-func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
-	client.lastAsyncResponseMutex.Lock()
-	defer client.lastAsyncResponseMutex.Unlock()
-
-	log.Printf("[ERROR] [http,client,portainer] GetEdgeStackConfig(%d) not found", edgeStackID)
-
-	return nil, fmt.Errorf("GetEdgeStackConfig(%d) not found", edgeStackID)
-}
-
-// SetEdgeStackStatus updates the status of an Edge stack on the Portainer server //TODO change comment for async mode
+// SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
 func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
-	// This should go into the next snapshot payload
+	// TODO: This should go into the next snapshot payload
 	endpointID, err := strconv.Atoi(client.endpointID)
 	if err != nil {
 		return err
@@ -226,42 +204,15 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID, edgeStackSta
 
 // SendJobLogFile sends the jobID log to the Portainer server
 func (client *PortainerAsyncClient) SendJobLogFile(jobID int, fileContent []byte) error {
-	// This should go into the next snapshot payload
-	return nil
-
-	payload := logFilePayload{
-		FileContent: string(fileContent),
-	}
-
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/jobs/%d/logs", client.serverAddress, client.endpointID, jobID)
-
-	req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
-
-	resp, err := client.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: SendJobLogFile operation failed]", resp.StatusCode)
-		return errors.New("SendJobLogFile operation failed")
-	}
-
+	// TODO: This should go into the next snapshot payload
 	return nil
 }
 
 func (client *PortainerAsyncClient) SetLastCommandTimestamp(timestamp time.Time) {
 	client.commandTimestamp = &timestamp
+}
+
+// GetEdgeStackConfig retrieves the configuration associated to an Edge stack
+func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
+	return nil, nil // unused in async mode
 }
