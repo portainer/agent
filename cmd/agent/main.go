@@ -15,6 +15,7 @@ import (
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge"
 	httpEdge "github.com/portainer/agent/edge/http"
+	"github.com/portainer/agent/edge/registry"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
@@ -234,6 +235,12 @@ func main() {
 
 	if options.EdgeMode {
 		config.Addr = advertiseAddr
+	}
+
+	fmt.Println("OK")
+	err = registry.StartRegistryServer(edgeManager)
+	if err != nil {
+		log.Fatalf("[ERROR] [main] [message: Unable to start registry server] [error: %s]", err)
 	}
 
 	err = startAPIServer(config, options.EdgeMode)

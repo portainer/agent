@@ -16,13 +16,14 @@ import (
 type edgeStackID int
 
 type edgeStack struct {
-	ID         edgeStackID
-	Name       string
-	Version    int
-	FileFolder string
-	FileName   string
-	Status     edgeStackStatus
-	Action     edgeStackAction
+	ID                  edgeStackID
+	Name                string
+	Version             int
+	FileFolder          string
+	FileName            string
+	Status              edgeStackStatus
+	Action              edgeStackAction
+	RegistryCredentials []agent.RegistryCredentials
 }
 
 type edgeStackStatus int
@@ -69,6 +70,7 @@ const (
 type StackManager struct {
 	engineType      engineType
 	stacks          map[edgeStackID]*edgeStack
+	currentStack edgeStackID
 	stopSignal      chan struct{}
 	deployer        agent.Deployer
 	isEnabled       bool
@@ -133,6 +135,7 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	}
 
 	stack.Name = stackConfig.Name
+	stack.RegistryCredentials = stackConfig.RegistryCredentials
 
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 	fileName := "docker-compose.yml"
@@ -226,7 +229,8 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 	defer manager.mu.Unlock()
 
 	for _, stack := range manager.stacks {
-		if stack.Status == StatusPending {
+		if stack.Status == statusPending {
+			manager.currentStack = stack.ID
 			return stack
 		}
 	}
@@ -314,6 +318,7 @@ func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Dep
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)
 }
 
+<<<<<<< HEAD
 func (manager *StackManager) DeployStack(ctx context.Context, stackData client.EdgeStackData) error {
 	stackName, stackFileLocation, err := manager.buildDeployerParams(stackData, true)
 	if err != nil {
@@ -348,4 +353,13 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	stackName := fmt.Sprintf("edge_%s", stackData.Name)
 	stackFileLocation := fmt.Sprintf("%s/%s", folder, fileName)
 	return stackName, stackFileLocation, nil
+=======
+func (manager *StackManager) GetEdgeRegistryCredentials() []agent.RegistryCredentials {
+	stackid := manager.currentStack
+	if stackid != 0 {
+		return manager.stacks[stackid].RegistryCredentials
+	}
+
+	return nil
+>>>>>>> Initial version
 }

@@ -43,6 +43,10 @@ type (
 	}
 )
 
+func (manager *Manager) GetStackManager() *stack.StackManager {
+	return manager.stackManager
+}
+
 // NewManager returns a pointer to a new instance of Manager
 func NewManager(parameters *ManagerParameters) *Manager {
 	return &Manager{
