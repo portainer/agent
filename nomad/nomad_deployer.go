@@ -100,15 +100,12 @@ func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string) 
 	}
 
 	// verify if the job ID is correct, i.e., no error when trying to retrieve job info with the job ID
-	q := &nomadapi.QueryOptions{Namespace: *job.Namespace}
-	_, _, err = d.client.Jobs().Info(*job.ID, q)
+	_, _, err = d.client.Jobs().Info(*job.ID, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve nomad job info")
 	}
 
-	opts := &nomadapi.DeregisterOptions{Purge: true}
-	wq := &nomadapi.WriteOptions{Namespace: *job.Namespace}
-	_, _, err = d.client.Jobs().DeregisterOpts(*job.ID, opts, wq)
+	_, _, err = d.client.Jobs().DeregisterOpts(*job.ID, &nomadapi.DeregisterOptions{Purge: true}, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to purge nomad job")
 	}
