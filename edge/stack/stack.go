@@ -70,7 +70,7 @@ const (
 type StackManager struct {
 	engineType      engineType
 	stacks          map[edgeStackID]*edgeStack
-	currentStack edgeStackID
+	currentStack    edgeStackID
 	stopSignal      chan struct{}
 	deployer        agent.Deployer
 	isEnabled       bool
@@ -229,7 +229,7 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 	defer manager.mu.Unlock()
 
 	for _, stack := range manager.stacks {
-		if stack.Status == statusPending {
+		if stack.Status == StatusPending {
 			manager.currentStack = stack.ID
 			return stack
 		}
@@ -318,7 +318,6 @@ func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Dep
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)
 }
 
-<<<<<<< HEAD
 func (manager *StackManager) DeployStack(ctx context.Context, stackData client.EdgeStackData) error {
 	stackName, stackFileLocation, err := manager.buildDeployerParams(stackData, true)
 	if err != nil {
@@ -353,7 +352,8 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	stackName := fmt.Sprintf("edge_%s", stackData.Name)
 	stackFileLocation := fmt.Sprintf("%s/%s", folder, fileName)
 	return stackName, stackFileLocation, nil
-=======
+}
+
 func (manager *StackManager) GetEdgeRegistryCredentials() []agent.RegistryCredentials {
 	stackid := manager.currentStack
 	if stackid != 0 {
@@ -361,5 +361,4 @@ func (manager *StackManager) GetEdgeRegistryCredentials() []agent.RegistryCreden
 	}
 
 	return nil
->>>>>>> Initial version
 }
