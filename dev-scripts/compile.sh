@@ -3,12 +3,12 @@
 function compile_command() {
     parse_compile_params "${@:1}"
 
-    compile
+    compile_agent
     compile_credential_helper
 }
 
-function compile() {
-    msg "Compilation..."
+function compile_agent() {
+    msg "Compiling agent..."
 
     local TARGET_DIST=dist
     mkdir -p $TARGET_DIST
@@ -24,7 +24,7 @@ function compile() {
 }
 
 function compile_credential_helper() {
-    msg "Compilation... portainer credential helper"
+    msg "Compiling credential helper"
 
     local TARGET_DIST=dist
     mkdir -p $TARGET_DIST
@@ -35,7 +35,7 @@ function compile_credential_helper() {
     if [[ $rc != 0 ]]; then exit $rc; fi
     cd ../..
     mv cmd/docker-credential-portainer/docker-credential-portainer $TARGET_DIST
-    cp cmd/docker-credential-portainer/config $TARGET_DIST
+    cp cmd/docker-credential-portainer/config/config.json $TARGET_DIST
 
     msg "Credential helper executable is available on $TARGET_DIST/docker-credential-portainer"
 }
