@@ -1,7 +1,7 @@
 FROM portainer/base
 
-WORKDIR /app
 ENV PATH="/app:$PATH"
+WORKDIR /app
 
 COPY dist /app/
 COPY static /app/static
