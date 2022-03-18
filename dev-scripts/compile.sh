@@ -3,11 +3,11 @@
 function compile_command() {
     parse_compile_params "${@:1}"
 
-    compile
+    compile_agent
     compile_credential_helper
 }
 
-function compile() {
+function compile_agent() {
     msg "Compilation..."
 
     local TARGET_DIST=dist
