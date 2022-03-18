@@ -1,12 +1,15 @@
 package registry
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge"
 	"github.com/portainer/libhttp/request"
 	"github.com/portainer/libhttp/response"
@@ -30,39 +33,65 @@ func NewEdgeRegistryHandler(edgeManager *edge.Manager) *EdgeRegistryHandler {
 }
 
 func (handler *EdgeRegistryHandler) LookupHandler(rw http.ResponseWriter, r *http.Request) {
-	sm := handler.EdgeManager.GetStackManager()
+	stackManager := handler.EdgeManager.GetStackManager()
+	if stackManager == nil {
+		return
+	}
 
 	serverurl, _ := request.RetrieveQueryParameter(r, "serverurl", false)
 
-	if sm != nil {
-		credentials := sm.GetEdgeRegistryCredentials()
-		if len(credentials) > 0 {
-			u, err := url.Parse(serverurl)
-			if err != nil {
+	credentials := stackManager.GetEdgeRegistryCredentials()
+	if len(credentials) > 0 {
+		u, err := url.Parse(serverurl)
+		if err != nil {
+			return
+		}
+
+		var key string
+		if u.Hostname() == "index.docker.io" {
+			key = "docker.io"
+		} else {
+			key = u.Hostname()
+		}
+
+		for _, c := range credentials {
+			if key == c.ServerURL {
+				response.JSON(rw, c)
 				return
-			}
-
-			var key string
-			if u.Hostname() == "index.docker.io" {
-				key = "docker.io"
-			} else {
-				key = u.Hostname()
-			}
-
-			for _, c := range credentials {
-				if key == c.ServerURL {
-					response.JSON(rw, c)
-				}
 			}
 		}
 	}
+
+	response.Empty(rw)
+}
+
+func LookupCredentials(credentials []agent.RegistryCredentials, serverUrl string) (*agent.RegistryCredentials, error) {
+	u, err := url.Parse(serverUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	var key string
+	if strings.HasSuffix(u.Hostname(), ".docker.io") {
+		key = "docker.io"
+	} else {
+		key = u.Hostname()
+	}
+
+	for _, c := range credentials {
+		if key == c.ServerURL {
+			return &c, nil
+		}
+	}
+
+	return nil, fmt.Errorf("No credentials found for %s", serverUrl)
 }
 
 func StartRegistryServer(edgeManager *edge.Manager) (err error) {
 	log.Println("[INFO] [main] [message: Starting registry server]")
 	h := NewEdgeRegistryHandler(edgeManager)
 
-	srv := &http.Server{
+	server := &http.Server{
 		Addr:         "127.0.0.1:9005",
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
@@ -72,7 +101,7 @@ func StartRegistryServer(edgeManager *edge.Manager) (err error) {
 
 	// run in a goroutine so it doesn't block
 	go func() {
-		err = srv.ListenAndServe()
+		err = server.ListenAndServe()
 	}()
 
 	return err
