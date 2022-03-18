@@ -9,6 +9,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
+	"github.com/portainer/agent/edge/yaml"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 )
@@ -139,11 +140,16 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 	fileName := "docker-compose.yml"
+	fileContent := stackConfig.FileContent
 	if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stack.Name)
+		if len(stackConfig.RegistryCredentials) > 0 {
+			yml := yaml.NewYAML(fileContent, stackConfig.RegistryCredentials)
+			fileContent, _ = yml.AddImagePullSecrets()
+		}
 	}
 
-	err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 0644)
+	err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
 	if err != nil {
 		return err
 	}
