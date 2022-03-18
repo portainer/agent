@@ -136,8 +136,8 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 		fileContent := stackConfig.FileContent
 		if manager.engineType == EngineTypeKubernetes {
 			fileName = fmt.Sprintf("%s.yml", stack.Name)
-			if len(stackConfig.Registries) > 0 {
-				yml := yaml.NewYAML(stackConfig.FileContent, stackConfig.Registries)
+			if len(stackConfig.RegistryCredentials) > 0 {
+				yml := yaml.NewYAML(stackConfig.FileContent, stackConfig.RegistryCredentials)
 				fileContent, _ = yml.AddImagePullSecrets()
 			}
 		}

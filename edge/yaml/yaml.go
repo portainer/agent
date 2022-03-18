@@ -21,19 +21,19 @@ import (
 
 type yaml struct {
 	fileContent string
-	registries  map[string]agent.Credentials
+	credentials []agent.RegistryCredentials
 }
 
-func NewYAML(fileContent string, registries map[string]agent.Credentials) *yaml {
+func NewYAML(fileContent string, credentials []agent.RegistryCredentials) *yaml {
 	return &yaml{
 		fileContent: fileContent,
-		registries:  registries,
+		credentials: credentials,
 	}
 }
 
-func (y *yaml) getRegistryCredentialsByImageURL(imageURL string) []agent.Credentials {
-	credentials := []agent.Credentials{}
-	for _, r := range y.registries {
+func (y *yaml) getRegistryCredentialsByImageURL(imageURL string) []agent.RegistryCredentials {
+	credentials := []agent.RegistryCredentials{}
+	for _, r := range y.credentials {
 		if strings.Contains(imageURL, r.ServerURL) {
 			credentials = append(credentials, r)
 		}
@@ -41,7 +41,7 @@ func (y *yaml) getRegistryCredentialsByImageURL(imageURL string) []agent.Credent
 	return credentials
 }
 
-func (y *yaml) getImagePullSecret(namespace string, secretName string, cred agent.Credentials) v1Types.Secret {
+func (y *yaml) getImagePullSecret(namespace string, secretName string, cred agent.RegistryCredentials) v1Types.Secret {
 	credentials := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", cred.Username, cred.Secret)))
 	secret := v1Types.Secret{
 		ObjectMeta: v1AMacTypes.ObjectMeta{
