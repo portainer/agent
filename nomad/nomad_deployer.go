@@ -2,9 +2,7 @@ package nomad
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
-	"strings"
 	"time"
 
 	nomadapi "github.com/hashicorp/nomad/api"
@@ -82,23 +80,32 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 
 // Remove attempts to stop a Nomad job via provided job name/id
 func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string) error {
-	jobID := strings.TrimSpace(name)
-	jobs, _, err := d.client.Jobs().PrefixList(jobID)
+	if len(filePaths) == 0 {
+		return errors.New("missing Nomad job file paths")
+	}
+	jobFile, err := ioutil.ReadFile(filePaths[0])
 	if err != nil {
-		return errors.Wrap(err, "failed to list jobs with prefix")
+		return errors.Wrap(err, "failed to read Nomad job file")
 	}
-	if len(jobs) == 0 {
-		return errors.New(fmt.Sprintf("no job(s) with prefix or id %s found", jobID))
+	job, err := d.client.Jobs().ParseHCL(string(jobFile), true)
+
+	// Force the region to be that of the job.
+	if r := job.Region; r != nil {
+		d.client.SetRegion(*r)
 	}
-	q := &nomadapi.QueryOptions{Namespace: jobs[0].JobSummary.Namespace}
-	job, _, err := d.client.Jobs().Info(jobs[0].ID, q)
+
+	// Force the namespace to be that of the job.
+	if n := job.Namespace; n != nil {
+		d.client.SetNamespace(*n)
+	}
+
+	// verify if the job ID is correct, i.e., no error when trying to retrieve job info with the job ID
+	_, _, err = d.client.Jobs().Info(*job.ID, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to retrieve nomad job info")
 	}
 
-	opts := &nomadapi.DeregisterOptions{Purge: true}
-	wq := &nomadapi.WriteOptions{Namespace: jobs[0].JobSummary.Namespace}
-	_, _, err = d.client.Jobs().DeregisterOpts(*job.ID, opts, wq)
+	_, _, err = d.client.Jobs().DeregisterOpts(*job.ID, &nomadapi.DeregisterOptions{Purge: true}, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed to purge nomad job")
 	}
