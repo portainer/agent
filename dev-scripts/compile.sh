@@ -35,7 +35,6 @@ function compile_credential_helper() {
     if [[ $rc != 0 ]]; then exit $rc; fi
     cd ../..
     mv cmd/docker-credential-portainer/docker-credential-portainer $TARGET_DIST
-    cp cmd/docker-credential-portainer/config/config.json $TARGET_DIST
 
     msg "Credential helper executable is available on $TARGET_DIST/docker-credential-portainer"
 }
