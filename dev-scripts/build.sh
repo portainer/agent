@@ -17,7 +17,7 @@ function build() {
     docker rmi -f "$1" &>/dev/null || true
 
     msg "Image build..."
-    docker build --no-cache -t "$1" -f build/linux/Dockerfile . &>/dev/null
+    docker build --no-cache -t "$1" -f build/linux/alpine.Dockerfile . &>/dev/null
 
     msg "Image $1 is built"
 }
