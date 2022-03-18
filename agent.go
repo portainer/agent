@@ -76,6 +76,11 @@ type (
 		LogLevel              string
 	}
 
+	NomadConfig struct {
+		NomadAddr  string
+		NomadToken string
+	}
+
 	// PciDevice is the representation of a physical pci device on a host
 	PciDevice struct {
 		Vendor string
@@ -226,6 +231,12 @@ const (
 	HTTPResponseAgentHeaderName = "Portainer-Agent"
 	// HTTPKubernetesSATokenHeaderName represent the name of the header containing a Kubernetes SA token
 	HTTPKubernetesSATokenHeaderName = "X-PortainerAgent-SA-Token"
+	// HTTPNomadTokenHeaderName represent the name of the header containing a Nomad token
+	HTTPNomadTokenHeaderName = "X-Nomad-Token"
+	// NomadTokenEnvVarName represent the name of environment variable of the Nomad token
+	NomadTokenEnvVarName = "NOMAD_TOKEN"
+	// NomadAddrEnvVarName represent the name of environment variable of the Nomad addr
+	NomadAddrEnvVarName = "NOMAD_ADDR"
 	// HTTPResponseAgentApiVersion is the name of the header that will have the
 	// Portainer Agent API Version.
 	HTTPResponseAgentApiVersion = "Portainer-Agent-API-Version"
@@ -269,6 +280,8 @@ const (
 	PlatformKubernetes
 	// PlatformPodman represent the Podman platform (Standalone)
 	PlatformPodman
+	// PlatformNomad represent the Nomad platform (Standalone)
+	PlatformNomad
 )
 
 const (

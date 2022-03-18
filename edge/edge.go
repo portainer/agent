@@ -137,6 +137,31 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 	return nil
 }
 
+func (manager *Manager) startEdgeBackgroundProcessOnNomad(runtimeCheckFrequency time.Duration) error {
+	manager.pollService.start()
+
+	go func() {
+		ticker := time.NewTicker(runtimeCheckFrequency)
+		for range ticker.C {
+			manager.pollService.start()
+
+			err := manager.stackManager.SetEngineStatus(stack.EngineTypeNomad)
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
+				return
+			}
+
+			err = manager.stackManager.Start()
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
+				return
+			}
+		}
+	}()
+
+	return nil
+}
+
 func (manager *Manager) startEdgeBackgroundProcess() error {
 	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
 	if err != nil {
@@ -148,6 +173,8 @@ func (manager *Manager) startEdgeBackgroundProcess() error {
 		return manager.startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency)
 	case agent.PlatformKubernetes:
 		return manager.startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency)
+	case agent.PlatformNomad:
+		return manager.startEdgeBackgroundProcessOnNomad(runtimeCheckFrequency)
 	}
 
 	return nil

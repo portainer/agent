@@ -10,6 +10,7 @@ const (
 	PodmanMode            = "PODMAN"
 	KubernetesServiceHost = "KUBERNETES_SERVICE_HOST"
 	KubernetesPodIP       = "KUBERNETES_POD_IP"
+	NomadJobName          = "NOMAD_JOB_NAME"
 )
 
 // DetermineContainerPlatform will check for the existence of the PODMAN_MODE
@@ -25,6 +26,11 @@ func DetermineContainerPlatform() agent.ContainerPlatform {
 	if serviceHostKubernetesEnvVar != "" {
 		return agent.PlatformKubernetes
 	}
+	nomadJobName := os.Getenv(NomadJobName)
+	if nomadJobName != "" {
+		return agent.PlatformNomad
+	}
+
 	return agent.PlatformDocker
 }
 
