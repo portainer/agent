@@ -177,9 +177,6 @@ func main() {
 		}
 
 		nomadConfig.NomadToken = goos.Getenv(agent.NomadTokenEnvVarName)
-		if nomadConfig.NomadToken == "" {
-			log.Fatalf("[ERROR] [main,nomad] [message: Unable to retrieve environment variable NOMAD_TOKEN]")
-		}
 
 		log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [advertise_address: %s] [NomadAddr: %s]", options.AgentServerPort, advertiseAddr, nomadConfig.NomadAddr)
 	}
