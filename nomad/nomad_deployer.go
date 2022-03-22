@@ -78,7 +78,7 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 	return nil
 }
 
-// Remove attempts to stop a Nomad job via provided job name/id
+// Remove attempts to stop a Nomad job via stored Nomad job file
 func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string) error {
 	if len(filePaths) == 0 {
 		return errors.New("missing Nomad job file paths")
