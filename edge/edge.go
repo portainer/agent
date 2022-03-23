@@ -103,10 +103,7 @@ func (manager *Manager) Start() error {
 			buildHTTPClient(10, manager.agentOptions),
 		),
 	)
-	err := manager.logsManager.Start()
-	if err != nil {
-		return err
-	}
+	manager.logsManager.Start()
 
 	pollService, err := newPollService(
 		manager.stackManager,
