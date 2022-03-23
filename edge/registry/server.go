@@ -38,22 +38,32 @@ func (handler *EdgeRegistryHandler) LookupHandler(rw http.ResponseWriter, r *htt
 		return
 	}
 
-	serverurl, _ := request.RetrieveQueryParameter(r, "serverurl", false)
+	serverUrl, _ := request.RetrieveQueryParameter(r, "serverurl", false)
 
 	credentials := stackManager.GetEdgeRegistryCredentials()
 	if len(credentials) > 0 {
-		u, err := url.Parse(serverurl)
-		if err != nil {
-			return
-		}
+		log.Printf("ServerURL=%s", serverUrl)
 
 		var key string
-		if u.Hostname() == "index.docker.io" {
-			key = "docker.io"
+		if strings.HasPrefix(serverUrl, "http") {
+			u, err := url.Parse(serverUrl)
+			if err != nil {
+				response.Empty(rw)
+				return
+			}
+
+			if strings.HasSuffix(u.Hostname(), "docker.io") {
+				key = "docker.io"
+			} else {
+				key = u.Hostname()
+			}
 		} else {
-			key = u.Hostname()
+			key = serverUrl
 		}
 
+		log.Printf("[INFO] [main] [message: Looking up credentials for %s]\n", key)
+
+		log.Printf("[DEBUG] Credentials: %+v", credentials)
 		for _, c := range credentials {
 			if key == c.ServerURL {
 				response.JSON(rw, c)

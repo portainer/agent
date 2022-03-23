@@ -33,11 +33,21 @@ func (h *portainerHelper) Get(serverURL string) (string, string, error) {
 		return "", "", credentials.NewErrCredentialsMissingServerURL()
 	}
 
+	log.Printf("ServerURL=%s", serverURL)
+
 	resp, err := http.Get("http://localhost:9005/lookup?serverurl=" + serverURL)
 	if err != nil {
 		// TODO: probably shouldn't do this
 		log.Fatalln(err)
 	}
+
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+
+	//Convert the body to type string
+	//log.Printf("Body:", string(body))
 
 	var c credentials.Credentials
 
@@ -47,9 +57,10 @@ func (h *portainerHelper) Get(serverURL string) (string, string, error) {
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
 
-	log.Printf("Success: %+v\n", c)
+	log.Printf("Success credentials: %+v\n", c)
 
 	return c.Username, c.Secret, nil
+	//	return "", "", credentials.NewErrCredentialsNotFound()
 }
 
 func (h *portainerHelper) List() (map[string]string, error) {
