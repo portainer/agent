@@ -29,9 +29,9 @@ type edgeStackStatus int
 
 const (
 	_ edgeStackStatus = iota
-	statusPending
-	statusDone
-	statusError
+	StatusPending
+	StatusDone
+	StatusError
 )
 
 type edgeStackAction int
@@ -48,9 +48,10 @@ type edgeStackStatusType int
 
 const (
 	_ edgeStackStatusType = iota
-	edgeStackStatusOk
-	edgeStackStatusError
-	edgeStackStatusAcknowledged
+	EdgeStackStatusOk
+	EdgeStackStatusError
+	EdgeStackStatusAcknowledged
+	EdgeStackStatusRemove
 )
 
 type engineType int
@@ -115,13 +116,13 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for update]", stackID)
 		stack.Action = actionUpdate
 		stack.Version = version
-		stack.Status = statusPending
+		stack.Status = StatusPending
 	} else {
 		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for deployment]", stackID)
 		stack = &edgeStack{
 			ID:      edgeStackID(stackID),
 			Action:  actionDeploy,
-			Status:  statusPending,
+			Status:  StatusPending,
 			Version: version,
 		}
 	}
@@ -149,7 +150,7 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 
 	manager.stacks[stack.ID] = stack
 
-	return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), int(edgeStackStatusAcknowledged), "")
+	return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), int(EdgeStackStatusAcknowledged), "")
 }
 
 func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]int) {
@@ -157,7 +158,7 @@ func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]int
 		if _, ok := pollResponseStacks[int(stackID)]; !ok {
 			log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for deletion]", stackID)
 			stack.Action = actionDelete
-			stack.Status = statusPending
+			stack.Status = StatusPending
 
 			manager.stacks[stackID] = stack
 		}
@@ -225,7 +226,7 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 	defer manager.mu.Unlock()
 
 	for _, stack := range manager.stacks {
-		if stack.Status == statusPending {
+		if stack.Status == StatusPending {
 			return stack
 		}
 	}
@@ -237,16 +238,16 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	defer manager.mu.Unlock()
 
 	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
-	stack.Status = statusDone
+	stack.Status = StatusDone
 	stack.Action = actionIdle
-	responseStatus := int(edgeStackStatusOk)
+	responseStatus := int(EdgeStackStatusOk)
 	errorMessage := ""
 
 	err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
 	if err != nil {
 		log.Printf("[ERROR] [edge,stack] [message: stack deployment failed] [error: %s]", err)
-		stack.Status = statusError
-		responseStatus = int(edgeStackStatusError)
+		stack.Status = StatusError
+		responseStatus = int(EdgeStackStatusError)
 		errorMessage = err.Error()
 	} else {
 		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [stack_version: %d] [message: stack deployed]", stack.ID, stack.Version)

@@ -326,12 +326,29 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 	}
 
 	if command.Operation == "add" || command.Operation == "replace" {
-		return service.edgeStackManager.DeployStack(ctx, stackData)
-		// TODO should we call service.portainerClient.SetEdgeStackStatus ?
+		responseStatus := int(stack.EdgeStackStatusOk)
+		errorMessage := ""
+
+		err = service.edgeStackManager.DeployStack(ctx, stackData)
+		if err != nil {
+			responseStatus = int(stack.EdgeStackStatusError)
+			errorMessage = err.Error()
+		}
+
+		return service.portainerClient.SetEdgeStackStatus(stackData.ID, responseStatus, errorMessage)
 	}
 
 	if command.Operation == "remove" {
-		return service.edgeStackManager.DeleteStack(ctx, stackData)
+		responseStatus := int(stack.EdgeStackStatusRemove)
+		errorMessage := ""
+
+		err = service.edgeStackManager.DeleteStack(ctx, stackData)
+		if err != nil {
+			responseStatus = int(stack.EdgeStackStatusError)
+			errorMessage = err.Error()
+		}
+
+		return service.portainerClient.SetEdgeStackStatus(stackData.ID, responseStatus, errorMessage)
 	}
 
 	return fmt.Errorf("operation %v not supported", command.Operation)

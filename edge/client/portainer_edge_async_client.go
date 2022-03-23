@@ -21,7 +21,7 @@ import (
 type PortainerAsyncClient struct {
 	httpClient              *http.Client
 	serverAddress           string
-	endpointID              string
+	endpointID              portainer.EndpointID
 	edgeID                  string
 	agentPlatformIdentifier agent.ContainerPlatform
 	commandTimestamp        *time.Time
@@ -33,7 +33,7 @@ type PortainerAsyncClient struct {
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
-func NewPortainerAsyncClient(serverAddress, endpointID, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerAsyncClient {
+func NewPortainerAsyncClient(serverAddress string, endpointID portainer.EndpointID, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerAsyncClient {
 	initialCommandTimestamp := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	return &PortainerAsyncClient{
 		serverAddress:           serverAddress,
@@ -68,11 +68,12 @@ type JSONPatch struct {
 }
 
 type AsyncResponse struct {
-	PingInterval     string `json:"pingInterval"`
-	SnapshotInterval string `json:"snapshotInterval"`
-	CommandInterval  string `json:"commandInterval"`
+	PingInterval     time.Duration `json:"pingInterval"`
+	SnapshotInterval time.Duration `json:"snapshotInterval"`
+	CommandInterval  time.Duration `json:"commandInterval"`
 
-	Commands []AsyncCommand `json:"commands"`
+	EndpointID portainer.EndpointID `json:"endpointID"`
+	Commands   []AsyncCommand       `json:"commands"`
 }
 
 type AsyncCommand struct {
@@ -129,6 +130,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 	if err != nil {
 		return nil, err
 	}
+	client.endpointID = asyncResponse.EndpointID
 
 	response := &PollStatusResponse{
 		AsyncCommands: asyncResponse.Commands,
@@ -182,21 +184,16 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
 func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
-	// TODO: This should go into the next snapshot payload
-	endpointID, err := strconv.Atoi(client.endpointID)
-	if err != nil {
-		return err
-	}
-
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
+
 	if client.nextSnapshotRequest.Snapshot.StackStatus == nil {
 		client.nextSnapshotRequest.Snapshot.StackStatus = make(map[portainer.EdgeStackID]portainer.EdgeStackStatus)
 	}
 	client.nextSnapshotRequest.Snapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = portainer.EdgeStackStatus{
-		Error:      error,
+		EndpointID: client.endpointID,
 		Type:       portainer.EdgeStackStatusType(edgeStackStatus),
-		EndpointID: portainer.EndpointID(endpointID),
+		Error:      error,
 	}
 
 	return nil

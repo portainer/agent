@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	portainer "github.com/portainer/portainer/api"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,13 +18,13 @@ import (
 type PortainerEdgeClient struct {
 	httpClient    *http.Client
 	serverAddress string
-	endpointID    string
+	endpointID    portainer.EndpointID
 	edgeID        string
 	agentPlatform agent.ContainerPlatform
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
-func NewPortainerEdgeClient(serverAddress, endpointID, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
+func NewPortainerEdgeClient(serverAddress string, endpointID portainer.EndpointID, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
 	return &PortainerEdgeClient{
 		serverAddress: serverAddress,
 		endpointID:    endpointID,
@@ -107,15 +108,10 @@ type setEdgeStackStatusPayload struct {
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
 func (client *PortainerEdgeClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
-	endpointID, err := strconv.Atoi(client.endpointID)
-	if err != nil {
-		return err
-	}
-
 	payload := setEdgeStackStatusPayload{
 		Error:      error,
 		Status:     edgeStackStatus,
-		EndpointID: endpointID,
+		EndpointID: int(client.endpointID),
 	}
 
 	data, err := json.Marshal(payload)

@@ -5,9 +5,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	portainer "github.com/portainer/portainer/api"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/portainer/agent"
@@ -81,10 +83,15 @@ func (manager *Manager) Start() error {
 		agentPlatform = agent.PlatformDocker
 	}
 
+	endpointID, err := strconv.Atoi(manager.key.EndpointID)
+	if err != nil {
+		return err
+	}
+
 	manager.stackManager = stack.NewStackManager(
 		client.NewPortainerClient(
 			manager.key.PortainerInstanceURL,
-			manager.key.EndpointID,
+			portainer.EndpointID(endpointID),
 			manager.agentOptions.EdgeID,
 			manager.agentOptions.EdgeAsyncMode,
 			agentPlatform,
@@ -96,7 +103,7 @@ func (manager *Manager) Start() error {
 	manager.logsManager = scheduler.NewLogsManager(
 		client.NewPortainerClient(
 			manager.key.PortainerInstanceURL,
-			manager.key.EndpointID,
+			portainer.EndpointID(endpointID),
 			manager.agentOptions.EdgeID,
 			manager.agentOptions.EdgeAsyncMode,
 			agentPlatform,
@@ -111,7 +118,7 @@ func (manager *Manager) Start() error {
 		pollServiceConfig,
 		client.NewPortainerClient(
 			manager.key.PortainerInstanceURL,
-			manager.key.EndpointID,
+			portainer.EndpointID(endpointID),
 			manager.agentOptions.EdgeID,
 			manager.agentOptions.EdgeAsyncMode,
 			agentPlatform,

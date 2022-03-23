@@ -1,6 +1,7 @@
 package client
 
 import (
+	portainer "github.com/portainer/portainer/api"
 	"net/http"
 	"time"
 
@@ -35,7 +36,7 @@ type StackStatus struct {
 }
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress, endpointID, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, httpClient *http.Client) PortainerClient {
+func NewPortainerClient(serverAddress string, endpointID portainer.EndpointID, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, httpClient *http.Client) PortainerClient {
 	if edgeAsyncMode {
 		return NewPortainerAsyncClient(serverAddress, endpointID, edgeID, agentPlatform, httpClient)
 	}
