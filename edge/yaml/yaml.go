@@ -41,8 +41,12 @@ func (y *yaml) getRegistryCredentialsByImageURL(imageURL string) []agent.Registr
 	return credentials
 }
 
-func (y *yaml) getImagePullSecret(namespace string, secretName string, cred agent.RegistryCredentials) v1Types.Secret {
+func (y *yaml) generateImagePullSecrets(namespace string, secretName string, cred agent.RegistryCredentials) v1Types.Secret {
 	credentials := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", cred.Username, cred.Secret)))
+	registryURL := cred.ServerURL
+	if !strings.HasPrefix(cred.ServerURL, "http") {
+		registryURL = "https://" + registryURL
+	}
 	secret := v1Types.Secret{
 		ObjectMeta: v1AMacTypes.ObjectMeta{
 			Name:      secretName,
@@ -51,11 +55,11 @@ func (y *yaml) getImagePullSecret(namespace string, secretName string, cred agen
 		Data: map[string][]byte{
 			".dockerconfigjson": []byte(fmt.Sprintf(`{
 				"auths": {
-					"https://index.docker.io/v1/": {
+					"%s": {
 						"auth": "%s"
 					}
 				}
-			}`, credentials)),
+			}`, registryURL, credentials)),
 		},
 		Type: v1Types.SecretTypeDockerConfigJson,
 	}
@@ -94,7 +98,7 @@ func (y *yaml) AddImagePullSecrets() (string, error) {
 					}
 					spec.ImagePullSecrets = append(spec.ImagePullSecrets, sec)
 
-					pullSecret := y.getImagePullSecret(namespace, imagePullSecretName, cred)
+					pullSecret := y.generateImagePullSecrets(namespace, imagePullSecretName, cred)
 
 					pullSecrets = append(pullSecrets, pullSecret)
 				}
