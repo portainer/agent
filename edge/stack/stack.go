@@ -34,6 +34,7 @@ const (
 	StatusPending
 	StatusDone
 	StatusError
+	StatusDeploying
 )
 
 type edgeStackAction int
@@ -71,7 +72,6 @@ const (
 type StackManager struct {
 	engineType      engineType
 	stacks          map[edgeStackID]*edgeStack
-	currentStack    edgeStackID
 	stopSignal      chan struct{}
 	deployer        agent.Deployer
 	isEnabled       bool
@@ -236,7 +236,6 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 
 	for _, stack := range manager.stacks {
 		if stack.Status == StatusPending {
-			manager.currentStack = stack.ID
 			return stack
 		}
 	}
@@ -248,7 +247,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	defer manager.mu.Unlock()
 
 	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
-	stack.Status = StatusDone
+	stack.Status = StatusDeploying
 	stack.Action = actionIdle
 	responseStatus := int(EdgeStackStatusOk)
 	errorMessage := ""
@@ -261,6 +260,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 		errorMessage = err.Error()
 	} else {
 		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [stack_version: %d] [message: stack deployed]", stack.ID, stack.Version)
+		stack.Status = StatusDone
 	}
 
 	manager.stacks[stack.ID] = stack
@@ -361,11 +361,10 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 }
 
 func (manager *StackManager) GetEdgeRegistryCredentials() []agent.RegistryCredentials {
-	manager.mu.Lock()
-	defer manager.mu.Unlock()
-
-	if stack, ok := manager.stacks[manager.currentStack]; ok {
-		return stack.RegistryCredentials
+	for _, stack := range manager.stacks {
+		if stack.Status == StatusDeploying {
+			return stack.RegistryCredentials
+		}
 	}
 
 	return nil
