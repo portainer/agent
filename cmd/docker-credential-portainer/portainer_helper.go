@@ -21,7 +21,6 @@ func (h *portainerHelper) Delete(serverURL string) error {
 }
 
 func (h *portainerHelper) Get(serverURL string) (string, string, error) {
-	// TODO: Remove this logging later
 	f, err := os.OpenFile("/tmp/portainer-credential-helper.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
@@ -33,34 +32,27 @@ func (h *portainerHelper) Get(serverURL string) (string, string, error) {
 		return "", "", credentials.NewErrCredentialsMissingServerURL()
 	}
 
-	log.Printf("ServerURL=%s", serverURL)
+	log.Printf("GET ServerURL=%s", serverURL)
 
 	resp, err := http.Get("http://localhost:9005/lookup?serverurl=" + serverURL)
 	if err != nil {
-		// TODO: probably shouldn't do this
-		log.Fatalln(err)
+		log.Printf("Error getting credentials: %v", err)
+		return "", "", credentials.NewErrCredentialsNotFound()
 	}
-
-	// body, err := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	log.Fatalln(err)
-	// }
-
-	//Convert the body to type string
-	//log.Printf("Body:", string(body))
 
 	var c credentials.Credentials
 
 	err = json.NewDecoder(resp.Body).Decode(&c)
 	if err != nil {
-		log.Printf("Get failed %v\n", err)
+		log.Printf("Invalid response: %v\n", err)
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
 
-	log.Printf("Success credentials: %+v\n", c)
+	secret := c.Secret
+	c.Secret = "[REDACTED]"
+	log.Printf("Success credentials: %+v", c)
 
-	return c.Username, c.Secret, nil
-	//	return "", "", credentials.NewErrCredentialsNotFound()
+	return c.Username, secret, nil
 }
 
 func (h *portainerHelper) List() (map[string]string, error) {

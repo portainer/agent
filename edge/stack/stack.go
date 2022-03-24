@@ -291,6 +291,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
 	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: removing stack]", stack.ID)
+
 	err := manager.deployer.Remove(ctx, stackName, []string{stackFileLocation})
 	if err != nil {
 		log.Printf("[ERROR] [edge,stack] [message: unable to remove stack] [error: %s]", err)
