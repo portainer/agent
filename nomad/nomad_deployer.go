@@ -3,6 +3,7 @@ package nomad
 import (
 	"context"
 	"io/ioutil"
+	"strings"
 	"time"
 
 	nomadapi "github.com/hashicorp/nomad/api"
@@ -88,7 +89,9 @@ func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string) 
 		return errors.Wrap(err, "failed to read Nomad job file")
 	}
 	job, err := d.client.Jobs().ParseHCL(string(jobFile), true)
-
+	if err != nil {
+		return errors.Wrap(err, "failed to parse Nomad job from file")
+	}
 	// Force the region to be that of the job.
 	if r := job.Region; r != nil {
 		d.client.SetRegion(*r)
@@ -99,15 +102,20 @@ func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string) 
 		d.client.SetNamespace(*n)
 	}
 
-	// verify if the job ID is correct, i.e., no error when trying to retrieve job info with the job ID
+	// Verify if the job ID is correct, i.e., no error when trying to retrieve job info with the job ID
 	_, _, err = d.client.Jobs().Info(*job.ID, nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to retrieve nomad job info")
+		// Ignore the non-exist job
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "404") {
+			return nil
+		}
+		return errors.Wrap(err, "failed to retrieve Nomad job info")
 	}
 
 	_, _, err = d.client.Jobs().DeregisterOpts(*job.ID, &nomadapi.DeregisterOptions{Purge: true}, nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to purge nomad job")
+		return errors.Wrap(err, "failed to purge Nomad job")
 	}
 	return nil
 }
