@@ -50,7 +50,7 @@ func (h *portainerHelper) Get(serverURL string) (string, string, error) {
 
 	secret := c.Secret
 	c.Secret = "[REDACTED]"
-	log.Printf("Success credentials: %+v", c)
+	log.Printf("Lookup Succeeded. Credentials: %+v", c)
 
 	return c.Username, secret, nil
 }
