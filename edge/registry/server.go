@@ -41,13 +41,14 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 
 	serverUrl, _ := request.RetrieveQueryParameter(r, "serverurl", false)
 
+	log.Printf("[INFO] [message: Credentials lookup %s]", serverUrl)
+
 	credentials := stackManager.GetEdgeRegistryCredentials()
 	if len(credentials) > 0 {
 		var key string
 		if strings.HasPrefix(serverUrl, "http") {
 			u, err := url.Parse(serverUrl)
 			if err != nil {
-				response.Empty(rw)
 				return &httperror.HandlerError{http.StatusBadRequest, "Invalid server URL", err}
 			}
 
@@ -60,12 +61,9 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 			key = serverUrl
 		}
 
-		log.Printf("[INFO] [message: Looking up credentials for using serverUrl '%s' and key '%s']", serverUrl, key)
-
 		for _, c := range credentials {
 			if key == c.ServerURL {
-				response.JSON(rw, c)
-				return nil
+				return response.JSON(rw, c)
 			}
 		}
 	}
@@ -96,7 +94,7 @@ func LookupCredentials(credentials []agent.RegistryCredentials, serverUrl string
 }
 
 func StartRegistryServer(edgeManager *edge.Manager) (err error) {
-	log.Println("[INFO] [main] [message: Starting registry server]")
+	log.Println("[INFO] [edge] [message: Starting registry server]")
 	h := NewEdgeRegistryHandler(edgeManager)
 
 	server := &http.Server{
