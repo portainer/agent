@@ -94,7 +94,7 @@ func LookupCredentials(credentials []agent.RegistryCredentials, serverUrl string
 }
 
 func StartRegistryServer(edgeManager *edge.Manager) (err error) {
-	log.Println("[INFO] [edge] [message: Starting registry server]")
+	log.Println("[INFO] [edge] [message: Starting registry credential server]")
 	h := NewEdgeRegistryHandler(edgeManager)
 
 	server := &http.Server{
