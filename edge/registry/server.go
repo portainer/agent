@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,29 +14,29 @@ import (
 	"github.com/portainer/agent/edge"
 	"github.com/portainer/libhttp/request"
 	"github.com/portainer/libhttp/response"
+
+	httperror "github.com/portainer/libhttp/error"
 )
 
-type EdgeRegistryHandler struct {
+type Handler struct {
 	*mux.Router
 	EdgeManager *edge.Manager
 }
 
-func NewEdgeRegistryHandler(edgeManager *edge.Manager) *EdgeRegistryHandler {
-	h := &EdgeRegistryHandler{
+func NewEdgeRegistryHandler(edgeManager *edge.Manager) *Handler {
+	h := &Handler{
 		Router:      mux.NewRouter(),
 		EdgeManager: edgeManager,
 	}
 
-	h.HandleFunc("/lookup", h.LookupHandler).Methods(http.MethodGet)
-	http.Handle("/", h)
-
+	h.Handle("/lookup", httperror.LoggerHandler(h.LookupHandler)).Methods(http.MethodGet)
 	return h
 }
 
-func (handler *EdgeRegistryHandler) LookupHandler(rw http.ResponseWriter, r *http.Request) {
+func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	stackManager := handler.EdgeManager.GetStackManager()
 	if stackManager == nil {
-		return
+		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve stack manager", errors.New("Stack manager is not available")}
 	}
 
 	serverUrl, _ := request.RetrieveQueryParameter(r, "serverurl", false)
@@ -47,7 +48,7 @@ func (handler *EdgeRegistryHandler) LookupHandler(rw http.ResponseWriter, r *htt
 			u, err := url.Parse(serverUrl)
 			if err != nil {
 				response.Empty(rw)
-				return
+				return &httperror.HandlerError{http.StatusBadRequest, "Invalid server URL", err}
 			}
 
 			if strings.HasSuffix(u.Hostname(), "docker.io") {
@@ -64,12 +65,12 @@ func (handler *EdgeRegistryHandler) LookupHandler(rw http.ResponseWriter, r *htt
 		for _, c := range credentials {
 			if key == c.ServerURL {
 				response.JSON(rw, c)
-				return
+				return nil
 			}
 		}
 	}
 
-	response.Empty(rw)
+	return response.Empty(rw)
 }
 
 func LookupCredentials(credentials []agent.RegistryCredentials, serverUrl string) (*agent.RegistryCredentials, error) {

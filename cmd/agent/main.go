@@ -233,7 +233,6 @@ func main() {
 		config.Addr = advertiseAddr
 	}
 
-	fmt.Println("OK")
 	err = registry.StartRegistryServer(edgeManager)
 	if err != nil {
 		log.Fatalf("[ERROR] [main] [message: Unable to start registry server] [error: %s]", err)
