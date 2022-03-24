@@ -361,9 +361,11 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 }
 
 func (manager *StackManager) GetEdgeRegistryCredentials() []agent.RegistryCredentials {
-	stackid := manager.currentStack
-	if stackid != 0 {
-		return manager.stacks[stackid].RegistryCredentials
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	if stack, ok := manager.stacks[manager.currentStack]; ok {
+		return stack.RegistryCredentials
 	}
 
 	return nil
