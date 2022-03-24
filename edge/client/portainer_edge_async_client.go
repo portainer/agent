@@ -58,7 +58,7 @@ type snapshot struct {
 	Docker      *portainer.DockerSnapshot
 	Kubernetes  *portainer.KubernetesSnapshot
 	StackStatus map[portainer.EdgeStackID]portainer.EdgeStackStatus
-	// TODO: add job logs payload
+	JobsStatus  map[portainer.EdgeJobID]portainer.EdgeJobLogsStatus // TODO mrydel why jobs and not EdgeJobStatus ?
 }
 
 type JSONPatch struct {
@@ -90,6 +90,14 @@ type EdgeStackData struct {
 	Version          int
 	StackFileContent string
 	Name             string
+}
+
+type EdgeJobData struct {
+	ID                portainer.EdgeJobID
+	CollectLogs       bool
+	CronExpression    string
+	ScriptFileContent string
+	Version           int
 }
 
 func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
@@ -202,6 +210,14 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID, edgeStackSta
 // SendJobLogFile sends the jobID log to the Portainer server
 func (client *PortainerAsyncClient) SendJobLogFile(jobID int, fileContent []byte) error {
 	// TODO: This should go into the next snapshot payload
+	client.nextSnapshotMutex.Lock()
+	defer client.nextSnapshotMutex.Unlock()
+
+	if client.nextSnapshotRequest.Snapshot.JobsStatus == nil {
+		client.nextSnapshotRequest.Snapshot.JobsStatus = make(map[portainer.EdgeJobID]portainer.EdgeJobLogsStatus)
+	}
+	client.nextSnapshotRequest.Snapshot.JobsStatus[portainer.EdgeJobID(jobID)] = -1 // TODO mrydel send full struct here?
+
 	return nil
 }
 

@@ -15,3 +15,6 @@ func NewCronManager() *CronManager {
 func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 	return nil
 }
+
+// TODO mrydel: AddSchedule (empty)
+// TODO mrydel: RemoveSchedule (empty)

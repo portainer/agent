@@ -128,3 +128,6 @@ func (manager *CronManager) flushEntries(schedules []agent.Schedule) error {
 
 	return nil
 }
+
+// TODO mrydel: AddSchedule
+// TODO mrydel: RemoveSchedule

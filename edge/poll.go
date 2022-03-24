@@ -293,8 +293,6 @@ func (service *PollService) processStacks(pollResponseStacks []client.StackStatu
 }
 
 func (service *PollService) processAsyncCommands(commands []client.AsyncCommand) error {
-	fmt.Println(commands)
-
 	ctx := context.TODO()
 
 	for _, command := range commands {
@@ -307,7 +305,7 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 			service.portainerClient.SetLastCommandTimestamp(command.Timestamp)
 			break
 		case "edgeJob":
-			err := service.parseScheduleCommand(ctx, command)
+			err := service.processScheduleCommand(command)
 			if err != nil {
 				return err
 			}
@@ -354,8 +352,8 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 	return fmt.Errorf("operation %v not supported", command.Operation)
 }
 
-func (service *PollService) parseScheduleCommand(ctx context.Context, command client.AsyncCommand) error {
-	var jobData agent.Schedule
+func (service *PollService) processScheduleCommand(command client.AsyncCommand) error {
+	var jobData client.EdgeJobData
 	err := mapstructure.Decode(command.Value, &jobData)
 	if err != nil {
 		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeStackData", command.Value)
@@ -363,11 +361,29 @@ func (service *PollService) parseScheduleCommand(ctx context.Context, command cl
 	}
 
 	if command.Operation == "add" || command.Operation == "replace" {
-		// TODO add or replace EdgeJob
+		responseStatus := int(stack.EdgeStackStatusOk) // TODO mrydel same status for edge jobs?
+		errorMessage := ""
+
+		err = service.scheduleManager.AddSchedule(jobData)
+		if err != nil {
+			responseStatus = int(stack.EdgeStackStatusError) // TODO mrydel same status for edge jobs?
+			errorMessage = err.Error()
+		}
+
+		return nil // TODO implement service.portainerClient.SetEdgeJobStatus(something)
 	}
 
 	if command.Operation == "remove" {
-		// TODO remove EdgeJob
+		responseStatus := int(stack.EdgeStackStatusRemove) // TODO mrydel same status for edge jobs?
+		errorMessage := ""
+
+		err = service.scheduleManager.RemoveSchedule(jobData)
+		if err != nil {
+			responseStatus = int(stack.EdgeStackStatusError) // TODO mrydel same status for edge jobs?
+			errorMessage = err.Error()
+		}
+
+		return nil // TODO implement service.portainerClient.SetEdgeJobStatus(something)
 	}
 
 	return fmt.Errorf("operation %v not supported", command.Operation)
