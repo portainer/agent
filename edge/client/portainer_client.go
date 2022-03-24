@@ -78,7 +78,6 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeS
 		return nil, err
 	}
 
-	log.Printf("data.RegistryCredentials: %+v", data.RegistryCredentials)
 	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent, RegistryCredentials: data.RegistryCredentials}, nil
 }
 

@@ -213,13 +213,15 @@ func (manager *StackManager) Start() error {
 				manager.mu.Lock()
 				stackName := fmt.Sprintf("edge_%s", stack.Name)
 				stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
-				manager.mu.Unlock()
 
 				if stack.Action == actionDeploy || stack.Action == actionUpdate {
 					manager.deployStack(ctx, stack, stackName, stackFileLocation)
 				} else if stack.Action == actionDelete {
 					manager.deleteStack(ctx, stack, stackName, stackFileLocation)
 				}
+
+				// keep the stack locked until it's deployed (to ensure registy credentials match the stack we're deploying)
+				manager.mu.Unlock()
 			}
 		}
 	})()

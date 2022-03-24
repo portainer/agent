@@ -42,8 +42,6 @@ func (handler *EdgeRegistryHandler) LookupHandler(rw http.ResponseWriter, r *htt
 
 	credentials := stackManager.GetEdgeRegistryCredentials()
 	if len(credentials) > 0 {
-		log.Printf("ServerURL=%s", serverUrl)
-
 		var key string
 		if strings.HasPrefix(serverUrl, "http") {
 			u, err := url.Parse(serverUrl)
@@ -61,9 +59,8 @@ func (handler *EdgeRegistryHandler) LookupHandler(rw http.ResponseWriter, r *htt
 			key = serverUrl
 		}
 
-		log.Printf("[INFO] [main] [message: Looking up credentials for %s]\n", key)
+		log.Printf("[INFO] [message: Looking up credentials for using serverUrl '%s' and key '%s']", serverUrl, key)
 
-		log.Printf("[DEBUG] Credentials: %+v", credentials)
 		for _, c := range credentials {
 			if key == c.ServerURL {
 				response.JSON(rw, c)
