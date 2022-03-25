@@ -14,11 +14,12 @@ require (
 	github.com/jpillora/chisel v1.7.7
 	github.com/koding/websocketproxy v0.0.0-20181220232114-7ed82d81a28c
 	github.com/pkg/errors v0.9.1
-	github.com/portainer/docker-compose-wrapper v0.0.0-20210906052132-ef24824f7548
+	github.com/portainer/docker-compose-wrapper v0.0.0-20220325051310-6c2d0a338547
 	github.com/portainer/libcrypto v0.0.0-20190723020511-2cfe5519d14f
 	github.com/portainer/libhttp v0.0.0-20190806161840-cde6e97fcd52
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	k8s.io/api v0.20.6
+	k8s.io/apimachinery v0.20.6
 	k8s.io/client-go v0.20.6
 )
 
@@ -86,7 +87,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	howett.net/plist v1.0.0 // indirect
-	k8s.io/apimachinery v0.20.6 // indirect
 	k8s.io/klog/v2 v2.4.0 // indirect
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.3 // indirect

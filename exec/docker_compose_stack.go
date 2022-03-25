@@ -31,7 +31,7 @@ func NewDockerComposeStackService(binaryPath string) (*DockerComposeStackService
 
 // Deploy executes the docker stack deploy command.
 func (service *DockerComposeStackService) Deploy(ctx context.Context, name string, filePaths []string, prune bool) error {
-	return service.deployer.Deploy(ctx, "", "", name, filePaths, "")
+	return service.deployer.Deploy(ctx, "", "", name, filePaths, "", true)
 }
 
 // Remove executes the docker stack rm command.
