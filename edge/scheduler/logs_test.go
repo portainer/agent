@@ -11,7 +11,7 @@ import (
 func TestDataRace(t *testing.T) {
 	cli := client.NewPortainerClient(
 		"portainerURL",
-		"endpointID",
+		1,
 		"edgeID",
 		false,
 		agent.PlatformDocker,

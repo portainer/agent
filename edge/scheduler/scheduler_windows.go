@@ -16,5 +16,10 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 	return nil
 }
 
-// TODO mrydel: AddSchedule (empty)
-// TODO mrydel: RemoveSchedule (empty)
+func (manager *CronManager) AddSchedule(schedule agent.Schedule) error {
+	return nil
+}
+
+func (manager *CronManager) RemoveSchedule(schedule agent.Schedule) error {
+	return nil
+}

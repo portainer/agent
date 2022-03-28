@@ -50,7 +50,11 @@ func (manager *LogsManager) loop() {
 				}
 			}
 
-			err = manager.portainerClient.SendJobLogFile(jobID, file)
+			edgeJobStatus := agent.EdgeJobStatus{
+				JobID:       jobID,
+				FileContent: string(file),
+			}
+			err = manager.portainerClient.SetEdgeJobStatus(edgeJobStatus)
 			if err != nil {
 				log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed sending log file to portainer]", err)
 				continue

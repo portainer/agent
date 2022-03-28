@@ -129,5 +129,12 @@ func (manager *CronManager) flushEntries(schedules []agent.Schedule) error {
 	return nil
 }
 
-// TODO mrydel: AddSchedule
-// TODO mrydel: RemoveSchedule
+func (manager *CronManager) AddSchedule(schedule agent.Schedule) error {
+	// TODO mrydel
+	return nil
+}
+
+func (manager *CronManager) RemoveSchedule(schedule agent.Schedule) error {
+	// TODO mrydel
+	return nil
+}

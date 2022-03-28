@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/mitchellh/mapstructure"
+	portainer "github.com/portainer/portainer/api"
 	"log"
 	"strconv"
 	"time"
@@ -360,30 +361,44 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 		return err
 	}
 
-	if command.Operation == "add" || command.Operation == "replace" {
-		responseStatus := int(stack.EdgeStackStatusOk) // TODO mrydel same status for edge jobs?
-		errorMessage := ""
+	schedule := agent.Schedule{
+		ID:             int(jobData.ID),
+		CronExpression: jobData.CronExpression,
+		Script:         jobData.ScriptFileContent,
+		Version:        jobData.Version,
+		CollectLogs:    jobData.CollectLogs,
+	}
 
-		err = service.scheduleManager.AddSchedule(jobData)
+	if command.Operation == "add" || command.Operation == "replace" {
+		errorMessage := ""
+		err = service.scheduleManager.AddSchedule(schedule)
 		if err != nil {
-			responseStatus = int(stack.EdgeStackStatusError) // TODO mrydel same status for edge jobs?
 			errorMessage = err.Error()
 		}
 
-		return nil // TODO implement service.portainerClient.SetEdgeJobStatus(something)
+		edgeJobStatus := agent.EdgeJobStatus{
+			JobID:      int(jobData.ID),
+			Status:     portainer.EdgeJobLogsStatusPending,
+			Error:      errorMessage,
+			EndpointID: command.EndpointID,
+		}
+		return service.portainerClient.SetEdgeJobStatus(edgeJobStatus)
 	}
 
 	if command.Operation == "remove" {
-		responseStatus := int(stack.EdgeStackStatusRemove) // TODO mrydel same status for edge jobs?
 		errorMessage := ""
-
-		err = service.scheduleManager.RemoveSchedule(jobData)
+		err = service.scheduleManager.RemoveSchedule(schedule)
 		if err != nil {
-			responseStatus = int(stack.EdgeStackStatusError) // TODO mrydel same status for edge jobs?
 			errorMessage = err.Error()
 		}
 
-		return nil // TODO implement service.portainerClient.SetEdgeJobStatus(something)
+		edgeJobStatus := agent.EdgeJobStatus{
+			JobID:      int(jobData.ID),
+			Status:     portainer.EdgeJobLogsStatusIdle,
+			Error:      errorMessage,
+			EndpointID: command.EndpointID,
+		}
+		return service.portainerClient.SetEdgeJobStatus(edgeJobStatus)
 	}
 
 	return fmt.Errorf("operation %v not supported", command.Operation)
