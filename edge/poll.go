@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/mitchellh/mapstructure"
-	portainer "github.com/portainer/portainer/api"
 	"log"
 	"strconv"
 	"time"
@@ -19,7 +18,6 @@ import (
 )
 
 const (
-	clientDefaultPollTimeout    = 5
 	tunnelActivityCheckInterval = 30 * time.Second
 )
 
@@ -44,7 +42,6 @@ type PollService struct {
 	endpointID               string
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
-	logsManager              *scheduler.LogsManager
 }
 
 type pollServiceConfig struct {
@@ -83,7 +80,7 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		pollIntervalInSeconds:    pollFrequency.Seconds(),
 		pollTicker:               time.NewTicker(pollFrequency),
 		inactivityTimeout:        inactivityTimeout,
-		scheduleManager:          scheduler.NewCronManager(),
+		scheduleManager:          scheduler.NewCronManager(logsManager),
 		updateLastActivitySignal: make(chan struct{}),
 		startSignal:              make(chan struct{}),
 		stopSignal:               make(chan struct{}),
@@ -92,7 +89,6 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		endpointID:               config.EndpointID,
 		tunnelServerAddr:         config.TunnelServerAddr,
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
-		logsManager:              logsManager,
 		portainerClient:          portainerClient,
 	}
 
@@ -176,8 +172,14 @@ func (service *PollService) poll() error {
 		return err
 	}
 
-	if len(environmentStatus.AsyncCommands) > 0 {
-		return service.processAsyncCommands(environmentStatus.AsyncCommands)
+	if environmentStatus.Status == "NOTUNNEL" {
+		err = service.processAsyncCommands(environmentStatus.AsyncCommands)
+		if err != nil {
+			return err
+		}
+
+		service.scheduleManager.ProcessScheduleLogsCollection()
+		return nil
 	}
 
 	log.Printf("[DEBUG] [edge] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", environmentStatus.Status, environmentStatus.Port, len(environmentStatus.Schedules), environmentStatus.CheckinInterval)
@@ -265,14 +267,15 @@ func (service *PollService) processSchedules(schedules []agent.Schedule) {
 		log.Printf("[ERROR] [edge] [message: an error occurred during schedule management] [err: %s]", err)
 	}
 
-	logsToCollect := []int{}
+	//TODO mrydel
+	/*logsToCollect := []int{}
 	for _, schedule := range schedules {
 		if schedule.CollectLogs {
 			logsToCollect = append(logsToCollect, schedule.ID)
 		}
 	}
 
-	service.logsManager.HandleReceivedLogsRequests(logsToCollect)
+	service.logsManager.HandleReceivedLogsRequests(logsToCollect)*/
 }
 
 func (service *PollService) processStacks(pollResponseStacks []client.StackStatus) error {
@@ -303,7 +306,6 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 			if err != nil {
 				return err
 			}
-			service.portainerClient.SetLastCommandTimestamp(command.Timestamp)
 			break
 		case "edgeJob":
 			err := service.processScheduleCommand(command)
@@ -311,7 +313,10 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 				return err
 			}
 			break
+		default:
+			return fmt.Errorf("command type %v not supported", command.Type)
 		}
+		service.portainerClient.SetLastCommandTimestamp(command.Timestamp)
 	}
 	return nil
 }
@@ -370,35 +375,42 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 	}
 
 	if command.Operation == "add" || command.Operation == "replace" {
-		errorMessage := ""
+		err = service.scheduleManager.AddSchedule(schedule)
+		if err != nil {
+			log.Printf("[ERROR] [edge] [message: error adding schedule] [error: %s]", err)
+		}
+		return nil
+		/*errorMessage := ""
 		err = service.scheduleManager.AddSchedule(schedule)
 		if err != nil {
 			errorMessage = err.Error()
 		}
 
 		edgeJobStatus := agent.EdgeJobStatus{
-			JobID:      int(jobData.ID),
-			Status:     portainer.EdgeJobLogsStatusPending,
-			Error:      errorMessage,
-			EndpointID: command.EndpointID,
+			JobID:          int(jobData.ID),
+			LogFileContent: errorMessage,
 		}
-		return service.portainerClient.SetEdgeJobStatus(edgeJobStatus)
+		return service.portainerClient.SetEdgeJobStatus(edgeJobStatus)*/
 	}
 
 	if command.Operation == "remove" {
-		errorMessage := ""
+		err = service.scheduleManager.RemoveSchedule(schedule)
+		if err != nil {
+			log.Printf("[ERROR] [edge] [message: error removing schedule] [error: %s]", err)
+		}
+		return nil
+		/*errorMessage := "" TODO mrydel test
 		err = service.scheduleManager.RemoveSchedule(schedule)
 		if err != nil {
 			errorMessage = err.Error()
 		}
 
 		edgeJobStatus := agent.EdgeJobStatus{
-			JobID:      int(jobData.ID),
-			Status:     portainer.EdgeJobLogsStatusIdle,
-			Error:      errorMessage,
-			EndpointID: command.EndpointID,
+			JobID:          int(jobData.ID),
+
+			LogFileContent: errorMessage,
 		}
-		return service.portainerClient.SetEdgeJobStatus(edgeJobStatus)
+		return service.portainerClient.SetEdgeJobStatus(edgeJobStatus)*/
 	}
 
 	return fmt.Errorf("operation %v not supported", command.Operation)

@@ -8,7 +8,7 @@ import "github.com/portainer/agent"
 type CronManager struct {
 }
 
-func NewCronManager() *CronManager {
+func NewCronManager(logsManager *LogsManager) *CronManager {
 	return &CronManager{}
 }
 
@@ -21,5 +21,9 @@ func (manager *CronManager) AddSchedule(schedule agent.Schedule) error {
 }
 
 func (manager *CronManager) RemoveSchedule(schedule agent.Schedule) error {
+	return nil
+}
+
+func (manager *CronManager) ProcessScheduleLogsCollection() {
 	return nil
 }

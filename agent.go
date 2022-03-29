@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	portainer "github.com/portainer/portainer/api"
 	"time"
 )
 
@@ -38,13 +37,10 @@ type (
 		FileContent string
 	}
 
-	// EdgeJobStatus represent an Edge job status
+	// EdgeJobStatus represents an Edge job status
 	EdgeJobStatus struct {
-		JobID       int                         `json:"JobID"`
-		FileContent string                      `json:"FileContent"`
-		Status      portainer.EdgeJobLogsStatus `json:"Status"`
-		Error       string                      `json:"Error"`
-		EndpointID  portainer.EndpointID        `json:"EndpointID"`
+		JobID          int    `json:"JobID"`
+		LogFileContent string `json:"LogFileContent"`
 	}
 
 	// HostInfo is the representation of the collection of host information
@@ -183,6 +179,7 @@ type (
 		Schedule(schedules []Schedule) error
 		AddSchedule(schedule Schedule) error
 		RemoveSchedule(schedule Schedule) error
+		ProcessScheduleLogsCollection()
 	}
 
 	// SystemService is used to get info about the host

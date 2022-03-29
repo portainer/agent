@@ -96,6 +96,7 @@ type EdgeStackData struct {
 type EdgeJobData struct {
 	ID                portainer.EdgeJobID
 	CollectLogs       bool
+	LogsStatus        portainer.EdgeJobLogsStatus
 	CronExpression    string
 	ScriptFileContent string
 	Version           int
@@ -111,9 +112,15 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
+
 	if client.nextSnapshotRequest.Snapshot.StackStatus != nil {
 		payload.Snapshot.StackStatus = client.nextSnapshotRequest.Snapshot.StackStatus
 		client.nextSnapshotRequest.Snapshot.StackStatus = nil
+	}
+
+	if client.nextSnapshotRequest.Snapshot.JobsStatus != nil {
+		payload.Snapshot.JobsStatus = client.nextSnapshotRequest.Snapshot.JobsStatus
+		client.nextSnapshotRequest.Snapshot.JobsStatus = nil
 	}
 
 	/*
@@ -143,6 +150,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 
 	response := &PollStatusResponse{
 		AsyncCommands: asyncResponse.Commands,
+		Status:        "NOTUNNEL",
 	}
 
 	client.lastAsyncResponse = *asyncResponse

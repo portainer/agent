@@ -51,8 +51,8 @@ func (manager *LogsManager) loop() {
 			}
 
 			edgeJobStatus := agent.EdgeJobStatus{
-				JobID:       jobID,
-				FileContent: string(file),
+				JobID:          jobID,
+				LogFileContent: string(file),
 			}
 			err = manager.portainerClient.SetEdgeJobStatus(edgeJobStatus)
 			if err != nil {

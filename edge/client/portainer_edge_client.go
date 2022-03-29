@@ -150,7 +150,7 @@ type logFilePayload struct {
 // SetEdgeJobStatus sends the jobID log to the Portainer server
 func (client *PortainerEdgeClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error {
 	payload := logFilePayload{
-		FileContent: edgeJobStatus.FileContent,
+		FileContent: edgeJobStatus.LogFileContent,
 	}
 
 	data, err := json.Marshal(payload)
