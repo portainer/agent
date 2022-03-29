@@ -3,8 +3,7 @@ package nomad
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"os"
+	"log"
 	"path/filepath"
 	"strings"
 	"time"
@@ -39,17 +38,23 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 	bakFileFolder := filepath.Dir(filePaths[0])
 	backFilePath := filepath.Join(bakFileFolder, bakFileName)
 
-	newJobFile, err := ioutil.ReadFile(filePaths[0])
+	newJobFile, err := filesystem.ReadFromFile(filePaths[0])
 	if err != nil {
 		return errors.Wrap(err, "failed to parse Nomad job file")
 	}
+
+	defer filesystem.RemoveFile(backFilePath)
+	defer filesystem.WriteFile(bakFileFolder, bakFileName, newJobFile, 0640)
+
 	newJob, err := d.client.Jobs().ParseHCL(string(newJobFile), true)
+
+	log.Println(backFilePath)
 
 	// An existing backup file means it is an update action
 	// Need to check if the new coming job file has different region, namespace or id settings
 	// If yes, delete the former job
-	if _, err := os.Stat(backFilePath); err == nil {
-		oldJobFile, err := ioutil.ReadFile(backFilePath)
+	if backupFileExists, _ := filesystem.FileExists(backFilePath); backupFileExists {
+		oldJobFile, err := filesystem.ReadFromFile(backFilePath)
 		if err != nil {
 			return errors.Wrap(err, "failed to read Nomad job file")
 		}
@@ -57,6 +62,8 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 		if err != nil {
 			return errors.Wrap(err, "failed to parse backup Nomad job file")
 		}
+
+		log.Printf("old namespace: %s, region: %s, id: %s", *oldJob.Namespace, *oldJob.Region, *oldJob.ID)
 		if *newJob.Region != *oldJob.Region ||
 			*newJob.Namespace != *oldJob.Namespace ||
 			*newJob.ID != *oldJob.ID {
@@ -65,11 +72,7 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 				return errors.Wrap(err, "failed to purge former Nomad job")
 			}
 		}
-
-		// Remove the file for creating new backup file after deployment succeeded
-		os.Remove(backFilePath)
 	}
-
 	// Check if the job is periodic or is a parameterized job
 	periodic := newJob.IsPeriodic()
 	paramjob := newJob.IsParameterized()
@@ -100,11 +103,6 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 		}
 	}
 
-	err = filesystem.WriteFile(bakFileFolder, bakFileName, newJobFile, 0755)
-	if err != nil {
-		return errors.Wrap(err, "failed to create backup Nomad job file")
-	}
-
 	return nil
 }
 
@@ -113,7 +111,7 @@ func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string) 
 	if len(filePaths) == 0 {
 		return errors.New("missing Nomad job file paths")
 	}
-	jobFile, err := ioutil.ReadFile(filePaths[0])
+	jobFile, err := filesystem.ReadFromFile(filePaths[0])
 	if err != nil {
 		return errors.Wrap(err, "failed to read Nomad job file")
 	}
@@ -126,10 +124,10 @@ func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string) 
 }
 
 func (d *Deployer) verifyAndPurgeJob(job *nomadapi.Job) error {
-	// Verify if the job ID is correct, i.e., no error when trying to retrieve job info with the job ID
-	_, _, err := d.client.Jobs().Info(*job.ID, nil)
+	// Verify if the job valid, i.e., no error when trying to retrieve job info with the provided job ID
+	_, _, err := d.client.Jobs().Info(*job.ID, &nomadapi.QueryOptions{Region: *job.Region, Namespace: *job.Namespace})
 	if err != nil {
-		// Ignore the non-exist job
+		// Ignore non-exist job
 		errMsg := strings.ToLower(err.Error())
 		if strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "404") {
 			return nil
