@@ -43,9 +43,6 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 		return errors.Wrap(err, "failed to parse Nomad job file")
 	}
 
-	defer filesystem.RemoveFile(backFilePath)
-	defer filesystem.WriteFile(bakFileFolder, bakFileName, newJobFile, 0640)
-
 	newJob, err := d.client.Jobs().ParseHCL(string(newJobFile), true)
 
 	log.Println(backFilePath)
@@ -72,6 +69,7 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 				return errors.Wrap(err, "failed to purge former Nomad job")
 			}
 		}
+		filesystem.RemoveFile(backFilePath)
 	}
 	// Check if the job is periodic or is a parameterized job
 	periodic := newJob.IsPeriodic()
@@ -102,6 +100,8 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 			}
 		}
 	}
+
+	filesystem.WriteFile(bakFileFolder, bakFileName, newJobFile, 0640)
 
 	return nil
 }
