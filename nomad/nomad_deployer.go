@@ -57,9 +57,9 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 			return errors.Wrap(err, "failed to parse backup Nomad job file")
 		}
 
-		if *newJob.Region != *oldJob.Region ||
-			*newJob.Namespace != *oldJob.Namespace ||
-			*newJob.ID != *oldJob.ID {
+		// If new job has critical config changes
+		// Purge the old job before register the new one
+		if diff := compareJobs(newJob, oldJob); diff {
 			err = d.verifyAndPurgeJob(oldJob)
 			if err != nil {
 				return errors.Wrap(err, "failed to purge former Nomad job")
@@ -136,4 +136,33 @@ func (d *Deployer) verifyAndPurgeJob(job *nomadapi.Job) error {
 		return errors.Wrap(err, "failed to purge Nomad job")
 	}
 	return nil
+}
+
+// Check if new planning job have crucial differences
+func compareJobs(old, new *nomadapi.Job) bool {
+	// Check region, namespace and job ID
+	if *new.Region != *old.Region ||
+		*new.Namespace != *old.Namespace ||
+		*new.ID != *old.ID {
+		return true
+	}
+
+	// Check datacenters
+	if len(new.Datacenters) != len(old.Datacenters) {
+		return true
+	}
+
+	dcMap := make(map[string]bool)
+
+	for _, dc := range new.Datacenters {
+		dcMap[dc] = true
+	}
+
+	for _, dc := range old.Datacenters {
+		if !dcMap[dc] {
+			return true
+		}
+	}
+
+	return false
 }
