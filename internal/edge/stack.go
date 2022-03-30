@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -290,7 +292,8 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		return
 	}
 
-	err = filesystem.RemoveFile(stackFileLocation)
+	// Remove stack file folder
+	err = os.RemoveAll(filepath.Dir(stackFileLocation))
 	if err != nil {
 		log.Printf("[ERROR] [internal,edge,stack] [message: unable to delete Edge stack file] [error: %s]", err)
 		return

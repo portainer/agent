@@ -3,7 +3,6 @@ package nomad
 import (
 	"context"
 	"fmt"
-	"log"
 	"path/filepath"
 	"strings"
 	"time"
@@ -45,8 +44,6 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 
 	newJob, err := d.client.Jobs().ParseHCL(string(newJobFile), true)
 
-	log.Println(backFilePath)
-
 	// An existing backup file means it is an update action
 	// Need to check if the new coming job file has different region, namespace or id settings
 	// If yes, delete the former job
@@ -60,7 +57,6 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 			return errors.Wrap(err, "failed to parse backup Nomad job file")
 		}
 
-		log.Printf("old namespace: %s, region: %s, id: %s", *oldJob.Namespace, *oldJob.Region, *oldJob.ID)
 		if *newJob.Region != *oldJob.Region ||
 			*newJob.Namespace != *oldJob.Namespace ||
 			*newJob.ID != *oldJob.ID {
