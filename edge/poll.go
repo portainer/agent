@@ -266,16 +266,6 @@ func (service *PollService) processSchedules(schedules []agent.Schedule) {
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: an error occurred during schedule management] [err: %s]", err)
 	}
-
-	//TODO mrydel
-	/*logsToCollect := []int{}
-	for _, schedule := range schedules {
-		if schedule.CollectLogs {
-			logsToCollect = append(logsToCollect, schedule.ID)
-		}
-	}
-
-	service.logsManager.HandleReceivedLogsRequests(logsToCollect)*/
 }
 
 func (service *PollService) processStacks(pollResponseStacks []client.StackStatus) error {
@@ -380,17 +370,6 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 			log.Printf("[ERROR] [edge] [message: error adding schedule] [error: %s]", err)
 		}
 		return nil
-		/*errorMessage := ""
-		err = service.scheduleManager.AddSchedule(schedule)
-		if err != nil {
-			errorMessage = err.Error()
-		}
-
-		edgeJobStatus := agent.EdgeJobStatus{
-			JobID:          int(jobData.ID),
-			LogFileContent: errorMessage,
-		}
-		return service.portainerClient.SetEdgeJobStatus(edgeJobStatus)*/
 	}
 
 	if command.Operation == "remove" {
@@ -399,18 +378,6 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 			log.Printf("[ERROR] [edge] [message: error removing schedule] [error: %s]", err)
 		}
 		return nil
-		/*errorMessage := "" TODO mrydel test
-		err = service.scheduleManager.RemoveSchedule(schedule)
-		if err != nil {
-			errorMessage = err.Error()
-		}
-
-		edgeJobStatus := agent.EdgeJobStatus{
-			JobID:          int(jobData.ID),
-
-			LogFileContent: errorMessage,
-		}
-		return service.portainerClient.SetEdgeJobStatus(edgeJobStatus)*/
 	}
 
 	return fmt.Errorf("operation %v not supported", command.Operation)
