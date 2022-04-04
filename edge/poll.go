@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
@@ -11,6 +12,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
 	"github.com/portainer/agent/edge/scheduler"
@@ -44,6 +49,9 @@ type PollService struct {
 	tunnelServerFingerprint string
 	logsManager             *scheduler.LogsManager
 	containerPlatform       agent.ContainerPlatform
+	// TODO: REVIEW
+	// This is a dirty hack for testing purposes - to prevent multiple update processes
+	autoUpdateTriggered bool
 }
 
 type pollServiceConfig struct {
@@ -95,6 +103,7 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		tunnelServerFingerprint: config.TunnelServerFingerprint,
 		logsManager:             logsManager,
 		containerPlatform:       config.ContainerPlatform,
+		autoUpdateTriggered:     false,
 	}
 
 	if config.TunnelCapability {
@@ -185,6 +194,7 @@ type pollStatusResponse struct {
 	CheckinInterval float64          `json:"checkin"`
 	Credentials     string           `json:"credentials"`
 	Stacks          []stackStatus    `json:"stacks"`
+	CheckForUpdate  bool             `json:"checkForUpdate"`
 }
 
 func (service *PollService) createHTTPClient(timeout float64) {
@@ -299,6 +309,95 @@ func (service *PollService) poll() error {
 			log.Printf("[ERROR] [edge] [message: an error occurred during stack management] [error: %s]", err)
 			return err
 		}
+	}
+
+	// TODO: REVIEW
+	// Check the comment for the description of autoUpdateTriggered
+	if responseData.CheckForUpdate && !service.autoUpdateTriggered {
+		// trigger the update process
+		service.autoUpdateTriggered = true
+
+		// TODO: REVIEW
+		// Context should be handled properly
+		ctx := context.TODO()
+
+		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock --net portainer-upgrader_portainer_agent_net deviantony/portainer-upgrader agent-update 2.12.2 portainer_agent
+
+		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+		if err != nil {
+			log.Printf("[ERROR] [edge] [message: unable to create Docker client] [error: %s]", err)
+			return err
+		}
+		defer cli.Close()
+
+		_, err = cli.ImagePull(ctx, "deviantony/portainer-upgrader:latest", types.ImagePullOptions{})
+		if err != nil {
+			log.Printf("[ERROR] [edge] [message: unable to pull upgrader Docker image] [error: %s]", err)
+			return err
+		}
+
+		// TODO: REVIEW
+		// Hardcoded target version
+		// Should be given by the Portainer instance
+		agentTargetVersion := "latest"
+
+		// TODO: REVIEW
+		// Hardcoded container name
+		// Agent needs to retrieve its own container name
+		portainerAgentContainerName := "portainer_agent"
+
+		// TODO: REVIEW
+		// Hardcoded agent network
+		// Agent needs to retrieve its own network name
+		portainerAgentNetworkName := "portainer_agent_net"
+
+		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+		//  --net portainer_agent_net \
+		//  deviantony/portainer-upgrader agent-update 2.12.2 portainer_agent
+		resp, err := cli.ContainerCreate(ctx, &container.Config{
+			Image: "deviantony/portainer-upgrader:latest",
+			Cmd:   []string{"agent-update", agentTargetVersion, portainerAgentContainerName},
+		}, &container.HostConfig{
+			Binds: []string{
+				// TODO: REVIEW
+				// Will only work on Linux filesystems
+				"/var/run/docker.sock:/var/run/docker.sock",
+			},
+		}, &network.NetworkingConfig{
+			EndpointsConfig: map[string]*network.EndpointSettings{
+				portainerAgentNetworkName: {},
+			},
+		}, nil, fmt.Sprintf("portainer-upgrader-%d", time.Now().Unix()))
+
+		if err != nil {
+			log.Printf("[ERROR] [edge] [message: unable to create upgrader container] [error: %s]", err)
+			return err
+		}
+
+		err = cli.NetworkConnect(ctx, resp.ID, portainerAgentNetworkName, &network.EndpointSettings{})
+		if err != nil {
+			log.Printf("[ERROR] [edge] [message: unable to connect upgrader container to agent network] [error: %s]", err)
+			return err
+		}
+
+		err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
+		if err != nil {
+			log.Printf("[ERROR] [edge] [message: unable to start upgrader container] [error: %s]", err)
+			return err
+		}
+
+		// TODO: REVIEW
+		// Container should be cleaned-up after the operation is completed
+		statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+		select {
+		case err := <-errCh:
+			if err != nil {
+				log.Printf("[ERROR] [edge] [message: an error occured while waiting for the upgrade of the agent through the upgrader container] [error: %s]", err)
+				return err
+			}
+		case <-statusCh:
+		}
+
 	}
 
 	return nil
