@@ -374,7 +374,7 @@ func (service *PollService) poll() error {
 			return err
 		}
 
-		err = cli.NetworkConnect(ctx, resp.ID, portainerAgentNetworkName, &network.EndpointSettings{})
+		err = cli.NetworkConnect(ctx, portainerAgentNetworkName, resp.ID, &network.EndpointSettings{})
 		if err != nil {
 			log.Printf("[ERROR] [edge] [message: unable to connect upgrader container to agent network] [error: %s]", err)
 			return err
