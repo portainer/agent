@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/portainer/agent"
@@ -23,6 +24,7 @@ type (
 		logsManager       *scheduler.LogsManager
 		pollService       *PollService
 		stackManager      *stack.StackManager
+		mu                sync.Mutex
 	}
 
 	// ManagerParameters represents an object used to create a Manager

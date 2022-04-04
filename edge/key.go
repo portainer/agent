@@ -27,6 +27,9 @@ func (manager *Manager) SetKey(key string) error {
 		return err
 	}
 
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	err = filesystem.WriteFile(manager.agentOptions.DataPath, agent.EdgeKeyFile, []byte(key), 0644)
 	if err != nil {
 		return err
@@ -45,17 +48,21 @@ func (manager *Manager) SetKey(key string) error {
 
 // GetKey returns the Edge key associated to the agent
 func (manager *Manager) GetKey() string {
-	var encodedKey string
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
 
-	if manager.key != nil {
-		encodedKey = encodeKey(manager.key)
+	if manager.key == nil {
+		return ""
 	}
 
-	return encodedKey
+	return encodeKey(manager.key)
 }
 
 // IsKeySet returns true if an Edge key is associated to the agent
 func (manager *Manager) IsKeySet() bool {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	return manager.key != nil
 }
 
