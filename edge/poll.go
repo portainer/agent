@@ -329,9 +329,9 @@ func (service *PollService) poll() error {
 		}
 		defer cli.Close()
 
-		_, err = cli.ImagePull(ctx, "deviantony/portainer-upgrader:latest", types.ImagePullOptions{})
+		_, err = cli.ImagePull(ctx, "deviantony/portainer-updater:latest", types.ImagePullOptions{})
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: unable to pull upgrader Docker image] [error: %s]", err)
+			log.Printf("[ERROR] [edge] [message: unable to pull portainer-updater Docker image] [error: %s]", err)
 			return err
 		}
 
@@ -340,7 +340,7 @@ func (service *PollService) poll() error {
 		// Should be retrieved during polling - set by the Portainer instance
 		agentTargetVersion := "latest"
 
-		// Agent needs to retrieve its own container name to be passed to the upgrader service container
+		// Agent needs to retrieve its own container name to be passed to the portainer-updater service container
 
 		// Unless overriden, the container hostname is matching the container ID
 		// See https://stackoverflow.com/a/38983893
@@ -369,10 +369,6 @@ func (service *PollService) poll() error {
 		// /docker/<container ID>
 		portainerAgentContainerID := strings.TrimPrefix(string(cpuSetFileContent), "/docker/")
 
-		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-		//  --net portainer_agent_net \
-		//  deviantony/portainer-upgrader agent-update 74c1474b11e5 2.12.2
-
 		// Create and run the portainer-updater service container
 		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock deviantony/portainer-updater agent-update portainer_agent 2.12.2
 
@@ -386,16 +382,16 @@ func (service *PollService) poll() error {
 				// For Windows, use a named pipe approach
 				"/var/run/docker.sock:/var/run/docker.sock",
 			},
-		}, nil, nil, fmt.Sprintf("portainer-upgrader-%d", time.Now().Unix()))
+		}, nil, nil, fmt.Sprintf("portainer-updater-%d", time.Now().Unix()))
 
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: unable to create upgrader container] [error: %s]", err)
+			log.Printf("[ERROR] [edge] [message: unable to create portainer-updater container] [error: %s]", err)
 			return err
 		}
 
 		err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: unable to start upgrader container] [error: %s]", err)
+			log.Printf("[ERROR] [edge] [message: unable to start portainer-updater container] [error: %s]", err)
 			return err
 		}
 
@@ -405,7 +401,7 @@ func (service *PollService) poll() error {
 		select {
 		case err := <-errCh:
 			if err != nil {
-				log.Printf("[ERROR] [edge] [message: an error occured while waiting for the upgrade of the agent through the upgrader container] [error: %s]", err)
+				log.Printf("[ERROR] [edge] [message: an error occured while waiting for the upgrade of the agent through the portainer-updater service container] [error: %s]", err)
 				return err
 			}
 		case <-statusCh:
