@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/portainer/agent"
@@ -23,6 +24,7 @@ type (
 		logsManager       *scheduler.LogsManager
 		pollService       *PollService
 		stackManager      *stack.StackManager
+		mu                sync.Mutex
 	}
 
 	// ManagerParameters represents an object used to create a Manager
@@ -70,16 +72,16 @@ func (manager *Manager) Start() error {
 
 	log.Printf("[DEBUG] [edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll, manager.agentOptions.EdgeTunnel)
 
-	stackManager, err := stack.NewStackManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, manager.agentOptions.AssetsPath, pollServiceConfig.InsecurePoll)
+	stackManager, err := stack.NewStackManager(manager.key.PortainerInstanceURL, manager.agentOptions.EdgeID, manager.agentOptions.AssetsPath, manager.GetEndpointID, pollServiceConfig.InsecurePoll)
 	if err != nil {
 		return err
 	}
 	manager.stackManager = stackManager
 
-	manager.logsManager = scheduler.NewLogsManager(manager.key.PortainerInstanceURL, manager.key.EndpointID, manager.agentOptions.EdgeID, pollServiceConfig.InsecurePoll)
+	manager.logsManager = scheduler.NewLogsManager(manager.key.PortainerInstanceURL, manager.agentOptions.EdgeID, manager.GetEndpointID, pollServiceConfig.InsecurePoll)
 	manager.logsManager.Start()
 
-	pollService, err := newPollService(manager.stackManager, manager.logsManager, pollServiceConfig)
+	pollService, err := newPollService(manager, manager.stackManager, manager.logsManager, pollServiceConfig)
 	if err != nil {
 		return err
 	}
@@ -91,6 +93,21 @@ func (manager *Manager) Start() error {
 // ResetActivityTimer resets the activity timer
 func (manager *Manager) ResetActivityTimer() {
 	manager.pollService.resetActivityTimer()
+}
+
+// SetEndpointID set the endpointID of the agent
+func (manager *Manager) SetEndpointID(endpointID string) {
+	manager.mu.Lock()
+	manager.key.EndpointID = endpointID
+	manager.mu.Unlock()
+}
+
+// GetEndpointID gets the endpointID of the agent
+func (manager *Manager) GetEndpointID() string {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	return manager.key.EndpointID
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency time.Duration) error {

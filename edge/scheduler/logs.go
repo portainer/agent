@@ -14,8 +14,8 @@ type LogsManager struct {
 	jobsCh     chan []int
 }
 
-func NewLogsManager(portainerURL, endpointID, edgeID string, insecurePoll bool) *LogsManager {
-	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll)
+func NewLogsManager(portainerURL, edgeID string, getEndpointFn func() string, insecurePoll bool) *LogsManager {
+	cli := client.NewPortainerClient(portainerURL, edgeID, getEndpointFn, insecurePoll)
 
 	return &LogsManager{
 		httpClient: cli,

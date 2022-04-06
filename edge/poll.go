@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
@@ -37,9 +38,9 @@ type PollService struct {
 	updateLastActivity      chan struct{}
 	startSignal             chan struct{}
 	stopSignal              chan struct{}
+	edgeManager             *Manager
 	edgeStackManager        *stack.StackManager
 	portainerURL            string
-	endpointID              string
 	tunnelServerAddr        string
 	tunnelServerFingerprint string
 	logsManager             *scheduler.LogsManager
@@ -66,7 +67,7 @@ type pollServiceConfig struct {
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
 // If TunneCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
-func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig) (*PollService, error) {
+func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -88,9 +89,9 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		updateLastActivity:      make(chan struct{}),
 		startSignal:             make(chan struct{}),
 		stopSignal:              make(chan struct{}),
+		edgeManager:             edgeManager,
 		edgeStackManager:        edgeStackManager,
 		portainerURL:            config.PortainerURL,
-		endpointID:              config.EndpointID,
 		tunnelServerAddr:        config.TunnelServerAddr,
 		tunnelServerFingerprint: config.TunnelServerFingerprint,
 		logsManager:             logsManager,
@@ -187,6 +188,14 @@ type pollStatusResponse struct {
 	Stacks          []stackStatus    `json:"stacks"`
 }
 
+type globalKeyRequest struct {
+	PortainerURL string `json:"portainerURL"`
+}
+
+type globalKeyResponse struct {
+	EndpointID int `json:"endpointID"`
+}
+
 func (service *PollService) createHTTPClient(timeout float64) {
 	httpCli := &http.Client{
 		Timeout: time.Duration(timeout) * time.Second,
@@ -203,9 +212,56 @@ func (service *PollService) createHTTPClient(timeout float64) {
 	service.httpClient = httpCli
 }
 
-func (service *PollService) poll() error {
+func (service *PollService) requestEndpointIDFromServer() (string, error) {
+	reqBody := &bytes.Buffer{}
+	enc := json.NewEncoder(reqBody)
 
-	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", service.portainerURL, service.endpointID)
+	enc.Encode(globalKeyRequest{service.edgeManager.key.PortainerInstanceURL})
+
+	gkURL := fmt.Sprintf("%s/api/endpoints/global-key", service.portainerURL)
+	req, err := http.NewRequest(http.MethodPost, gkURL, reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, service.edgeID)
+
+	if service.httpClient == nil {
+		service.createHTTPClient(clientDefaultPollTimeout)
+	}
+
+	resp, err := service.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[DEBUG] [edge] [response_code: %d] [message: Global key request failure]", resp.StatusCode)
+		return "", errors.New("global key request failed")
+	}
+
+	var responseData globalKeyResponse
+	err = json.NewDecoder(resp.Body).Decode(&responseData)
+	if err != nil {
+		return "", err
+	}
+
+	return strconv.Itoa(responseData.EndpointID), nil
+}
+
+func (service *PollService) poll() error {
+	if service.edgeManager.GetEndpointID() == "0" {
+		endpointID, err := service.requestEndpointIDFromServer()
+		if err != nil {
+			return err
+		}
+
+		service.edgeManager.SetEndpointID(endpointID)
+	}
+
+	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", service.portainerURL, service.edgeManager.GetEndpointID())
 	req, err := http.NewRequest("GET", pollURL, nil)
 	if err != nil {
 		return err

@@ -16,14 +16,14 @@ import (
 
 // PortainerClient is used to execute HTTP requests against the Portainer API
 type PortainerClient struct {
-	httpClient    *http.Client
-	serverAddress string
-	endpointID    string
-	edgeID        string
+	httpClient      *http.Client
+	serverAddress   string
+	getEndpointIDFn func() string
+	edgeID          string
 }
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress, endpointID, edgeID string, insecurePoll bool) *PortainerClient {
+func NewPortainerClient(serverAddress, edgeID string, getEndpointIDFn func() string, insecurePoll bool) *PortainerClient {
 	httpCli := &http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -37,10 +37,10 @@ func NewPortainerClient(serverAddress, endpointID, edgeID string, insecurePoll b
 	}
 
 	return &PortainerClient{
-		serverAddress: serverAddress,
-		endpointID:    endpointID,
-		edgeID:        edgeID,
-		httpClient:    httpCli,
+		serverAddress:   serverAddress,
+		getEndpointIDFn: getEndpointIDFn,
+		edgeID:          edgeID,
+		httpClient:      httpCli,
 	}
 }
 
@@ -51,7 +51,7 @@ type stackConfigResponse struct {
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
 func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
-	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/stacks/%d", client.serverAddress, client.endpointID, edgeStackID)
+	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/stacks/%d", client.serverAddress, client.getEndpointIDFn(), edgeStackID)
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -88,7 +88,7 @@ type setEdgeStackStatusPayload struct {
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
 func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
-	endpointID, err := strconv.Atoi(client.endpointID)
+	endpointID, err := strconv.Atoi(client.getEndpointIDFn())
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func (client *PortainerClient) SendJobLogFile(jobID int, fileContent []byte) err
 		return err
 	}
 
-	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/jobs/%d/logs", client.serverAddress, client.endpointID, jobID)
+	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/jobs/%d/logs", client.serverAddress, client.getEndpointIDFn(), jobID)
 
 	req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewReader(data))
 	if err != nil {
