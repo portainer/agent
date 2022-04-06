@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/mitchellh/mapstructure"
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
@@ -172,7 +173,7 @@ func (service *PollService) poll() error {
 		return err
 	}
 
-	if environmentStatus.Status == "NOTUNNEL" {
+	if environmentStatus.Status == agent.TunnelStatusNoTunnel {
 		err = service.processAsyncCommands(environmentStatus.AsyncCommands)
 		if err != nil {
 			return err

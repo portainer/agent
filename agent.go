@@ -307,4 +307,6 @@ const (
 	TunnelStatusRequired string = "REQUIRED"
 	// TunnelStatusActive represents an active state for a tunnel connected to an Edge environment(endpoint)
 	TunnelStatusActive string = "ACTIVE"
+	// TunnelStatusNoTunnel represents an async Edge environment(endpoint)
+	TunnelStatusNoTunnel string = "NOTUNNEL"
 )
