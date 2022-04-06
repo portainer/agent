@@ -322,8 +322,6 @@ func (service *PollService) poll() error {
 		// Context should be handled properly
 		ctx := context.TODO()
 
-		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock --net portainer-upgrader_portainer_agent_net deviantony/portainer-upgrader agent-update 2.12.2 portainer_agent 172.20.10.12
-
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 		if err != nil {
 			log.Printf("[ERROR] [edge] [message: unable to create Docker client] [error: %s]", err)
@@ -375,8 +373,11 @@ func (service *PollService) poll() error {
 		//  --net portainer_agent_net \
 		//  deviantony/portainer-upgrader agent-update 74c1474b11e5 2.12.2
 
+		// Create and run the portainer-updater service container
+		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock deviantony/portainer-updater agent-update portainer_agent 2.12.2
+
 		resp, err := cli.ContainerCreate(ctx, &container.Config{
-			Image: "deviantony/portainer-upgrader:latest",
+			Image: "deviantony/portainer-updater:latest",
 			Cmd:   []string{"agent-update", portainerAgentContainerID, agentTargetVersion},
 		}, &container.HostConfig{
 			Binds: []string{
