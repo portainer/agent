@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
 	gohttp "net/http"
+	"net/url"
 	goos "os"
 	"os/signal"
 	"syscall"
@@ -17,12 +22,14 @@ import (
 	httpEdge "github.com/portainer/agent/edge/http"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/ghw"
-	"github.com/portainer/agent/http"
+	agenthttp "github.com/portainer/agent/http"
 	"github.com/portainer/agent/kubernetes"
 	"github.com/portainer/agent/logutils"
-	"github.com/portainer/agent/net"
+	agentnet "github.com/portainer/agent/net"
 	"github.com/portainer/agent/os"
 	cluster "github.com/portainer/agent/serf"
+	"github.com/portainer/client-api/client"
+	"github.com/portainer/client-api/client/status"
 )
 
 func main() {
@@ -97,7 +104,7 @@ func main() {
 			// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
 			time.Sleep(3 * time.Second)
 
-			joinAddr, err := net.LookupIPAddresses(clusterAddr)
+			joinAddr, err := agentnet.LookupIPAddresses(clusterAddr)
 			if err != nil {
 				log.Fatalf("[ERROR] [main] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
 			}
@@ -142,7 +149,7 @@ func main() {
 		// for the container to be considered running by Kubernetes and an entry to be added to the DNS.
 		time.Sleep(3 * time.Second)
 
-		joinAddr, err := net.LookupIPAddresses(clusterAddr)
+		joinAddr, err := agentnet.LookupIPAddresses(clusterAddr)
 		if err != nil {
 			log.Fatalf("[ERROR] [main] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
 		}
@@ -212,9 +219,83 @@ func main() {
 
 	// !Edge
 
+	if options.HealthCheck {
+		log.Println("[INFO] [healthcheck] [message: Agent running on in healthcheck mode. Will exit after running pre-flight checks.]")
+
+		if !options.EdgeMode {
+
+			// TODO: REVIEW
+			// Healthcheck not considered for regular agent in the scope of the agent auto-upgrade POC
+			// We might want to consider having an healthcheck for the regular agent if that is needed/valuable
+			log.Println("[INFO] [healthcheck] [message: No pre-flight checks available for regular agent deployment. Exiting.]")
+			goos.Exit(0)
+		}
+
+		// Edge pre-flight checklist
+		// Here we check that the values in the Edge Key can be used by the agent
+		// * The agent can reach out the Portainer instance
+		// * HTTP polling is reachable
+		// * Tunneling is reachable
+
+		edgeKey := edgeManager.GetKey()
+
+		// We check that the Portainer instance URL is valid
+		u, err := url.Parse(edgeKey.PortainerInstanceURL)
+		if err != nil {
+			log.Fatalf("[ERROR] [healthcheck] [message: Unable to parse Portainer URL from Edge key] [error: %s]", err)
+		}
+
+		// We do a DNS resolution of the hostname associated to the Portainer instance
+		// to make sure that the agent can reach out to it
+		host, _, _ := net.SplitHostPort(u.Host)
+
+		_, err = net.LookupIP(host)
+		if err != nil {
+			log.Fatalf("[ERROR] [healthcheck] [message: Unable to resolve Portainer instance host] [error: %s]", err)
+		}
+
+		// We then query the Portainer HTTP API to make sure that the agent will be able
+		// to interact with the HTTP API.
+		// This is done via the public Status API endpoint - no authentication required.
+		cli := client.NewHTTPClientWithConfig(nil, client.DefaultTransportConfig().WithHost(u.Host).WithSchemes([]string{u.Scheme}))
+
+		statusParams := status.NewStatusInspectParams()
+		statusParams.WithContext(context.Background())
+		statusParams.WithTimeout(3 * time.Second)
+
+		if u.Scheme == "https" {
+			customTransport := http.DefaultTransport.(*http.Transport).Clone()
+			customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+			httpCli := &http.Client{Transport: customTransport}
+			statusParams.WithHTTPClient(httpCli)
+		}
+
+		_, err = cli.Status.StatusInspect(statusParams)
+		if err != nil {
+			log.Fatalf("[ERROR] [healthcheck] [message: Unable to retrieve Portainer instance status through HTTP API] [error: %s]", err)
+		}
+
+		// We then check that the agent can establish a TCP connection to the Portainer instance tunnel server
+		_, err = net.Dial("tcp", edgeKey.TunnelServerAddr)
+		if err != nil {
+			log.Fatalf("[ERROR] [healthcheck] [message: Unable to dial to Portainer instance tunnel server] [error: %s]", err)
+		}
+
+		// TODO: REVIEW
+		// The healthcheck could be updated to do pre-flight checks for each platform the agent is running on.
+
+		// Docker standalone/swarm and podman pre-flight checklist suggestions:
+		// Can reach out to the Docker API
+
+		// Kubernetes pre-flight checklist suggestions:
+		// Can reach out to the Kubernetes API
+
+		goos.Exit(0)
+	}
+
 	// API
 
-	config := &http.APIServerConfig{
+	config := &agenthttp.APIServerConfig{
 		Addr:                 options.AgentServerAddr,
 		Port:                 options.AgentServerPort,
 		SystemService:        systemService,
@@ -246,8 +327,8 @@ func main() {
 	fmt.Printf("[DEBUG] [main] [message: shutting down] [signal: %s]", s)
 }
 
-func startAPIServer(config *http.APIServerConfig, edgeMode bool) error {
-	server := http.NewAPIServer(config)
+func startAPIServer(config *agenthttp.APIServerConfig, edgeMode bool) error {
+	server := agenthttp.NewAPIServer(config)
 
 	if edgeMode {
 		return server.StartUnsecured(edgeMode)

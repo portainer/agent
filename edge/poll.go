@@ -9,12 +9,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
@@ -321,7 +322,7 @@ func (service *PollService) poll() error {
 		// Context should be handled properly
 		ctx := context.TODO()
 
-		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock --net portainer-upgrader_portainer_agent_net deviantony/portainer-upgrader agent-update 2.12.2 portainer_agent
+		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock --net portainer-upgrader_portainer_agent_net deviantony/portainer-upgrader agent-update 2.12.2 portainer_agent 172.20.10.12
 
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
 		if err != nil {
@@ -337,46 +338,57 @@ func (service *PollService) poll() error {
 		}
 
 		// TODO: REVIEW
-		// Hardcoded target version
-		// Should be given by the Portainer instance
+		// Hardcoded target version for POC
+		// Should be retrieved during polling - set by the Portainer instance
 		agentTargetVersion := "latest"
 
-		// TODO: REVIEW
-		// Hardcoded container name
-		// Agent needs to retrieve its own container name
-		portainerAgentContainerName := "portainer_agent"
+		// Agent needs to retrieve its own container name to be passed to the upgrader service container
+
+		// Unless overriden, the container hostname is matching the container ID
+		// See https://stackoverflow.com/a/38983893
+
+		// portainerAgentContainerID, err := os.Hostname()
+
+		// If the hostname property is set when creating the container
+		// we can find ourselves in a situation where the container hostname is set to portainer_agent for example
+		// but the container name / container ID is different
+		// Therefore the approach of looking up the hostname is not enough.
+
+		// Instead, we do a lookup in the /proc/1/cpuset file inside the container to find the container ID
+		// See https://stackoverflow.com/a/63145861 and https://stackoverflow.com/a/25729598
 
 		// TODO: REVIEW
-		// Hardcoded agent network
-		// Agent needs to retrieve its own network name
-		portainerAgentNetworkName := "portainer_agent_net"
-
-		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-		//  --net portainer_agent_net \
-		//  deviantony/portainer-upgrader agent-update 2.12.2 portainer_agent
-		resp, err := cli.ContainerCreate(ctx, &container.Config{
-			Image: "deviantony/portainer-upgrader:latest",
-			Cmd:   []string{"agent-update", agentTargetVersion, portainerAgentContainerName},
-		}, &container.HostConfig{
-			Binds: []string{
-				// TODO: REVIEW
-				// Will only work on Linux filesystems
-				"/var/run/docker.sock:/var/run/docker.sock",
-			},
-		}, &network.NetworkingConfig{
-			EndpointsConfig: map[string]*network.EndpointSettings{
-				portainerAgentNetworkName: {},
-			},
-		}, nil, fmt.Sprintf("portainer-upgrader-%d", time.Now().Unix()))
-
+		// This however will only work on Linux systems. I don't know if there is a way to do the same
+		// inside a Windows container. In that case, we could fallback to the container hostname approach
+		// and explicitly not support setting the hostname property on the agent container on Windows.
+		cpuSetFileContent, err := os.ReadFile("/proc/1/cpuset")
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: unable to create upgrader container] [error: %s]", err)
+			log.Printf("[ERROR] [edge] [message: unable to read from /proc/1/cpuset to retrieve agent container name] [error: %s]", err)
 			return err
 		}
 
-		err = cli.NetworkConnect(ctx, portainerAgentNetworkName, resp.ID, &network.EndpointSettings{})
+		// The content of that file looks like
+		// /docker/<container ID>
+		portainerAgentContainerID := strings.TrimPrefix(string(cpuSetFileContent), "/docker/")
+
+		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+		//  --net portainer_agent_net \
+		//  deviantony/portainer-upgrader agent-update 74c1474b11e5 2.12.2
+
+		resp, err := cli.ContainerCreate(ctx, &container.Config{
+			Image: "deviantony/portainer-upgrader:latest",
+			Cmd:   []string{"agent-update", portainerAgentContainerID, agentTargetVersion},
+		}, &container.HostConfig{
+			Binds: []string{
+				// TODO: REVIEW
+				// This implementation will only work on Linux filesystems
+				// For Windows, use a named pipe approach
+				"/var/run/docker.sock:/var/run/docker.sock",
+			},
+		}, nil, nil, fmt.Sprintf("portainer-upgrader-%d", time.Now().Unix()))
+
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: unable to connect upgrader container to agent network] [error: %s]", err)
+			log.Printf("[ERROR] [edge] [message: unable to create upgrader container] [error: %s]", err)
 			return err
 		}
 

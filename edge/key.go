@@ -44,7 +44,12 @@ func (manager *Manager) SetKey(key string) error {
 }
 
 // GetKey returns the Edge key associated to the agent
-func (manager *Manager) GetKey() string {
+func (manager *Manager) GetKey() *edgeKey {
+	return manager.key
+}
+
+// GetEncodedKey returns the Edge key associated to the agent (base64 encoded format)
+func (manager *Manager) GetEncodedKey() string {
 	var encodedKey string
 
 	if manager.key != nil {
@@ -78,7 +83,7 @@ func (manager *Manager) PropagateKeyInCluster() error {
 
 		memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
 
-		err := httpCli.SetEdgeKey(memberAddr, manager.GetKey())
+		err := httpCli.SetEdgeKey(memberAddr, manager.GetEncodedKey())
 		if err != nil {
 			return err
 		}

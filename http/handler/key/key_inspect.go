@@ -21,7 +21,7 @@ func (handler *Handler) keyInspect(w http.ResponseWriter, r *http.Request) *http
 		return &httperror.HandlerError{http.StatusNotFound, "No key associated to this agent", errors.New("Edge key unavailable")}
 	}
 
-	edgeKey := handler.edgeManager.GetKey()
+	edgeKey := handler.edgeManager.GetEncodedKey()
 
 	return response.JSON(w, keyInspectResponse{
 		Key: edgeKey,

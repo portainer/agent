@@ -64,7 +64,6 @@ type (
 		ClusterProbeTimeout   time.Duration
 		ClusterProbeInterval  time.Duration
 		DataPath              string
-		SharedSecret          string
 		EdgeMode              bool
 		EdgeKey               string
 		EdgeID                string
@@ -73,7 +72,9 @@ type (
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
 		EdgeTunnel            bool
+		HealthCheck           bool
 		LogLevel              string
+		SharedSecret          string
 	}
 
 	// PciDevice is the representation of a physical pci device on a host
