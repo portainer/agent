@@ -27,7 +27,7 @@ func (manager *Manager) SetKey(key string) error {
 		return err
 	}
 
-	err = filesystem.WriteFile(agent.DataDirectory, agent.EdgeKeyFile, []byte(key), 0444)
+	err = filesystem.WriteFile(manager.agentOptions.DataPath, agent.EdgeKeyFile, []byte(key), 0644)
 	if err != nil {
 		return err
 	}
@@ -37,10 +37,7 @@ func (manager *Manager) SetKey(key string) error {
 	if manager.clusterService != nil {
 		tags := manager.clusterService.GetRuntimeConfiguration()
 		tags.EdgeKeySet = true
-		err = manager.clusterService.UpdateRuntimeConfiguration(tags)
-		if err != nil {
-			return err
-		}
+		return manager.clusterService.UpdateRuntimeConfiguration(tags)
 	}
 
 	return nil
@@ -120,7 +117,7 @@ func encodeKey(edgeKey *edgeKey) string {
 	return encodedKey
 }
 
-func RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (string, error) {
+func (manager *Manager) RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (string, error) {
 	if edgeKey != "" {
 		log.Println("[INFO] [edge] [message: Edge key loaded from options]")
 		return edgeKey, nil
@@ -128,7 +125,7 @@ func RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (strin
 
 	var keyRetrievalError error
 
-	edgeKey, keyRetrievalError = retrieveEdgeKeyFromFilesystem()
+	edgeKey, keyRetrievalError = retrieveEdgeKeyFromFilesystem(manager.agentOptions.DataPath)
 	if keyRetrievalError != nil {
 		return "", keyRetrievalError
 	}
@@ -143,8 +140,8 @@ func RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (strin
 	return edgeKey, nil
 }
 
-func retrieveEdgeKeyFromFilesystem() (string, error) {
-	edgeKeyFilePath := fmt.Sprintf("%s/%s", agent.DataDirectory, agent.EdgeKeyFile)
+func retrieveEdgeKeyFromFilesystem(dataPath string) (string, error) {
+	edgeKeyFilePath := fmt.Sprintf("%s/%s", dataPath, agent.EdgeKeyFile)
 
 	keyFileExists, err := filesystem.FileExists(edgeKeyFilePath)
 	if err != nil {

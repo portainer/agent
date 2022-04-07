@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/portainer/agent"
@@ -65,85 +66,95 @@ const (
 
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
-	engineType engineType
-	stacks     map[edgeStackID]*edgeStack
-	stopSignal chan struct{}
-	deployer   agent.Deployer
-	isEnabled  bool
-	httpClient *client.PortainerClient
+	engineType      engineType
+	stacks          map[edgeStackID]*edgeStack
+	stopSignal      chan struct{}
+	deployer        agent.Deployer
+	isEnabled       bool
+	portainerClient client.PortainerClient
+	assetsPath      string
+	mu              sync.Mutex
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(portainerURL, endpointID, edgeID string, insecurePoll bool) (*StackManager, error) {
-	cli := client.NewPortainerClient(portainerURL, endpointID, edgeID, insecurePoll)
-
-	stackManager := &StackManager{
-		stacks:     map[edgeStackID]*edgeStack{},
-		stopSignal: nil,
-		httpClient: cli,
+func NewStackManager(cli client.PortainerClient, assetsPath string) *StackManager {
+	return &StackManager{
+		stacks:          map[edgeStackID]*edgeStack{},
+		stopSignal:      nil,
+		portainerClient: cli,
+		assetsPath:      assetsPath,
 	}
-
-	return stackManager, nil
 }
 
-func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
+func (manager *StackManager) UpdateStacksStatus(pollResponseStacks map[int]int) error {
 	if !manager.isEnabled {
 		return nil
 	}
 
-	for stackID, version := range stacks {
-		stack, ok := manager.stacks[edgeStackID(stackID)]
-		if ok {
-			if stack.Version == version {
-				continue
-			}
-			log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for update]", stackID)
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
 
-			stack.Action = actionUpdate
-			stack.Version = version
-			stack.Status = statusPending
-		} else {
-			log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for deployment]", stackID)
-
-			stack = &edgeStack{
-				Action:  actionDeploy,
-				ID:      edgeStackID(stackID),
-				Status:  statusPending,
-				Version: version,
-			}
-		}
-
-		stackConfig, err := manager.httpClient.GetEdgeStackConfig(int(stack.ID))
-		if err != nil {
-			return err
-		}
-
-		stack.Name = stackConfig.Name
-
-		folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
-		fileName := "docker-compose.yml"
-		if manager.engineType == EngineTypeKubernetes {
-			fileName = fmt.Sprintf("%s.yml", stack.Name)
-		}
-
-		err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 0644)
-		if err != nil {
-			return err
-		}
-
-		stack.FileFolder = folder
-		stack.FileName = fileName
-
-		manager.stacks[stack.ID] = stack
-
-		err = manager.httpClient.SetEdgeStackStatus(int(stack.ID), int(edgeStackStatusAcknowledged), "")
+	for stackID, version := range pollResponseStacks {
+		err := manager.processStack(stackID, version)
 		if err != nil {
 			return err
 		}
 	}
 
+	manager.processRemovedStacks(pollResponseStacks)
+
+	return nil
+}
+
+func (manager *StackManager) processStack(stackID int, version int) error {
+	stack, processedStack := manager.stacks[edgeStackID(stackID)]
+	if processedStack {
+		if stack.Version == version {
+			return nil // stack is unchanged
+		}
+		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for update]", stackID)
+		stack.Action = actionUpdate
+		stack.Version = version
+		stack.Status = statusPending
+	} else {
+		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for deployment]", stackID)
+		stack = &edgeStack{
+			ID:      edgeStackID(stackID),
+			Action:  actionDeploy,
+			Status:  statusPending,
+			Version: version,
+		}
+	}
+
+	stackConfig, err := manager.portainerClient.GetEdgeStackConfig(int(stack.ID))
+	if err != nil {
+		return err
+	}
+
+	stack.Name = stackConfig.Name
+
+	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
+	fileName := "docker-compose.yml"
+	if manager.engineType == EngineTypeKubernetes {
+		fileName = fmt.Sprintf("%s.yml", stack.Name)
+	}
+
+	err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 0644)
+	if err != nil {
+		return err
+	}
+
+	stack.FileFolder = folder
+	stack.FileName = fileName
+
+	manager.stacks[stack.ID] = stack
+
+	return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), int(edgeStackStatusAcknowledged), "")
+}
+
+func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]int) {
 	for stackID, stack := range manager.stacks {
-		if _, ok := stacks[int(stackID)]; !ok {
+		if _, ok := pollResponseStacks[int(stackID)]; !ok {
 			log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for deletion]", stackID)
 			stack.Action = actionDelete
 			stack.Status = statusPending
@@ -151,8 +162,6 @@ func (manager *StackManager) UpdateStacksStatus(stacks map[int]int) error {
 			manager.stacks[stackID] = stack
 		}
 	}
-
-	return nil
 }
 
 func (manager *StackManager) Stop() error {
@@ -185,17 +194,19 @@ func (manager *StackManager) Start() error {
 				log.Println("[DEBUG] [edge,stack] [message: shutting down Edge stack manager]")
 				return
 			default:
-				stack := manager.next()
+				stack := manager.nextPendingStack()
 				if stack == nil {
 					timer1 := time.NewTimer(queueSleepInterval)
 					<-timer1.C
 					continue
 				}
 
+				ctx := context.TODO()
+
+				manager.mu.Lock()
 				stackName := fmt.Sprintf("edge_%s", stack.Name)
 				stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
-
-				ctx := context.TODO()
+				manager.mu.Unlock()
 
 				if stack.Action == actionDeploy || stack.Action == actionUpdate {
 					manager.deployStack(ctx, stack, stackName, stackFileLocation)
@@ -209,7 +220,10 @@ func (manager *StackManager) Start() error {
 	return nil
 }
 
-func (manager *StackManager) next() *edgeStack {
+func (manager *StackManager) nextPendingStack() *edgeStack {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	for _, stack := range manager.stacks {
 		if stack.Status == statusPending {
 			return stack
@@ -218,28 +232,10 @@ func (manager *StackManager) next() *edgeStack {
 	return nil
 }
 
-func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
-	if engineStatus == manager.engineType {
-		return nil
-	}
-
-	manager.engineType = engineStatus
-
-	err := manager.Stop()
-	if err != nil {
-		return err
-	}
-
-	deployer, err := buildDeployerService(engineStatus)
-	if err != nil {
-		return err
-	}
-	manager.deployer = deployer
-
-	return nil
-}
-
 func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
 	stack.Status = statusDone
 	stack.Action = actionIdle
@@ -258,7 +254,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 	manager.stacks[stack.ID] = stack
 
-	err = manager.httpClient.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
+	err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
 	if err != nil {
 		log.Printf("[ERROR] [edge,stack] [message: unable to update Edge stack status] [error: %s]", err)
 	}
@@ -278,17 +274,40 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		return
 	}
 
+	manager.mu.Lock()
 	delete(manager.stacks, stack.ID)
+	manager.mu.Unlock()
 }
 
-func buildDeployerService(engineStatus engineType) (agent.Deployer, error) {
+func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
+	if engineStatus == manager.engineType {
+		return nil
+	}
+
+	manager.engineType = engineStatus
+
+	err := manager.Stop()
+	if err != nil {
+		return err
+	}
+
+	deployer, err := buildDeployerService(manager.assetsPath, engineStatus)
+	if err != nil {
+		return err
+	}
+	manager.deployer = deployer
+
+	return nil
+}
+
+func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Deployer, error) {
 	switch engineStatus {
 	case EngineTypeDockerStandalone:
-		return exec.NewDockerComposeStackService(agent.DockerBinaryPath)
+		return exec.NewDockerComposeStackService(assetsPath)
 	case EngineTypeDockerSwarm:
-		return exec.NewDockerSwarmStackService(agent.DockerBinaryPath)
+		return exec.NewDockerSwarmStackService(assetsPath)
 	case EngineTypeKubernetes:
-		return exec.NewKubernetesDeployer(agent.DockerBinaryPath), nil
+		return exec.NewKubernetesDeployer(assetsPath), nil
 	}
 
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)
