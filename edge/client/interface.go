@@ -1,9 +1,10 @@
 package client
 
 import (
-	portainer "github.com/portainer/portainer/api"
 	"net/http"
 	"time"
+
+	portainer "github.com/portainer/portainer/api"
 
 	"github.com/portainer/agent"
 )

@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	portainer "github.com/portainer/portainer/api"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
+	portainer "github.com/portainer/portainer/api"
 )
 
 type (
@@ -221,7 +221,10 @@ func buildHTTPClient(timeout float64, options *agent.Options) *http.Client {
 		Timeout: time.Duration(timeout) * time.Second,
 	}
 
-	httpCli.Transport = buildTransport(options)
+	transport := buildTransport(options)
+	if transport != nil {
+		httpCli.Transport = transport
+	}
 	return httpCli
 }
 
