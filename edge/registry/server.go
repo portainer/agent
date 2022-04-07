@@ -43,6 +43,10 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 
 	log.Printf("[INFO] [edge,registry] [message: Looking up credentials for %s]", serverUrl)
 
+	if serverUrl == "" {
+		return response.Empty(rw)
+	}
+
 	credentials := stackManager.GetEdgeRegistryCredentials()
 	if len(credentials) > 0 {
 		var key string
