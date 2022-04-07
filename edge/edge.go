@@ -88,42 +88,28 @@ func (manager *Manager) Start() error {
 		return err
 	}
 
+	portainerClient := client.NewPortainerClient(
+		manager.key.PortainerInstanceURL,
+		portainer.EndpointID(endpointID),
+		manager.agentOptions.EdgeID,
+		manager.agentOptions.EdgeAsyncMode,
+		agentPlatform,
+		buildHTTPClient(10, manager.agentOptions),
+	)
+
 	manager.stackManager = stack.NewStackManager(
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			portainer.EndpointID(endpointID),
-			manager.agentOptions.EdgeID,
-			manager.agentOptions.EdgeAsyncMode,
-			agentPlatform,
-			buildHTTPClient(10, manager.agentOptions),
-		),
+		portainerClient,
 		manager.agentOptions.AssetsPath,
 	)
 
-	manager.logsManager = scheduler.NewLogsManager(
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			portainer.EndpointID(endpointID),
-			manager.agentOptions.EdgeID,
-			manager.agentOptions.EdgeAsyncMode,
-			agentPlatform,
-			buildHTTPClient(10, manager.agentOptions),
-		),
-	)
+	manager.logsManager = scheduler.NewLogsManager(portainerClient)
 	manager.logsManager.Start()
 
 	pollService, err := newPollService(
 		manager.stackManager,
 		manager.logsManager,
 		pollServiceConfig,
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			portainer.EndpointID(endpointID),
-			manager.agentOptions.EdgeID,
-			manager.agentOptions.EdgeAsyncMode,
-			agentPlatform,
-			buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
-		),
+		portainerClient,
 	)
 	if err != nil {
 		return err

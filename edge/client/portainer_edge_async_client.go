@@ -58,7 +58,7 @@ type snapshot struct {
 	Docker      *portainer.DockerSnapshot
 	Kubernetes  *portainer.KubernetesSnapshot
 	StackStatus map[portainer.EdgeStackID]portainer.EdgeStackStatus
-	// TODO: add job logs payload
+	JobsStatus  map[portainer.EdgeJobID]agent.EdgeJobStatus
 }
 
 type JSONPatch struct {
@@ -77,12 +77,13 @@ type AsyncResponse struct {
 }
 
 type AsyncCommand struct {
-	ID        int         `json:"id"`
-	Type      string      `json:"type"`
-	Timestamp time.Time   `json:"timestamp"`
-	Operation string      `json:"op"`
-	Path      string      `json:"path"`
-	Value     interface{} `json:"value"`
+	ID         int                  `json:"id"`
+	Type       string               `json:"type"`
+	EndpointID portainer.EndpointID `json:"endpointID"`
+	Timestamp  time.Time            `json:"timestamp"`
+	Operation  string               `json:"op"`
+	Path       string               `json:"path"`
+	Value      interface{}          `json:"value"`
 }
 
 type EdgeStackData struct {
@@ -90,6 +91,15 @@ type EdgeStackData struct {
 	Version          int
 	StackFileContent string
 	Name             string
+}
+
+type EdgeJobData struct {
+	ID                portainer.EdgeJobID
+	CollectLogs       bool
+	LogsStatus        portainer.EdgeJobLogsStatus
+	CronExpression    string
+	ScriptFileContent string
+	Version           int
 }
 
 func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
@@ -102,9 +112,15 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
+
 	if client.nextSnapshotRequest.Snapshot.StackStatus != nil {
 		payload.Snapshot.StackStatus = client.nextSnapshotRequest.Snapshot.StackStatus
 		client.nextSnapshotRequest.Snapshot.StackStatus = nil
+	}
+
+	if client.nextSnapshotRequest.Snapshot.JobsStatus != nil {
+		payload.Snapshot.JobsStatus = client.nextSnapshotRequest.Snapshot.JobsStatus
+		client.nextSnapshotRequest.Snapshot.JobsStatus = nil
 	}
 
 	/*
@@ -134,6 +150,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 
 	response := &PollStatusResponse{
 		AsyncCommands: asyncResponse.Commands,
+		Status:        "NOTUNNEL",
 	}
 
 	client.lastAsyncResponse = *asyncResponse
@@ -199,9 +216,15 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID, edgeStackSta
 	return nil
 }
 
-// SendJobLogFile sends the jobID log to the Portainer server
-func (client *PortainerAsyncClient) SendJobLogFile(jobID int, fileContent []byte) error {
-	// TODO: This should go into the next snapshot payload
+// SetEdgeJobStatus sends the jobID log to the Portainer server
+func (client *PortainerAsyncClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error {
+	client.nextSnapshotMutex.Lock()
+	defer client.nextSnapshotMutex.Unlock()
+
+	if client.nextSnapshotRequest.Snapshot.JobsStatus == nil {
+		client.nextSnapshotRequest.Snapshot.JobsStatus = make(map[portainer.EdgeJobID]agent.EdgeJobStatus)
+	}
+	client.nextSnapshotRequest.Snapshot.JobsStatus[portainer.EdgeJobID(edgeJobStatus.JobID)] = edgeJobStatus
 	return nil
 }
 

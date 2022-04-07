@@ -37,6 +37,12 @@ type (
 		FileContent string
 	}
 
+	// EdgeJobStatus represents an Edge job status
+	EdgeJobStatus struct {
+		JobID          int    `json:"JobID"`
+		LogFileContent string `json:"LogFileContent"`
+	}
+
 	// HostInfo is the representation of the collection of host information
 	HostInfo struct {
 		PCIDevices    []PciDevice
@@ -171,6 +177,9 @@ type (
 	// Scheduler is used to manage schedules
 	Scheduler interface {
 		Schedule(schedules []Schedule) error
+		AddSchedule(schedule Schedule) error
+		RemoveSchedule(schedule Schedule) error
+		ProcessScheduleLogsCollection()
 	}
 
 	// SystemService is used to get info about the host
@@ -298,4 +307,6 @@ const (
 	TunnelStatusRequired string = "REQUIRED"
 	// TunnelStatusActive represents an active state for a tunnel connected to an Edge environment(endpoint)
 	TunnelStatusActive string = "ACTIVE"
+	// TunnelStatusNoTunnel represents an async Edge environment(endpoint)
+	TunnelStatusNoTunnel string = "NOTUNNEL"
 )
