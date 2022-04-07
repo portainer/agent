@@ -54,7 +54,7 @@ func NewManager(parameters *ManagerParameters) *Manager {
 // Start starts the manager
 func (manager *Manager) Start() error {
 	if !manager.IsKeySet() {
-		return errors.New("unable to start Edge manager without key")
+		return errors.New("unable to Start Edge manager without key")
 	}
 
 	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
@@ -74,11 +74,19 @@ func (manager *Manager) Start() error {
 
 	log.Printf("[DEBUG] [edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll, manager.agentOptions.EdgeTunnel)
 
+	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
+	// However, Portainer should handle podman agents the same way as docker agents.
+	agentPlatform := manager.containerPlatform
+	if manager.containerPlatform == agent.PlatformPodman {
+		agentPlatform = agent.PlatformDocker
+	}
+
 	manager.stackManager = stack.NewStackManager(
 		client.NewPortainerClient(
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
 			manager.agentOptions.EdgeID,
+			agentPlatform,
 			buildHTTPClient(10, manager.agentOptions),
 		),
 		manager.agentOptions.AssetsPath,
@@ -89,6 +97,7 @@ func (manager *Manager) Start() error {
 			manager.key.PortainerInstanceURL,
 			manager.key.EndpointID,
 			manager.agentOptions.EdgeID,
+			agentPlatform,
 			buildHTTPClient(10, manager.agentOptions),
 		),
 	)
@@ -98,7 +107,13 @@ func (manager *Manager) Start() error {
 		manager.stackManager,
 		manager.logsManager,
 		pollServiceConfig,
-		buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
+		client.NewPortainerClient(
+			manager.key.PortainerInstanceURL,
+			manager.key.EndpointID,
+			manager.agentOptions.EdgeID,
+			agentPlatform,
+			buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
+		),
 	)
 	if err != nil {
 		return err
@@ -133,12 +148,12 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency time.Duration) error {
-	manager.pollService.start()
+	manager.pollService.Start()
 
 	go func() {
 		ticker := time.NewTicker(runtimeCheckFrequency)
 		for range ticker.C {
-			manager.pollService.start()
+			manager.pollService.Start()
 
 			err := manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
 			if err != nil {
@@ -148,7 +163,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 
 			err = manager.stackManager.Start()
 			if err != nil {
-				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to Start stack manager] [error: %s]", err)
 				return
 			}
 		}
@@ -190,7 +205,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 			engineStatus = stack.EngineTypeDockerSwarm
 		}
 
-		manager.pollService.start()
+		manager.pollService.Start()
 
 		err = manager.stackManager.SetEngineStatus(engineStatus)
 		if err != nil {
@@ -200,7 +215,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 		return manager.stackManager.Start()
 	}
 
-	manager.pollService.stop()
+	manager.pollService.Stop()
 
 	return manager.stackManager.Stop()
 }

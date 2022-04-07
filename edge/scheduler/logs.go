@@ -10,14 +10,14 @@ import (
 )
 
 type LogsManager struct {
-	httpClient *client.PortainerClient
-	jobsCh     chan []int
+	portainerClient client.PortainerClient
+	jobsCh          chan []int
 }
 
-func NewLogsManager(cli *client.PortainerClient) *LogsManager {
+func NewLogsManager(cli client.PortainerClient) *LogsManager {
 	return &LogsManager{
-		httpClient: cli,
-		jobsCh:     make(chan []int),
+		portainerClient: cli,
+		jobsCh:          make(chan []int),
 	}
 }
 
@@ -50,7 +50,7 @@ func (manager *LogsManager) loop() {
 				}
 			}
 
-			err = manager.httpClient.SendJobLogFile(jobID, file)
+			err = manager.portainerClient.SendJobLogFile(jobID, file)
 			if err != nil {
 				log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed sending log file to portainer]", err)
 				continue

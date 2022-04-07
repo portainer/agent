@@ -112,11 +112,11 @@ type (
 	// TunnelConfig contains all the required information for the agent to establish
 	// a reverse tunnel to a Portainer instance
 	TunnelConfig struct {
-		ServerAddr       string
-		ServerFingerpint string
-		RemotePort       string
-		LocalAddr        string
-		Credentials      string
+		ServerAddr        string
+		ServerFingerprint string
+		RemotePort        string
+		LocalAddr         string
+		Credentials       string
 	}
 
 	// ClusterService is used to manage a cluster of agents.
@@ -288,4 +288,13 @@ const (
 	NodeRoleManager
 	// NodeRoleWorker represent a Docker swarm worker node role
 	NodeRoleWorker
+)
+
+const (
+	// TunnelStatusIdle represents an idle state for a tunnel connected to an Edge environment(endpoint).
+	TunnelStatusIdle string = "IDLE"
+	// TunnelStatusRequired represents a required state for a tunnel connected to an Edge environment(endpoint)
+	TunnelStatusRequired string = "REQUIRED"
+	// TunnelStatusActive represents an active state for a tunnel connected to an Edge environment(endpoint)
+	TunnelStatusActive string = "ACTIVE"
 )
