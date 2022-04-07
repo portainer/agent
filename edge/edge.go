@@ -225,7 +225,10 @@ func buildHTTPClient(timeout float64, options *agent.Options) *http.Client {
 		Timeout: time.Duration(timeout) * time.Second,
 	}
 
-	httpCli.Transport = buildTransport(options)
+	transport := buildTransport(options)
+	if transport != nil {
+		httpCli.Transport = transport
+	}
 	return httpCli
 }
 
