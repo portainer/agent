@@ -123,22 +123,6 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 		client.nextSnapshotRequest.Snapshot.JobsStatus = nil
 	}
 
-	/*
-		TODO: leaving this commented for faster debugging, should be called only for snapshot request
-		switch client.agentPlatformIdentifier {
-		case agent.PlatformDocker:
-			dockerSnapshot, _ := docker.CreateSnapshot()
-			payload.Snapshot = Snapshot{
-				Docker: dockerSnapshot,
-			}
-		case agent.PlatformKubernetes:
-			kubernetesSnapshot, _ := kubernetes.CreateSnapshot()
-			payload.Snapshot = Snapshot{
-				Kubernetes: kubernetesSnapshot,
-			}
-		}
-	*/
-
 	client.lastAsyncResponseMutex.Lock()
 	defer client.lastAsyncResponseMutex.Unlock()
 
@@ -150,7 +134,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 
 	response := &PollStatusResponse{
 		AsyncCommands: asyncResponse.Commands,
-		Status:        "NOTUNNEL",
+		Status:        agent.TunnelStatusNoTunnel,
 	}
 
 	client.lastAsyncResponse = *asyncResponse

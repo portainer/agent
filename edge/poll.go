@@ -288,7 +288,7 @@ func (service *PollService) processStacks(pollResponseStacks []client.StackStatu
 }
 
 func (service *PollService) processAsyncCommands(commands []client.AsyncCommand) error {
-	ctx := context.TODO()
+	ctx := context.Background()
 
 	for _, command := range commands {
 		switch command.Type {
