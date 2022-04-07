@@ -2,7 +2,6 @@ package client
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,43 +13,63 @@ import (
 	"github.com/portainer/agent"
 )
 
-// PortainerClient is used to execute HTTP requests against the Portainer API
-type PortainerClient struct {
+// PortainerEdgeClient is used to execute HTTP requests against the Portainer API
+type PortainerEdgeClient struct {
 	httpClient    *http.Client
 	serverAddress string
 	endpointID    string
 	edgeID        string
+	agentPlatform agent.ContainerPlatform
 }
 
-// NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress, endpointID, edgeID string, insecurePoll bool) *PortainerClient {
-	httpCli := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	if insecurePoll {
-		httpCli.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
-	}
-
-	return &PortainerClient{
+// NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
+func NewPortainerEdgeClient(serverAddress, endpointID, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
+	return &PortainerEdgeClient{
 		serverAddress: serverAddress,
 		endpointID:    endpointID,
 		edgeID:        edgeID,
-		httpClient:    httpCli,
+		agentPlatform: agentPlatform,
+		httpClient:    httpClient,
 	}
 }
 
-type stackConfigResponse struct {
-	Name             string
-	StackFileContent string
+func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
+	client.httpClient.Timeout = t
+}
+
+func (client *PortainerEdgeClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
+	pollURL := fmt.Sprintf("%s/api/endpoints/%s/edge/status", client.serverAddress, client.endpointID)
+	req, err := http.NewRequest("GET", pollURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
+
+	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(client.agentPlatform)))
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[DEBUG] [internal,edge,poll] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
+		return nil, errors.New("short poll request failed")
+	}
+
+	var responseData PollStatusResponse
+	err = json.NewDecoder(resp.Body).Decode(&responseData)
+	if err != nil {
+		return nil, err
+	}
+	return &responseData, nil
 }
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
-func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
+func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
 	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/stacks/%d", client.serverAddress, client.endpointID, edgeStackID)
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
@@ -80,14 +99,8 @@ func (client *PortainerClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeS
 	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent}, nil
 }
 
-type setEdgeStackStatusPayload struct {
-	Error      string
-	Status     int
-	EndpointID int
-}
-
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
-func (client *PortainerClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
+func (client *PortainerEdgeClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
 	endpointID, err := strconv.Atoi(client.endpointID)
 	if err != nil {
 		return err
@@ -133,7 +146,7 @@ type logFilePayload struct {
 }
 
 // SendJobLogFile sends the jobID log to the Portainer server
-func (client *PortainerClient) SendJobLogFile(jobID int, fileContent []byte) error {
+func (client *PortainerEdgeClient) SendJobLogFile(jobID int, fileContent []byte) error {
 	payload := logFilePayload{
 		FileContent: string(fileContent),
 	}
@@ -165,5 +178,4 @@ func (client *PortainerClient) SendJobLogFile(jobID int, fileContent []byte) err
 	}
 
 	return nil
-
 }
