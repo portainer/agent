@@ -10,6 +10,7 @@ RUN mkdir mingit/ \
 
 FROM mcr.microsoft.com/windows/nanoserver:${OSVERSION}
 ENV PATH "C:\mingit\cmd;C:\Windows\system32;C:\Windows;"
+ENV PATH="/app;%PATH%"
 
 COPY --from=downloader /mingit mingit/
 COPY --from=core /Windows/System32/netapi32.dll /Windows/System32/netapi32.dll
