@@ -110,6 +110,7 @@ func (manager *Manager) Start() error {
 		manager.logsManager,
 		pollServiceConfig,
 		portainerClient,
+		manager.agentOptions.EdgeAsyncMode,
 	)
 	if err != nil {
 		return err
