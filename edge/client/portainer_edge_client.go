@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	portainer "github.com/portainer/portainer/api"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/portainer/agent"
+	portainer "github.com/portainer/portainer/api"
 )
 
 // PortainerEdgeClient is used to execute HTTP requests against the Portainer API
@@ -38,7 +38,7 @@ func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
 	client.httpClient.Timeout = t
 }
 
-func (client *PortainerEdgeClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
+func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error) {
 	pollURL := fmt.Sprintf("%s/api/endpoints/%v/edge/status", client.serverAddress, client.endpointID)
 	req, err := http.NewRequest("GET", pollURL, nil)
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 )
 
 type PortainerClient interface {
-	GetEnvironmentStatus() (*PollStatusResponse, error)
+	GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error)
 	GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error)
 	SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error
 	SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error
@@ -25,7 +25,13 @@ type PollStatusResponse struct {
 	CheckinInterval float64          `json:"checkin"`
 	Credentials     string           `json:"credentials"`
 	Stacks          []StackStatus    `json:"stacks"`
-	AsyncCommands   []AsyncCommand   `json:"commands"` // async mode only
+
+	// Async mode only
+	EndpointID       int            `json:"endpointID"`
+	PingInterval     time.Duration  `json:"pingInterval"`
+	SnapshotInterval time.Duration  `json:"snapshotInterval"`
+	CommandInterval  time.Duration  `json:"commandInterval"`
+	AsyncCommands    []AsyncCommand `json:"commands"`
 }
 
 type StackStatus struct {
