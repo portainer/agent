@@ -2,13 +2,9 @@ package edge
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -16,40 +12,43 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	dockercli "github.com/docker/docker/client"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 	"github.com/portainer/libcrypto"
 )
 
-const tunnelActivityCheckInterval = 30 * time.Second
+const (
+	clientDefaultPollTimeout    = 5
+	tunnelActivityCheckInterval = 30 * time.Second
+)
 
 // PollService is used to poll a Portainer instance to retrieve the status associated to the Edge endpoint.
 // It is responsible for managing the state of the reverse tunnel (open and closing after inactivity).
 // It is also responsible for retrieving the data associated to Edge stacks and schedules.
 type PollService struct {
-	apiServerAddr           string
-	pollIntervalInSeconds   float64
-	pollTicker              *time.Ticker
-	insecurePoll            bool
-	inactivityTimeout       time.Duration
-	edgeID                  string
-	httpClient              *http.Client
-	tunnelClient            agent.ReverseTunnelClient
-	scheduleManager         agent.Scheduler
-	lastActivity            time.Time
-	updateLastActivity      chan struct{}
-	startSignal             chan struct{}
-	stopSignal              chan struct{}
-	edgeStackManager        *stack.StackManager
-	portainerURL            string
-	endpointID              string
-	tunnelServerAddr        string
-	tunnelServerFingerprint string
-	logsManager             *scheduler.LogsManager
-	containerPlatform       agent.ContainerPlatform
+	apiServerAddr            string
+	pollIntervalInSeconds    float64
+	pollTicker               *time.Ticker
+	inactivityTimeout        time.Duration
+	edgeID                   string
+	portainerClient          client.PortainerClient
+	tunnelClient             agent.ReverseTunnelClient
+	scheduleManager          agent.Scheduler
+	lastActivity             time.Time
+	updateLastActivitySignal chan struct{}
+	startSignal              chan struct{}
+	stopSignal               chan struct{}
+	edgeStackManager         *stack.StackManager
+	portainerURL             string
+	endpointID               string
+	tunnelServerAddr         string
+	tunnelServerFingerprint  string
+	logsManager              *scheduler.LogsManager
+	containerPlatform        agent.ContainerPlatform
 	// TODO: REVIEW
 	// This is a dirty hack for testing purposes - to prevent multiple update processes
 	autoUpdateTriggered bool
@@ -60,7 +59,6 @@ type pollServiceConfig struct {
 	EdgeID                  string
 	InactivityTimeout       string
 	PollFrequency           string
-	InsecurePoll            bool
 	TunnelCapability        bool
 	PortainerURL            string
 	EndpointID              string
@@ -74,8 +72,8 @@ type pollServiceConfig struct {
 // if needed as well as manage schedules.
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
-// If TunneCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
-func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig) (*PollService, error) {
+// If TunnelCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
+func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, portainerClient client.PortainerClient) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -87,24 +85,24 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 	}
 
 	pollService := &PollService{
-		apiServerAddr:           config.APIServerAddr,
-		edgeID:                  config.EdgeID,
-		pollIntervalInSeconds:   pollFrequency.Seconds(),
-		pollTicker:              time.NewTicker(pollFrequency),
-		insecurePoll:            config.InsecurePoll,
-		inactivityTimeout:       inactivityTimeout,
-		scheduleManager:         scheduler.NewCronManager(),
-		updateLastActivity:      make(chan struct{}),
-		startSignal:             make(chan struct{}),
-		stopSignal:              make(chan struct{}),
-		edgeStackManager:        edgeStackManager,
-		portainerURL:            config.PortainerURL,
-		endpointID:              config.EndpointID,
-		tunnelServerAddr:        config.TunnelServerAddr,
-		tunnelServerFingerprint: config.TunnelServerFingerprint,
-		logsManager:             logsManager,
-		containerPlatform:       config.ContainerPlatform,
-		autoUpdateTriggered:     false,
+		apiServerAddr:            config.APIServerAddr,
+		edgeID:                   config.EdgeID,
+		pollIntervalInSeconds:    pollFrequency.Seconds(),
+		pollTicker:               time.NewTicker(pollFrequency),
+		inactivityTimeout:        inactivityTimeout,
+		scheduleManager:          scheduler.NewCronManager(),
+		updateLastActivitySignal: make(chan struct{}),
+		startSignal:              make(chan struct{}),
+		stopSignal:               make(chan struct{}),
+		edgeStackManager:         edgeStackManager,
+		portainerURL:             config.PortainerURL,
+		endpointID:               config.EndpointID,
+		tunnelServerAddr:         config.TunnelServerAddr,
+		tunnelServerFingerprint:  config.TunnelServerFingerprint,
+		logsManager:              logsManager,
+		portainerClient:          portainerClient,
+		containerPlatform:        config.ContainerPlatform,
+		autoUpdateTriggered:      false,
 	}
 
 	if config.TunnelCapability {
@@ -119,15 +117,15 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 
 func (service *PollService) resetActivityTimer() {
 	if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() {
-		service.updateLastActivity <- struct{}{}
+		service.updateLastActivitySignal <- struct{}{}
 	}
 }
 
-func (service *PollService) start() {
+func (service *PollService) Start() {
 	service.startSignal <- struct{}{}
 }
 
-func (service *PollService) stop() {
+func (service *PollService) Stop() {
 	service.stopSignal <- struct{}{}
 }
 
@@ -175,238 +173,169 @@ func (service *PollService) startActivityMonitoringLoop() {
 					log.Printf("[ERROR] [edge] [message: unable to shutdown tunnel] [error: %s]", err)
 				}
 			}
-		case <-service.updateLastActivity:
+		case <-service.updateLastActivitySignal:
 			service.lastActivity = time.Now()
 		}
 	}
 }
 
-const clientDefaultPollTimeout = 5
-
-type stackStatus struct {
-	ID      int
-	Version int
-}
-
-type pollStatusResponse struct {
-	Status          string           `json:"status"`
-	Port            int              `json:"port"`
-	Schedules       []agent.Schedule `json:"schedules"`
-	CheckinInterval float64          `json:"checkin"`
-	Credentials     string           `json:"credentials"`
-	Stacks          []stackStatus    `json:"stacks"`
-	CheckForUpdate  bool             `json:"checkForUpdate"`
-}
-
-func (service *PollService) createHTTPClient(timeout float64) {
-	httpCli := &http.Client{
-		Timeout: time.Duration(timeout) * time.Second,
-	}
-
-	if service.insecurePoll {
-		httpCli.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
-	}
-
-	service.httpClient = httpCli
-}
-
 func (service *PollService) poll() error {
-
-	pollURL := fmt.Sprintf("%s/api/endpoints/%s/status", service.portainerURL, service.endpointID)
-	req, err := http.NewRequest("GET", pollURL, nil)
+	environmentStatus, err := service.portainerClient.GetEnvironmentStatus()
 	if err != nil {
 		return err
 	}
 
-	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, service.edgeID)
+	log.Printf("[DEBUG] [edge] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", environmentStatus.Status, environmentStatus.Port, len(environmentStatus.Schedules), environmentStatus.CheckinInterval)
 
-	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
-	// However, Portainer should handle podman agents the same way as docker agents.
-	agentPlatformIdentifier := service.containerPlatform
-	if service.containerPlatform == agent.PlatformPodman {
-		agentPlatformIdentifier = agent.PlatformDocker
-	}
-	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
-
-	log.Printf("[DEBUG] [edge] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(agentPlatformIdentifier)))
-
-	if service.httpClient == nil {
-		service.createHTTPClient(clientDefaultPollTimeout)
+	tunnelErr := service.manageUpdateTunnel(*environmentStatus)
+	if tunnelErr != nil {
+		return tunnelErr
 	}
 
-	resp, err := service.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	service.processSchedules(environmentStatus.Schedules)
 
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("[DEBUG] [edge] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
-		return errors.New("short poll request failed")
-	}
-
-	var responseData pollStatusResponse
-	err = json.NewDecoder(resp.Body).Decode(&responseData)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("[DEBUG] [edge] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", responseData.Status, responseData.Port, len(responseData.Schedules), responseData.CheckinInterval)
-
-	if service.tunnelClient != nil {
-		if responseData.Status == "IDLE" && service.tunnelClient.IsTunnelOpen() {
-			log.Printf("[DEBUG] [edge] [status: %s] [message: Idle status detected, shutting down tunnel]", responseData.Status)
-
-			err := service.tunnelClient.CloseTunnel()
-			if err != nil {
-				log.Printf("[ERROR] [edge] [message: Unable to shutdown tunnel] [error: %s]", err)
-			}
-		}
-
-		if responseData.Status == "REQUIRED" && !service.tunnelClient.IsTunnelOpen() {
-			log.Println("[DEBUG] [edge] [message: Required status detected, creating reverse tunnel]")
-
-			err := service.createTunnel(responseData.Credentials, responseData.Port)
-			if err != nil {
-				log.Printf("[ERROR] [edge] [message: Unable to create tunnel] [error: %s]", err)
-				return err
-			}
-		}
-	}
-
-	err = service.scheduleManager.Schedule(responseData.Schedules)
-	if err != nil {
-		log.Printf("[ERROR] [edge] [message: an error occurred during schedule management] [err: %s]", err)
-	}
-
-	logsToCollect := []int{}
-	for _, schedule := range responseData.Schedules {
-		if schedule.CollectLogs {
-			logsToCollect = append(logsToCollect, schedule.ID)
-		}
-	}
-
-	service.logsManager.HandleReceivedLogsRequests(logsToCollect)
-
-	if responseData.CheckinInterval != service.pollIntervalInSeconds {
-		log.Printf("[DEBUG] [edge] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, responseData.CheckinInterval)
-		service.pollIntervalInSeconds = responseData.CheckinInterval
-		service.createHTTPClient(responseData.CheckinInterval)
+	if environmentStatus.CheckinInterval > 0 && environmentStatus.CheckinInterval != service.pollIntervalInSeconds {
+		log.Printf("[DEBUG] [edge] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, environmentStatus.CheckinInterval)
+		service.pollIntervalInSeconds = environmentStatus.CheckinInterval
+		service.portainerClient.SetTimeout(time.Duration(environmentStatus.CheckinInterval) * time.Second)
 		service.pollTicker.Reset(time.Duration(service.pollIntervalInSeconds) * time.Second)
 	}
 
-	if responseData.Stacks != nil {
-		stacks := map[int]int{}
-		for _, stack := range responseData.Stacks {
-			stacks[stack.ID] = stack.Version
-		}
-
-		err := service.edgeStackManager.UpdateStacksStatus(stacks)
-		if err != nil {
-			log.Printf("[ERROR] [edge] [message: an error occurred during stack management] [error: %s]", err)
-			return err
-		}
+	stacksErr := service.processStacks(environmentStatus.Stacks)
+	if stacksErr != nil {
+		return stacksErr
 	}
 
 	// TODO: REVIEW
 	// Check the comment for the description of autoUpdateTriggered
-	if responseData.CheckForUpdate && !service.autoUpdateTriggered {
-		// trigger the update process
-		service.autoUpdateTriggered = true
-
-		// TODO: REVIEW
-		// Context should be handled properly
-		ctx := context.TODO()
-
-		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	if environmentStatus.CheckForUpdate && !service.autoUpdateTriggered {
+		err := service.processAutoUpdate()
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: unable to create Docker client] [error: %s]", err)
 			return err
 		}
-		defer cli.Close()
+	}
 
-		_, err = cli.ImagePull(ctx, "deviantony/portainer-updater:latest", types.ImagePullOptions{})
+	return nil
+}
+
+func (service *PollService) processAutoUpdate() error {
+	// trigger the update process
+	service.autoUpdateTriggered = true
+
+	// TODO: REVIEW
+	// Context should be handled properly
+	ctx := context.TODO()
+
+	cli, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion(agent.SupportedDockerAPIVersion))
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: unable to create Docker client] [error: %s]", err)
+		return err
+	}
+	defer cli.Close()
+
+	_, err = cli.ImagePull(ctx, "deviantony/portainer-updater:latest", types.ImagePullOptions{})
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: unable to pull portainer-updater Docker image] [error: %s]", err)
+		return err
+	}
+
+	// TODO: REVIEW
+	// Hardcoded target version for POC
+	// Should be retrieved during polling - set by the Portainer instance
+	agentTargetVersion := "latest"
+
+	// Agent needs to retrieve its own container name to be passed to the portainer-updater service container
+
+	// Unless overriden, the container hostname is matching the container ID
+	// See https://stackoverflow.com/a/38983893
+
+	// portainerAgentContainerID, err := os.Hostname()
+
+	// If the hostname property is set when creating the container
+	// we can find ourselves in a situation where the container hostname is set to portainer_agent for example
+	// but the container name / container ID is different
+	// Therefore the approach of looking up the hostname is not enough.
+
+	// Instead, we do a lookup in the /proc/1/cpuset file inside the container to find the container ID
+	// See https://stackoverflow.com/a/63145861 and https://stackoverflow.com/a/25729598
+
+	// TODO: REVIEW
+	// This however will only work on Linux systems. I don't know if there is a way to do the same
+	// inside a Windows container. In that case, we could fallback to the container hostname approach
+	// and explicitly not support setting the hostname property on the agent container on Windows.
+	cpuSetFileContent, err := os.ReadFile("/proc/1/cpuset")
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: unable to read from /proc/1/cpuset to retrieve agent container name] [error: %s]", err)
+		return err
+	}
+
+	// The content of that file looks like
+	// /docker/<container ID>
+	portainerAgentContainerID := strings.TrimPrefix(string(cpuSetFileContent), "/docker/")
+
+	// Create and run the portainer-updater service container
+	// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock deviantony/portainer-updater agent-update portainer_agent 2.12.2
+
+	resp, err := cli.ContainerCreate(ctx, &container.Config{
+		Image: "deviantony/portainer-updater:latest",
+		Cmd:   []string{"agent-update", portainerAgentContainerID, agentTargetVersion},
+	}, &container.HostConfig{
+		Binds: []string{
+			// TODO: REVIEW
+			// This implementation will only work on Linux filesystems
+			// For Windows, use a named pipe approach
+			"/var/run/docker.sock:/var/run/docker.sock",
+		},
+	}, nil, nil, fmt.Sprintf("portainer-updater-%d", time.Now().Unix()))
+
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: unable to create portainer-updater container] [error: %s]", err)
+		return err
+	}
+
+	err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: unable to start portainer-updater container] [error: %s]", err)
+		return err
+	}
+
+	// TODO: REVIEW
+	// Container should be cleaned-up after the operation is completed
+	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: unable to pull portainer-updater Docker image] [error: %s]", err)
+			log.Printf("[ERROR] [edge] [message: an error occured while waiting for the upgrade of the agent through the portainer-updater service container] [error: %s]", err)
 			return err
 		}
+	case <-statusCh:
+	}
 
-		// TODO: REVIEW
-		// Hardcoded target version for POC
-		// Should be retrieved during polling - set by the Portainer instance
-		agentTargetVersion := "latest"
+	return nil
+}
 
-		// Agent needs to retrieve its own container name to be passed to the portainer-updater service container
+func (service *PollService) manageUpdateTunnel(environmentStatus client.PollStatusResponse) error {
+	if service.tunnelClient == nil {
+		return nil
+	}
 
-		// Unless overriden, the container hostname is matching the container ID
-		// See https://stackoverflow.com/a/38983893
+	if environmentStatus.Status == agent.TunnelStatusIdle && service.tunnelClient.IsTunnelOpen() {
+		log.Printf("[DEBUG] [edge] [status: %s] [message: Idle status detected, shutting down tunnel]", environmentStatus.Status)
 
-		// portainerAgentContainerID, err := os.Hostname()
-
-		// If the hostname property is set when creating the container
-		// we can find ourselves in a situation where the container hostname is set to portainer_agent for example
-		// but the container name / container ID is different
-		// Therefore the approach of looking up the hostname is not enough.
-
-		// Instead, we do a lookup in the /proc/1/cpuset file inside the container to find the container ID
-		// See https://stackoverflow.com/a/63145861 and https://stackoverflow.com/a/25729598
-
-		// TODO: REVIEW
-		// This however will only work on Linux systems. I don't know if there is a way to do the same
-		// inside a Windows container. In that case, we could fallback to the container hostname approach
-		// and explicitly not support setting the hostname property on the agent container on Windows.
-		cpuSetFileContent, err := os.ReadFile("/proc/1/cpuset")
+		err := service.tunnelClient.CloseTunnel()
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: unable to read from /proc/1/cpuset to retrieve agent container name] [error: %s]", err)
+			log.Printf("[ERROR] [edge] [message: Unable to shutdown tunnel] [error: %s]", err)
+		}
+	}
+
+	if environmentStatus.Status == agent.TunnelStatusRequired && !service.tunnelClient.IsTunnelOpen() {
+		log.Println("[DEBUG] [edge] [message: Required status detected, creating reverse tunnel]")
+
+		err := service.createTunnel(environmentStatus.Credentials, environmentStatus.Port)
+		if err != nil {
+			log.Printf("[ERROR] [edge] [message: Unable to create tunnel] [error: %s]", err)
 			return err
 		}
-
-		// The content of that file looks like
-		// /docker/<container ID>
-		portainerAgentContainerID := strings.TrimPrefix(string(cpuSetFileContent), "/docker/")
-
-		// Create and run the portainer-updater service container
-		// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock deviantony/portainer-updater agent-update portainer_agent 2.12.2
-
-		resp, err := cli.ContainerCreate(ctx, &container.Config{
-			Image: "deviantony/portainer-updater:latest",
-			Cmd:   []string{"agent-update", portainerAgentContainerID, agentTargetVersion},
-		}, &container.HostConfig{
-			Binds: []string{
-				// TODO: REVIEW
-				// This implementation will only work on Linux filesystems
-				// For Windows, use a named pipe approach
-				"/var/run/docker.sock:/var/run/docker.sock",
-			},
-		}, nil, nil, fmt.Sprintf("portainer-updater-%d", time.Now().Unix()))
-
-		if err != nil {
-			log.Printf("[ERROR] [edge] [message: unable to create portainer-updater container] [error: %s]", err)
-			return err
-		}
-
-		err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
-		if err != nil {
-			log.Printf("[ERROR] [edge] [message: unable to start portainer-updater container] [error: %s]", err)
-			return err
-		}
-
-		// TODO: REVIEW
-		// Container should be cleaned-up after the operation is completed
-		statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-		select {
-		case err := <-errCh:
-			if err != nil {
-				log.Printf("[ERROR] [edge] [message: an error occured while waiting for the upgrade of the agent through the portainer-updater service container] [error: %s]", err)
-				return err
-			}
-		case <-statusCh:
-		}
-
 	}
 
 	return nil
@@ -424,11 +353,11 @@ func (service *PollService) createTunnel(encodedCredentials string, remotePort i
 	}
 
 	tunnelConfig := agent.TunnelConfig{
-		ServerAddr:       service.tunnelServerAddr,
-		ServerFingerpint: service.tunnelServerFingerprint,
-		Credentials:      string(credentials),
-		RemotePort:       strconv.Itoa(remotePort),
-		LocalAddr:        service.apiServerAddr,
+		LocalAddr:         service.apiServerAddr,
+		ServerAddr:        service.tunnelServerAddr,
+		ServerFingerprint: service.tunnelServerFingerprint,
+		Credentials:       string(credentials),
+		RemotePort:        strconv.Itoa(remotePort),
 	}
 
 	err = service.tunnelClient.CreateTunnel(tunnelConfig)
@@ -437,5 +366,39 @@ func (service *PollService) createTunnel(encodedCredentials string, remotePort i
 	}
 
 	service.resetActivityTimer()
+	return nil
+}
+
+func (service *PollService) processSchedules(schedules []agent.Schedule) {
+	err := service.scheduleManager.Schedule(schedules)
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: an error occurred during schedule management] [err: %s]", err)
+	}
+
+	logsToCollect := []int{}
+	for _, schedule := range schedules {
+		if schedule.CollectLogs {
+			logsToCollect = append(logsToCollect, schedule.ID)
+		}
+	}
+
+	service.logsManager.HandleReceivedLogsRequests(logsToCollect)
+}
+
+func (service *PollService) processStacks(pollResponseStacks []client.StackStatus) error {
+	if pollResponseStacks == nil {
+		return nil
+	}
+
+	stacks := map[int]int{}
+	for _, s := range pollResponseStacks {
+		stacks[s.ID] = s.Version
+	}
+
+	err := service.edgeStackManager.UpdateStacksStatus(stacks)
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: an error occurred during stack management] [error: %s]", err)
+		return err
+	}
 	return nil
 }
