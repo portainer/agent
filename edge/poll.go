@@ -48,7 +48,6 @@ type PollService struct {
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
 	logsManager              *scheduler.LogsManager
-	containerPlatform        agent.ContainerPlatform
 	// TODO: REVIEW
 	// This is a dirty hack for testing purposes - to prevent multiple update processes
 	autoUpdateTriggered bool
@@ -64,7 +63,6 @@ type pollServiceConfig struct {
 	EndpointID              string
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
-	ContainerPlatform       agent.ContainerPlatform
 }
 
 // newPollService returns a pointer to a new instance of PollService, and will start two loops in go routines.
@@ -101,7 +99,6 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
 		logsManager:              logsManager,
 		portainerClient:          portainerClient,
-		containerPlatform:        config.ContainerPlatform,
 		autoUpdateTriggered:      false,
 	}
 
