@@ -245,7 +245,7 @@ func (service *PollService) processAutoUpdate(agentTargetVersion string) error {
 	defer cli.Close()
 
 	// We make sure that the latest version of the portainer-updater image is available
-	reader, err := cli.ImagePull(ctx, "deviantony/portainer-updater:latest", types.ImagePullOptions{})
+	reader, err := cli.ImagePull(ctx, "portainer/portainer-updater:latest", types.ImagePullOptions{})
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: unable to pull portainer-updater Docker image] [error: %s]", err)
 		return err
@@ -287,10 +287,10 @@ func (service *PollService) processAutoUpdate(agentTargetVersion string) error {
 	portainerAgentContainerID := strings.TrimSpace(strings.TrimPrefix(string(cpuSetFileContent), "/docker/"))
 
 	// Create and run the portainer-updater service container
-	// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock deviantony/portainer-updater agent-update portainer_agent 2.12.2
+	// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock portainer/portainer-updater agent-update portainer_agent 2.12.2
 
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: "deviantony/portainer-updater:latest",
+		Image: "portainer/portainer-updater:latest",
 		Cmd:   []string{"agent-update", portainerAgentContainerID, agentTargetVersion},
 	}, &container.HostConfig{
 		Binds: []string{
