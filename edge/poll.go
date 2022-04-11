@@ -15,6 +15,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockercli "github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
 	"github.com/portainer/agent/edge/client"
@@ -224,6 +225,10 @@ func (service *PollService) poll() error {
 	return nil
 }
 
+// TODO: REVIEW
+// For the sake of this POC - the auto update process is only implemented for Docker standalone
+// The agent should be able to determine which orchestrator it is running on and trigger
+// an update process specific to the orchestrator (e.g. k8s, Docker Swarm)
 func (service *PollService) processAutoUpdate(agentTargetVersion string) error {
 	service.autoUpdateTriggered = true
 
@@ -319,7 +324,20 @@ func (service *PollService) processAutoUpdate(agentTargetVersion string) error {
 	case <-statusCh:
 	}
 
-	// TODO: I'm not sure that this code is reachable
+	// We get the logs of the portainer-updater service container and write them to the agent output
+	// Can be useful to troubleshoot the process in case of an update failure from the portainer-updater service container
+	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true})
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: unable to get the portainer-updater container logs] [error: %s]", err)
+		return err
+	}
+
+	// TODO: REVIEW
+	// This could be something that we only output when the agent log level is set to DEBUG
+	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+
+	// TODO: REVIEW
+	// I'm not sure that this code is reachable
 	// By then, I think the current agent process will be deleted.
 	// Unless the existing agent is already running the latest version of the target version
 	err = cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{})
