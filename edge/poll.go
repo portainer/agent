@@ -209,8 +209,12 @@ func (service *PollService) poll() error {
 	}
 
 	// TODO: REVIEW
+	log.Printf("[DEBUG] [edge] [auto_update: %t] [target_version: %s]", environmentStatus.CheckForUpdate, environmentStatus.AgentTargetVersion)
+
+	// TODO: REVIEW
 	// Check the comment for the description of autoUpdateTriggered
 	if environmentStatus.CheckForUpdate && !service.autoUpdateTriggered {
+		log.Print("[DEBUG] [edge] [message: starting auto-update process]")
 		err := service.processAutoUpdate(environmentStatus.AgentTargetVersion)
 		if err != nil {
 			return err
