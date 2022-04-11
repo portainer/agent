@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -27,8 +29,10 @@ const (
 )
 
 // PollService is used to poll a Portainer instance to retrieve the status associated to the Edge endpoint.
-// It is responsible for managing the state of the reverse tunnel (open and closing after inactivity).
-// It is also responsible for retrieving the data associated to Edge stacks and schedules.
+// It is responsible for:
+// * managing the state of the reverse tunnel (open and closing after inactivity)
+// * retrieving the data associated to Edge stacks and schedules
+// * managing the agent auto update process
 type PollService struct {
 	apiServerAddr            string
 	pollIntervalInSeconds    float64
@@ -49,7 +53,8 @@ type PollService struct {
 	tunnelServerFingerprint  string
 	logsManager              *scheduler.LogsManager
 	// TODO: REVIEW
-	// This is a dirty hack for testing purposes - to prevent multiple update processes
+	// Hack for POC purposes only - to avoid triggering the update process on each poll
+	// This should be replaced by a proper scheduling of the agent update
 	autoUpdateTriggered bool
 }
 
@@ -206,7 +211,7 @@ func (service *PollService) poll() error {
 	// TODO: REVIEW
 	// Check the comment for the description of autoUpdateTriggered
 	if environmentStatus.CheckForUpdate && !service.autoUpdateTriggered {
-		err := service.processAutoUpdate()
+		err := service.processAutoUpdate(environmentStatus.AgentTargetVersion)
 		if err != nil {
 			return err
 		}
@@ -215,14 +220,14 @@ func (service *PollService) poll() error {
 	return nil
 }
 
-func (service *PollService) processAutoUpdate() error {
-	// trigger the update process
+func (service *PollService) processAutoUpdate(agentTargetVersion string) error {
 	service.autoUpdateTriggered = true
 
 	// TODO: REVIEW
 	// Context should be handled properly
 	ctx := context.TODO()
 
+	// We create a Docker client to orchestrate docker operations
 	cli, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion(agent.SupportedDockerAPIVersion))
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: unable to create Docker client] [error: %s]", err)
@@ -230,25 +235,27 @@ func (service *PollService) processAutoUpdate() error {
 	}
 	defer cli.Close()
 
-	_, err = cli.ImagePull(ctx, "deviantony/portainer-updater:latest", types.ImagePullOptions{})
+	// We make sure that the latest version of the portainer-updater image is available
+	reader, err := cli.ImagePull(ctx, "deviantony/portainer-updater:latest", types.ImagePullOptions{})
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: unable to pull portainer-updater Docker image] [error: %s]", err)
 		return err
 	}
+	defer reader.Close()
 
-	// TODO: REVIEW
-	// Hardcoded target version for POC
-	// Should be retrieved during polling - set by the Portainer instance
-	agentTargetVersion := "latest"
+	// We have to read the content of the reader otherwise the image pulling process will be asynchronous
+	// This is not really well documented by the Docker SDK
+	io.Copy(ioutil.Discard, reader)
 
 	// Agent needs to retrieve its own container name to be passed to the portainer-updater service container
 
 	// Unless overriden, the container hostname is matching the container ID
 	// See https://stackoverflow.com/a/38983893
 
-	// portainerAgentContainerID, err := os.Hostname()
+	// That could be achieved through:
+	// portainerAgentContainerID, _ := os.Hostname()
 
-	// If the hostname property is set when creating the container
+	// BUT If the hostname property is set when creating the container
 	// we can find ourselves in a situation where the container hostname is set to portainer_agent for example
 	// but the container name / container ID is different
 	// Therefore the approach of looking up the hostname is not enough.
@@ -290,14 +297,14 @@ func (service *PollService) processAutoUpdate() error {
 		return err
 	}
 
+	// We then start the portainer-updater service container
 	err = cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: unable to start portainer-updater container] [error: %s]", err)
 		return err
 	}
 
-	// TODO: REVIEW
-	// Container should be cleaned-up after the operation is completed
+	// We wait for it to finish
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
@@ -306,6 +313,15 @@ func (service *PollService) processAutoUpdate() error {
 			return err
 		}
 	case <-statusCh:
+	}
+
+	// TODO: I'm not sure that this code is reachable
+	// By then, I think the current agent process will be deleted.
+	// Unless the existing agent is already running the latest version of the target version
+	err = cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{})
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: unable to remove portainer-updater container] [error: %s]", err)
+		return err
 	}
 
 	return nil

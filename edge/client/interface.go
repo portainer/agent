@@ -21,13 +21,14 @@ type StackStatus struct {
 }
 
 type PollStatusResponse struct {
-	Status          string           `json:"status"`
-	Port            int              `json:"port"`
-	Schedules       []agent.Schedule `json:"schedules"`
-	CheckinInterval float64          `json:"checkin"`
-	Credentials     string           `json:"credentials"`
-	Stacks          []StackStatus    `json:"stacks"`
-	CheckForUpdate  bool             `json:"checkForUpdate"`
+	Status             string           `json:"status"`
+	Port               int              `json:"port"`
+	Schedules          []agent.Schedule `json:"schedules"`
+	CheckinInterval    float64          `json:"checkin"`
+	Credentials        string           `json:"credentials"`
+	Stacks             []StackStatus    `json:"stacks"`
+	CheckForUpdate     bool             `json:"checkForUpdate"`
+	AgentTargetVersion string           `json:"agentTargetVersion"`
 }
 
 type stackConfigResponse struct {
