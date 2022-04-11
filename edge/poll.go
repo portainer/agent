@@ -228,7 +228,7 @@ func (service *PollService) poll() error {
 // TODO: REVIEW
 // For the sake of this POC - the auto update process is only implemented for Docker standalone
 // The agent should be able to determine which orchestrator it is running on and trigger
-// an update process specific to the orchestrator (e.g. k8s, Docker Swarm)
+// an update process specific to the orchestrator (e.g. Nomad, k8s, Docker Swarm)
 func (service *PollService) processAutoUpdate(agentTargetVersion string) error {
 	service.autoUpdateTriggered = true
 
@@ -284,7 +284,7 @@ func (service *PollService) processAutoUpdate(agentTargetVersion string) error {
 
 	// The content of that file looks like
 	// /docker/<container ID>
-	portainerAgentContainerID := strings.TrimPrefix(string(cpuSetFileContent), "/docker/")
+	portainerAgentContainerID := strings.TrimSpace(strings.TrimPrefix(string(cpuSetFileContent), "/docker/"))
 
 	// Create and run the portainer-updater service container
 	// docker run --rm -v /var/run/docker.sock:/var/run/docker.sock deviantony/portainer-updater agent-update portainer_agent 2.12.2
@@ -324,9 +324,15 @@ func (service *PollService) processAutoUpdate(agentTargetVersion string) error {
 	case <-statusCh:
 	}
 
+	// TODO: REVIEW
+	// In case of a successful update, this code will not be reached
+	// This is because the agent will be deleted at that point in time
+	// We will need to find a way to trigger a clean-up process of the portainer-updater service container
+	// Maybe after the agent starts, it could check for any existing stopped portainer-updater service container and remove it
+
 	// We get the logs of the portainer-updater service container and write them to the agent output
 	// Can be useful to troubleshoot the process in case of an update failure from the portainer-updater service container
-	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true})
+	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: unable to get the portainer-updater container logs] [error: %s]", err)
 		return err
@@ -336,10 +342,9 @@ func (service *PollService) processAutoUpdate(agentTargetVersion string) error {
 	// This could be something that we only output when the agent log level is set to DEBUG
 	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
 
-	// TODO: REVIEW
-	// I'm not sure that this code is reachable
-	// By then, I think the current agent process will be deleted.
-	// Unless the existing agent is already running the latest version of the target version
+	// The removal of the portainer-updater service container here is going to happen in the following cases:
+	// * An error occured during the update process
+	// * The agent is already running the latest version of the image
 	err = cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{})
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: unable to remove portainer-updater container] [error: %s]", err)
