@@ -1,13 +1,18 @@
 package edge
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 )
@@ -51,7 +56,7 @@ func NewManager(parameters *ManagerParameters) *Manager {
 // Start starts the manager
 func (manager *Manager) Start() error {
 	if !manager.IsKeySet() {
-		return errors.New("unable to start Edge manager without key")
+		return errors.New("unable to Start Edge manager without key")
 	}
 
 	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
@@ -61,7 +66,6 @@ func (manager *Manager) Start() error {
 		EdgeID:                  manager.agentOptions.EdgeID,
 		PollFrequency:           agent.DefaultEdgePollInterval,
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
-		InsecurePoll:            manager.agentOptions.EdgeInsecurePoll,
 		TunnelCapability:        manager.agentOptions.EdgeTunnel,
 		PortainerURL:            manager.key.PortainerInstanceURL,
 		EndpointID:              manager.key.EndpointID,
@@ -70,18 +74,50 @@ func (manager *Manager) Start() error {
 		ContainerPlatform:       manager.containerPlatform,
 	}
 
-	log.Printf("[DEBUG] [edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, pollServiceConfig.InsecurePoll, manager.agentOptions.EdgeTunnel)
+	log.Printf("[DEBUG] [edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll, manager.agentOptions.EdgeTunnel)
 
-	stackManager, err := stack.NewStackManager(manager.key.PortainerInstanceURL, manager.agentOptions.EdgeID, manager.agentOptions.AssetsPath, manager.GetEndpointID, pollServiceConfig.InsecurePoll)
-	if err != nil {
-		return err
+	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
+	// However, Portainer should handle podman agents the same way as docker agents.
+	agentPlatform := manager.containerPlatform
+	if manager.containerPlatform == agent.PlatformPodman {
+		agentPlatform = agent.PlatformDocker
 	}
-	manager.stackManager = stackManager
 
-	manager.logsManager = scheduler.NewLogsManager(manager.key.PortainerInstanceURL, manager.agentOptions.EdgeID, manager.GetEndpointID, pollServiceConfig.InsecurePoll)
+	manager.stackManager = stack.NewStackManager(
+		client.NewPortainerClient(
+			manager.key.PortainerInstanceURL,
+			manager.agentOptions.EdgeID,
+			manager.GetEndpointID,
+			agentPlatform,
+			buildHTTPClient(10, manager.agentOptions),
+		),
+		manager.agentOptions.AssetsPath,
+	)
+
+	manager.logsManager = scheduler.NewLogsManager(
+		client.NewPortainerClient(
+			manager.key.PortainerInstanceURL,
+			manager.agentOptions.EdgeID,
+			manager.GetEndpointID,
+			agentPlatform,
+			buildHTTPClient(10, manager.agentOptions),
+		),
+	)
 	manager.logsManager.Start()
 
-	pollService, err := newPollService(manager, manager.stackManager, manager.logsManager, pollServiceConfig)
+	pollService, err := newPollService(
+		manager,
+		manager.stackManager,
+		manager.logsManager,
+		pollServiceConfig,
+		client.NewPortainerClient(
+			manager.key.PortainerInstanceURL,
+			manager.agentOptions.EdgeID,
+			manager.GetEndpointID,
+			agentPlatform,
+			buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
+		),
+	)
 	if err != nil {
 		return err
 	}
@@ -130,12 +166,12 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency time.Duration) error {
-	manager.pollService.start()
+	manager.pollService.Start()
 
 	go func() {
 		ticker := time.NewTicker(runtimeCheckFrequency)
 		for range ticker.C {
-			manager.pollService.start()
+			manager.pollService.Start()
 
 			err := manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
 			if err != nil {
@@ -145,7 +181,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 
 			err = manager.stackManager.Start()
 			if err != nil {
-				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to Start stack manager] [error: %s]", err)
 				return
 			}
 		}
@@ -187,7 +223,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 			engineStatus = stack.EngineTypeDockerSwarm
 		}
 
-		manager.pollService.start()
+		manager.pollService.Start()
 
 		err = manager.stackManager.SetEngineStatus(engineStatus)
 		if err != nil {
@@ -197,7 +233,61 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 		return manager.stackManager.Start()
 	}
 
-	manager.pollService.stop()
+	manager.pollService.Stop()
 
 	return manager.stackManager.Stop()
+}
+
+func buildHTTPClient(timeout float64, options *agent.Options) *http.Client {
+	httpCli := &http.Client{
+		Timeout: time.Duration(timeout) * time.Second,
+	}
+
+	transport := buildTransport(options)
+	if transport != nil {
+		httpCli.Transport = transport
+	}
+	return httpCli
+}
+
+func buildTransport(options *agent.Options) *http.Transport {
+	if options.EdgeInsecurePoll {
+		return &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+
+	// if ssl certs for edge agent are set
+	if options.SSLCert != "" && options.SSLKey != "" {
+		// Read the key pair to create certificate
+		cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var caCertPool *x509.CertPool
+		// Create a CA certificate pool and add cert.pem to it
+		if options.SSLCACert != "" {
+			caCert, err := ioutil.ReadFile(options.SSLCACert)
+			if err != nil {
+				log.Fatal(err)
+			}
+			caCertPool = x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+		}
+
+		// Create an HTTPS client and supply the created CA pool and certificate
+		return &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs:      caCertPool,
+				Certificates: []tls.Certificate{cert},
+				MinVersion:   tls.VersionTLS13,
+				MaxVersion:   tls.VersionTLS13,
+			},
+		}
+	}
+
+	return nil
 }
