@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	portainer "github.com/portainer/portainer/api"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,13 +18,13 @@ import (
 type PortainerEdgeClient struct {
 	httpClient    *http.Client
 	serverAddress string
-	endpointID    string
+	endpointID    portainer.EndpointID
 	edgeID        string
 	agentPlatform agent.ContainerPlatform
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
-func NewPortainerEdgeClient(serverAddress, endpointID, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
+func NewPortainerEdgeClient(serverAddress string, endpointID portainer.EndpointID, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
 	return &PortainerEdgeClient{
 		serverAddress: serverAddress,
 		endpointID:    endpointID,
@@ -38,7 +39,7 @@ func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
 }
 
 func (client *PortainerEdgeClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
-	pollURL := fmt.Sprintf("%s/api/endpoints/%s/edge/status", client.serverAddress, client.endpointID)
+	pollURL := fmt.Sprintf("%s/api/endpoints/%v/edge/status", client.serverAddress, client.endpointID)
 	req, err := http.NewRequest("GET", pollURL, nil)
 	if err != nil {
 		return nil, err
@@ -70,7 +71,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus() (*PollStatusResponse, 
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
 func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
-	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/stacks/%d", client.serverAddress, client.endpointID, edgeStackID)
+	requestURL := fmt.Sprintf("%s/api/endpoints/%v/edge/stacks/%d", client.serverAddress, client.endpointID, edgeStackID)
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -90,7 +91,7 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 		return nil, errors.New("GetEdgeStackConfig operation failed")
 	}
 
-	var data stackConfigResponse
+	var data EdgeStackData
 	err = json.NewDecoder(resp.Body).Decode(&data)
 	if err != nil {
 		return nil, err
@@ -99,17 +100,18 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent}, nil
 }
 
+type setEdgeStackStatusPayload struct {
+	Error      string
+	Status     int
+	EndpointID int
+}
+
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
 func (client *PortainerEdgeClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
-	endpointID, err := strconv.Atoi(client.endpointID)
-	if err != nil {
-		return err
-	}
-
 	payload := setEdgeStackStatusPayload{
 		Error:      error,
 		Status:     edgeStackStatus,
-		EndpointID: endpointID,
+		EndpointID: int(client.endpointID),
 	}
 
 	data, err := json.Marshal(payload)
@@ -145,10 +147,10 @@ type logFilePayload struct {
 	FileContent string
 }
 
-// SendJobLogFile sends the jobID log to the Portainer server
-func (client *PortainerEdgeClient) SendJobLogFile(jobID int, fileContent []byte) error {
+// SetEdgeJobStatus sends the jobID log to the Portainer server
+func (client *PortainerEdgeClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error {
 	payload := logFilePayload{
-		FileContent: string(fileContent),
+		FileContent: edgeJobStatus.LogFileContent,
 	}
 
 	data, err := json.Marshal(payload)
@@ -156,7 +158,7 @@ func (client *PortainerEdgeClient) SendJobLogFile(jobID int, fileContent []byte)
 		return err
 	}
 
-	requestURL := fmt.Sprintf("%s/api/endpoints/%s/edge/jobs/%d/logs", client.serverAddress, client.endpointID, jobID)
+	requestURL := fmt.Sprintf("%s/api/endpoints/%v/edge/jobs/%d/logs", client.serverAddress, client.endpointID, edgeJobStatus.JobID)
 
 	req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewReader(data))
 	if err != nil {
@@ -173,9 +175,17 @@ func (client *PortainerEdgeClient) SendJobLogFile(jobID int, fileContent []byte)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client] [response_code: %d] [message: SendJobLogFile operation failed]", resp.StatusCode)
-		return errors.New("SendJobLogFile operation failed")
+		log.Printf("[ERROR] [http,client] [response_code: %d] [message: SetEdgeJobStatus operation failed]", resp.StatusCode)
+		return errors.New("SetEdgeJobStatus operation failed")
 	}
 
 	return nil
+}
+
+func (client *PortainerEdgeClient) ProcessAsyncCommands() error {
+	return nil // edge mode only
+}
+
+func (client *PortainerEdgeClient) SetLastCommandTimestamp(timestamp time.Time) {
+	return // edge mode only
 }
