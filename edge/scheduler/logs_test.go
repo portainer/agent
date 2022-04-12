@@ -6,13 +6,15 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
+	portainer "github.com/portainer/portainer/api"
 )
 
 func TestDataRace(t *testing.T) {
 	cli := client.NewPortainerClient(
 		"portainerURL",
+		func() portainer.EndpointID { return 1 },
 		"edgeID",
-		func() string { return "endpointID" },
+		false,
 		agent.PlatformDocker,
 		&http.Client{},
 	)

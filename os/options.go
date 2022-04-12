@@ -18,6 +18,7 @@ const (
 	EnvKeyAssetsPath            = "ASSETS_PATH"
 	EnvKeyDataPath              = "DATA_PATH"
 	EnvKeyEdge                  = "EDGE"
+	EnvKeyEdgeAsync             = "EDGE_ASYNC"
 	EnvKeyEdgeKey               = "EDGE_KEY"
 	EnvKeyEdgeID                = "EDGE_ID"
 	EnvKeyEdgeServerHost        = "EDGE_SERVER_HOST"
@@ -51,6 +52,7 @@ var (
 
 	// Edge mode
 	fEdgeMode              = kingpin.Flag("edge", EnvKeyEdge+" enable Edge mode. Disabled by default, set to 1 or true to enable it").Envar(EnvKeyEdge).Bool()
+	fEdgeAsyncMode         = kingpin.Flag("edge-async", EnvKeyEdge+" enable Edge Async mode. Disabled by default, set to 1 or true to enable it").Envar(EnvKeyEdgeAsync).Bool()
 	fEdgeKey               = kingpin.Flag("edge-key", EnvKeyEdgeKey+" specify an Edge key to use at startup").Envar(EnvKeyEdgeKey).String()
 	fEdgeID                = kingpin.Flag("edge-id", EnvKeyEdgeID+" a unique identifier associated to this agent cluster").Envar(EnvKeyEdgeID).String()
 	fEdgeServerAddr        = kingpin.Flag("edge-host", EnvKeyEdgeServerHost+" address on which the Edge UI will be exposed (default to 0.0.0.0)").Envar(EnvKeyEdgeServerHost).Default(agent.DefaultEdgeServerAddr).IP()
@@ -67,6 +69,7 @@ var (
 
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	kingpin.Parse()
+
 	return &agent.Options{
 		AssetsPath:            *fAssetsPath,
 		AgentServerAddr:       fAgentServerAddr.String(),
@@ -78,6 +81,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		DataPath:              *fDataPath,
 		SharedSecret:          *fSharedSecret,
 		EdgeMode:              *fEdgeMode,
+		EdgeAsyncMode:         *fEdgeAsyncMode,
 		EdgeKey:               *fEdgeKey,
 		EdgeID:                *fEdgeID,
 		EdgeUIServerAddr:      fEdgeServerAddr.String(),

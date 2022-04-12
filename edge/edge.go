@@ -15,6 +15,7 @@ import (
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
+	portainer "github.com/portainer/portainer/api"
 )
 
 type (
@@ -68,7 +69,6 @@ func (manager *Manager) Start() error {
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
 		TunnelCapability:        manager.agentOptions.EdgeTunnel,
 		PortainerURL:            manager.key.PortainerInstanceURL,
-		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
 		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
 		ContainerPlatform:       manager.containerPlatform,
@@ -83,26 +83,21 @@ func (manager *Manager) Start() error {
 		agentPlatform = agent.PlatformDocker
 	}
 
+	portainerClient := client.NewPortainerClient(
+		manager.key.PortainerInstanceURL,
+		manager.GetEndpointID,
+		manager.agentOptions.EdgeID,
+		manager.agentOptions.EdgeAsyncMode,
+		agentPlatform,
+		buildHTTPClient(10, manager.agentOptions),
+	)
+
 	manager.stackManager = stack.NewStackManager(
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			manager.agentOptions.EdgeID,
-			manager.GetEndpointID,
-			agentPlatform,
-			buildHTTPClient(10, manager.agentOptions),
-		),
+		portainerClient,
 		manager.agentOptions.AssetsPath,
 	)
 
-	manager.logsManager = scheduler.NewLogsManager(
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			manager.agentOptions.EdgeID,
-			manager.GetEndpointID,
-			agentPlatform,
-			buildHTTPClient(10, manager.agentOptions),
-		),
-	)
+	manager.logsManager = scheduler.NewLogsManager(portainerClient)
 	manager.logsManager.Start()
 
 	pollService, err := newPollService(
@@ -110,13 +105,7 @@ func (manager *Manager) Start() error {
 		manager.stackManager,
 		manager.logsManager,
 		pollServiceConfig,
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			manager.agentOptions.EdgeID,
-			manager.GetEndpointID,
-			agentPlatform,
-			buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
-		),
+		portainerClient,
 	)
 	if err != nil {
 		return err
@@ -132,14 +121,14 @@ func (manager *Manager) ResetActivityTimer() {
 }
 
 // SetEndpointID set the endpointID of the agent
-func (manager *Manager) SetEndpointID(endpointID string) {
+func (manager *Manager) SetEndpointID(endpointID portainer.EndpointID) {
 	manager.mu.Lock()
 	manager.key.EndpointID = endpointID
 	manager.mu.Unlock()
 }
 
 // GetEndpointID gets the endpointID of the agent
-func (manager *Manager) GetEndpointID() string {
+func (manager *Manager) GetEndpointID() portainer.EndpointID {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
