@@ -22,10 +22,6 @@ type PortainerEdgeClient struct {
 	agentPlatform   agent.ContainerPlatform
 }
 
-type globalKeyRequest struct {
-	PortainerURL string `json:"portainerURL"`
-}
-
 type globalKeyResponse struct {
 	EndpointID int `json:"endpointID"`
 }
@@ -46,13 +42,8 @@ func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
 }
 
 func (client *PortainerEdgeClient) GetEnvironmentID() (string, error) {
-	reqBody := &bytes.Buffer{}
-	enc := json.NewEncoder(reqBody)
-
-	enc.Encode(globalKeyRequest{client.serverAddress})
-
 	gkURL := fmt.Sprintf("%s/api/endpoints/global-key", client.serverAddress)
-	req, err := http.NewRequest(http.MethodPost, gkURL, reqBody)
+	req, err := http.NewRequest(http.MethodPost, gkURL, nil)
 	if err != nil {
 		return "", err
 	}
