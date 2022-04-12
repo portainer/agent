@@ -77,8 +77,8 @@ type StackManager struct {
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(portainerURL, edgeID, assetsPath string, getEndpointFn func() string, insecurePoll bool) (*StackManager, error) {
-	cli := client.NewPortainerClient(portainerURL, edgeID, getEndpointFn, insecurePoll)
+func NewStackManager(portainerURL, edgeID, assetsPath string, getEndpointIDFn func() string, insecurePoll bool) (*StackManager, error) {
+	cli := client.NewPortainerClient(portainerURL, edgeID, getEndpointIDFn, insecurePoll)
 
 	stackManager := &StackManager{
 		stacks:     map[edgeStackID]*edgeStack{},
