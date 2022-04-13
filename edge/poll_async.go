@@ -13,12 +13,13 @@ import (
 )
 
 const (
+	zeroDuration       = time.Duration(0)
 	coalescingInterval = 100 * time.Millisecond
 	failSafeInterval   = time.Minute
 )
 
 func createTicker(interval time.Duration) *time.Ticker {
-	if interval > time.Duration(0) {
+	if interval > zeroDuration {
 		return time.NewTicker(interval)
 	}
 
@@ -29,7 +30,7 @@ func createTicker(interval time.Duration) *time.Ticker {
 }
 
 func updateTicker(ticker *time.Ticker, interval time.Duration) {
-	if interval <= time.Duration(0) {
+	if interval <= zeroDuration {
 		ticker.Stop()
 		return
 	}
@@ -38,9 +39,11 @@ func updateTicker(ticker *time.Ticker, interval time.Duration) {
 }
 
 func (service *PollService) failSafe() {
-	zd := time.Duration(0)
+	zeroPing := service.pingInterval <= zeroDuration
+	zeroSnapshot := service.snapshotInterval <= zeroDuration
+	zeroCommand := service.commandInterval <= zeroDuration
 
-	if service.pingInterval <= zd && service.snapshotInterval <= zd && service.commandInterval <= zd {
+	if zeroPing && zeroSnapshot && zeroCommand {
 		log.Println("[WARN] [edge] [async] [message: activating fail-safe mechanism for the async poll]")
 		updateTicker(service.pingTicker, failSafeInterval)
 	}
@@ -221,7 +224,7 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 	var jobData client.EdgeJobData
 	err := mapstructure.Decode(command.Value, &jobData)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeStackData", command.Value)
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeJobData", command.Value)
 		return err
 	}
 
