@@ -22,7 +22,8 @@ import (
 type PortainerAsyncClient struct {
 	httpClient              *http.Client
 	serverAddress           string
-	endpointID              portainer.EndpointID
+	setEndpointIDFn         setEndpointIDFn
+	getEndpointIDFn         getEndpointIDFn
 	edgeID                  string
 	agentPlatformIdentifier agent.ContainerPlatform
 	commandTimestamp        *time.Time
@@ -34,11 +35,12 @@ type PortainerAsyncClient struct {
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
-func NewPortainerAsyncClient(serverAddress string, endpointID portainer.EndpointID, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerAsyncClient {
+func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerAsyncClient {
 	initialCommandTimestamp := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	return &PortainerAsyncClient{
 		serverAddress:           serverAddress,
-		endpointID:              endpointID,
+		setEndpointIDFn:         setEIDFn,
+		getEndpointIDFn:         getEIDFn,
 		edgeID:                  edgeID,
 		httpClient:              httpClient,
 		agentPlatformIdentifier: containerPlatform,
@@ -103,6 +105,10 @@ type EdgeJobData struct {
 	Version           int
 }
 
+func (client *PortainerAsyncClient) GetEnvironmentID() (portainer.EndpointID, error) {
+	return 0, errors.New("GetEnvironmentID is not available in async mode")
+}
+
 func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error) {
 	pollURL := fmt.Sprintf("%s/api/endpoints/edge/async", client.serverAddress)
 
@@ -158,7 +164,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		client.nextSnapshotRequest.JobsStatus = nil
 	}
 
-	client.endpointID = asyncResponse.EndpointID
+	client.setEndpointIDFn(asyncResponse.EndpointID)
 
 	response := &PollStatusResponse{
 		AsyncCommands:    asyncResponse.Commands,
@@ -226,7 +232,7 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID, edgeStackSta
 	}
 
 	client.nextSnapshotRequest.StackStatus[portainer.EdgeStackID(edgeStackID)] = portainer.EdgeStackStatus{
-		EndpointID: client.endpointID,
+		EndpointID: client.getEndpointIDFn(),
 		Type:       portainer.EdgeStackStatusType(edgeStackStatus),
 		Error:      error,
 	}
