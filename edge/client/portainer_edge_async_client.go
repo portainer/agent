@@ -169,7 +169,6 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 
 	response := &PollStatusResponse{
 		AsyncCommands:    asyncResponse.Commands,
-		Status:           agent.TunnelStatusNoTunnel,
 		PingInterval:     asyncResponse.PingInterval,
 		SnapshotInterval: asyncResponse.SnapshotInterval,
 		CommandInterval:  asyncResponse.CommandInterval,
