@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -179,15 +180,52 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 	return response, nil
 }
 
+func gzipCompress(data []byte) (*bytes.Buffer, error) {
+	buf := &bytes.Buffer{}
+
+	gz, err := gzip.NewWriterLevel(buf, gzip.BestCompression)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = gz.Write(data)
+	if err != nil {
+		return nil, err
+	}
+
+	err = gz.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf, nil
+}
+
 func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, pollURL string) (*AsyncResponse, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", pollURL, bytes.NewReader(data))
+	var buf *bytes.Buffer
+
+	// Compress the payload
+	if payload.Snapshot != nil {
+		buf, err = gzipCompress(data)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		buf = bytes.NewBuffer(data)
+	}
+
+	req, err := http.NewRequest("POST", pollURL, buf)
 	if err != nil {
 		return nil, err
+	}
+
+	if payload.Snapshot != nil {
+		req.Header.Set("Content-Encoding", "gzip")
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
