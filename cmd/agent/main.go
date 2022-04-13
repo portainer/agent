@@ -39,6 +39,10 @@ func main() {
 
 	logutils.SetupLogger(options.LogLevel)
 
+	if options.SSLCert != "" && options.SSLKey != "" && options.CertRetryInterval > 0 {
+		blockUntilCertificateIsReady(options.SSLCert, options.SSLKey, options.CertRetryInterval)
+	}
+
 	systemService := ghw.NewSystemService(agent.HostRoot)
 	containerPlatform := os.DetermineContainerPlatform()
 	runtimeConfiguration := &agent.RuntimeConfiguration{
@@ -288,4 +292,27 @@ func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
 			edgeServer.Shutdown()
 		}
 	}()
+}
+
+func blockUntilCertificateIsReady(certPath, keyPath string, retryInterval time.Duration) {
+	checkIfCertsReady := func() bool {
+		if _, err := goos.Stat(certPath); err != nil {
+			return false
+		}
+
+		if _, err := goos.Stat(keyPath); err != nil {
+			return false
+		}
+
+		return true
+	}
+
+	for {
+		if checkIfCertsReady() {
+			break
+		}
+
+		log.Printf("[INFO] [main] [message: Waiting for certificate to be ready]")
+		time.Sleep(retryInterval)
+	}
 }

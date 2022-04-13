@@ -84,6 +84,7 @@ type (
 		SSLCert               string
 		SSLKey                string
 		SSLCACert             string
+		CertRetryInterval     time.Duration
 	}
 
 	// PciDevice is the representation of a physical pci device on a host
