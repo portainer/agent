@@ -13,6 +13,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
+	"github.com/portainer/agent/edge/revoke"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 	portainer "github.com/portainer/portainer/api"
@@ -280,7 +281,12 @@ func buildTransport(options *agent.Options) *http.Transport {
 
 	if options.EdgeInsecurePoll {
 		transport.TLSClientConfig.InsecureSkipVerify = true
-	} else if options.SSLCert != "" && options.SSLKey != "" {
+		return transport
+	}
+
+	if options.SSLCert != "" && options.SSLKey != "" {
+		revokeService := revoke.NewService()
+
 		// Create a CA certificate pool and add cert.pem to it
 		var caCertPool *x509.CertPool
 		if options.SSLCACert != "" {
@@ -298,6 +304,24 @@ func buildTransport(options *agent.Options) *http.Transport {
 
 			return &cert, err
 		}
+
+		transport.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			for _, chain := range verifiedChains {
+				for _, cert := range chain {
+					revoked, err := revokeService.VerifyCertificate(cert)
+					if err != nil {
+						return err
+					}
+
+					if revoked {
+						return errors.New("certificate has been revoked")
+					}
+				}
+			}
+
+			return nil
+		}
+
 	}
 
 	return transport
