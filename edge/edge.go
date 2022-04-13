@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
+	"sync"
 	"time"
 
 	"github.com/portainer/agent"
@@ -30,6 +30,7 @@ type (
 		logsManager       *scheduler.LogsManager
 		pollService       *PollService
 		stackManager      *stack.StackManager
+		mu                sync.Mutex
 	}
 
 	// ManagerParameters represents an object used to create a Manager
@@ -68,7 +69,6 @@ func (manager *Manager) Start() error {
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
 		TunnelCapability:        manager.agentOptions.EdgeTunnel,
 		PortainerURL:            manager.key.PortainerInstanceURL,
-		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
 		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
 		ContainerPlatform:       manager.containerPlatform,
@@ -83,14 +83,9 @@ func (manager *Manager) Start() error {
 		agentPlatform = agent.PlatformDocker
 	}
 
-	endpointID, err := strconv.Atoi(manager.key.EndpointID)
-	if err != nil {
-		return err
-	}
-
 	portainerClient := client.NewPortainerClient(
 		manager.key.PortainerInstanceURL,
-		portainer.EndpointID(endpointID),
+		manager.GetEndpointID,
 		manager.agentOptions.EdgeID,
 		manager.agentOptions.EdgeAsyncMode,
 		agentPlatform,
@@ -106,6 +101,7 @@ func (manager *Manager) Start() error {
 	manager.logsManager.Start()
 
 	pollService, err := newPollService(
+		manager,
 		manager.stackManager,
 		manager.logsManager,
 		pollServiceConfig,
@@ -122,6 +118,21 @@ func (manager *Manager) Start() error {
 // ResetActivityTimer resets the activity timer
 func (manager *Manager) ResetActivityTimer() {
 	manager.pollService.resetActivityTimer()
+}
+
+// SetEndpointID set the endpointID of the agent
+func (manager *Manager) SetEndpointID(endpointID portainer.EndpointID) {
+	manager.mu.Lock()
+	manager.key.EndpointID = endpointID
+	manager.mu.Unlock()
+}
+
+// GetEndpointID gets the endpointID of the agent
+func (manager *Manager) GetEndpointID() portainer.EndpointID {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	return manager.key.EndpointID
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency time.Duration) error {

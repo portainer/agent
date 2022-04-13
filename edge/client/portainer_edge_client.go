@@ -5,32 +5,36 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	portainer "github.com/portainer/portainer/api"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/portainer/agent"
+	portainer "github.com/portainer/portainer/api"
 )
 
 // PortainerEdgeClient is used to execute HTTP requests against the Portainer API
 type PortainerEdgeClient struct {
-	httpClient    *http.Client
-	serverAddress string
-	endpointID    portainer.EndpointID
-	edgeID        string
-	agentPlatform agent.ContainerPlatform
+	httpClient      *http.Client
+	serverAddress   string
+	getEndpointIDFn func() portainer.EndpointID
+	edgeID          string
+	agentPlatform   agent.ContainerPlatform
+}
+
+type globalKeyResponse struct {
+	EndpointID portainer.EndpointID `json:"endpointID"`
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
-func NewPortainerEdgeClient(serverAddress string, endpointID portainer.EndpointID, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
+func NewPortainerEdgeClient(serverAddress string, getEndpointIDFn func() portainer.EndpointID, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
 	return &PortainerEdgeClient{
-		serverAddress: serverAddress,
-		endpointID:    endpointID,
-		edgeID:        edgeID,
-		agentPlatform: agentPlatform,
-		httpClient:    httpClient,
+		serverAddress:   serverAddress,
+		getEndpointIDFn: getEndpointIDFn,
+		edgeID:          edgeID,
+		agentPlatform:   agentPlatform,
+		httpClient:      httpClient,
 	}
 }
 
@@ -38,8 +42,37 @@ func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
 	client.httpClient.Timeout = t
 }
 
+func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, error) {
+	gkURL := fmt.Sprintf("%s/api/endpoints/global-key", client.serverAddress)
+	req, err := http.NewRequest(http.MethodPost, gkURL, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[DEBUG] [edge] [response_code: %d] [message: Global key request failure]", resp.StatusCode)
+		return 0, errors.New("global key request failed")
+	}
+
+	var responseData globalKeyResponse
+	err = json.NewDecoder(resp.Body).Decode(&responseData)
+	if err != nil {
+		return 0, err
+	}
+
+	return responseData.EndpointID, nil
+}
+
 func (client *PortainerEdgeClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
-	pollURL := fmt.Sprintf("%s/api/endpoints/%v/edge/status", client.serverAddress, client.endpointID)
+	pollURL := fmt.Sprintf("%s/api/endpoints/%d/edge/status", client.serverAddress, client.getEndpointIDFn())
 	req, err := http.NewRequest("GET", pollURL, nil)
 	if err != nil {
 		return nil, err
@@ -66,12 +99,13 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus() (*PollStatusResponse, 
 	if err != nil {
 		return nil, err
 	}
+
 	return &responseData, nil
 }
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
 func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
-	requestURL := fmt.Sprintf("%s/api/endpoints/%v/edge/stacks/%d", client.serverAddress, client.endpointID, edgeStackID)
+	requestURL := fmt.Sprintf("%s/api/endpoints/%d/edge/stacks/%d", client.serverAddress, client.getEndpointIDFn(), edgeStackID)
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -103,7 +137,7 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 type setEdgeStackStatusPayload struct {
 	Error      string
 	Status     int
-	EndpointID int
+	EndpointID portainer.EndpointID
 }
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
@@ -111,7 +145,7 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(edgeStackID, edgeStackStat
 	payload := setEdgeStackStatusPayload{
 		Error:      error,
 		Status:     edgeStackStatus,
-		EndpointID: int(client.endpointID),
+		EndpointID: client.getEndpointIDFn(),
 	}
 
 	data, err := json.Marshal(payload)
@@ -158,7 +192,7 @@ func (client *PortainerEdgeClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobS
 		return err
 	}
 
-	requestURL := fmt.Sprintf("%s/api/endpoints/%v/edge/jobs/%d/logs", client.serverAddress, client.endpointID, edgeJobStatus.JobID)
+	requestURL := fmt.Sprintf("%s/api/endpoints/%d/edge/jobs/%d/logs", client.serverAddress, client.getEndpointIDFn(), edgeJobStatus.JobID)
 
 	req, err := http.NewRequest(http.MethodPost, requestURL, bytes.NewReader(data))
 	if err != nil {

@@ -38,9 +38,9 @@ type PollService struct {
 	updateLastActivitySignal chan struct{}
 	startSignal              chan struct{}
 	stopSignal               chan struct{}
+	edgeManager              *Manager
 	edgeStackManager         *stack.StackManager
 	portainerURL             string
-	endpointID               string
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
 }
@@ -52,7 +52,6 @@ type pollServiceConfig struct {
 	PollFrequency           string
 	TunnelCapability        bool
 	PortainerURL            string
-	EndpointID              string
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
 	ContainerPlatform       agent.ContainerPlatform
@@ -64,7 +63,7 @@ type pollServiceConfig struct {
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
 // If TunnelCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
-func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, portainerClient client.PortainerClient) (*PollService, error) {
+func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, portainerClient client.PortainerClient) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -85,9 +84,9 @@ func newPollService(edgeStackManager *stack.StackManager, logsManager *scheduler
 		updateLastActivitySignal: make(chan struct{}),
 		startSignal:              make(chan struct{}),
 		stopSignal:               make(chan struct{}),
+		edgeManager:              edgeManager,
 		edgeStackManager:         edgeStackManager,
 		portainerURL:             config.PortainerURL,
-		endpointID:               config.EndpointID,
 		tunnelServerAddr:         config.TunnelServerAddr,
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
 		portainerClient:          portainerClient,
@@ -168,6 +167,15 @@ func (service *PollService) startActivityMonitoringLoop() {
 }
 
 func (service *PollService) poll() error {
+	if service.edgeManager.GetEndpointID() == 0 {
+		endpointID, err := service.portainerClient.GetEnvironmentID()
+		if err != nil {
+			return err
+		}
+
+		service.edgeManager.SetEndpointID(endpointID)
+	}
+
 	environmentStatus, err := service.portainerClient.GetEnvironmentStatus()
 	if err != nil {
 		return err
