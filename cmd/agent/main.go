@@ -33,6 +33,10 @@ func main() {
 		log.Fatalf("[ERROR] [main] [message: Invalid agent configuration] [error: %s]", err)
 	}
 
+	if options.EdgeAsyncMode && !options.EdgeMode {
+		log.Fatalf("[ERROR] [main] [message: Edge Async mode cannot be enabled, if Edge Mode is disabled]")
+	}
+
 	logutils.SetupLogger(options.LogLevel)
 
 	systemService := ghw.NewSystemService(agent.HostRoot)
@@ -206,7 +210,7 @@ func main() {
 		} else {
 			log.Println("[DEBUG] [main] [message: Edge key not specified. Serving Edge UI]")
 
-			serveEdgeUI(edgeManager, options.EdgeServerAddr, options.EdgeServerPort)
+			serveEdgeUI(edgeManager, options.EdgeUIServerAddr, options.EdgeUIServerPort)
 		}
 	}
 
@@ -265,7 +269,7 @@ func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
 	edgeServer := httpEdge.NewEdgeServer(edgeManager)
 
 	go func() {
-		log.Printf("[INFO] [main] [server_address: %s] [server_port: %s] [message: Starting Edge server]", serverAddr, serverPort)
+		log.Printf("[INFO] [main] [server_address: %s] [server_port: %s] [message: Starting Edge UI server]", serverAddr, serverPort)
 
 		err := edgeServer.Start(serverAddr, serverPort)
 		if err != nil {

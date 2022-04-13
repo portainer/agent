@@ -1,9 +1,25 @@
 package scheduler
 
-import "testing"
+import (
+	"net/http"
+	"testing"
+
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge/client"
+	portainer "github.com/portainer/portainer/api"
+)
 
 func TestDataRace(t *testing.T) {
-	m := NewLogsManager("portainerURL", "endpointID", "edgeID", true)
+	cli := client.NewPortainerClient(
+		"portainerURL",
+		func() portainer.EndpointID { return 1 },
+		"edgeID",
+		false,
+		agent.PlatformDocker,
+		&http.Client{},
+	)
+
+	m := NewLogsManager(cli)
 	m.Start()
 	m.HandleReceivedLogsRequests([]int{1})
 }

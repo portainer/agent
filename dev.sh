@@ -20,11 +20,11 @@ This script is intended to help with compiling and deploying of dev enviroment
 
 Available commands:
 
-compile   Compile the codebase
-build     Build a docker image
-deploy    Deploy the agent image
-swarm     Compile, build and deploy a swarm agent
-podman    Compile, build and deploy to a local podman agent
+compile     Compile the codebase
+build       Build a docker image
+deploy      Deploy the agent image
+swarm       Compile, build and deploy a swarm agent
+podman      Compile, build and deploy to a local podman agent
 
 To get help with a command use: $cmd command -h
 

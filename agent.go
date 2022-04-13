@@ -37,6 +37,12 @@ type (
 		FileContent string
 	}
 
+	// EdgeJobStatus represents an Edge job status
+	EdgeJobStatus struct {
+		JobID          int    `json:"JobID"`
+		LogFileContent string `json:"LogFileContent"`
+	}
+
 	// HostInfo is the representation of the collection of host information
 	HostInfo struct {
 		PCIDevices    []PciDevice
@@ -66,14 +72,18 @@ type (
 		DataPath              string
 		SharedSecret          string
 		EdgeMode              bool
+		EdgeAsyncMode         bool
 		EdgeKey               string
 		EdgeID                string
-		EdgeServerAddr        string
-		EdgeServerPort        string
+		EdgeUIServerAddr      string
+		EdgeUIServerPort      string
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
 		EdgeTunnel            bool
 		LogLevel              string
+		SSLCert               string
+		SSLKey                string
+		SSLCACert             string
 	}
 
 	// PciDevice is the representation of a physical pci device on a host
@@ -109,11 +119,11 @@ type (
 	// TunnelConfig contains all the required information for the agent to establish
 	// a reverse tunnel to a Portainer instance
 	TunnelConfig struct {
-		ServerAddr       string
-		ServerFingerpint string
-		RemotePort       string
-		LocalAddr        string
-		Credentials      string
+		ServerAddr        string
+		ServerFingerprint string
+		RemotePort        string
+		LocalAddr         string
+		Credentials       string
 	}
 
 	// ClusterService is used to manage a cluster of agents.
@@ -167,6 +177,9 @@ type (
 	// Scheduler is used to manage schedules
 	Scheduler interface {
 		Schedule(schedules []Schedule) error
+		AddSchedule(schedule Schedule) error
+		RemoveSchedule(schedule Schedule) error
+		ProcessScheduleLogsCollection()
 	}
 
 	// SystemService is used to get info about the host
@@ -187,9 +200,9 @@ const (
 	DefaultAgentPort = "9001"
 	// DefaultLogLevel is the default logging level.
 	DefaultLogLevel = "INFO"
-	// DefaultAgentSecurityShutdown is the default time after which the API server will shutdown if not associated with a Portainer instance
+	// DefaultAgentSecurityShutdown is the default time after which the API server will shut down if not associated with a Portainer instance
 	DefaultAgentSecurityShutdown = "72h"
-	// DefaultEdgeSecurityShutdown is the default time after which the Edge server will shutdown if no key is specified
+	// DefaultEdgeSecurityShutdown is the default time after which the Edge server will shut down if no key is specified
 	DefaultEdgeSecurityShutdown = 15
 	// DefaultEdgeServerAddr is the default address used by the Edge server.
 	DefaultEdgeServerAddr = "0.0.0.0"
@@ -285,4 +298,15 @@ const (
 	NodeRoleManager
 	// NodeRoleWorker represent a Docker swarm worker node role
 	NodeRoleWorker
+)
+
+const (
+	// TunnelStatusIdle represents an idle state for a tunnel connected to an Edge environment(endpoint).
+	TunnelStatusIdle string = "IDLE"
+	// TunnelStatusRequired represents a required state for a tunnel connected to an Edge environment(endpoint)
+	TunnelStatusRequired string = "REQUIRED"
+	// TunnelStatusActive represents an active state for a tunnel connected to an Edge environment(endpoint)
+	TunnelStatusActive string = "ACTIVE"
+	// TunnelStatusNoTunnel represents an async Edge environment(endpoint)
+	TunnelStatusNoTunnel string = "NOTUNNEL"
 )

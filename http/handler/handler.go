@@ -51,7 +51,6 @@ type Config struct {
 	KubernetesDeployer   *exec.KubernetesDeployer
 	EdgeManager          *edge.Manager
 	RuntimeConfiguration *agent.RuntimeConfiguration
-	AgentOptions         *agent.Options
 	Secured              bool
 	ContainerPlatform    agent.ContainerPlatform
 }
@@ -65,7 +64,7 @@ func NewHandler(config *Config) *Handler {
 
 	return &Handler{
 		agentHandler:           httpagenthandler.NewHandler(config.ClusterService, notaryService),
-		browseHandler:          browse.NewHandler(agentProxy, notaryService, config.AgentOptions),
+		browseHandler:          browse.NewHandler(agentProxy, notaryService),
 		browseHandlerV1:        browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler:     docker.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.Secured),
 		dockerhubHandler:       dockerhub.NewHandler(notaryService),
