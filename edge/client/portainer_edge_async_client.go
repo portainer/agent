@@ -130,7 +130,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		case agent.PlatformDocker:
 			dockerSnapshot, err := docker.CreateSnapshot()
 			if err != nil {
-				log.Printf("[WARN] [edge] [message: could not create the Docker snapshot: %s]", err)
+				log.Printf("[WARN] [edge,client] [message: could not create the Docker snapshot: %s]", err)
 			}
 
 			payload.Snapshot.Docker = dockerSnapshot
@@ -142,14 +142,14 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 					payload.Snapshot.DockerPatch = dockerPatch
 					payload.Snapshot.Docker = nil
 				} else {
-					log.Printf("[WARN] [edge] [message: could not generate the Docker snapshot patch: %s]", err)
+					log.Printf("[WARN] [edge,client] [message: could not generate the Docker snapshot patch: %s]", err)
 				}
 			}
 
 		case agent.PlatformKubernetes:
 			kubeSnapshot, err := kubernetes.CreateSnapshot()
 			if err != nil {
-				log.Printf("[WARN] [edge] [message: could not create the Docker snapshot: %s]", err)
+				log.Printf("[WARN] [edge,client] [message: could not create the Kubernetes snapshot: %s]", err)
 			}
 
 			payload.Snapshot.Kubernetes = kubeSnapshot
@@ -161,7 +161,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 					payload.Snapshot.KubernetesPatch = kubePatch
 					payload.Snapshot.KubernetesPatch = nil
 				} else {
-					log.Printf("[WARN] [edge] [message: could not generate the Kubernetes snapshot patch: %s]", err)
+					log.Printf("[WARN] [edge,client] [message: could not generate the Kubernetes snapshot patch: %s]", err)
 				}
 			}
 		}
