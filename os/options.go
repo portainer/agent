@@ -30,6 +30,7 @@ const (
 	EnvKeySSLCert               = "MTLS_SSL_CERT"
 	EnvKeySSLKey                = "MTLS_SSL_KEY"
 	EnvKeySSLCACert             = "MTLS_SSL_CA"
+	EnvKeyCertRetryInterval     = "MTLS_CERT_RETRY_INTERVAL"
 )
 
 type EnvOptionParser struct{}
@@ -65,7 +66,7 @@ var (
 	fSSLCert           = kingpin.Flag("sslcert", "Path to the SSL certificate used to identify the agent to Portainer").Envar(EnvKeySSLCert).String()
 	fSSLKey            = kingpin.Flag("sslkey", "Path to the SSL key used to identify the agent to Portainer").Envar(EnvKeySSLKey).String()
 	fSSLCACert         = kingpin.Flag("sslcacert", "Path to the SSL CA certificate used to validate the Portainer server").Envar(EnvKeySSLCACert).String()
-	fCertRetryInterval = kingpin.Flag("certificate-retry-interval", "Interval used to block initialization until the certificate is available").Duration()
+	fCertRetryInterval = kingpin.Flag("certificate-retry-interval", "Interval used to block initialization until the certificate is available").Envar(EnvKeyCertRetryInterval).Duration()
 )
 
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {

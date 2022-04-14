@@ -25,7 +25,7 @@ func BlockUntilCertificateIsReady(certPath, keyPath string, retryInterval time.D
 			break
 		}
 
-		log.Printf("[INFO] [main] [message: Waiting for certificate to be ready]")
+		log.Printf("[INFO] [edge] [message: Waiting for certificate to be ready]")
 		time.Sleep(retryInterval)
 	}
 }
