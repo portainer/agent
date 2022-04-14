@@ -8,12 +8,14 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
+	portainer "github.com/portainer/portainer/api"
 )
 
 type (
@@ -28,6 +30,7 @@ type (
 		logsManager       *scheduler.LogsManager
 		pollService       *PollService
 		stackManager      *stack.StackManager
+		mu                sync.Mutex
 	}
 
 	// ManagerParameters represents an object used to create a Manager
@@ -66,7 +69,6 @@ func (manager *Manager) Start() error {
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
 		TunnelCapability:        manager.agentOptions.EdgeTunnel,
 		PortainerURL:            manager.key.PortainerInstanceURL,
-		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
 		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
 	}
@@ -80,39 +82,29 @@ func (manager *Manager) Start() error {
 		agentPlatform = agent.PlatformDocker
 	}
 
+	portainerClient := client.NewPortainerClient(
+		manager.key.PortainerInstanceURL,
+		manager.GetEndpointID,
+		manager.agentOptions.EdgeID,
+		manager.agentOptions.EdgeAsyncMode,
+		agentPlatform,
+		buildHTTPClient(10, manager.agentOptions),
+	)
+
 	manager.stackManager = stack.NewStackManager(
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			manager.key.EndpointID,
-			manager.agentOptions.EdgeID,
-			agentPlatform,
-			buildHTTPClient(10, manager.agentOptions),
-		),
+		portainerClient,
 		manager.agentOptions.AssetsPath,
 	)
 
-	manager.logsManager = scheduler.NewLogsManager(
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			manager.key.EndpointID,
-			manager.agentOptions.EdgeID,
-			agentPlatform,
-			buildHTTPClient(10, manager.agentOptions),
-		),
-	)
+	manager.logsManager = scheduler.NewLogsManager(portainerClient)
 	manager.logsManager.Start()
 
 	pollService, err := newPollService(
+		manager,
 		manager.stackManager,
 		manager.logsManager,
 		pollServiceConfig,
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			manager.key.EndpointID,
-			manager.agentOptions.EdgeID,
-			agentPlatform,
-			buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
-		),
+		portainerClient,
 	)
 	if err != nil {
 		return err
@@ -125,6 +117,21 @@ func (manager *Manager) Start() error {
 // ResetActivityTimer resets the activity timer
 func (manager *Manager) ResetActivityTimer() {
 	manager.pollService.resetActivityTimer()
+}
+
+// SetEndpointID set the endpointID of the agent
+func (manager *Manager) SetEndpointID(endpointID portainer.EndpointID) {
+	manager.mu.Lock()
+	manager.key.EndpointID = endpointID
+	manager.mu.Unlock()
+}
+
+// GetEndpointID gets the endpointID of the agent
+func (manager *Manager) GetEndpointID() portainer.EndpointID {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	return manager.key.EndpointID
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency time.Duration) error {

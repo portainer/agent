@@ -40,6 +40,10 @@ func main() {
 		log.Fatalf("[ERROR] [main] [message: Invalid agent configuration] [error: %s]", err)
 	}
 
+	if options.EdgeAsyncMode && !options.EdgeMode {
+		log.Fatalf("[ERROR] [main] [message: Edge Async mode cannot be enabled, if Edge Mode is disabled]")
+	}
+
 	logutils.SetupLogger(options.LogLevel)
 
 	systemService := ghw.NewSystemService(agent.HostRoot)

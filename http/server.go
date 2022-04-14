@@ -84,7 +84,6 @@ func (server *APIServer) StartUnsecured(edgeMode bool) error {
 		ClusterService:       server.clusterService,
 		SignatureService:     server.signatureService,
 		RuntimeConfiguration: server.agentTags,
-		AgentOptions:         server.agentOptions,
 		EdgeManager:          server.edgeManager,
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
@@ -118,7 +117,6 @@ func (server *APIServer) StartSecured(edgeMode bool) error {
 		ClusterService:       server.clusterService,
 		SignatureService:     server.signatureService,
 		RuntimeConfiguration: server.agentTags,
-		AgentOptions:         server.agentOptions,
 		EdgeManager:          server.edgeManager,
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
@@ -148,7 +146,7 @@ func (server *APIServer) StartSecured(edgeMode bool) error {
 	}
 
 	go func() {
-		securityShutdown := config.AgentOptions.AgentSecurityShutdown
+		securityShutdown := server.agentOptions.AgentSecurityShutdown
 		time.Sleep(securityShutdown)
 
 		if !server.signatureService.IsAssociated() {
