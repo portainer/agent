@@ -268,7 +268,7 @@ func buildTransport(options *agent.Options) *http.Transport {
 				RootCAs:    caCertPool,
 				MinVersion: tls.VersionTLS13,
 				MaxVersion: tls.VersionTLS13,
-				GetCertificate: func(chi *tls.ClientHelloInfo) (*tls.Certificate, error) {
+				GetClientCertificate: func(chi *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 					cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
 					if err != nil {
 						return nil, err
