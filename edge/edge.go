@@ -250,11 +250,6 @@ func buildTransport(options *agent.Options) *http.Transport {
 
 	// if ssl certs for edge agent are set
 	if options.SSLCert != "" && options.SSLKey != "" {
-		// Read the key pair to create certificate
-		cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
-		if err != nil {
-			log.Fatal(err)
-		}
 
 		var caCertPool *x509.CertPool
 		// Create a CA certificate pool and add cert.pem to it
@@ -270,10 +265,17 @@ func buildTransport(options *agent.Options) *http.Transport {
 		// Create an HTTPS client and supply the created CA pool and certificate
 		return &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs:      caCertPool,
-				Certificates: []tls.Certificate{cert},
-				MinVersion:   tls.VersionTLS13,
-				MaxVersion:   tls.VersionTLS13,
+				RootCAs:    caCertPool,
+				MinVersion: tls.VersionTLS13,
+				MaxVersion: tls.VersionTLS13,
+				GetClientCertificate: func(chi *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+					cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
+					if err != nil {
+						return nil, err
+					}
+
+					return &cert, nil
+				},
 			},
 		}
 	}
