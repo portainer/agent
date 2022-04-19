@@ -5,6 +5,6 @@ WORKDIR /app
 
 COPY dist /app/
 COPY static /app/static
-COPY config /root/.docker
+COPY config /root/.docker/
 
 ENTRYPOINT ["./agent"]
