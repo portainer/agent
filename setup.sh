@@ -40,3 +40,7 @@ else
     download_docker_compose_binary "$PLATFORM" "$ARCH" "$DOCKER_COMPOSE_VERSION"
 fi
 
+source ./dev-scripts/utils.sh
+source ./dev-scripts/compile.sh
+compile_command
+ 
