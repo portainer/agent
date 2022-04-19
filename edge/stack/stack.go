@@ -345,12 +345,21 @@ func (manager *StackManager) DeleteStack(ctx context.Context, stackData client.E
 func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData, writeFile bool) (string, string, error) {
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackData.ID)
 	fileName := "docker-compose.yml"
+	fileContent := stackData.StackFileContent
+	if manager.engineType == EngineTypeKubernetes {
+		fileName = fmt.Sprintf("%s.yml", stackData.Name)
+		if len(stackData.RegistryCredentials) > 0 {
+			yml := yaml.NewYAML(fileContent, stackData.RegistryCredentials)
+			fileContent, _ = yml.AddImagePullSecrets()
+		}
+	}
+
 	if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stackData.Name)
 	}
 
 	if writeFile {
-		err := filesystem.WriteFile(folder, fileName, []byte(stackData.StackFileContent), 0644)
+		err := filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
 		if err != nil {
 			return "", "", err
 		}
