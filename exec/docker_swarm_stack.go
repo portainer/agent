@@ -26,21 +26,6 @@ func NewDockerSwarmStackService(binaryPath string) (*DockerSwarmStackService, er
 	return service, nil
 }
 
-// Login executes the docker login command against a list of registries (including DockerHub).
-func (service *DockerSwarmStackService) Login() error {
-	// Not implemented yet.
-	return nil
-}
-
-// Logout executes the docker logout command.
-func (service *DockerSwarmStackService) Logout() error {
-	command := service.prepareDockerCommand(service.binaryPath)
-	args := []string{"logout"}
-
-	_, err := runCommandAndCaptureStdErr(command, args, nil)
-	return err
-}
-
 // Deploy executes the docker stack deploy command.
 func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string, filePaths []string, prune bool) error {
 	if len(filePaths) == 0 {

@@ -87,10 +87,11 @@ type AsyncCommand struct {
 }
 
 type EdgeStackData struct {
-	ID               int
-	Version          int
-	StackFileContent string
-	Name             string
+	ID                  int
+	Version             int
+	Name                string
+	StackFileContent    string
+	RegistryCredentials []agent.RegistryCredentials
 }
 
 type EdgeJobData struct {

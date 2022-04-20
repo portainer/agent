@@ -7,7 +7,7 @@ function build_command() {
     parse_build_params "${@:1}"
 
     if [[ "$compile" == "1" ]]; then
-        compile
+        compile_command
     fi
 
     build "$image_name"
