@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
+	"github.com/portainer/agent/nomad"
 )
 
 type edgeStackID int
@@ -63,6 +66,7 @@ const (
 	EngineTypeDockerStandalone
 	EngineTypeDockerSwarm
 	EngineTypeKubernetes
+	EngineTypeNomad
 )
 
 // StackManager represents a service for managing Edge stacks
@@ -138,6 +142,9 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	fileName := "docker-compose.yml"
 	if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stack.Name)
+	}
+	if manager.engineType == EngineTypeNomad {
+		fileName = fmt.Sprintf("%s.hcl", stack.Name)
 	}
 
 	err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 0644)
@@ -269,7 +276,8 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		return
 	}
 
-	err = filesystem.RemoveFile(stackFileLocation)
+	// Remove stack file folder
+	err = os.RemoveAll(filepath.Dir(stackFileLocation))
 	if err != nil {
 		log.Printf("[ERROR] [edge,stack] [message: unable to delete Edge stack file] [error: %s]", err)
 		return
@@ -309,6 +317,8 @@ func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Dep
 		return exec.NewDockerSwarmStackService(assetsPath)
 	case EngineTypeKubernetes:
 		return exec.NewKubernetesDeployer(assetsPath), nil
+	case EngineTypeNomad:
+		return nomad.NewDeployer()
 	}
 
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)

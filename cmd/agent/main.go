@@ -49,6 +49,7 @@ func main() {
 	var dockerInfoService agent.DockerInfoService
 	var advertiseAddr string
 	var kubeClient *kubernetes.KubeClient
+	var nomadConfig agent.NomadConfig
 
 	// !Generic
 
@@ -162,8 +163,25 @@ func main() {
 	}
 	// !Kubernetes
 
-	// Security
+	// Nomad
+	if containerPlatform == agent.PlatformNomad {
+		advertiseAddr, err = net.GetLocalIP()
+		if err != nil {
+			log.Fatalf("[ERROR] [main,nomad] [message: Unable to retrieve local IP associated to the agent] [error: %s]", err)
+		}
 
+		nomadConfig.NomadAddr = goos.Getenv(agent.NomadAddrEnvVarName)
+		if nomadConfig.NomadAddr == "" {
+			log.Fatalf("[ERROR] [main,nomad] [message: Unable to retrieve environment variable NOMAD_ADDR]")
+		}
+
+		nomadConfig.NomadToken = goos.Getenv(agent.NomadTokenEnvVarName)
+
+		log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [advertise_address: %s] [NomadAddr: %s]", options.AgentServerPort, advertiseAddr, nomadConfig.NomadAddr)
+	}
+	// !Nomad
+
+	// Security
 	signatureService := crypto.NewECDSAService(options.SharedSecret)
 
 	if !options.EdgeMode {
@@ -230,6 +248,7 @@ func main() {
 		KubeClient:           kubeClient,
 		KubernetesDeployer:   kubernetesDeployer,
 		ContainerPlatform:    containerPlatform,
+		NomadConfig:          nomadConfig,
 	}
 
 	if options.EdgeMode {

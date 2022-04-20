@@ -17,6 +17,7 @@ import (
 	"github.com/portainer/agent/http/handler/key"
 	"github.com/portainer/agent/http/handler/kubernetes"
 	"github.com/portainer/agent/http/handler/kubernetesproxy"
+	"github.com/portainer/agent/http/handler/nomadproxy"
 	"github.com/portainer/agent/http/handler/ping"
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
@@ -35,6 +36,7 @@ type Handler struct {
 	keyHandler             *key.Handler
 	kubernetesHandler      *kubernetes.Handler
 	kubernetesProxyHandler *kubernetesproxy.Handler
+	nomadProxyHandler      *nomadproxy.Handler
 	webSocketHandler       *websocket.Handler
 	hostHandler            *host.Handler
 	pingHandler            *ping.Handler
@@ -51,6 +53,7 @@ type Config struct {
 	KubernetesDeployer   *exec.KubernetesDeployer
 	EdgeManager          *edge.Manager
 	RuntimeConfiguration *agent.RuntimeConfiguration
+	NomadConfig          agent.NomadConfig
 	Secured              bool
 	ContainerPlatform    agent.ContainerPlatform
 }
@@ -71,6 +74,7 @@ func NewHandler(config *Config) *Handler {
 		keyHandler:             key.NewHandler(notaryService, config.EdgeManager),
 		kubernetesHandler:      kubernetes.NewHandler(notaryService, config.KubernetesDeployer),
 		kubernetesProxyHandler: kubernetesproxy.NewHandler(notaryService),
+		nomadProxyHandler:      nomadproxy.NewHandler(notaryService, config.NomadConfig),
 		webSocketHandler:       websocket.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.KubeClient),
 		hostHandler:            host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:            ping.NewHandler(),
@@ -113,6 +117,8 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		h.webSocketHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/kubernetes"):
 		h.kubernetesProxyHandler.ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/nomad"):
+		h.nomadProxyHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/"):
 		h.dockerProxyHandler.ServeHTTP(rw, request)
 	}
