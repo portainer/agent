@@ -11,6 +11,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
+	"github.com/portainer/agent/edge/yaml"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/nomad"
@@ -19,13 +20,14 @@ import (
 type edgeStackID int
 
 type edgeStack struct {
-	ID         edgeStackID
-	Name       string
-	Version    int
-	FileFolder string
-	FileName   string
-	Status     edgeStackStatus
-	Action     edgeStackAction
+	ID                  edgeStackID
+	Name                string
+	Version             int
+	FileFolder          string
+	FileName            string
+	Status              edgeStackStatus
+	Action              edgeStackAction
+	RegistryCredentials []agent.RegistryCredentials
 }
 
 type edgeStackStatus int
@@ -35,6 +37,7 @@ const (
 	StatusPending
 	StatusDone
 	StatusError
+	StatusDeploying
 )
 
 type edgeStackAction int
@@ -137,17 +140,23 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	}
 
 	stack.Name = stackConfig.Name
+	stack.RegistryCredentials = stackConfig.RegistryCredentials
 
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 	fileName := "docker-compose.yml"
+	fileContent := stackConfig.FileContent
 	if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stack.Name)
+		if len(stackConfig.RegistryCredentials) > 0 {
+			yml := yaml.NewYAML(fileContent, stackConfig.RegistryCredentials)
+			fileContent, _ = yml.AddImagePullSecrets()
+		}
 	}
 	if manager.engineType == EngineTypeNomad {
 		fileName = fmt.Sprintf("%s.hcl", stack.Name)
 	}
 
-	err = filesystem.WriteFile(folder, fileName, []byte(stackConfig.FileContent), 0644)
+	err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
 	if err != nil {
 		return err
 	}
@@ -245,7 +254,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	defer manager.mu.Unlock()
 
 	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
-	stack.Status = StatusDone
+	stack.Status = StatusDeploying
 	stack.Action = actionIdle
 	responseStatus := int(EdgeStackStatusOk)
 	errorMessage := ""
@@ -258,6 +267,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 		errorMessage = err.Error()
 	} else {
 		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [stack_version: %d] [message: stack deployed]", stack.ID, stack.Version)
+		stack.Status = StatusDone
 	}
 
 	manager.stacks[stack.ID] = stack
@@ -270,6 +280,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
 	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: removing stack]", stack.ID)
+
 	err := manager.deployer.Remove(ctx, stackName, []string{stackFileLocation})
 	if err != nil {
 		log.Printf("[ERROR] [edge,stack] [message: unable to remove stack] [error: %s]", err)
@@ -344,12 +355,21 @@ func (manager *StackManager) DeleteStack(ctx context.Context, stackData client.E
 func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData, writeFile bool) (string, string, error) {
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackData.ID)
 	fileName := "docker-compose.yml"
+	fileContent := stackData.StackFileContent
+	if manager.engineType == EngineTypeKubernetes {
+		fileName = fmt.Sprintf("%s.yml", stackData.Name)
+		if len(stackData.RegistryCredentials) > 0 {
+			yml := yaml.NewYAML(fileContent, stackData.RegistryCredentials)
+			fileContent, _ = yml.AddImagePullSecrets()
+		}
+	}
+
 	if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stackData.Name)
 	}
 
 	if writeFile {
-		err := filesystem.WriteFile(folder, fileName, []byte(stackData.StackFileContent), 0644)
+		err := filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
 		if err != nil {
 			return "", "", err
 		}
@@ -358,4 +378,14 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	stackName := fmt.Sprintf("edge_%s", stackData.Name)
 	stackFileLocation := fmt.Sprintf("%s/%s", folder, fileName)
 	return stackName, stackFileLocation, nil
+}
+
+func (manager *StackManager) GetEdgeRegistryCredentials() []agent.RegistryCredentials {
+	for _, stack := range manager.stacks {
+		if stack.Status == StatusDeploying {
+			return stack.RegistryCredentials
+		}
+	}
+
+	return nil
 }

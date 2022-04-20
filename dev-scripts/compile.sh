@@ -3,11 +3,12 @@
 function compile_command() {
     parse_compile_params "${@:1}"
 
-    compile
+    compile_agent
+    compile_credential_helper
 }
 
-function compile() {
-    msg "Compilation..."
+function compile_agent() {
+    msg "Compiling agent..."
 
     local TARGET_DIST=dist
     mkdir -p $TARGET_DIST
@@ -20,6 +21,22 @@ function compile() {
     mv cmd/agent/agent $TARGET_DIST
 
     msg "Agent executable is available on $TARGET_DIST/agent"
+}
+
+function compile_credential_helper() {
+    msg "Compiling credential helper"
+
+    local TARGET_DIST=dist
+    mkdir -p $TARGET_DIST
+
+    cd cmd/docker-credential-portainer || exit 1
+    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 go build --installsuffix cgo --ldflags '-s'
+    rc=$?
+    if [[ $rc != 0 ]]; then exit $rc; fi
+    cd ../..
+    mv cmd/docker-credential-portainer/docker-credential-portainer $TARGET_DIST
+
+    msg "Credential helper executable is available on $TARGET_DIST/docker-credential-portainer"
 }
 
 function parse_compile_params() {
