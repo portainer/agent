@@ -9,7 +9,7 @@ all: agent docker-credential-portainer download-binaries
 
 agent:
 	@echo "Building agent..."
-	@GOOS=$(PLATFORM) GOARCH=$(ARCH) CGO_ENABLED=0 go build --installsuffix cgo --ldflags '-s'  -o dist/$@ cmd/agent/main.go
+	@GOOS=$(PLATFORM) GOARCH=$(ARCH) CGO_ENABLED=0 go build --installsuffix cgo --ldflags '-s'  -o dist/$@ cmd/agent/*.go
 
 docker-credential-portainer:
 	@echo "Building docker-credential-portainer..."

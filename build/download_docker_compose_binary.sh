@@ -18,13 +18,13 @@ function download_docker_compose_binary() {
         return
     fi
     
-    if [ "${PLATFORM}" == 'mac' ]; then
+    if [ "${PLATFORM}" == 'darwin' ]; then
         wget -O "dist/docker-compose" "https://github.com/docker/compose/releases/download/${BINARY_VERSION}/docker-compose-Darwin-x86_64"
         chmod +x "dist/docker-compose"
         return
     fi
     
-    if [ "${PLATFORM}" == 'win' ]; then
+    if [ "${PLATFORM}" == 'windows' ]; then
         wget -O "dist/docker-compose.exe" "https://github.com/docker/compose/releases/download/${BINARY_VERSION}/docker-compose-Windows-x86_64.exe"
         chmod +x "dist/docker-compose.exe"
         return
@@ -35,16 +35,10 @@ function download_docker_compose_plugin() {
     local PLATFORM=$1
     local ARCH=$2
     local PLUGIN_VERSION=$3
-    
-    if [ "${PLATFORM}" == 'mac' ]; then
-        PLATFORM="darwin"
-    fi
-    
+       
     if [ "$ARCH" = "aarch64" ]; then
         ARCH="arm64"
     fi
-    
-    
     if [ "$ARCH" = "armhf" ]; then
         ARCH="armv7"
     fi
