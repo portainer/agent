@@ -36,10 +36,7 @@ function download_docker_compose_plugin() {
     local ARCH=$2
     local PLUGIN_VERSION=$3
        
-    if [ "$ARCH" = "aarch64" ]; then
-        ARCH="arm64"
-    fi
-    if [ "$ARCH" = "armhf" ]; then
+    if [ "$ARCH" = "arm" ]; then
         ARCH="armv7"
     fi
     
