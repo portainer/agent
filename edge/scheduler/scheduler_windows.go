@@ -25,5 +25,4 @@ func (manager *CronManager) RemoveSchedule(schedule agent.Schedule) error {
 }
 
 func (manager *CronManager) ProcessScheduleLogsCollection() {
-	return nil
 }
