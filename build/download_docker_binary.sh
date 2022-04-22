@@ -14,6 +14,15 @@ download_docker_binary() {
     if [ "$ARCH" = "amd64" ]; then
         ARCH="x86_64"
     fi
+
+    if [ "$ARCH" = "arm" ]; then
+        ARCH="armhf"
+    fi
+
+    if [ "$ARCH" = "arm64" ]; then
+        ARCH="aarch64"
+    fi
+
     
     rm -rf "${DOWNLOAD_FOLDER}"
     mkdir -pv "${DOWNLOAD_FOLDER}"
