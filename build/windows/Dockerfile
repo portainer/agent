@@ -18,6 +18,6 @@ USER ContainerAdministrator
 
 COPY dist /app/
 COPY static /app/static
-COPY [ "config", "/Users/{$USER}/.docker/" ]
+COPY [ "config", "%USERPROFILE%/.docker/" ]
 
 ENTRYPOINT ["C:/app/agent.exe"]
