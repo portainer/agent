@@ -18,11 +18,11 @@ endif
 all: $(agent) $(docker-credential-portainer) download-binaries
 
 $(agent):
-	@echo "Building windows agent..."
+	@echo "Building agent..."
 	@GOOS=$(PLATFORM) GOARCH=$(ARCH) go build --installsuffix cgo --ldflags "-s" -o dist/$@ cmd/agent/main.go
 
 $(docker-credential-portainer):
-	@echo "Building windows docker-credential-portainer..."
+	@echo "Building docker-credential-portainer..."
 	@cd cmd/docker-credential-portainer; \
 	GOOS=$(PLATFORM) GOARCH=$(ARCH) go build --installsuffix cgo --ldflags "-s" -o ../../dist/$@
 
