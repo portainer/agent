@@ -14,6 +14,7 @@ type PortainerClient interface {
 	GetEnvironmentStatus() (*PollStatusResponse, error)
 	GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error)
 	SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error
+	DeleteEdgeStackStatus(edgeStackID int) error
 	SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error
 	SetTimeout(t time.Duration)
 	SetLastCommandTimestamp(timestamp time.Time)

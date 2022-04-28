@@ -220,6 +220,10 @@ func (client *PortainerAsyncClient) SetLastCommandTimestamp(timestamp time.Time)
 	client.commandTimestamp = &timestamp
 }
 
+func (client *PortainerAsyncClient) DeleteEdgeStackStatus(edgeStackID int) error {
+	return nil // unused in async mode
+}
+
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
 func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
 	return nil, nil // unused in async mode
