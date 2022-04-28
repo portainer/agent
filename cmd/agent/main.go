@@ -305,8 +305,7 @@ func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
 	}()
 
 	go func() {
-		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
-		<-timer1.C
+		time.Sleep(agent.DefaultEdgeSecurityShutdown * time.Minute)
 
 		if !edgeManager.IsKeySet() {
 			log.Printf("[INFO] [main] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
