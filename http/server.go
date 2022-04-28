@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"time"
 
+	httpError "github.com/portainer/libhttp/error"
+
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/http/handler"
 	"github.com/portainer/agent/kubernetes"
-	httperror "github.com/portainer/libhttp/error"
 )
 
 // APIServer is the web server exposing the API of an agent.
@@ -67,10 +68,65 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 	}
 }
 
-func (server *APIServer) enhanceAPIForEdgeMode(next http.Handler, isSecure bool) http.Handler {
+// Start starts a new web server by listening on the specified listenAddr.
+func (server *APIServer) Start(edgeMode bool) error {
+	config := &handler.Config{
+		SystemService:        server.systemService,
+		ClusterService:       server.clusterService,
+		SignatureService:     server.signatureService,
+		RuntimeConfiguration: server.agentTags,
+		EdgeManager:          server.edgeManager,
+		KubeClient:           server.kubeClient,
+		KubernetesDeployer:   server.kubernetesDeployer,
+		Secured:              !edgeMode,
+		ContainerPlatform:    server.containerPlatform,
+		NomadConfig:          server.nomadConfig,
+	}
+
+	httpHandler := handler.NewHandler(config)
+	httpServer := &http.Server{
+		Addr:         server.addr + ":" + server.port,
+		Handler:      httpHandler,
+		ReadTimeout:  120 * time.Second,
+		WriteTimeout: 30 * time.Minute,
+	}
+
+	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
+
+	if edgeMode {
+		httpServer.Handler = server.edgeHandler(httpHandler)
+
+		return httpServer.ListenAndServe()
+	}
+
+	httpServer.TLSConfig = &tls.Config{
+		MinVersion: tls.VersionTLS13,
+	}
+
+	go server.securityShutdown(httpServer)
+
+	return httpServer.ListenAndServeTLS(agent.TLSCertPath, agent.TLSKeyPath)
+}
+
+func (server *APIServer) securityShutdown(httpServer *http.Server) {
+	time.Sleep(server.agentOptions.AgentSecurityShutdown)
+
+	if server.signatureService.IsAssociated() {
+		return
+	}
+
+	log.Printf("[INFO] [http] [message: Shutting down API server as no client was associated after %s, keeping alive to prevent restart by docker/kubernetes]", server.agentOptions.AgentSecurityShutdown)
+
+	err := httpServer.Shutdown(context.Background())
+	if err != nil {
+		log.Fatalf("[ERROR] [http] [message: failed shutting down server] [error: %s]", err)
+	}
+}
+
+func (server *APIServer) edgeHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isSecure && !server.edgeManager.IsKeySet() {
-			httperror.WriteError(w, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
+		if !server.edgeManager.IsKeySet() {
+			httpError.WriteError(w, http.StatusForbidden, "Unable to use the unsecured agent API without Edge key", errors.New("edge key not set"))
 			return
 		}
 
@@ -78,92 +134,4 @@ func (server *APIServer) enhanceAPIForEdgeMode(next http.Handler, isSecure bool)
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-// Start starts a new web server by listening on the specified listenAddr.
-func (server *APIServer) StartUnsecured(edgeMode bool) error {
-	config := &handler.Config{
-		SystemService:        server.systemService,
-		ClusterService:       server.clusterService,
-		SignatureService:     server.signatureService,
-		RuntimeConfiguration: server.agentTags,
-		EdgeManager:          server.edgeManager,
-		KubeClient:           server.kubeClient,
-		KubernetesDeployer:   server.kubernetesDeployer,
-		Secured:              false,
-		ContainerPlatform:    server.containerPlatform,
-		NomadConfig:          server.nomadConfig,
-	}
-
-	var h http.Handler = handler.NewHandler(config)
-	listenAddr := server.addr + ":" + server.port
-
-	if edgeMode {
-		h = server.enhanceAPIForEdgeMode(h, false)
-	}
-
-	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
-
-	httpServer := &http.Server{
-		Addr:         listenAddr,
-		Handler:      h,
-		ReadTimeout:  120 * time.Second,
-		WriteTimeout: 30 * time.Minute,
-	}
-
-	return httpServer.ListenAndServe()
-}
-
-// Start starts a new web server by listening on the specified listenAddr.
-func (server *APIServer) StartSecured(edgeMode bool) error {
-	config := &handler.Config{
-		SystemService:        server.systemService,
-		ClusterService:       server.clusterService,
-		SignatureService:     server.signatureService,
-		RuntimeConfiguration: server.agentTags,
-		EdgeManager:          server.edgeManager,
-		KubeClient:           server.kubeClient,
-		KubernetesDeployer:   server.kubernetesDeployer,
-		Secured:              true,
-		ContainerPlatform:    server.containerPlatform,
-		NomadConfig:          server.nomadConfig,
-	}
-
-	var h http.Handler = handler.NewHandler(config)
-	listenAddr := server.addr + ":" + server.port
-
-	if edgeMode {
-		h = server.enhanceAPIForEdgeMode(h, true)
-	}
-
-	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
-
-	tlsConfig := &tls.Config{
-		MinVersion: tls.VersionTLS13,
-	}
-
-	httpServer := &http.Server{
-		Addr:         listenAddr,
-		Handler:      h,
-		ReadTimeout:  120 * time.Second,
-		TLSConfig:    tlsConfig,
-		WriteTimeout: 30 * time.Minute,
-	}
-
-	go func() {
-		securityShutdown := server.agentOptions.AgentSecurityShutdown
-		time.Sleep(securityShutdown)
-
-		if !server.signatureService.IsAssociated() {
-			log.Printf("[INFO] [main,http] [message: Shutting down API server as no client was associated after %s, keeping alive to prevent restart by docker/kubernetes]", securityShutdown)
-
-			err := httpServer.Shutdown(context.Background())
-			if err != nil {
-				log.Fatalf("[ERROR] [server] [message: failed shutting down server] [error: %s]", err)
-			}
-
-		}
-	}()
-
-	return httpServer.ListenAndServeTLS(agent.TLSCertPath, agent.TLSKeyPath)
 }
