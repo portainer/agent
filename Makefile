@@ -1,3 +1,5 @@
+.PHONY: all agent docker-credential-portainer download-binaries clean
+
 # See: https://gist.github.com/asukakenji/f15ba7e588ac42795f421b48b8aede63
 # For a list of valid GOOS and GOARCH values
 # Note: these can be overriden on the command line e.g. `make PLATFORM=<platform> ARCH=<arch>`
@@ -6,6 +8,7 @@ ARCH="$(shell go env GOARCH)"
 
 
 all: agent docker-credential-portainer download-binaries
+	@echo "done"
 
 agent:
 	@echo "Building agent..."
