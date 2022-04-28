@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
 	httperror "github.com/portainer/libhttp/error"
@@ -13,15 +12,13 @@ import (
 // Handler is the HTTP handler used to handle volume browsing operations.
 type Handler struct {
 	*mux.Router
-	agentOptions *agent.Options
 }
 
 // NewHandler returns a pointer to an Handler
 // It sets the associated handle functions for all the Browse related HTTP endpoints.
-func NewHandler(agentProxy *proxy.AgentProxy, notaryService *security.NotaryService, agentOptions *agent.Options) *Handler {
+func NewHandler(agentProxy *proxy.AgentProxy, notaryService *security.NotaryService) *Handler {
 	h := &Handler{
-		Router:       mux.NewRouter(),
-		agentOptions: agentOptions,
+		Router: mux.NewRouter(),
 	}
 
 	h.Handle("/browse/ls",

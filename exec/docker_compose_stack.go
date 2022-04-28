@@ -29,21 +29,9 @@ func NewDockerComposeStackService(binaryPath string) (*DockerComposeStackService
 	return service, nil
 }
 
-// Login executes the docker login command against a list of registries (including DockerHub).
-func (service *DockerComposeStackService) Login() error {
-	// Not implemented yet.
-	return nil
-}
-
-// Logout executes the docker logout command.
-func (service *DockerComposeStackService) Logout() error {
-	return nil
-
-}
-
 // Deploy executes the docker stack deploy command.
 func (service *DockerComposeStackService) Deploy(ctx context.Context, name string, filePaths []string, prune bool) error {
-	return service.deployer.Deploy(ctx, "", "", name, filePaths, "")
+	return service.deployer.Deploy(ctx, "", "", name, filePaths, "", true)
 }
 
 // Remove executes the docker stack rm command.

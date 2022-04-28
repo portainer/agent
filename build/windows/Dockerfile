@@ -9,7 +9,7 @@ RUN mkdir mingit/ \
 && unzip MinGit-$GIT_VERSION.$GIT_PATCH_VERSION-busybox-64-bit.zip -d mingit/
 
 FROM mcr.microsoft.com/windows/nanoserver:${OSVERSION}
-ENV PATH "C:\mingit\cmd;C:\Windows\system32;C:\Windows;"
+ENV PATH "C:\mingit\cmd;C:\app;C:\Windows\system32;C:\Windows;"
 
 COPY --from=downloader /mingit mingit/
 COPY --from=core /Windows/System32/netapi32.dll /Windows/System32/netapi32.dll
@@ -18,5 +18,6 @@ USER ContainerAdministrator
 
 COPY dist /app/
 COPY static /app/static
+COPY [ "config", "/Users/%USER%/.docker/" ]
 
 ENTRYPOINT ["C:/app/agent.exe"]

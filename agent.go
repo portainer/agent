@@ -15,6 +15,13 @@ type (
 		EdgeKeySet bool
 	}
 
+	// RegistryCredentials holds the credentials for a Docker registry.
+	RegistryCredentials struct {
+		ServerURL string
+		Username  string
+		Secret    string
+	}
+
 	// ContainerPlatform represent the platform on which the agent is running (Docker, Kubernetes)
 	ContainerPlatform int
 
@@ -33,8 +40,15 @@ type (
 
 	// EdgeStackConfig represent an Edge stack config
 	EdgeStackConfig struct {
-		Name        string
-		FileContent string
+		Name                string
+		FileContent         string
+		RegistryCredentials []RegistryCredentials
+	}
+
+	// EdgeJobStatus represents an Edge job status
+	EdgeJobStatus struct {
+		JobID          int    `json:"JobID"`
+		LogFileContent string `json:"LogFileContent"`
 	}
 
 	// HostInfo is the representation of the collection of host information
@@ -66,6 +80,7 @@ type (
 		DataPath              string
 		SharedSecret          string
 		EdgeMode              bool
+		EdgeAsyncMode         bool
 		EdgeKey               string
 		EdgeID                string
 		EdgeUIServerAddr      string
@@ -77,6 +92,11 @@ type (
 		SSLCert               string
 		SSLKey                string
 		SSLCACert             string
+	}
+
+	NomadConfig struct {
+		NomadAddr  string
+		NomadToken string
 	}
 
 	// PciDevice is the representation of a physical pci device on a host
@@ -170,6 +190,9 @@ type (
 	// Scheduler is used to manage schedules
 	Scheduler interface {
 		Schedule(schedules []Schedule) error
+		AddSchedule(schedule Schedule) error
+		RemoveSchedule(schedule Schedule) error
+		ProcessScheduleLogsCollection()
 	}
 
 	// SystemService is used to get info about the host
@@ -181,7 +204,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "2.12.0"
+	Version = "2.13.0"
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.
@@ -229,6 +252,12 @@ const (
 	HTTPResponseAgentHeaderName = "Portainer-Agent"
 	// HTTPKubernetesSATokenHeaderName represent the name of the header containing a Kubernetes SA token
 	HTTPKubernetesSATokenHeaderName = "X-PortainerAgent-SA-Token"
+	// HTTPNomadTokenHeaderName represent the name of the header containing a Nomad token
+	HTTPNomadTokenHeaderName = "X-Nomad-Token"
+	// NomadTokenEnvVarName represent the name of environment variable of the Nomad token
+	NomadTokenEnvVarName = "NOMAD_TOKEN"
+	// NomadAddrEnvVarName represent the name of environment variable of the Nomad addr
+	NomadAddrEnvVarName = "NOMAD_ADDR"
 	// HTTPResponseAgentApiVersion is the name of the header that will have the
 	// Portainer Agent API Version.
 	HTTPResponseAgentApiVersion = "Portainer-Agent-API-Version"
@@ -272,6 +301,8 @@ const (
 	PlatformKubernetes
 	// PlatformPodman represent the Podman platform (Standalone)
 	PlatformPodman
+	// PlatformNomad represent the Nomad platform (Standalone)
+	PlatformNomad
 )
 
 const (
@@ -297,4 +328,6 @@ const (
 	TunnelStatusRequired string = "REQUIRED"
 	// TunnelStatusActive represents an active state for a tunnel connected to an Edge environment(endpoint)
 	TunnelStatusActive string = "ACTIVE"
+	// TunnelStatusNoTunnel represents an async Edge environment(endpoint)
+	TunnelStatusNoTunnel string = "NOTUNNEL"
 )

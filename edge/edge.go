@@ -8,12 +8,14 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
+	portainer "github.com/portainer/portainer/api"
 )
 
 type (
@@ -28,6 +30,7 @@ type (
 		logsManager       *scheduler.LogsManager
 		pollService       *PollService
 		stackManager      *stack.StackManager
+		mu                sync.Mutex
 	}
 
 	// ManagerParameters represents an object used to create a Manager
@@ -39,6 +42,10 @@ type (
 		ContainerPlatform agent.ContainerPlatform
 	}
 )
+
+func (manager *Manager) GetStackManager() *stack.StackManager {
+	return manager.stackManager
+}
 
 // NewManager returns a pointer to a new instance of Manager
 func NewManager(parameters *ManagerParameters) *Manager {
@@ -66,7 +73,6 @@ func (manager *Manager) Start() error {
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
 		TunnelCapability:        manager.agentOptions.EdgeTunnel,
 		PortainerURL:            manager.key.PortainerInstanceURL,
-		EndpointID:              manager.key.EndpointID,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
 		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
 		ContainerPlatform:       manager.containerPlatform,
@@ -81,39 +87,29 @@ func (manager *Manager) Start() error {
 		agentPlatform = agent.PlatformDocker
 	}
 
+	portainerClient := client.NewPortainerClient(
+		manager.key.PortainerInstanceURL,
+		manager.GetEndpointID,
+		manager.agentOptions.EdgeID,
+		manager.agentOptions.EdgeAsyncMode,
+		agentPlatform,
+		buildHTTPClient(10, manager.agentOptions),
+	)
+
 	manager.stackManager = stack.NewStackManager(
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			manager.key.EndpointID,
-			manager.agentOptions.EdgeID,
-			agentPlatform,
-			buildHTTPClient(10, manager.agentOptions),
-		),
+		portainerClient,
 		manager.agentOptions.AssetsPath,
 	)
 
-	manager.logsManager = scheduler.NewLogsManager(
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			manager.key.EndpointID,
-			manager.agentOptions.EdgeID,
-			agentPlatform,
-			buildHTTPClient(10, manager.agentOptions),
-		),
-	)
+	manager.logsManager = scheduler.NewLogsManager(portainerClient)
 	manager.logsManager.Start()
 
 	pollService, err := newPollService(
+		manager,
 		manager.stackManager,
 		manager.logsManager,
 		pollServiceConfig,
-		client.NewPortainerClient(
-			manager.key.PortainerInstanceURL,
-			manager.key.EndpointID,
-			manager.agentOptions.EdgeID,
-			agentPlatform,
-			buildHTTPClient(clientDefaultPollTimeout, manager.agentOptions),
-		),
+		portainerClient,
 	)
 	if err != nil {
 		return err
@@ -126,6 +122,21 @@ func (manager *Manager) Start() error {
 // ResetActivityTimer resets the activity timer
 func (manager *Manager) ResetActivityTimer() {
 	manager.pollService.resetActivityTimer()
+}
+
+// SetEndpointID set the endpointID of the agent
+func (manager *Manager) SetEndpointID(endpointID portainer.EndpointID) {
+	manager.mu.Lock()
+	manager.key.EndpointID = endpointID
+	manager.mu.Unlock()
+}
+
+// GetEndpointID gets the endpointID of the agent
+func (manager *Manager) GetEndpointID() portainer.EndpointID {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	return manager.key.EndpointID
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency time.Duration) error {
@@ -172,6 +183,31 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 	return nil
 }
 
+func (manager *Manager) startEdgeBackgroundProcessOnNomad(runtimeCheckFrequency time.Duration) error {
+	manager.pollService.Start()
+
+	go func() {
+		ticker := time.NewTicker(runtimeCheckFrequency)
+		for range ticker.C {
+			manager.pollService.Start()
+
+			err := manager.stackManager.SetEngineStatus(stack.EngineTypeNomad)
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
+				return
+			}
+
+			err = manager.stackManager.Start()
+			if err != nil {
+				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
+				return
+			}
+		}
+	}()
+
+	return nil
+}
+
 func (manager *Manager) startEdgeBackgroundProcess() error {
 	runtimeCheckFrequency, err := time.ParseDuration(agent.DefaultConfigCheckInterval)
 	if err != nil {
@@ -183,6 +219,8 @@ func (manager *Manager) startEdgeBackgroundProcess() error {
 		return manager.startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency)
 	case agent.PlatformKubernetes:
 		return manager.startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency)
+	case agent.PlatformNomad:
+		return manager.startEdgeBackgroundProcessOnNomad(runtimeCheckFrequency)
 	}
 
 	return nil
@@ -225,7 +263,10 @@ func buildHTTPClient(timeout float64, options *agent.Options) *http.Client {
 		Timeout: time.Duration(timeout) * time.Second,
 	}
 
-	httpCli.Transport = buildTransport(options)
+	transport := buildTransport(options)
+	if transport != nil {
+		httpCli.Transport = transport
+	}
 	return httpCli
 }
 
@@ -240,11 +281,6 @@ func buildTransport(options *agent.Options) *http.Transport {
 
 	// if ssl certs for edge agent are set
 	if options.SSLCert != "" && options.SSLKey != "" {
-		// Read the key pair to create certificate
-		cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
-		if err != nil {
-			log.Fatal(err)
-		}
 
 		var caCertPool *x509.CertPool
 		// Create a CA certificate pool and add cert.pem to it
@@ -260,10 +296,17 @@ func buildTransport(options *agent.Options) *http.Transport {
 		// Create an HTTPS client and supply the created CA pool and certificate
 		return &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs:      caCertPool,
-				Certificates: []tls.Certificate{cert},
-				MinVersion:   tls.VersionTLS13,
-				MaxVersion:   tls.VersionTLS13,
+				RootCAs:    caCertPool,
+				MinVersion: tls.VersionTLS13,
+				MaxVersion: tls.VersionTLS13,
+				GetClientCertificate: func(chi *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+					cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
+					if err != nil {
+						return nil, err
+					}
+
+					return &cert, nil
+				},
 			},
 		}
 	}

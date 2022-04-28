@@ -15,6 +15,7 @@ import (
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge"
 	httpEdge "github.com/portainer/agent/edge/http"
+	"github.com/portainer/agent/edge/registry"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
@@ -33,6 +34,10 @@ func main() {
 		log.Fatalf("[ERROR] [main] [message: Invalid agent configuration] [error: %s]", err)
 	}
 
+	if options.EdgeAsyncMode && !options.EdgeMode {
+		log.Fatalf("[ERROR] [main] [message: Edge Async mode cannot be enabled, if Edge Mode is disabled]")
+	}
+
 	logutils.SetupLogger(options.LogLevel)
 
 	systemService := ghw.NewSystemService(agent.HostRoot)
@@ -45,6 +50,7 @@ func main() {
 	var dockerInfoService agent.DockerInfoService
 	var advertiseAddr string
 	var kubeClient *kubernetes.KubeClient
+	var nomadConfig agent.NomadConfig
 
 	// !Generic
 
@@ -158,8 +164,25 @@ func main() {
 	}
 	// !Kubernetes
 
-	// Security
+	// Nomad
+	if containerPlatform == agent.PlatformNomad {
+		advertiseAddr, err = net.GetLocalIP()
+		if err != nil {
+			log.Fatalf("[ERROR] [main,nomad] [message: Unable to retrieve local IP associated to the agent] [error: %s]", err)
+		}
 
+		nomadConfig.NomadAddr = goos.Getenv(agent.NomadAddrEnvVarName)
+		if nomadConfig.NomadAddr == "" {
+			log.Fatalf("[ERROR] [main,nomad] [message: Unable to retrieve environment variable NOMAD_ADDR]")
+		}
+
+		nomadConfig.NomadToken = goos.Getenv(agent.NomadTokenEnvVarName)
+
+		log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [advertise_address: %s] [NomadAddr: %s]", options.AgentServerPort, advertiseAddr, nomadConfig.NomadAddr)
+	}
+	// !Nomad
+
+	// Security
 	signatureService := crypto.NewECDSAService(options.SharedSecret)
 
 	if !options.EdgeMode {
@@ -226,10 +249,16 @@ func main() {
 		KubeClient:           kubeClient,
 		KubernetesDeployer:   kubernetesDeployer,
 		ContainerPlatform:    containerPlatform,
+		NomadConfig:          nomadConfig,
 	}
 
 	if options.EdgeMode {
 		config.Addr = advertiseAddr
+	}
+
+	err = registry.StartRegistryServer(edgeManager)
+	if err != nil {
+		log.Fatalf("[ERROR] [main] [message: Unable to start registry server] [error: %s]", err)
 	}
 
 	err = startAPIServer(config, options.EdgeMode)
@@ -272,8 +301,7 @@ func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
 	}()
 
 	go func() {
-		timer1 := time.NewTimer(agent.DefaultEdgeSecurityShutdown * time.Minute)
-		<-timer1.C
+		time.Sleep(agent.DefaultEdgeSecurityShutdown * time.Minute)
 
 		if !edgeManager.IsKeySet() {
 			log.Printf("[INFO] [main] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)

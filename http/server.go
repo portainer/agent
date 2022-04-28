@@ -30,6 +30,7 @@ type APIServer struct {
 	kubeClient         *kubernetes.KubeClient
 	kubernetesDeployer *exec.KubernetesDeployer
 	containerPlatform  agent.ContainerPlatform
+	nomadConfig        agent.NomadConfig
 }
 
 // APIServerConfig represents a server configuration
@@ -46,6 +47,7 @@ type APIServerConfig struct {
 	RuntimeConfiguration *agent.RuntimeConfiguration
 	AgentOptions         *agent.Options
 	ContainerPlatform    agent.ContainerPlatform
+	NomadConfig          agent.NomadConfig
 }
 
 // NewAPIServer returns a pointer to a APIServer.
@@ -62,6 +64,7 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 		kubeClient:         config.KubeClient,
 		kubernetesDeployer: config.KubernetesDeployer,
 		containerPlatform:  config.ContainerPlatform,
+		nomadConfig:        config.NomadConfig,
 	}
 }
 
@@ -72,57 +75,52 @@ func (server *APIServer) Start(edgeMode bool) error {
 		ClusterService:       server.clusterService,
 		SignatureService:     server.signatureService,
 		RuntimeConfiguration: server.agentTags,
-		AgentOptions:         server.agentOptions,
 		EdgeManager:          server.edgeManager,
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
 		Secured:              !edgeMode,
 		ContainerPlatform:    server.containerPlatform,
+		NomadConfig:          server.nomadConfig,
 	}
 
 	httpHandler := handler.NewHandler(config)
-	listenAddr := server.addr + ":" + server.port
-
-	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
-
-	if edgeMode {
-		httpServer := &http.Server{
-			Addr:         listenAddr,
-			Handler:      server.edgeHandler(httpHandler),
-			ReadTimeout:  120 * time.Second,
-			WriteTimeout: 30 * time.Minute,
-		}
-		return httpServer.ListenAndServe()
-	}
-
-	tlsConfig := &tls.Config{
-		MinVersion: tls.VersionTLS13,
-	}
-
 	httpServer := &http.Server{
-		Addr:         listenAddr,
+		Addr:         server.addr + ":" + server.port,
 		Handler:      httpHandler,
-		TLSConfig:    tlsConfig,
 		ReadTimeout:  120 * time.Second,
 		WriteTimeout: 30 * time.Minute,
 	}
 
-	go func() {
-		securityShutdown := config.AgentOptions.AgentSecurityShutdown
-		time.Sleep(securityShutdown)
+	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
 
-		if !server.signatureService.IsAssociated() {
-			log.Printf("[INFO] [http] [message: Shutting down API server as no client was associated after %s, keeping alive to prevent restart by docker/kubernetes]", securityShutdown)
+	if edgeMode {
+		httpServer.Handler = server.edgeHandler(httpHandler)
 
-			err := httpServer.Shutdown(context.Background())
-			if err != nil {
-				log.Fatalf("[ERROR] [http] [message: failed shutting down server] [error: %s]", err)
-			}
+		return httpServer.ListenAndServe()
+	}
 
-		}
-	}()
+	httpServer.TLSConfig = &tls.Config{
+		MinVersion: tls.VersionTLS13,
+	}
+
+	go server.securityShutdown(httpServer)
 
 	return httpServer.ListenAndServeTLS(agent.TLSCertPath, agent.TLSKeyPath)
+}
+
+func (server *APIServer) securityShutdown(httpServer *http.Server) {
+	time.Sleep(server.agentOptions.AgentSecurityShutdown)
+
+	if server.signatureService.IsAssociated() {
+		return
+	}
+
+	log.Printf("[INFO] [http] [message: Shutting down API server as no client was associated after %s, keeping alive to prevent restart by docker/kubernetes]", server.agentOptions.AgentSecurityShutdown)
+
+	err := httpServer.Shutdown(context.Background())
+	if err != nil {
+		log.Fatalf("[ERROR] [http] [message: failed shutting down server] [error: %s]", err)
+	}
 }
 
 func (server *APIServer) edgeHandler(next http.Handler) http.Handler {

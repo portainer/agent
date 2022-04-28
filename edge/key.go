@@ -5,18 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/filesystem"
+	portainer "github.com/portainer/portainer/api"
 )
 
 type edgeKey struct {
 	PortainerInstanceURL    string
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
-	EndpointID              string
+	EndpointID              portainer.EndpointID
 }
 
 // SetKey parses and associates an Edge key to the agent.
@@ -26,6 +28,9 @@ func (manager *Manager) SetKey(key string) error {
 	if err != nil {
 		return err
 	}
+
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
 
 	err = filesystem.WriteFile(manager.agentOptions.DataPath, agent.EdgeKeyFile, []byte(key), 0644)
 	if err != nil {
@@ -45,17 +50,21 @@ func (manager *Manager) SetKey(key string) error {
 
 // GetKey returns the Edge key associated to the agent
 func (manager *Manager) GetKey() string {
-	var encodedKey string
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
 
-	if manager.key != nil {
-		encodedKey = encodeKey(manager.key)
+	if manager.key == nil {
+		return ""
 	}
 
-	return encodedKey
+	return encodeKey(manager.key)
 }
 
 // IsKeySet returns true if an Edge key is associated to the agent
 func (manager *Manager) IsKeySet() bool {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	return manager.key != nil
 }
 
@@ -101,18 +110,23 @@ func parseEdgeKey(key string) (*edgeKey, error) {
 		return nil, errors.New("invalid key format")
 	}
 
+	endpointID, err := strconv.Atoi(keyInfo[3])
+	if err != nil {
+		return nil, errors.New("invalid key format")
+	}
+
 	edgeKey := &edgeKey{
 		PortainerInstanceURL:    keyInfo[0],
 		TunnelServerAddr:        keyInfo[1],
 		TunnelServerFingerprint: keyInfo[2],
-		EndpointID:              keyInfo[3],
+		EndpointID:              portainer.EndpointID(endpointID),
 	}
 
 	return edgeKey, nil
 }
 
 func encodeKey(edgeKey *edgeKey) string {
-	keyInfo := fmt.Sprintf("%s|%s|%s|%s", edgeKey.PortainerInstanceURL, edgeKey.TunnelServerAddr, edgeKey.TunnelServerFingerprint, edgeKey.EndpointID)
+	keyInfo := fmt.Sprintf("%s|%s|%s|%d", edgeKey.PortainerInstanceURL, edgeKey.TunnelServerAddr, edgeKey.TunnelServerFingerprint, edgeKey.EndpointID)
 	encodedKey := base64.RawStdEncoding.EncodeToString([]byte(keyInfo))
 	return encodedKey
 }
