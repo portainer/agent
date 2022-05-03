@@ -92,6 +92,7 @@ type (
 		SSLCert               string
 		SSLKey                string
 		SSLCACert             string
+		CertRetryInterval     time.Duration
 	}
 
 	NomadConfig struct {

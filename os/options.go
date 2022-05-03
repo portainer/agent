@@ -30,6 +30,7 @@ const (
 	EnvKeySSLCert               = "MTLS_SSL_CERT"
 	EnvKeySSLKey                = "MTLS_SSL_KEY"
 	EnvKeySSLCACert             = "MTLS_SSL_CA"
+	EnvKeyCertRetryInterval     = "MTLS_CERT_RETRY_INTERVAL"
 )
 
 type EnvOptionParser struct{}
@@ -62,9 +63,10 @@ var (
 	fEdgeTunnel            = kingpin.Flag("edge-tunnel", EnvKeyEdgeTunnel+" disable this option if you wish to prevent the agent from opening tunnels over websockets").Envar(EnvKeyEdgeTunnel).Default("true").Bool()
 
 	// mTLS edge agent certs
-	fSSLCert   = kingpin.Flag("sslcert", "Path to the SSL certificate used to identify the agent to Portainer").Envar(EnvKeySSLCert).String()
-	fSSLKey    = kingpin.Flag("sslkey", "Path to the SSL key used to identify the agent to Portainer").Envar(EnvKeySSLKey).String()
-	fSSLCACert = kingpin.Flag("sslcacert", "Path to the SSL CA certificate used to validate the Portainer server").Envar(EnvKeySSLCACert).String()
+	fSSLCert           = kingpin.Flag("sslcert", "Path to the SSL certificate used to identify the agent to Portainer").Envar(EnvKeySSLCert).String()
+	fSSLKey            = kingpin.Flag("sslkey", "Path to the SSL key used to identify the agent to Portainer").Envar(EnvKeySSLKey).String()
+	fSSLCACert         = kingpin.Flag("sslcacert", "Path to the SSL CA certificate used to validate the Portainer server").Envar(EnvKeySSLCACert).String()
+	fCertRetryInterval = kingpin.Flag("certificate-retry-interval", "Interval used to block initialization until the certificate is available").Envar(EnvKeyCertRetryInterval).Duration()
 )
 
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
@@ -93,5 +95,6 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		SSLCert:               *fSSLCert,
 		SSLKey:                *fSSLKey,
 		SSLCACert:             *fSSLCACert,
+		CertRetryInterval:     *fCertRetryInterval,
 	}, nil
 }

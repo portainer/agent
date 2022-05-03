@@ -40,6 +40,10 @@ func main() {
 
 	logutils.SetupLogger(options.LogLevel)
 
+	if options.SSLCert != "" && options.SSLKey != "" && options.CertRetryInterval > 0 {
+		edge.BlockUntilCertificateIsReady(options.SSLCert, options.SSLKey, options.CertRetryInterval)
+	}
+
 	systemService := ghw.NewSystemService(agent.HostRoot)
 	containerPlatform := os.DetermineContainerPlatform()
 	runtimeConfiguration := &agent.RuntimeConfiguration{
