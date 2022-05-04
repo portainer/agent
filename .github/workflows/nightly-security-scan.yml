@@ -1,0 +1,175 @@
+name: Nightly Code Security Scan
+
+on: 
+  schedule:
+    - cron: '0 8 * * *'
+  pull_request:
+  workflow_dispatch:
+    
+jobs:
+  server-dependencies:
+    name: Server dependency check
+    runs-on: ubuntu-latest
+    if: >- # only run for develop branch
+      github.ref == 'refs/heads/develop' 
+    outputs:
+      go: ${{ steps.set-matrix.outputs.go_result }}
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Download go modules
+        run: go get -t -v -d ./...
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/golang@master
+        continue-on-error: true # To make sure that artifact upload gets called
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --file=./go.mod
+          json: true
+
+      - name: Upload go security scan result as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: go-security-scan-develop-result
+          path: snyk.json
+
+      - name: Export scan result to html file 
+        run: | 
+          $(docker run --rm -v ${{ github.workspace }}:/data oscarzhou/scan-report:0.1.8 summary -report-type=snyk -path="/data/snyk.json" -output-type=table -export -export-filename="/data/go-result")
+
+      - name: Upload go result html file
+        uses: actions/upload-artifact@v3
+        with:
+          name: html-go-result-${{github.run_id}}
+          path: go-result.html
+
+      - name: Analyse the go result
+        id: set-matrix
+        run: | 
+          result=$(docker run --rm -v ${{ github.workspace }}:/data oscarzhou/scan-report:0.1.8 summary -report-type=snyk -path="/data/snyk.json" -output-type=matrix)
+          echo "::set-output name=go_result::${result}"
+
+  image-vulnerability:
+    name: Build docker image and Image vulnerability check
+    runs-on: ubuntu-latest
+    if: >-
+      github.ref == 'refs/heads/develop'
+    outputs:
+      image: ${{ steps.set-matrix.outputs.image_result }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Use golang 1.18
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.18' 
+
+      - name: Compile the codebase
+        run: ./dev.sh compile
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: build/linux/Dockerfile
+          tags: portainer-agent:${{ github.sha }}
+          outputs: type=docker,dest=/tmp/portainer-agent-image.tar
+
+      - name: Load docker image
+        run: |
+          docker load --input /tmp/portainer-agent-image.tar
+
+      - name: Run Trivy vulnerability scanner
+        uses: docker://docker.io/aquasec/trivy:latest
+        continue-on-error: true 
+        with:
+          args: image --ignore-unfixed=true --vuln-type="os,library" --exit-code=1 --format="json" --output="image-trivy.json" --no-progress portainer-agent:${{ github.sha }}  
+
+      - name: Upload image security scan result as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: image-security-scan-develop-result
+          path: image-trivy.json
+
+      - name: Export scan result to html file 
+        run: | 
+          $(docker run --rm -v ${{ github.workspace }}:/data oscarzhou/scan-report:0.1.8 summary -report-type=trivy -path="/data/image-trivy.json" -output-type=table -export -export-filename="/data/image-result")
+
+      - name: Upload go result html file
+        uses: actions/upload-artifact@v3
+        with:
+          name: html-image-result-${{github.run_id}}
+          path: image-result.html
+
+      - name: Analyse the trivy result
+        id: set-matrix
+        run: | 
+          result=$(docker run --rm -v ${{ github.workspace }}:/data oscarzhou/scan-report:0.1.8 summary -report-type=trivy -path="/data/image-trivy.json" -output-type=matrix)
+          echo "::set-output name=image_result::${result}"
+
+  result-analysis:
+    name: Analyse scan result
+    needs: [server-dependencies, image-vulnerability]
+    runs-on: ubuntu-latest
+    if: >-
+      github.ref == 'refs/heads/develop'
+    strategy:
+      matrix: 
+        go: ${{fromJson(needs.server-dependencies.outputs.go)}}
+        image: ${{fromJson(needs.image-vulnerability.outputs.image)}}
+    steps:
+      - name: Display the results of go and image
+        run: |
+          echo ${{ matrix.go.status }}
+          echo ${{ matrix.image.status }}
+          echo ${{ matrix.go.summary }}
+          echo ${{ matrix.image.summary }}
+
+      - name: Send Slack message
+        if: >- 
+          matrix.go.status == 'failure' || 
+          matrix.image.status == 'failure'
+        uses: slackapi/slack-github-action@v1.18.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Code Scanning Result (*${{ github.repository }}*)\n*<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|GitHub Actions Workflow URL>*"
+                  }
+                }
+              ],
+              "attachments": [
+                {
+                  "color": "#FF0000",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*Go dependency check*: *${{ matrix.go.status }}*\n${{ matrix.go.summary }}"
+                      }
+                    },
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*Image vulnerability check*: *${{ matrix.image.status }}*\n${{ matrix.image.summary }}\n"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SECURITY_SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
