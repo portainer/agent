@@ -4,12 +4,12 @@ on:
   pull_request_review:
     types:
       - submitted
-      # - edited
-    # paths:
-    #   - 'go.mod'
-    #   - 'build/linux/Dockerfile'
-    #   - 'build/linux/alpine.Dockerfile'
-    #   - 'build/windows/Dockerfile'
+      - edited
+    paths:
+      - 'go.mod'
+      - 'build/linux/Dockerfile'
+      - 'build/linux/alpine.Dockerfile'
+      - 'build/windows/Dockerfile'
     
 jobs:
   server-dependencies:
