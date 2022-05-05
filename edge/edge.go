@@ -275,6 +275,7 @@ func buildTransport(options *agent.Options) *http.Transport {
 		return &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
+				ClientSessionCache: tls.NewLRUClientSessionCache(0),
 			},
 		}
 	}
@@ -296,9 +297,10 @@ func buildTransport(options *agent.Options) *http.Transport {
 		// Create an HTTPS client and supply the created CA pool and certificate
 		return &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs:    caCertPool,
-				MinVersion: tls.VersionTLS13,
-				MaxVersion: tls.VersionTLS13,
+				ClientSessionCache: tls.NewLRUClientSessionCache(0),
+				RootCAs:            caCertPool,
+				MinVersion:         tls.VersionTLS13,
+				MaxVersion:         tls.VersionTLS13,
 				GetClientCertificate: func(chi *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 					cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
 					if err != nil {
