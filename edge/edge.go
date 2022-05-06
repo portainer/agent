@@ -259,32 +259,25 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 }
 
 func buildHTTPClient(timeout float64, options *agent.Options) *http.Client {
-	httpCli := &http.Client{
-		Timeout: time.Duration(timeout) * time.Second,
+	return &http.Client{
+		Transport: buildTransport(options),
+		Timeout:   time.Duration(timeout) * time.Second,
 	}
-
-	transport := buildTransport(options)
-	if transport != nil {
-		httpCli.Transport = transport
-	}
-	return httpCli
 }
 
 func buildTransport(options *agent.Options) *http.Transport {
-	if options.EdgeInsecurePoll {
-		return &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-				ClientSessionCache: tls.NewLRUClientSessionCache(0),
-			},
-		}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+
+	transport.TLSClientConfig = &tls.Config{
+		ClientSessionCache: tls.NewLRUClientSessionCache(0),
+		MinVersion:         tls.VersionTLS13,
 	}
 
-	// if ssl certs for edge agent are set
-	if options.SSLCert != "" && options.SSLKey != "" {
-
-		var caCertPool *x509.CertPool
+	if options.EdgeInsecurePoll {
+		transport.TLSClientConfig.InsecureSkipVerify = true
+	} else if options.SSLCert != "" && options.SSLKey != "" {
 		// Create a CA certificate pool and add cert.pem to it
+		var caCertPool *x509.CertPool
 		if options.SSLCACert != "" {
 			caCert, err := ioutil.ReadFile(options.SSLCACert)
 			if err != nil {
@@ -294,24 +287,13 @@ func buildTransport(options *agent.Options) *http.Transport {
 			caCertPool.AppendCertsFromPEM(caCert)
 		}
 
-		// Create an HTTPS client and supply the created CA pool and certificate
-		return &http.Transport{
-			TLSClientConfig: &tls.Config{
-				ClientSessionCache: tls.NewLRUClientSessionCache(0),
-				RootCAs:            caCertPool,
-				MinVersion:         tls.VersionTLS13,
-				MaxVersion:         tls.VersionTLS13,
-				GetClientCertificate: func(chi *tls.CertificateRequestInfo) (*tls.Certificate, error) {
-					cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
-					if err != nil {
-						return nil, err
-					}
+		transport.TLSClientConfig.RootCAs = caCertPool
+		transport.TLSClientConfig.GetClientCertificate = func(cri *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			cert, err := tls.LoadX509KeyPair(options.SSLCert, options.SSLKey)
 
-					return &cert, nil
-				},
-			},
+			return &cert, err
 		}
 	}
 
-	return nil
+	return transport
 }
