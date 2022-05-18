@@ -1,8 +1,9 @@
 package nomadproxy
 
 import (
-	"github.com/portainer/agent"
 	"net/http"
+
+	"github.com/portainer/agent"
 
 	"github.com/gorilla/mux"
 	"github.com/portainer/agent/http/proxy"
@@ -22,7 +23,7 @@ type Handler struct {
 func NewHandler(notaryService *security.NotaryService, nomadConfig agent.NomadConfig) *Handler {
 	h := &Handler{
 		Router:      mux.NewRouter(),
-		nomadProxy:  proxy.NewNomadProxy(nomadConfig.NomadAddr),
+		nomadProxy:  proxy.NewNomadProxy(nomadConfig),
 		nomadConfig: nomadConfig,
 	}
 

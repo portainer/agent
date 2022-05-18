@@ -96,8 +96,12 @@ type (
 	}
 
 	NomadConfig struct {
-		NomadAddr  string
-		NomadToken string
+		NomadAddr       string
+		NomadToken      string
+		NomadTLSEnabled bool
+		NomadCACert     string
+		NomadClientCert string
+		NomadClientKey  string
 	}
 
 	// PciDevice is the representation of a physical pci device on a host
@@ -259,6 +263,12 @@ const (
 	NomadTokenEnvVarName = "NOMAD_TOKEN"
 	// NomadAddrEnvVarName represent the name of environment variable of the Nomad addr
 	NomadAddrEnvVarName = "NOMAD_ADDR"
+	// NomadCACertEnvVarName represent the name of environment variable of the Nomad ca certificate
+	NomadCACertEnvVarName = "NOMAD_CACERT"
+	// NomadClientCertEnvVarName represent the name of environment variable of the Nomad client certificate
+	NomadClientCertEnvVarName = "NOMAD_CLIENT_CERT"
+	// NomadClientKeyEnvVarName represent the name of environment variable of the Nomad client key
+	NomadClientKeyEnvVarName = "NOMAD_CLIENT_KEY"
 	// HTTPResponseAgentApiVersion is the name of the header that will have the
 	// Portainer Agent API Version.
 	HTTPResponseAgentApiVersion = "Portainer-Agent-API-Version"

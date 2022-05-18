@@ -7,6 +7,7 @@ import (
 	gohttp "net/http"
 	goos "os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -180,6 +181,23 @@ func main() {
 			log.Fatalf("[ERROR] [main,nomad] [message: Unable to retrieve environment variable NOMAD_ADDR]")
 		}
 
+		if strings.HasPrefix(nomadConfig.NomadAddr, "https") {
+			nomadConfig.NomadTLSEnabled = true
+			nomadConfig.NomadCACert = goos.Getenv(agent.NomadCACertEnvVarName)
+			nomadConfig.NomadClientCert = goos.Getenv(agent.NomadClientCertEnvVarName)
+			nomadConfig.NomadClientKey = goos.Getenv(agent.NomadClientKeyEnvVarName)
+
+			if _, err := goos.Stat(nomadConfig.NomadCACert); errors.Is(err, goos.ErrNotExist) {
+				log.Fatalf("[ERROR] [main] [message: Unable to locate the Nomad CA Certificate] [error: %s]", err)
+			}
+			if _, err := goos.Stat(nomadConfig.NomadClientCert); errors.Is(err, goos.ErrNotExist) {
+				log.Fatalf("[ERROR] [main] [message: Unable to locate the Nomad Client Certificate] [error: %s]", err)
+			}
+			if _, err := goos.Stat(nomadConfig.NomadClientKey); errors.Is(err, goos.ErrNotExist) {
+				log.Fatalf("[ERROR] [main] [message: Unable to locate the Nomad Client Key] [error: %s]", err)
+			}
+		}
+
 		nomadConfig.NomadToken = goos.Getenv(agent.NomadTokenEnvVarName)
 
 		log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [advertise_address: %s] [NomadAddr: %s]", options.AgentServerPort, advertiseAddr, nomadConfig.NomadAddr)
@@ -259,7 +277,6 @@ func main() {
 	if options.EdgeMode {
 		config.Addr = advertiseAddr
 	}
-
 	err = registry.StartRegistryServer(edgeManager)
 	if err != nil {
 		log.Fatalf("[ERROR] [main] [message: Unable to start registry server] [error: %s]", err)
