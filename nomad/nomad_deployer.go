@@ -39,10 +39,13 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 
 	newJobFile, err := filesystem.ReadFromFile(filePaths[0])
 	if err != nil {
-		return errors.Wrap(err, "failed to parse Nomad job file")
+		return errors.Wrap(err, "failed to read Nomad job file")
 	}
 
 	newJob, err := d.client.Jobs().ParseHCL(string(newJobFile), true)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse Nomad job file")
+	}
 
 	// An existing backup file means it is an update action
 	// Need to check if the new coming job file has different region, namespace or id settings
