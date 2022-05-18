@@ -45,6 +45,7 @@ func (service *PollService) failSafe() {
 
 	if zeroPing && zeroSnapshot && zeroCommand {
 		log.Println("[WARN] [edge] [async] [message: activating fail-safe mechanism for the async poll]")
+		service.pingInterval = failSafeInterval
 		updateTicker(service.pingTicker, failSafeInterval)
 	}
 }
