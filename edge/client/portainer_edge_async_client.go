@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,33 +12,38 @@ import (
 	"sync"
 	"time"
 
-	portainer "github.com/portainer/portainer/api"
-
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/kubernetes"
 	"github.com/portainer/agent/os"
+	portainer "github.com/portainer/portainer/api"
+	"github.com/wI2L/jsondiff"
 )
 
 // PortainerAsyncClient is used to execute HTTP requests using only the /api/entrypoint/async api endpoint
 type PortainerAsyncClient struct {
 	httpClient              *http.Client
 	serverAddress           string
-	getEndpointIDFn         func() portainer.EndpointID
+	setEndpointIDFn         setEndpointIDFn
+	getEndpointIDFn         getEndpointIDFn
 	edgeID                  string
 	agentPlatformIdentifier agent.ContainerPlatform
 	commandTimestamp        *time.Time
 
 	lastAsyncResponse      AsyncResponse
 	lastAsyncResponseMutex sync.Mutex
-	nextSnapshotRequest    AsyncRequest
+	lastSnapshot           snapshot
+	nextSnapshot           snapshot
 	nextSnapshotMutex      sync.Mutex
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
-func NewPortainerAsyncClient(serverAddress string, getEndpointIDFn func() portainer.EndpointID, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerAsyncClient {
+func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerAsyncClient {
 	initialCommandTimestamp := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	return &PortainerAsyncClient{
 		serverAddress:           serverAddress,
-		getEndpointIDFn:         getEndpointIDFn,
+		setEndpointIDFn:         setEIDFn,
+		getEndpointIDFn:         getEIDFn,
 		edgeID:                  edgeID,
 		httpClient:              httpClient,
 		agentPlatformIdentifier: containerPlatform,
@@ -50,21 +56,17 @@ func (client *PortainerAsyncClient) SetTimeout(t time.Duration) {
 }
 
 type AsyncRequest struct {
-	CommandTimestamp *time.Time `json:"commandTimestamp"`
-	Snapshot         snapshot   `json:"snapshot"`
+	CommandTimestamp *time.Time `json:"commandTimestamp,omitempty"`
+	Snapshot         *snapshot  `json:"snapshot,omitempty"`
 }
 
 type snapshot struct {
-	Docker      *portainer.DockerSnapshot
-	Kubernetes  *portainer.KubernetesSnapshot
-	StackStatus map[portainer.EdgeStackID]portainer.EdgeStackStatus
-	JobsStatus  map[portainer.EdgeJobID]agent.EdgeJobStatus
-}
-
-type JSONPatch struct {
-	Operation string      `json:"op"`
-	Path      string      `json:"path"`
-	Value     interface{} `json:"value"`
+	Docker          *portainer.DockerSnapshot                           `json:"docker,omitempty"`
+	DockerPatch     jsondiff.Patch                                      `json:"dockerPatch,omitempty"`
+	Kubernetes      *portainer.KubernetesSnapshot                       `json:"kubernetes,omitempty"`
+	KubernetesPatch jsondiff.Patch                                      `json:"kubernetesPatch,omitempty"`
+	StackStatus     map[portainer.EdgeStackID]portainer.EdgeStackStatus `json:"stackStatus,omitempty"`
+	JobsStatus      map[portainer.EdgeJobID]agent.EdgeJobStatus         `json:"jobsStatus:,omitempty"`
 }
 
 type AsyncResponse struct {
@@ -107,25 +109,73 @@ func (client *PortainerAsyncClient) GetEnvironmentID() (portainer.EndpointID, er
 	return 0, errors.New("GetEnvironmentID is not available in async mode")
 }
 
-func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
+func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error) {
 	pollURL := fmt.Sprintf("%s/api/endpoints/edge/async", client.serverAddress)
 
-	payload := AsyncRequest{
-		CommandTimestamp: client.commandTimestamp,
-		Snapshot:         snapshot{},
+	payload := AsyncRequest{}
+
+	var doSnapshot, doCommand bool
+	for _, f := range flags {
+		if f == "snapshot" {
+			doSnapshot = true
+		} else if f == "command" {
+			doCommand = true
+		}
 	}
 
-	client.nextSnapshotMutex.Lock()
-	defer client.nextSnapshotMutex.Unlock()
+	var currentSnapshot snapshot
+	if doSnapshot {
+		payload.Snapshot = &snapshot{}
 
-	if client.nextSnapshotRequest.Snapshot.StackStatus != nil {
-		payload.Snapshot.StackStatus = client.nextSnapshotRequest.Snapshot.StackStatus
-		client.nextSnapshotRequest.Snapshot.StackStatus = nil
+		switch client.agentPlatformIdentifier {
+		case agent.PlatformDocker:
+			dockerSnapshot, err := docker.CreateSnapshot()
+			if err != nil {
+				log.Printf("[WARN] [edge,client] [message: could not create the Docker snapshot: %s]", err)
+			}
+
+			payload.Snapshot.Docker = dockerSnapshot
+			currentSnapshot.Docker = dockerSnapshot
+
+			if client.lastSnapshot.Docker != nil {
+				dockerPatch, err := jsondiff.Compare(client.lastSnapshot.Docker, dockerSnapshot)
+				if err == nil {
+					payload.Snapshot.DockerPatch = dockerPatch
+					payload.Snapshot.Docker = nil
+				} else {
+					log.Printf("[WARN] [edge,client] [message: could not generate the Docker snapshot patch: %s]", err)
+				}
+			}
+
+		case agent.PlatformKubernetes:
+			kubeSnapshot, err := kubernetes.CreateSnapshot()
+			if err != nil {
+				log.Printf("[WARN] [edge,client] [message: could not create the Kubernetes snapshot: %s]", err)
+			}
+
+			payload.Snapshot.Kubernetes = kubeSnapshot
+			currentSnapshot.Kubernetes = kubeSnapshot
+
+			if client.lastSnapshot.Kubernetes != nil {
+				kubePatch, err := jsondiff.Compare(client.lastSnapshot.Docker, kubeSnapshot)
+				if err == nil {
+					payload.Snapshot.KubernetesPatch = kubePatch
+					payload.Snapshot.KubernetesPatch = nil
+				} else {
+					log.Printf("[WARN] [edge,client] [message: could not generate the Kubernetes snapshot patch: %s]", err)
+				}
+			}
+		}
+
+		client.nextSnapshotMutex.Lock()
+		defer client.nextSnapshotMutex.Unlock()
+
+		payload.Snapshot.StackStatus = client.nextSnapshot.StackStatus
+		payload.Snapshot.JobsStatus = client.nextSnapshot.JobsStatus
 	}
 
-	if client.nextSnapshotRequest.Snapshot.JobsStatus != nil {
-		payload.Snapshot.JobsStatus = client.nextSnapshotRequest.Snapshot.JobsStatus
-		client.nextSnapshotRequest.Snapshot.JobsStatus = nil
+	if doCommand {
+		payload.CommandTimestamp = client.commandTimestamp
 	}
 
 	client.lastAsyncResponseMutex.Lock()
@@ -136,14 +186,47 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus() (*PollStatusResponse,
 		return nil, err
 	}
 
+	if doSnapshot {
+		client.lastSnapshot.Docker = currentSnapshot.Docker
+		client.lastSnapshot.Kubernetes = currentSnapshot.Kubernetes
+
+		client.nextSnapshot.StackStatus = nil
+		client.nextSnapshot.JobsStatus = nil
+	}
+
+	client.setEndpointIDFn(asyncResponse.EndpointID)
+
 	response := &PollStatusResponse{
-		AsyncCommands: asyncResponse.Commands,
-		Status:        agent.TunnelStatusNoTunnel,
+		AsyncCommands:    asyncResponse.Commands,
+		PingInterval:     asyncResponse.PingInterval,
+		SnapshotInterval: asyncResponse.SnapshotInterval,
+		CommandInterval:  asyncResponse.CommandInterval,
 	}
 
 	client.lastAsyncResponse = *asyncResponse
 
 	return response, nil
+}
+
+func gzipCompress(data []byte) (*bytes.Buffer, error) {
+	buf := &bytes.Buffer{}
+
+	gz, err := gzip.NewWriterLevel(buf, gzip.BestCompression)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = gz.Write(data)
+	if err != nil {
+		return nil, err
+	}
+
+	err = gz.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf, nil
 }
 
 func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, pollURL string) (*AsyncResponse, error) {
@@ -152,9 +235,23 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", pollURL, bytes.NewReader(data))
+	var buf *bytes.Buffer
+	if payload.Snapshot != nil {
+		buf, err = gzipCompress(data)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		buf = bytes.NewBuffer(data)
+	}
+
+	req, err := http.NewRequest("POST", pollURL, buf)
 	if err != nil {
 		return nil, err
+	}
+
+	if payload.Snapshot != nil {
+		req.Header.Set("Content-Encoding", "gzip")
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
@@ -164,6 +261,7 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("portainer_hostname", hostname) // TODO use proper header
 
 	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(client.agentPlatformIdentifier)))
@@ -184,6 +282,7 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	if err != nil {
 		return nil, err
 	}
+
 	return &asyncResponse, nil
 }
 
@@ -192,10 +291,11 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID, edgeStackSta
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
 
-	if client.nextSnapshotRequest.Snapshot.StackStatus == nil {
-		client.nextSnapshotRequest.Snapshot.StackStatus = make(map[portainer.EdgeStackID]portainer.EdgeStackStatus)
+	if client.nextSnapshot.StackStatus == nil {
+		client.nextSnapshot.StackStatus = make(map[portainer.EdgeStackID]portainer.EdgeStackStatus)
 	}
-	client.nextSnapshotRequest.Snapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = portainer.EdgeStackStatus{
+
+	client.nextSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = portainer.EdgeStackStatus{
 		EndpointID: client.getEndpointIDFn(),
 		Type:       portainer.EdgeStackStatusType(edgeStackStatus),
 		Error:      error,
@@ -209,10 +309,12 @@ func (client *PortainerAsyncClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJob
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
 
-	if client.nextSnapshotRequest.Snapshot.JobsStatus == nil {
-		client.nextSnapshotRequest.Snapshot.JobsStatus = make(map[portainer.EdgeJobID]agent.EdgeJobStatus)
+	if client.nextSnapshot.JobsStatus == nil {
+		client.nextSnapshot.JobsStatus = make(map[portainer.EdgeJobID]agent.EdgeJobStatus)
 	}
-	client.nextSnapshotRequest.Snapshot.JobsStatus[portainer.EdgeJobID(edgeJobStatus.JobID)] = edgeJobStatus
+
+	client.nextSnapshot.JobsStatus[portainer.EdgeJobID(edgeJobStatus.JobID)] = edgeJobStatus
+
 	return nil
 }
 

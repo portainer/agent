@@ -12,6 +12,7 @@ import (
 func TestDataRace(t *testing.T) {
 	cli := client.NewPortainerClient(
 		"portainerURL",
+		func(portainer.EndpointID) {},
 		func() portainer.EndpointID { return 1 },
 		"edgeID",
 		false,

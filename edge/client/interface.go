@@ -11,7 +11,7 @@ import (
 
 type PortainerClient interface {
 	GetEnvironmentID() (portainer.EndpointID, error)
-	GetEnvironmentStatus() (*PollStatusResponse, error)
+	GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error)
 	GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error)
 	SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error
 	DeleteEdgeStackStatus(edgeStackID int) error
@@ -27,7 +27,13 @@ type PollStatusResponse struct {
 	CheckinInterval float64          `json:"checkin"`
 	Credentials     string           `json:"credentials"`
 	Stacks          []StackStatus    `json:"stacks"`
-	AsyncCommands   []AsyncCommand   `json:"commands"` // async mode only
+
+	// Async mode only
+	EndpointID       int            `json:"endpointID"`
+	PingInterval     time.Duration  `json:"pingInterval"`
+	SnapshotInterval time.Duration  `json:"snapshotInterval"`
+	CommandInterval  time.Duration  `json:"commandInterval"`
+	AsyncCommands    []AsyncCommand `json:"commands"`
 }
 
 type StackStatus struct {
@@ -38,11 +44,14 @@ type StackStatus struct {
 	CommandOperation string // used in async mode
 }
 
+type setEndpointIDFn func(portainer.EndpointID)
+type getEndpointIDFn func() portainer.EndpointID
+
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress string, getEndpointIDFn func() portainer.EndpointID, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, httpClient *http.Client) PortainerClient {
+func NewPortainerClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, httpClient *http.Client) PortainerClient {
 	if edgeAsyncMode {
-		return NewPortainerAsyncClient(serverAddress, getEndpointIDFn, edgeID, agentPlatform, httpClient)
+		return NewPortainerAsyncClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient)
 	}
 
-	return NewPortainerEdgeClient(serverAddress, getEndpointIDFn, edgeID, agentPlatform, httpClient)
+	return NewPortainerEdgeClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient)
 }

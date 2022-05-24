@@ -1,14 +1,10 @@
 package edge
 
 import (
-	"context"
 	"encoding/base64"
-	"fmt"
 	"log"
 	"strconv"
 	"time"
-
-	"github.com/mitchellh/mapstructure"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
@@ -43,6 +39,14 @@ type PollService struct {
 	portainerURL             string
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
+
+	// Async mode only
+	pingInterval     time.Duration
+	snapshotInterval time.Duration
+	commandInterval  time.Duration
+	pingTicker       *time.Ticker
+	snapshotTicker   *time.Ticker
+	commandTicker    *time.Ticker
 }
 
 type pollServiceConfig struct {
@@ -63,7 +67,7 @@ type pollServiceConfig struct {
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
 // If TunnelCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
-func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, portainerClient client.PortainerClient) (*PollService, error) {
+func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, portainerClient client.PortainerClient, edgeAsyncMode bool) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -78,7 +82,6 @@ func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, 
 		apiServerAddr:            config.APIServerAddr,
 		edgeID:                   config.EdgeID,
 		pollIntervalInSeconds:    pollFrequency.Seconds(),
-		pollTicker:               time.NewTicker(pollFrequency),
 		inactivityTimeout:        inactivityTimeout,
 		scheduleManager:          scheduler.NewCronManager(logsManager),
 		updateLastActivitySignal: make(chan struct{}),
@@ -96,8 +99,14 @@ func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, 
 		pollService.tunnelClient = chisel.NewClient()
 	}
 
-	go pollService.startStatusPollLoop()
-	go pollService.startActivityMonitoringLoop()
+	if edgeAsyncMode {
+		go pollService.startStatusPollLoopAsync()
+	} else {
+		pollService.pollTicker = time.NewTicker(pollFrequency)
+
+		go pollService.startStatusPollLoop()
+		go pollService.startActivityMonitoringLoop()
+	}
 
 	return pollService, nil
 }
@@ -181,16 +190,6 @@ func (service *PollService) poll() error {
 		return err
 	}
 
-	if environmentStatus.Status == agent.TunnelStatusNoTunnel {
-		err = service.processAsyncCommands(environmentStatus.AsyncCommands)
-		if err != nil {
-			return err
-		}
-
-		service.scheduleManager.ProcessScheduleLogsCollection()
-		return nil
-	}
-
 	log.Printf("[DEBUG] [edge] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", environmentStatus.Status, environmentStatus.Port, len(environmentStatus.Schedules), environmentStatus.CheckinInterval)
 
 	tunnelErr := service.manageUpdateTunnel(*environmentStatus)
@@ -207,12 +206,7 @@ func (service *PollService) poll() error {
 		service.pollTicker.Reset(time.Duration(service.pollIntervalInSeconds) * time.Second)
 	}
 
-	stacksErr := service.processStacks(environmentStatus.Stacks)
-	if stacksErr != nil {
-		return stacksErr
-	}
-
-	return nil
+	return service.processStacks(environmentStatus.Stacks)
 }
 
 func (service *PollService) manageUpdateTunnel(environmentStatus client.PollStatusResponse) error {
@@ -292,102 +286,6 @@ func (service *PollService) processStacks(pollResponseStacks []client.StackStatu
 		log.Printf("[ERROR] [edge] [message: an error occurred during stack management] [error: %s]", err)
 		return err
 	}
+
 	return nil
-}
-
-func (service *PollService) processAsyncCommands(commands []client.AsyncCommand) error {
-	ctx := context.Background()
-
-	for _, command := range commands {
-		switch command.Type {
-		case "edgeStack":
-			err := service.processStackCommand(ctx, command)
-			if err != nil {
-				return err
-			}
-			break
-		case "edgeJob":
-			err := service.processScheduleCommand(command)
-			if err != nil {
-				return err
-			}
-			break
-		default:
-			return fmt.Errorf("command type %v not supported", command.Type)
-		}
-		service.portainerClient.SetLastCommandTimestamp(command.Timestamp)
-	}
-	return nil
-}
-
-func (service *PollService) processStackCommand(ctx context.Context, command client.AsyncCommand) error {
-	var stackData client.EdgeStackData
-	err := mapstructure.Decode(command.Value, &stackData)
-	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeStackData", command.Value)
-		return err
-	}
-
-	if command.Operation == "add" || command.Operation == "replace" {
-		responseStatus := int(stack.EdgeStackStatusOk)
-		errorMessage := ""
-
-		err = service.edgeStackManager.DeployStack(ctx, stackData)
-		if err != nil {
-			responseStatus = int(stack.EdgeStackStatusError)
-			errorMessage = err.Error()
-		}
-
-		return service.portainerClient.SetEdgeStackStatus(stackData.ID, responseStatus, errorMessage)
-	}
-
-	if command.Operation == "remove" {
-		responseStatus := int(stack.EdgeStackStatusRemove)
-		errorMessage := ""
-
-		err = service.edgeStackManager.DeleteStack(ctx, stackData)
-		if err != nil {
-			responseStatus = int(stack.EdgeStackStatusError)
-			errorMessage = err.Error()
-		}
-
-		return service.portainerClient.SetEdgeStackStatus(stackData.ID, responseStatus, errorMessage)
-	}
-
-	return fmt.Errorf("operation %v not supported", command.Operation)
-}
-
-func (service *PollService) processScheduleCommand(command client.AsyncCommand) error {
-	var jobData client.EdgeJobData
-	err := mapstructure.Decode(command.Value, &jobData)
-	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeStackData", command.Value)
-		return err
-	}
-
-	schedule := agent.Schedule{
-		ID:             int(jobData.ID),
-		CronExpression: jobData.CronExpression,
-		Script:         jobData.ScriptFileContent,
-		Version:        jobData.Version,
-		CollectLogs:    jobData.CollectLogs,
-	}
-
-	if command.Operation == "add" || command.Operation == "replace" {
-		err = service.scheduleManager.AddSchedule(schedule)
-		if err != nil {
-			log.Printf("[ERROR] [edge] [message: error adding schedule] [error: %s]", err)
-		}
-		return nil
-	}
-
-	if command.Operation == "remove" {
-		err = service.scheduleManager.RemoveSchedule(schedule)
-		if err != nil {
-			log.Printf("[ERROR] [edge] [message: error removing schedule] [error: %s]", err)
-		}
-		return nil
-	}
-
-	return fmt.Errorf("operation %v not supported", command.Operation)
 }

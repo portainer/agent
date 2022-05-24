@@ -18,7 +18,8 @@ import (
 type PortainerEdgeClient struct {
 	httpClient      *http.Client
 	serverAddress   string
-	getEndpointIDFn func() portainer.EndpointID
+	setEndpointIDFn setEndpointIDFn
+	getEndpointIDFn getEndpointIDFn
 	edgeID          string
 	agentPlatform   agent.ContainerPlatform
 }
@@ -28,10 +29,11 @@ type globalKeyResponse struct {
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
-func NewPortainerEdgeClient(serverAddress string, getEndpointIDFn func() portainer.EndpointID, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
+func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
 	return &PortainerEdgeClient{
 		serverAddress:   serverAddress,
-		getEndpointIDFn: getEndpointIDFn,
+		setEndpointIDFn: setEIDFn,
+		getEndpointIDFn: getEIDFn,
 		edgeID:          edgeID,
 		agentPlatform:   agentPlatform,
 		httpClient:      httpClient,
@@ -71,7 +73,7 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 	return responseData.EndpointID, nil
 }
 
-func (client *PortainerEdgeClient) GetEnvironmentStatus() (*PollStatusResponse, error) {
+func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error) {
 	pollURL := fmt.Sprintf("%s/api/endpoints/%d/edge/status", client.serverAddress, client.getEndpointIDFn())
 	req, err := http.NewRequest("GET", pollURL, nil)
 	if err != nil {

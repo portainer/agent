@@ -89,6 +89,7 @@ func (manager *Manager) Start() error {
 
 	portainerClient := client.NewPortainerClient(
 		manager.key.PortainerInstanceURL,
+		manager.SetEndpointID,
 		manager.GetEndpointID,
 		manager.agentOptions.EdgeID,
 		manager.agentOptions.EdgeAsyncMode,
@@ -110,6 +111,7 @@ func (manager *Manager) Start() error {
 		manager.logsManager,
 		pollServiceConfig,
 		portainerClient,
+		manager.agentOptions.EdgeAsyncMode,
 	)
 	if err != nil {
 		return err
@@ -127,7 +129,10 @@ func (manager *Manager) ResetActivityTimer() {
 // SetEndpointID set the endpointID of the agent
 func (manager *Manager) SetEndpointID(endpointID portainer.EndpointID) {
 	manager.mu.Lock()
-	manager.key.EndpointID = endpointID
+	if manager.key.EndpointID != endpointID {
+		log.Printf("[INFO] [edge] [message: setting endpointID to %d]", endpointID)
+		manager.key.EndpointID = endpointID
+	}
 	manager.mu.Unlock()
 }
 
