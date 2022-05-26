@@ -280,6 +280,8 @@ const (
 	// ResponseMetadataKey is the JSON field used to store any Portainer related information in
 	// response objects.
 	ResponseMetadataKey = "Portainer"
+	// TLSCACertPath is the default path to the TLS CA certificate file.
+	TLSCACertPath = "ca.pem"
 	// TLSCertPath is the default path to the TLS certificate file.
 	TLSCertPath = "cert.pem"
 	// TLSKeyPath is the default path to the TLS key file.
