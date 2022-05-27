@@ -32,16 +32,26 @@ func NewClient() *Client {
 func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 	remote := fmt.Sprintf("R:%s:%s", tunnelConfig.RemotePort, tunnelConfig.LocalAddr)
 
-	log.Printf("[DEBUG] [chisel] [remote_port: %s] [local_addr: %s] [server: %s] [server_skip_tls_verification: %t] [server_fingerprint: %s] [message: Creating reverse tunnel client]", tunnelConfig.RemotePort, tunnelConfig.LocalAddr, tunnelConfig.ServerAddr, tunnelConfig.SkipTLSverification, tunnelConfig.ServerFingerprint)
+	tlsConfig := chclient.TLSConfig{
+		SkipVerify: tunnelConfig.AgentOptions.EdgeInsecurePoll,
+	}
+
+	if tunnelConfig.AgentOptions.SSLCACert != "" && tunnelConfig.AgentOptions.SSLCert != "" && tunnelConfig.AgentOptions.SSLKey != "" {
+		log.Printf("[INFO] [message: using TLS for chisel client]")
+		tlsConfig.CA = tunnelConfig.AgentOptions.SSLCACert
+		tlsConfig.Cert = tunnelConfig.AgentOptions.SSLCert
+		tlsConfig.Key = tunnelConfig.AgentOptions.SSLKey
+		tlsConfig.SkipVerify = false
+	}
+
+	log.Printf("[DEBUG] [chisel] [remote_port: %s] [local_addr: %s] [server: %s] [server_skip_tls_verification: %t] [server_fingerprint: %s] [message: Creating reverse tunnel client]", tunnelConfig.RemotePort, tunnelConfig.LocalAddr, tunnelConfig.ServerAddr, tlsConfig.SkipVerify, tunnelConfig.ServerFingerprint)
 
 	config := &chclient.Config{
 		Server:      tunnelConfig.ServerAddr,
 		Remotes:     []string{remote},
 		Fingerprint: tunnelConfig.ServerFingerprint,
 		Auth:        tunnelConfig.Credentials,
-		TLS: chclient.TLSConfig{
-			SkipVerify: tunnelConfig.SkipTLSverification,
-		},
+		TLS:         tlsConfig,
 	}
 
 	chiselClient, err := chclient.NewClient(config)

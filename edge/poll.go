@@ -37,9 +37,9 @@ type PollService struct {
 	edgeManager              *Manager
 	edgeStackManager         *stack.StackManager
 	portainerURL             string
-	insecurePoll             bool
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
+	agentOptions             *agent.Options
 
 	// Async mode only
 	pingInterval     time.Duration
@@ -57,10 +57,10 @@ type pollServiceConfig struct {
 	PollFrequency           string
 	TunnelCapability        bool
 	PortainerURL            string
-	InsecurePoll            bool
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
 	ContainerPlatform       agent.ContainerPlatform
+	AgentOptions            *agent.Options
 }
 
 // newPollService returns a pointer to a new instance of PollService, and will start two loops in go routines.
@@ -92,7 +92,7 @@ func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, 
 		edgeManager:              edgeManager,
 		edgeStackManager:         edgeStackManager,
 		portainerURL:             config.PortainerURL,
-		insecurePoll:             config.InsecurePoll,
+		agentOptions:             config.AgentOptions,
 		tunnelServerAddr:         config.TunnelServerAddr,
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
 		portainerClient:          portainerClient,
@@ -251,12 +251,12 @@ func (service *PollService) createTunnel(encodedCredentials string, remotePort i
 	}
 
 	tunnelConfig := agent.TunnelConfig{
-		LocalAddr:           service.apiServerAddr,
-		ServerAddr:          service.tunnelServerAddr,
-		ServerFingerprint:   service.tunnelServerFingerprint,
-		Credentials:         string(credentials),
-		RemotePort:          strconv.Itoa(remotePort),
-		SkipTLSverification: service.insecurePoll,
+		LocalAddr:         service.apiServerAddr,
+		ServerAddr:        service.tunnelServerAddr,
+		ServerFingerprint: service.tunnelServerFingerprint,
+		Credentials:       string(credentials),
+		RemotePort:        strconv.Itoa(remotePort),
+		AgentOptions:      service.agentOptions,
 	}
 
 	err = service.tunnelClient.CreateTunnel(tunnelConfig)
