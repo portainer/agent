@@ -31,3 +31,5 @@ download-binaries:
 clean:
 	@rm -f dist/*
 
+image:
+	@docker build -f build/linux/alpine.Dockerfile -t portainer-agent .

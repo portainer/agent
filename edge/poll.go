@@ -37,6 +37,7 @@ type PollService struct {
 	edgeManager              *Manager
 	edgeStackManager         *stack.StackManager
 	portainerURL             string
+	insecurePoll             bool
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
 
@@ -56,6 +57,7 @@ type pollServiceConfig struct {
 	PollFrequency           string
 	TunnelCapability        bool
 	PortainerURL            string
+	InsecurePoll            bool
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
 	ContainerPlatform       agent.ContainerPlatform
@@ -90,6 +92,7 @@ func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, 
 		edgeManager:              edgeManager,
 		edgeStackManager:         edgeStackManager,
 		portainerURL:             config.PortainerURL,
+		insecurePoll:             config.InsecurePoll,
 		tunnelServerAddr:         config.TunnelServerAddr,
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
 		portainerClient:          portainerClient,
@@ -248,11 +251,12 @@ func (service *PollService) createTunnel(encodedCredentials string, remotePort i
 	}
 
 	tunnelConfig := agent.TunnelConfig{
-		LocalAddr:         service.apiServerAddr,
-		ServerAddr:        service.tunnelServerAddr,
-		ServerFingerprint: service.tunnelServerFingerprint,
-		Credentials:       string(credentials),
-		RemotePort:        strconv.Itoa(remotePort),
+		LocalAddr:           service.apiServerAddr,
+		ServerAddr:          service.tunnelServerAddr,
+		ServerFingerprint:   service.tunnelServerFingerprint,
+		Credentials:         string(credentials),
+		RemotePort:          strconv.Itoa(remotePort),
+		SkipTLSverification: service.insecurePoll,
 	}
 
 	err = service.tunnelClient.CreateTunnel(tunnelConfig)
