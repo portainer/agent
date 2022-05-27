@@ -1,6 +1,6 @@
 module github.com/portainer/agent
 
-go 1.17
+go 1.18
 
 require (
 	github.com/Microsoft/go-winio v0.5.1
@@ -16,10 +16,10 @@ require (
 	github.com/koding/websocketproxy v0.0.0-20181220232114-7ed82d81a28c
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/pkg/errors v0.9.1
-	github.com/portainer/docker-compose-wrapper v0.0.0-20220407011010-3c7408969ad3
+	github.com/portainer/docker-compose-wrapper v0.0.0-20220526210722-e1574867298e
 	github.com/portainer/libcrypto v0.0.0-20210422035235-c652195c5c3a
 	github.com/portainer/libhttp v0.0.0-20211208103139-07a5f798eb3f
-	github.com/portainer/portainer/api v0.0.0-20220531100310-e686d6401168
+	github.com/portainer/portainer/api v0.0.0-20220303203420-547d9c2fde15
 	github.com/sirupsen/logrus v1.8.1
 	github.com/wI2L/jsondiff v0.2.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
