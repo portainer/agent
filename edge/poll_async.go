@@ -165,19 +165,21 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 	ctx := context.Background()
 
 	for _, command := range commands {
+		var err error
+
 		switch command.Type {
 		case "edgeStack":
-			err := service.processStackCommand(ctx, command)
-			if err != nil {
-				return err
-			}
+			err = service.processStackCommand(ctx, command)
 		case "edgeJob":
-			err := service.processScheduleCommand(command)
-			if err != nil {
-				return err
-			}
+			err = service.processScheduleCommand(command)
+		case "edgeLog":
+			err = service.processLogCommand(command)
 		default:
 			return fmt.Errorf("command type %s not supported", command.Type)
+		}
+
+		if err != nil {
+			return err
 		}
 
 		service.portainerClient.SetLastCommandTimestamp(command.Timestamp)
@@ -190,7 +192,7 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 	var stackData client.EdgeStackData
 	err := mapstructure.Decode(command.Value, &stackData)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeStackData", command.Value)
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to EdgeStackData", command.Value)
 		return err
 	}
 
@@ -225,7 +227,7 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 	var jobData client.EdgeJobData
 	err := mapstructure.Decode(command.Value, &jobData)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to edgeJobData", command.Value)
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to EdgeJobData", command.Value)
 		return err
 	}
 
@@ -253,6 +255,20 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 	default:
 		return fmt.Errorf("operation %v not supported", command.Operation)
 	}
+
+	return nil
+}
+
+func (service *PollService) processLogCommand(command client.AsyncCommand) error {
+	var logCmd client.LogCommandData
+
+	err := mapstructure.Decode(command.Value, &logCmd)
+	if err != nil {
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to LogCommandData", command.Value)
+		return err
+	}
+
+	service.portainerClient.EnqueueLogCollectionForStack(logCmd)
 
 	return nil
 }

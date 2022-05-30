@@ -35,6 +35,8 @@ type PortainerAsyncClient struct {
 	lastSnapshot           snapshot
 	nextSnapshot           snapshot
 	nextSnapshotMutex      sync.Mutex
+
+	stackLogCollectionQueue []LogCommandData
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
@@ -61,11 +63,23 @@ type AsyncRequest struct {
 	EndpointId       portainer.EndpointID `json:"endpointId,omitempty"`
 }
 
+type EndpointLog struct {
+	DockerContainerID string `json:"dockerContainerID,omitempty"`
+	StdOut            string `json:"stdOut,omitempty"`
+	StdErr            string `json:"stdErr,omitempty"`
+}
+
+type EdgeStackLog struct {
+	EdgeStackID portainer.EdgeStackID `json:"edgeStackID,omitempty"`
+	Logs        []EndpointLog         `json:"logs,omitempty"`
+}
+
 type snapshot struct {
 	Docker          *portainer.DockerSnapshot                           `json:"docker,omitempty"`
 	DockerPatch     jsondiff.Patch                                      `json:"dockerPatch,omitempty"`
 	Kubernetes      *portainer.KubernetesSnapshot                       `json:"kubernetes,omitempty"`
 	KubernetesPatch jsondiff.Patch                                      `json:"kubernetesPatch,omitempty"`
+	StackLogs       []EdgeStackLog                                      `json:"stackLogs,omitempty"`
 	StackStatus     map[portainer.EdgeStackID]portainer.EdgeStackStatus `json:"stackStatus,omitempty"`
 	JobsStatus      map[portainer.EdgeJobID]agent.EdgeJobStatus         `json:"jobsStatus:,omitempty"`
 }
@@ -104,6 +118,12 @@ type EdgeJobData struct {
 	CronExpression    string
 	ScriptFileContent string
 	Version           int
+}
+
+type LogCommandData struct {
+	EdgeStackID   portainer.EdgeStackID
+	EdgeStackName string
+	Tail          int
 }
 
 func (client *PortainerAsyncClient) GetEnvironmentID() (portainer.EndpointID, error) {
@@ -146,6 +166,36 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 					payload.Snapshot.Docker = nil
 				} else {
 					log.Printf("[WARN] [edge,client] [message: could not generate the Docker snapshot patch: %s]", err)
+				}
+			}
+
+			for _, stack := range client.stackLogCollectionQueue {
+				cs, err := docker.GetContainersWithLabel(fmt.Sprintf("com.docker.compose.project=edge_%s", stack.EdgeStackName))
+				if err != nil {
+					log.Printf("[WARN] [edge,client] [message: could not retrieve containers for stack '%s': %s]", stack.EdgeStackName, err)
+					continue
+				}
+
+				edgeStackLog := EdgeStackLog{
+					EdgeStackID: stack.EdgeStackID,
+				}
+
+				for _, c := range cs {
+					stdOut, stdErr, err := docker.GetContainerLogs(c.ID, strconv.Itoa(stack.Tail))
+					if err != nil {
+						log.Printf("[WARN] [edge,client] [message: could not retrieve logs for container '%s': %s]", c.ID, err)
+						continue
+					}
+
+					edgeStackLog.Logs = append(edgeStackLog.Logs, EndpointLog{
+						DockerContainerID: c.ID,
+						StdOut:            string(stdOut),
+						StdErr:            string(stdErr),
+					})
+				}
+
+				if len(edgeStackLog.Logs) > 0 {
+					payload.Snapshot.StackLogs = append(payload.Snapshot.StackLogs, edgeStackLog)
 				}
 			}
 
@@ -194,6 +244,8 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 
 		client.nextSnapshot.StackStatus = nil
 		client.nextSnapshot.JobsStatus = nil
+
+		client.stackLogCollectionQueue = nil
 	}
 
 	client.setEndpointIDFn(asyncResponse.EndpointID)
@@ -332,3 +384,13 @@ func (client *PortainerAsyncClient) DeleteEdgeStackStatus(edgeStackID int) error
 func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
 	return nil, nil // unused in async mode
 }
+
+func (client *PortainerAsyncClient) EnqueueLogCollectionForStack(logCmd LogCommandData) error {
+	client.nextSnapshotMutex.Lock()
+	defer client.nextSnapshotMutex.Unlock()
+
+	client.stackLogCollectionQueue = append(client.stackLogCollectionQueue, logCmd)
+
+	return nil
+}
+
