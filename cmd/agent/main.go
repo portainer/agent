@@ -187,37 +187,37 @@ func main() {
 			nomadConfig.NomadTLSEnabled = true
 
 			// Write the TLS certificate into files and update the paths to nomadConfig for Reversy Tunnel API use
-			nomadCACertContent := goos.Getenv(agent.NomadCACertEnvVarName)
+			nomadCACertContent := goos.Getenv(agent.NomadCACertContentEnvVarName)
 			if len(nomadCACertContent) == 0 {
 				log.Fatalf("[ERROR] [main] [message: Nomad CA Certificate is not exported] [error: %s]", err)
 			} else {
-				err = filesystem.WriteFile(options.DataPath, agent.TLSCACertPath, []byte(nomadCACertContent), 0644)
+				err = filesystem.WriteFile(options.DataPath, agent.NomadTLSCACertPath, []byte(nomadCACertContent), 0600)
 				if err != nil {
 					log.Fatalf("[ERROR] [main] [message: Fail to write the Nomad CA Certificate] [error: %s]", err)
 				}
-				nomadConfig.NomadCACert = path.Join(options.DataPath, agent.TLSCACertPath)
+				nomadConfig.NomadCACert = path.Join(options.DataPath, agent.NomadTLSCACertPath)
 			}
 
-			nomadClientCertContent := goos.Getenv(agent.NomadClientCertEnvVarName)
+			nomadClientCertContent := goos.Getenv(agent.NomadClientCertContentEnvVarName)
 			if len(nomadClientCertContent) == 0 {
 				log.Fatalf("[ERROR] [main] [message: Nomad Client Certificate is not exported] [error: %s]", err)
 			} else {
-				err = filesystem.WriteFile(options.DataPath, agent.TLSCertPath, []byte(nomadClientCertContent), 0644)
+				err = filesystem.WriteFile(options.DataPath, agent.NomadTLSCertPath, []byte(nomadClientCertContent), 0600)
 				if err != nil {
 					log.Fatalf("[ERROR] [main] [message: Fail to write the Nomad Client Certificate] [error: %s]", err)
 				}
-				nomadConfig.NomadClientCert = path.Join(options.DataPath, agent.TLSCertPath)
+				nomadConfig.NomadClientCert = path.Join(options.DataPath, agent.NomadTLSCertPath)
 			}
 
-			nomadClientKeyContent := goos.Getenv(agent.NomadClientKeyEnvVarName)
+			nomadClientKeyContent := goos.Getenv(agent.NomadClientKeyContentEnvVarName)
 			if len(nomadClientKeyContent) == 0 {
 				log.Fatalf("[ERROR] [main] [message: Nomad Client Key is not exported] [error: %s]", err)
 			} else {
-				err = filesystem.WriteFile(options.DataPath, agent.TLSKeyPath, []byte(nomadClientKeyContent), 0644)
+				err = filesystem.WriteFile(options.DataPath, agent.NomadTLSKeyPath, []byte(nomadClientKeyContent), 0600)
 				if err != nil {
 					log.Fatalf("[ERROR] [main] [message: Fail to write the Nomad Client Key] [error: %s]", err)
 				}
-				nomadConfig.NomadClientKey = path.Join(options.DataPath, agent.TLSKeyPath)
+				nomadConfig.NomadClientKey = path.Join(options.DataPath, agent.NomadTLSKeyPath)
 			}
 
 			if _, err := goos.Stat(nomadConfig.NomadCACert); errors.Is(err, goos.ErrNotExist) {

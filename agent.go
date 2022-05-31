@@ -269,6 +269,12 @@ const (
 	NomadClientCertEnvVarName = "NOMAD_CLIENT_CERT"
 	// NomadClientKeyEnvVarName represent the name of environment variable of the Nomad client key
 	NomadClientKeyEnvVarName = "NOMAD_CLIENT_KEY"
+	// NomadCACertContentEnvVarName represent the name of environment variable of the Nomad ca certificate content
+	NomadCACertContentEnvVarName = "NOMAD_CACERT_CONTENT"
+	// NomadClientCertContentEnvVarName represent the name of environment variable of the Nomad client certificate content
+	NomadClientCertContentEnvVarName = "NOMAD_CLIENT_CERT_CONTENT"
+	// NomadClientKeyContentEnvVarName represent the name of environment variable of the Nomad client key content
+	NomadClientKeyContentEnvVarName = "NOMAD_CLIENT_KEY_CONTENT"
 	// HTTPResponseAgentApiVersion is the name of the header that will have the
 	// Portainer Agent API Version.
 	HTTPResponseAgentApiVersion = "Portainer-Agent-API-Version"
@@ -280,8 +286,12 @@ const (
 	// ResponseMetadataKey is the JSON field used to store any Portainer related information in
 	// response objects.
 	ResponseMetadataKey = "Portainer"
-	// TLSCACertPath is the default path to the TLS CA certificate file.
-	TLSCACertPath = "ca.pem"
+	// NomadTLSCACertPath is the default path to the Nomad TLS CA certificate file.
+	NomadTLSCACertPath = "nomad-ca.pem"
+	// NomadTLSCertPath is the default path to the Nomad TLS certificate file.
+	NomadTLSCertPath = "nomad-cert.pem"
+	// NomadTLSKeyPath is the default path to the Nomad TLS key file.
+	NomadTLSKeyPath = "nomad-key.pem"
 	// TLSCertPath is the default path to the TLS certificate file.
 	TLSCertPath = "cert.pem"
 	// TLSKeyPath is the default path to the TLS key file.
