@@ -192,7 +192,7 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 	var stackData client.EdgeStackData
 	err := mapstructure.Decode(command.Value, &stackData)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to EdgeStackData", command.Value)
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to EdgeStackData: %s", command.Value, err)
 		return err
 	}
 
