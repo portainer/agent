@@ -170,11 +170,19 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 			}
 
 			for _, stack := range client.stackLogCollectionQueue {
-				cs, err := docker.GetContainersWithLabel(fmt.Sprintf("com.docker.compose.project=edge_%s", stack.EdgeStackName))
+				cs, err := docker.GetContainersWithLabel("com.docker.compose.project=edge_" + stack.EdgeStackName)
 				if err != nil {
 					log.Printf("[WARN] [edge,client] [message: could not retrieve containers for stack '%s': %s]", stack.EdgeStackName, err)
 					continue
 				}
+
+				cs2, err := docker.GetContainersWithLabel("com.docker.stack.namespace=edge_" + stack.EdgeStackName)
+				if err != nil {
+					log.Printf("[WARN] [edge,client] [message: could not retrieve containers for stack '%s': %s]", stack.EdgeStackName, err)
+					continue
+				}
+
+				cs = append(cs, cs2...)
 
 				edgeStackLog := EdgeStackLog{
 					EdgeStackID: stack.EdgeStackID,
@@ -393,4 +401,3 @@ func (client *PortainerAsyncClient) EnqueueLogCollectionForStack(logCmd LogComma
 
 	return nil
 }
-
