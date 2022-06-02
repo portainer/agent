@@ -269,6 +269,8 @@ func (service *PollService) processSchedules(schedules []agent.Schedule) {
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: an error occurred during schedule management] [err: %s]", err)
 	}
+
+	service.scheduleManager.ProcessScheduleLogsCollection()
 }
 
 func (service *PollService) processStacks(pollResponseStacks []client.StackStatus) error {
