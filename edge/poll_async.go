@@ -227,7 +227,7 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 	var jobData client.EdgeJobData
 	err := mapstructure.Decode(command.Value, &jobData)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to EdgeJobData", command.Value)
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to EdgeJobData: %s", command.Value, err)
 		return err
 	}
 
@@ -242,18 +242,16 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 	switch command.Operation {
 	case "add", "replace":
 		err = service.scheduleManager.AddSchedule(schedule)
-		if err != nil {
-			log.Printf("[ERROR] [edge] [message: error adding schedule] [error: %s]", err)
-		}
 
 	case "remove":
 		err = service.scheduleManager.RemoveSchedule(schedule)
-		if err != nil {
-			log.Printf("[ERROR] [edge] [message: error removing schedule] [error: %s]", err)
-		}
 
 	default:
 		return fmt.Errorf("operation %v not supported", command.Operation)
+	}
+
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: error with '%s' operation on schedule] [error: %s]", command.Operation, err)
 	}
 
 	return nil
@@ -264,7 +262,7 @@ func (service *PollService) processLogCommand(command client.AsyncCommand) error
 
 	err := mapstructure.Decode(command.Value, &logCmd)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to LogCommandData", command.Value)
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to LogCommandData: %s", command.Value, err)
 		return err
 	}
 
