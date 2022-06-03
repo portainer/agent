@@ -7,6 +7,8 @@ import (
 	gohttp "net/http"
 	goos "os"
 	"os/signal"
+	"path"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	httpEdge "github.com/portainer/agent/edge/http"
 	"github.com/portainer/agent/edge/registry"
 	"github.com/portainer/agent/exec"
+	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
 	"github.com/portainer/agent/kubernetes"
@@ -180,6 +183,59 @@ func main() {
 			log.Fatalf("[ERROR] [main,nomad] [message: Unable to retrieve environment variable NOMAD_ADDR]")
 		}
 
+		if strings.HasPrefix(nomadConfig.NomadAddr, "https") {
+			nomadConfig.NomadTLSEnabled = true
+
+			// Write the TLS certificate into files and update the paths to nomadConfig for Reversy Tunnel API use
+			nomadCACertContent := goos.Getenv(agent.NomadCACertContentEnvVarName)
+			if len(nomadCACertContent) == 0 {
+				log.Fatalf("[ERROR] [main] [message: Nomad CA Certificate is not exported] [error: %s]", err)
+			} else {
+				err = filesystem.WriteFile(options.DataPath, agent.NomadTLSCACertPath, []byte(nomadCACertContent), 0600)
+				if err != nil {
+					log.Fatalf("[ERROR] [main] [message: Fail to write the Nomad CA Certificate] [error: %s]", err)
+				}
+				nomadConfig.NomadCACert = path.Join(options.DataPath, agent.NomadTLSCACertPath)
+			}
+
+			nomadClientCertContent := goos.Getenv(agent.NomadClientCertContentEnvVarName)
+			if len(nomadClientCertContent) == 0 {
+				log.Fatalf("[ERROR] [main] [message: Nomad Client Certificate is not exported] [error: %s]", err)
+			} else {
+				err = filesystem.WriteFile(options.DataPath, agent.NomadTLSCertPath, []byte(nomadClientCertContent), 0600)
+				if err != nil {
+					log.Fatalf("[ERROR] [main] [message: Fail to write the Nomad Client Certificate] [error: %s]", err)
+				}
+				nomadConfig.NomadClientCert = path.Join(options.DataPath, agent.NomadTLSCertPath)
+			}
+
+			nomadClientKeyContent := goos.Getenv(agent.NomadClientKeyContentEnvVarName)
+			if len(nomadClientKeyContent) == 0 {
+				log.Fatalf("[ERROR] [main] [message: Nomad Client Key is not exported] [error: %s]", err)
+			} else {
+				err = filesystem.WriteFile(options.DataPath, agent.NomadTLSKeyPath, []byte(nomadClientKeyContent), 0600)
+				if err != nil {
+					log.Fatalf("[ERROR] [main] [message: Fail to write the Nomad Client Key] [error: %s]", err)
+				}
+				nomadConfig.NomadClientKey = path.Join(options.DataPath, agent.NomadTLSKeyPath)
+			}
+
+			if _, err := goos.Stat(nomadConfig.NomadCACert); errors.Is(err, goos.ErrNotExist) {
+				log.Fatalf("[ERROR] [main] [message: Unable to locate the Nomad CA Certificate] [error: %s]", err)
+			}
+			if _, err := goos.Stat(nomadConfig.NomadClientCert); errors.Is(err, goos.ErrNotExist) {
+				log.Fatalf("[ERROR] [main] [message: Unable to locate the Nomad Client Certificate] [error: %s]", err)
+			}
+			if _, err := goos.Stat(nomadConfig.NomadClientKey); errors.Is(err, goos.ErrNotExist) {
+				log.Fatalf("[ERROR] [main] [message: Unable to locate the Nomad Client Key] [error: %s]", err)
+			}
+
+			// Export the TLS certificates path for Nomad Edge Deployer
+			goos.Setenv(agent.NomadCACertEnvVarName, nomadConfig.NomadCACert)
+			goos.Setenv(agent.NomadClientCertEnvVarName, nomadConfig.NomadClientCert)
+			goos.Setenv(agent.NomadClientKeyEnvVarName, nomadConfig.NomadClientKey)
+		}
+
 		nomadConfig.NomadToken = goos.Getenv(agent.NomadTokenEnvVarName)
 
 		log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [advertise_address: %s] [NomadAddr: %s]", options.AgentServerPort, advertiseAddr, nomadConfig.NomadAddr)
@@ -259,7 +315,6 @@ func main() {
 	if options.EdgeMode {
 		config.Addr = advertiseAddr
 	}
-
 	err = registry.StartRegistryServer(edgeManager)
 	if err != nil {
 		log.Fatalf("[ERROR] [main] [message: Unable to start registry server] [error: %s]", err)
