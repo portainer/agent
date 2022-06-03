@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
-download_kubectl_binary(){
-  local PLATFORM=$1
-  local ARCH=$2
-  local KUBECTL_VERSION=$3
-  local KUBECTL_BIN_NAME="kubectl"
+set -euo pipefail
 
-  if [ "$PLATFORM" = "windows" ]; then
-    KUBECTL_BIN_NAME="kubectl.exe"
-  fi
+if [[ $# -ne 3 ]]; then
+    echo "Illegal number of parameters" >&2
+    exit 1
+fi
 
-  wget -O "dist/$KUBECTL_BIN_NAME" "https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/${PLATFORM}/${ARCH}/${KUBECTL_BIN_NAME}"
-  chmod +x "dist/$KUBECTL_BIN_NAME"
-}
+PLATFORM=$1
+ARCH=$2
+KUBECTL_VERSION=$3
+
+
+if [[ ${PLATFORM} == "windows" ]]; then
+  wget -O "dist/kubectl.exe" "https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/windows/amd64/kubectl.exe"
+  chmod +x "dist/kubectl.exe"
+else
+  wget -O "dist/kubectl" "https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/${PLATFORM}/${ARCH}/kubectl"
+  chmod +x "dist/kubectl"
+fi
