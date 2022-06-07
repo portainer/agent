@@ -2,7 +2,9 @@ package handler
 
 import (
 	"net/http"
+	"net/http/pprof"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -58,6 +60,11 @@ type Config struct {
 	ContainerPlatform    agent.ContainerPlatform
 }
 
+func init() {
+	runtime.SetBlockProfileRate(1)
+	runtime.SetMutexProfileFraction(1)
+}
+
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
@@ -101,6 +108,12 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	rw.Header().Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
 
 	switch {
+	case strings.HasPrefix(request.URL.Path, "/debug/pprof/profile"):
+		pprof.Profile(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/debug/pprof/trace"):
+		pprof.Trace(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/debug/pprof"):
+		pprof.Index(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v1"):
 		h.ServeHTTPV1(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/v2"):
