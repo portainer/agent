@@ -63,7 +63,9 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 			break
 		}
 
-		if updateRequired {
+		if schedule.CollectLogs {
+			log.Printf("[DEBUG] [edge,scheduler] [schedule_id: %d] [version: %d] [message: Found schedule with logs to collect]", schedule.ID, schedule.Version)
+			updateRequired = true
 			break
 		}
 	}
