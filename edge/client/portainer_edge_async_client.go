@@ -55,8 +55,9 @@ func (client *PortainerAsyncClient) SetTimeout(t time.Duration) {
 }
 
 type AsyncRequest struct {
-	CommandTimestamp *time.Time `json:"commandTimestamp,omitempty"`
-	Snapshot         *snapshot  `json:"snapshot,omitempty"`
+	CommandTimestamp *time.Time           `json:"commandTimestamp,omitempty"`
+	Snapshot         *snapshot            `json:"snapshot,omitempty"`
+	EndpointId       portainer.EndpointID `json:"endpointId,omitempty"`
 }
 
 type snapshot struct {
@@ -112,6 +113,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 	pollURL := fmt.Sprintf("%s/api/endpoints/edge/async", client.serverAddress)
 
 	payload := AsyncRequest{}
+	payload.EndpointId = client.getEndpointIDFn()
 
 	var doSnapshot, doCommand bool
 	for _, f := range flags {

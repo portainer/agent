@@ -197,7 +197,7 @@ func (client *PortainerEdgeClient) DeleteEdgeStackStatus(edgeStackID int) error 
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
 		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: DeleteEdgeStackStatus operation failed]", resp.StatusCode)
 		return errors.New("DeleteEdgeStackStatus operation failed")
 	}
