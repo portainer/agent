@@ -15,9 +15,7 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/kubernetes"
-	"github.com/portainer/agent/os"
 	portainer "github.com/portainer/portainer/api"
-	"github.com/wI2L/jsondiff"
 )
 
 // PortainerAsyncClient is used to execute HTTP requests using only the /api/entrypoint/async api endpoint
@@ -62,12 +60,10 @@ type AsyncRequest struct {
 }
 
 type snapshot struct {
-	Docker          *portainer.DockerSnapshot                           `json:"docker,omitempty"`
-	DockerPatch     jsondiff.Patch                                      `json:"dockerPatch,omitempty"`
-	Kubernetes      *portainer.KubernetesSnapshot                       `json:"kubernetes,omitempty"`
-	KubernetesPatch jsondiff.Patch                                      `json:"kubernetesPatch,omitempty"`
-	StackStatus     map[portainer.EdgeStackID]portainer.EdgeStackStatus `json:"stackStatus,omitempty"`
-	JobsStatus      map[portainer.EdgeJobID]agent.EdgeJobStatus         `json:"jobsStatus:,omitempty"`
+	Docker      *portainer.DockerSnapshot                           `json:"docker,omitempty"`
+	Kubernetes  *portainer.KubernetesSnapshot                       `json:"kubernetes,omitempty"`
+	StackStatus map[portainer.EdgeStackID]portainer.EdgeStackStatus `json:"stackStatus,omitempty"`
+	JobsStatus  map[portainer.EdgeJobID]agent.EdgeJobStatus         `json:"jobsStatus:,omitempty"`
 }
 
 type AsyncResponse struct {
@@ -139,16 +135,6 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 			payload.Snapshot.Docker = dockerSnapshot
 			currentSnapshot.Docker = dockerSnapshot
 
-			if client.lastSnapshot.Docker != nil {
-				dockerPatch, err := jsondiff.Compare(client.lastSnapshot.Docker, dockerSnapshot)
-				if err == nil {
-					payload.Snapshot.DockerPatch = dockerPatch
-					payload.Snapshot.Docker = nil
-				} else {
-					log.Printf("[WARN] [edge,client] [message: could not generate the Docker snapshot patch: %s]", err)
-				}
-			}
-
 		case agent.PlatformKubernetes:
 			kubeSnapshot, err := kubernetes.CreateSnapshot()
 			if err != nil {
@@ -157,16 +143,6 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 
 			payload.Snapshot.Kubernetes = kubeSnapshot
 			currentSnapshot.Kubernetes = kubeSnapshot
-
-			if client.lastSnapshot.Kubernetes != nil {
-				kubePatch, err := jsondiff.Compare(client.lastSnapshot.Docker, kubeSnapshot)
-				if err == nil {
-					payload.Snapshot.KubernetesPatch = kubePatch
-					payload.Snapshot.KubernetesPatch = nil
-				} else {
-					log.Printf("[WARN] [edge,client] [message: could not generate the Kubernetes snapshot patch: %s]", err)
-				}
-			}
 		}
 
 		client.nextSnapshotMutex.Lock()
@@ -258,13 +234,6 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
-
-	hostname, err := os.GetHostName()
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("portainer_hostname", hostname) // TODO use proper header
 
 	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(client.agentPlatformIdentifier)))
 
