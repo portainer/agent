@@ -15,7 +15,6 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/kubernetes"
-	"github.com/portainer/agent/os"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/wI2L/jsondiff"
 )
@@ -258,13 +257,6 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
-
-	hostname, err := os.GetHostName()
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("portainer_hostname", hostname) // TODO use proper header
 
 	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(client.agentPlatformIdentifier)))
 
