@@ -93,7 +93,7 @@ func (server *APIServer) Start(edgeMode bool) error {
 
 	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [use_tls: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.UseTLS, agent.Version)
 
-	if !config.UseTLS {
+	if edgeMode {
 		httpServer.Handler = server.edgeHandler(httpHandler)
 		return httpServer.ListenAndServe()
 	}
