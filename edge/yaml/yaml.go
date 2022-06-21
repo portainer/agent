@@ -35,7 +35,7 @@ func NewYAML(fileContent string, credentials []agent.RegistryCredentials) *yaml 
 func (y *yaml) getRegistryCredentialsByImageURL(imageURL string) []agent.RegistryCredentials {
 	credentials := []agent.RegistryCredentials{}
 	for _, r := range y.registryCredentials {
-		domain, _, err := getRegistryAndPath(imageURL)
+		domain, err := getRegistryDomain(imageURL)
 		if err != nil {
 			return nil
 		}
@@ -73,14 +73,14 @@ func (y *yaml) generateImagePullSecrets(namespace string, secretName string, cre
 	return secret
 }
 
-// getRegistryAndPath returns the registry and path the container image reference
-func getRegistryAndPath(image string) (string, string, error) {
+// getRegistryDomain returns the registry and path the container image reference
+func getRegistryDomain(image string) (string, error) {
 	ref, err := reference.ParseDockerRef(image)
 	if err != nil {
-		return "", "", fmt.Errorf("error parsing image (%s): %w", image, err)
+		return "", fmt.Errorf("error parsing image (%s): %w", image, err)
 	}
 
-	return reference.Domain(ref), reference.Path(ref), nil
+	return reference.Domain(ref), nil
 }
 
 func (y *yaml) AddImagePullSecrets() (string, error) {
