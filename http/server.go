@@ -78,7 +78,7 @@ func (server *APIServer) Start(edgeMode bool) error {
 		EdgeManager:          server.edgeManager,
 		KubeClient:           server.kubeClient,
 		KubernetesDeployer:   server.kubernetesDeployer,
-		Secured:              !edgeMode,
+		UseTLS:               !edgeMode,
 		ContainerPlatform:    server.containerPlatform,
 		NomadConfig:          server.nomadConfig,
 	}
@@ -91,11 +91,10 @@ func (server *APIServer) Start(edgeMode bool) error {
 		WriteTimeout: 30 * time.Minute,
 	}
 
-	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [secured: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.Secured, agent.Version)
+	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [use_tls: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.UseTLS, agent.Version)
 
-	if edgeMode {
+	if !config.UseTLS {
 		httpServer.Handler = server.edgeHandler(httpHandler)
-
 		return httpServer.ListenAndServe()
 	}
 
