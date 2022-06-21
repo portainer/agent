@@ -39,7 +39,7 @@ func (y *yaml) getRegistryCredentialsByImageURL(imageURL string) []agent.Registr
 		if err != nil {
 			return nil
 		}
-		if strings.Contains(domain, r.ServerURL) || strings.Contains(r.ServerURL, domain) {
+		if strings.Contains(r.ServerURL, domain) {
 			credentials = append(credentials, r)
 		}
 	}
