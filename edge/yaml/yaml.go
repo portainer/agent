@@ -73,7 +73,8 @@ func (y *yaml) generateImagePullSecrets(namespace string, secretName string, cre
 	return secret
 }
 
-// getRegistryDomain returns the registry and path the container image reference
+// getRegistryDomain returns the registry domain of the container image reference
+// if an image does not contain a registry url, it will be default to docker.io
 func getRegistryDomain(image string) (string, error) {
 	ref, err := reference.ParseDockerRef(image)
 	if err != nil {
