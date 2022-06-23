@@ -54,7 +54,7 @@ type Config struct {
 	EdgeManager          *edge.Manager
 	RuntimeConfiguration *agent.RuntimeConfiguration
 	NomadConfig          agent.NomadConfig
-	Secured              bool
+	UseTLS               bool
 	ContainerPlatform    agent.ContainerPlatform
 }
 
@@ -62,14 +62,14 @@ var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
 func NewHandler(config *Config) *Handler {
-	agentProxy := proxy.NewAgentProxy(config.ClusterService, config.RuntimeConfiguration, config.Secured)
+	agentProxy := proxy.NewAgentProxy(config.ClusterService, config.RuntimeConfiguration, config.UseTLS)
 	notaryService := security.NewNotaryService(config.SignatureService, true)
 
 	return &Handler{
 		agentHandler:           httpagenthandler.NewHandler(config.ClusterService, notaryService),
 		browseHandler:          browse.NewHandler(agentProxy, notaryService),
 		browseHandlerV1:        browse.NewHandlerV1(agentProxy, notaryService),
-		dockerProxyHandler:     docker.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.Secured),
+		dockerProxyHandler:     docker.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.UseTLS),
 		dockerhubHandler:       dockerhub.NewHandler(notaryService),
 		keyHandler:             key.NewHandler(notaryService, config.EdgeManager),
 		kubernetesHandler:      kubernetes.NewHandler(notaryService, config.KubernetesDeployer),

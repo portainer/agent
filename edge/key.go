@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -27,6 +28,11 @@ func (manager *Manager) SetKey(key string) error {
 	edgeKey, err := parseEdgeKey(key)
 	if err != nil {
 		return err
+	}
+
+	u, _ := url.Parse(edgeKey.PortainerInstanceURL)
+	if u.Scheme != "https" {
+		log.Println("[WARN] [edge] [message: This agent has been configured using an insecure connection, which can limit functionality. We recommend updating the agent to use a secure connection.")
 	}
 
 	manager.mu.Lock()
