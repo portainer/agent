@@ -10,6 +10,7 @@ import (
 const (
 	EnvKeyAgentHost             = "AGENT_HOST"
 	EnvKeyAgentPort             = "AGENT_PORT"
+	EnvKeyClusterModeEnabled    = "AGENT_CLUSTER_MODE_ENABLED"
 	EnvKeyClusterAddr           = "AGENT_CLUSTER_ADDR"
 	EnvKeyClusterProbeTimeout   = "AGENT_CLUSTER_PROBE_TIMEOUT"
 	EnvKeyClusterProbeInterval  = "AGENT_CLUSTER_PROBE_INTERVAL"
@@ -44,6 +45,7 @@ var (
 	fAgentServerAddr       = kingpin.Flag("host", EnvKeyAgentHost+" address on which the agent API will be exposed").Envar(EnvKeyAgentHost).Default(agent.DefaultAgentAddr).IP()
 	fAgentServerPort       = kingpin.Flag("port", EnvKeyAgentPort+" port on which the agent API will be exposed").Envar(EnvKeyAgentPort).Default(agent.DefaultAgentPort).Int()
 	fAgentSecurityShutdown = kingpin.Flag("secret-timeout", EnvKeyAgentSecurityShutdown+" the duration after which the agent will be shutdown if not associated or secured by AGENT_SECRET. (defaults to 72h)").Envar(EnvKeyAgentSecurityShutdown).Default(agent.DefaultAgentSecurityShutdown).Duration()
+	fClusterModeEnabled    = kingpin.Flag("cluster-mode-enabled", EnvKeyClusterModeEnabled+" boolean to enable or disable auto switching to cluster mode").Envar(EnvKeyClusterModeEnabled).Default("true").Bool()
 	fClusterAddress        = kingpin.Flag("cluster-addr", EnvKeyClusterAddr+" address (in the IP:PORT format) of an existing agent to join the agent cluster. When deploying the agent as a Docker Swarm service, we can leverage the internal Docker DNS to automatically join existing agents or form a cluster by using tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT> as the address").Envar(EnvKeyClusterAddr).String()
 	fClusterProbeTimeout   = kingpin.Flag("agent-cluster-timeout", EnvKeyClusterProbeTimeout+" timeout interval for receiving agent member probe responses (only change this setting if you know what you're doing)").Envar(EnvKeyClusterProbeTimeout).Default(agent.DefaultClusterProbeTimeout).Duration()
 	fClusterProbeInterval  = kingpin.Flag("agent-cluster-interval", EnvKeyClusterProbeInterval+" interval for repeating failed agent member probe (only change this setting if you know what you're doing)").Envar(EnvKeyClusterProbeInterval).Default(agent.DefaultClusterProbeInterval).Duration()
@@ -77,6 +79,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		AgentServerAddr:       fAgentServerAddr.String(),
 		AgentServerPort:       strconv.Itoa(*fAgentServerPort),
 		AgentSecurityShutdown: *fAgentSecurityShutdown,
+		ClusterModeEnabled:    *fClusterModeEnabled,
 		ClusterAddress:        *fClusterAddress,
 		ClusterProbeTimeout:   *fClusterProbeTimeout,
 		ClusterProbeInterval:  *fClusterProbeInterval,
