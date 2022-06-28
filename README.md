@@ -237,6 +237,7 @@ we can leverage the internal Docker DNS to automatically join existing agents or
 * AGENT_PORT (*optional*): port on which the agent API will be exposed (default to `9001`)
 * AGENT_SECRET (*optional*): shared secret used in the signature verification process
 * AGENT_SECRET_TIMEOUT (*optional*): the duration after which the agent will be shutdown if not associated or secured by `AGENT_SECRET`. (defaults to `72h`)
+* AGENT_CLUSTER_MODE_ENABLED (*optional*): allows configuring the agent to ignore if node is with swarm enabled. Change this if your node is in a Swarm and you want to configure the agent in standalone mode.
 * AGENT_CLUSTER_PROBE_TIMEOUT (*optional*): timeout interval for receiving agent member probe responses (default to `500ms`, only change this setting if you know what you're doing)
 * AGENT_CLUSTER_PROBE_INTERVAL (*optional*): interval for repeating failed agent member probe (default to `1s`, only change this setting if you know what you're doing)
 * LOG_LEVEL (*optional*): defines the log output verbosity (default to `INFO`)
