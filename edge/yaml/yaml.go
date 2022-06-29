@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 
+	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	v1 "k8s.io/api/apps/v1"
@@ -34,7 +35,11 @@ func NewYAML(fileContent string, credentials []agent.RegistryCredentials) *yaml 
 func (y *yaml) getRegistryCredentialsByImageURL(imageURL string) []agent.RegistryCredentials {
 	credentials := []agent.RegistryCredentials{}
 	for _, r := range y.registryCredentials {
-		if strings.Contains(imageURL, r.ServerURL) {
+		domain, err := getRegistryDomain(imageURL)
+		if err != nil {
+			return nil
+		}
+		if strings.Contains(r.ServerURL, domain) {
 			credentials = append(credentials, r)
 		}
 	}
@@ -68,6 +73,17 @@ func (y *yaml) generateImagePullSecrets(namespace string, secretName string, cre
 	return secret
 }
 
+// getRegistryDomain returns the registry domain of the container image reference
+// if an image does not contain a registry url, it will be default to docker.io
+func getRegistryDomain(image string) (string, error) {
+	ref, err := reference.ParseDockerRef(image)
+	if err != nil {
+		return "", fmt.Errorf("error parsing image (%s): %w", image, err)
+	}
+
+	return reference.Domain(ref), nil
+}
+
 func (y *yaml) AddImagePullSecrets() (string, error) {
 	ymlFiles := strings.Split(y.fileContent, "---\n")
 	log.Printf("[INFO] yaml length %d", len(ymlFiles))
@@ -80,6 +96,7 @@ func (y *yaml) AddImagePullSecrets() (string, error) {
 		if err != nil {
 			return "", errors.Wrap(err, "Error while decoding original YAML")
 		}
+
 		switch o := obj.(type) {
 		case *v1.Deployment:
 			yml := obj.(*v1.Deployment)
