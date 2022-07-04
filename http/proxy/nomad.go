@@ -10,6 +10,7 @@ import (
 	"net/url"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/crypto"
 )
 
 func NewNomadProxy(nomadConfig agent.NomadConfig) http.Handler {
@@ -19,8 +20,9 @@ func NewNomadProxy(nomadConfig agent.NomadConfig) http.Handler {
 
 	if nomadConfig.NomadTLSEnabled {
 		tlsClientConfig := &tls.Config{
-			MinVersion: tls.VersionTLS13,
-			MaxVersion: tls.VersionTLS13,
+			MinVersion:   tls.VersionTLS12,
+			CipherSuites: crypto.TLS12CipherSuites,
+			MaxVersion:   tls.VersionTLS13,
 		}
 
 		// Create a CA certificate pool and add cert.pem to it
