@@ -11,6 +11,7 @@ import (
 	httpError "github.com/portainer/libhttp/error"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/http/handler"
@@ -99,7 +100,8 @@ func (server *APIServer) Start(edgeMode bool) error {
 	}
 
 	httpServer.TLSConfig = &tls.Config{
-		MinVersion: tls.VersionTLS13,
+		MinVersion:   tls.VersionTLS12,
+		CipherSuites: crypto.TLS12CipherSuites,
 	}
 
 	go server.securityShutdown(httpServer)
