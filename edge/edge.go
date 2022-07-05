@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/revoke"
 	"github.com/portainer/agent/edge/scheduler"
@@ -276,7 +277,8 @@ func buildTransport(options *agent.Options) *http.Transport {
 
 	transport.TLSClientConfig = &tls.Config{
 		ClientSessionCache: tls.NewLRUClientSessionCache(0),
-		MinVersion:         tls.VersionTLS13,
+		MinVersion:         tls.VersionTLS12,
+		CipherSuites:       crypto.TLS12CipherSuites,
 	}
 
 	if options.EdgeInsecurePoll {
