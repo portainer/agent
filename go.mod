@@ -16,7 +16,7 @@ require (
 	github.com/koding/websocketproxy v0.0.0-20181220232114-7ed82d81a28c
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/pkg/errors v0.9.1
-	github.com/portainer/docker-compose-wrapper v0.0.0-20220531190153-c597b853e410
+	github.com/portainer/docker-compose-wrapper v0.0.0-20220705210548-397fa6325447
 	github.com/portainer/libcrypto v0.0.0-20210422035235-c652195c5c3a
 	github.com/portainer/libhttp v0.0.0-20211208103139-07a5f798eb3f
 	github.com/portainer/portainer/api v0.0.0-20220303203420-547d9c2fde15
