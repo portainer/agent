@@ -18,6 +18,7 @@ type PortainerClient interface {
 	SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error
 	SetTimeout(t time.Duration)
 	SetLastCommandTimestamp(timestamp time.Time)
+	EnqueueLogCollectionForStack(logCmd LogCommandData) error
 }
 
 type PollStatusResponse struct {
