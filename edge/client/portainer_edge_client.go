@@ -306,10 +306,10 @@ func (client *PortainerEdgeClient) cachedResponse(r *http.Response) (*PollStatus
 	return nil, false
 }
 
-func (client *PortainerEdgeClient) cacheReponse(etag string, resp *PollStatusResponse) {
-	if client.reqCache != nil || etag != "" {
+func (client *PortainerEdgeClient) cacheResponse(etag string, resp *PollStatusResponse) {
+	if client.reqCache == nil || etag == "" {
 		return
 	}
 
-	client.reqCache.Add(etag, &resp)
+	client.reqCache.Add(etag, resp)
 }
