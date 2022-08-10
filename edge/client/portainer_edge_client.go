@@ -121,7 +121,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 		return nil, err
 	}
 
-	client.cacheReponse(resp.Header.Get("ETag"), &responseData)
+	client.cacheResponse(resp.Header.Get("ETag"), &responseData)
 
 	return &responseData, nil
 }
