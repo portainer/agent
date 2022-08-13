@@ -133,9 +133,17 @@ func (service *PollService) startStatusPollLoop() {
 	for {
 		select {
 		case <-pollCh:
+			// Jitter
+			time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+
 			err := service.poll()
 			if err != nil {
 				log.Printf("[ERROR] [edge] [message: an error occured during short poll] [error: %s]", err)
+
+				// Backoff
+				if e, ok := err.(net.Error); ok && e.Timeout() {
+					time.Sleep(2 * time.Duration(service.pollIntervalInSeconds) * time.Second)
+				}
 			}
 		case <-service.startSignal:
 			pollCh = service.pollTicker.C
