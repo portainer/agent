@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -234,6 +235,9 @@ func (manager *Manager) startEdgeBackgroundProcess() error {
 }
 
 func (manager *Manager) checkDockerRuntimeConfig() error {
+	// Jitter
+	time.Sleep(time.Duration(rand.Intn(100) * int(time.Millisecond)))
+
 	runtimeConfiguration, err := manager.dockerInfoService.GetRuntimeConfigurationFromDockerEngine()
 	if err != nil {
 		return err
