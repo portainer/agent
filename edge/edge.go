@@ -154,7 +154,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 	}
 
 	go func() {
-		ticker := time.NewTicker(runtimeCheckFrequency)
+		ticker := time.NewTicker(5 * time.Minute)
 		for range ticker.C {
 			err := manager.checkDockerRuntimeConfig()
 			if err != nil {
@@ -236,7 +236,7 @@ func (manager *Manager) startEdgeBackgroundProcess() error {
 
 func (manager *Manager) checkDockerRuntimeConfig() error {
 	// Jitter
-	time.Sleep(time.Duration(rand.Intn(100) * int(time.Millisecond)))
+	time.Sleep(time.Duration(10 * rand.Intn(100) * int(time.Millisecond)))
 
 	runtimeConfiguration, err := manager.dockerInfoService.GetRuntimeConfigurationFromDockerEngine()
 	if err != nil {
