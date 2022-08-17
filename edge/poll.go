@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"log"
 	"math/rand"
-	"net"
 	"strconv"
 	"time"
 
@@ -132,20 +131,24 @@ func (service *PollService) startStatusPollLoop() {
 
 	log.Printf("[DEBUG] [edge] [poll_interval_seconds: %f] [server_url: %s] [message: starting Portainer short-polling client]", service.pollIntervalInSeconds, service.portainerURL)
 
+	lastPollFailed := false
 	for {
 		select {
 		case <-pollCh:
 			// Jitter
-			time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+			if lastPollFailed {
+				lastPollFailed = false
+				t := time.Duration(rand.Float64() * service.pollIntervalInSeconds * float64(time.Second))
+				time.Sleep(t)
+				service.pollTicker.Reset(time.Duration(service.pollIntervalInSeconds) * time.Second)
+			}
 
 			err := service.poll()
 			if err != nil {
 				log.Printf("[ERROR] [edge] [message: an error occured during short poll] [error: %s]", err)
 
-				// Backoff
-				if e, ok := err.(net.Error); ok && e.Timeout() {
-					time.Sleep(2 * time.Duration(service.pollIntervalInSeconds) * time.Second)
-				}
+				lastPollFailed = true
+				service.pollTicker.Reset(time.Duration(service.pollIntervalInSeconds) * time.Second)
 			}
 		case <-service.startSignal:
 			pollCh = service.pollTicker.C
