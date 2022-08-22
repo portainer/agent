@@ -317,6 +317,7 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
+	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 
 	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(client.agentPlatformIdentifier)))
 

@@ -80,6 +80,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 		return nil, err
 	}
 
+	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
 
