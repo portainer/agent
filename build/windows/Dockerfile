@@ -20,4 +20,6 @@ COPY dist /app/
 COPY static /app/static
 COPY config /Users/ContainerAdministrator/.docker/
 
+HEALTHCHECK --interval=10s --timeout=10s --start-period=5s --retries=1 CMD [ "C:/app/agent", "--health-check" ]
+
 ENTRYPOINT ["C:/app/agent.exe"]
