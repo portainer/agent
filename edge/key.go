@@ -26,7 +26,7 @@ type edgeKey struct {
 // SetKey parses and associates an Edge key to the agent.
 // If the agent is running inside a cluster, it will also set the "set" flag to specify that a key is set on this agent in the cluster.
 func (manager *Manager) SetKey(key string) error {
-	edgeKey, err := parseEdgeKey(key)
+	edgeKey, err := ParseEdgeKey(key)
 	if err != nil {
 		return err
 	}
@@ -54,6 +54,13 @@ func (manager *Manager) SetKey(key string) error {
 	}
 
 	return nil
+}
+
+func (manager *Manager) GetDecodedKey() *edgeKey {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	return manager.key
 }
 
 // GetKey returns the Edge key associated to the agent
@@ -106,7 +113,7 @@ func (manager *Manager) PropagateKeyInCluster() error {
 
 // parseEdgeKey decodes a base64 encoded key and extract the decoded information from the following
 // format: <portainer_instance_url>|<tunnel_server_addr>|<tunnel_server_fingerprint>|<endpoint_id>
-func parseEdgeKey(key string) (*edgeKey, error) {
+func ParseEdgeKey(key string) (*edgeKey, error) {
 	decodedKey, err := base64.RawStdEncoding.DecodeString(key)
 	if err != nil {
 		return nil, err
@@ -139,7 +146,7 @@ func encodeKey(edgeKey *edgeKey) string {
 	return encodedKey
 }
 
-func (manager *Manager) RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (string, error) {
+func RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService, dataPath string) (string, error) {
 	if edgeKey != "" {
 		log.Info().Msg("edge key loaded from options")
 
@@ -148,7 +155,7 @@ func (manager *Manager) RetrieveEdgeKey(edgeKey string, clusterService agent.Clu
 
 	var keyRetrievalError error
 
-	edgeKey, keyRetrievalError = retrieveEdgeKeyFromFilesystem(manager.agentOptions.DataPath)
+	edgeKey, keyRetrievalError = retrieveEdgeKeyFromFilesystem(dataPath)
 	if keyRetrievalError != nil {
 		return "", keyRetrievalError
 	}
