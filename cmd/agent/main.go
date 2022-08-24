@@ -296,7 +296,7 @@ func main() {
 	if options.HealthCheck {
 		err := healthcheck.Run(options, clusterService)
 		if err != nil {
-			log.Fatalf("[ERROR] [healthcheck] [message: Failed healthcheck] [error: %s]", err)
+			log.Fatal().Err(err).Msg("failed healthcheck")
 		}
 		goos.Exit(0)
 	}

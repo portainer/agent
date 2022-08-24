@@ -1,19 +1,16 @@
 package healthcheck
 
 import (
-	"context"
-	"crypto/tls"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge"
-	"github.com/portainer/client-api/client"
-	"github.com/portainer/client-api/client/status"
+	"github.com/portainer/agent/edge/client"
 )
 
 func Run(options *agent.Options, clusterService agent.ClusterService) error {
@@ -39,12 +36,12 @@ func Run(options *agent.Options, clusterService agent.ClusterService) error {
 		return errors.WithMessage(err, "Failed decoding key")
 	}
 
-	parsedUrl, err := checkUrl(decodedKey.PortainerInstanceURL)
+	_, err = checkUrl(decodedKey.PortainerInstanceURL)
 	if err != nil {
 		return err
 	}
 
-	err = checkPolling(parsedUrl)
+	err = checkPolling(decodedKey.PortainerInstanceURL, options)
 	if err != nil {
 		return err
 	}
@@ -76,24 +73,21 @@ func checkUrl(keyUrl string) (*url.URL, error) {
 	return parsedUrl, nil
 }
 
-func checkPolling(parsedUrl *url.URL) error {
-	cli := client.NewHTTPClientWithConfig(nil, client.DefaultTransportConfig().WithHost(parsedUrl.Host).WithSchemes([]string{parsedUrl.Scheme}))
+func checkPolling(portainerUrl string, options *agent.Options) error {
+	statusUrl := fmt.Sprintf("%s/api/status", portainerUrl)
 
-	statusParams := status.NewStatusInspectParams()
-	statusParams.WithContext(context.Background())
-	statusParams.WithTimeout(3 * time.Second)
-
-	if parsedUrl.Scheme == "https" {
-		customTransport := http.DefaultTransport.(*http.Transport).Clone()
-		customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-		httpCli := &http.Client{Transport: customTransport}
-		statusParams.WithHTTPClient(httpCli)
-	}
-
-	_, err := cli.Status.StatusInspect(statusParams)
+	req, err := http.NewRequest(http.MethodGet, statusUrl, nil)
 	if err != nil {
-		return errors.WithMessage(err, "Unable to retrieve Portainer instance status through HTTP API")
+		return errors.WithMessage(err, "Failed creating request")
 	}
+
+	cli := client.BuildHTTPClient(10, options)
+
+	resp, err := cli.Do(req)
+	if err != nil {
+		return errors.WithMessage(err, "Failed sending request")
+	}
+	defer resp.Body.Close()
 
 	return nil
 }
