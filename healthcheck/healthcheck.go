@@ -28,7 +28,8 @@ func Run(options *agent.Options, clusterService agent.ClusterService) error {
 	}
 
 	if edgeKey == "" {
-		return errors.New("Health-check for manual edge key is not supported")
+		log.Println("[INFO] [healthcheck] [message: No pre-flight checks available when edge key is manually entered. Exiting.]")
+		return nil
 	}
 
 	decodedKey, err := edge.ParseEdgeKey(edgeKey)
@@ -40,17 +41,21 @@ func Run(options *agent.Options, clusterService agent.ClusterService) error {
 	if err != nil {
 		return err
 	}
+	log.Printf("[DEBUG] [healthcheck] [message: Url reachable]")
 
 	err = checkPolling(decodedKey.PortainerInstanceURL, options)
 	if err != nil {
 		return err
 	}
+	log.Printf("[DEBUG] [healthcheck] [message: Portainer status check passed]")
 
 	// We then check that the agent can establish a TCP connection to the Portainer instance tunnel server
 	err = checkTunnel(decodedKey.TunnelServerAddr)
 	if err != nil {
 		return err
 	}
+
+	log.Printf("[DEBUG] [healthcheck] [message: Agent can open TCP connection to Portainer]")
 
 	return nil
 }
