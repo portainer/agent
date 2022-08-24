@@ -56,13 +56,6 @@ func (manager *Manager) SetKey(key string) error {
 	return nil
 }
 
-func (manager *Manager) GetDecodedKey() *edgeKey {
-	manager.mu.Lock()
-	defer manager.mu.Unlock()
-
-	return manager.key
-}
-
 // GetKey returns the Edge key associated to the agent
 func (manager *Manager) GetKey() string {
 	manager.mu.Lock()
