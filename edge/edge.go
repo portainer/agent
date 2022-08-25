@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -153,8 +154,10 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 	}
 
 	go func() {
-		ticker := time.NewTicker(runtimeCheckFrequency)
-		for range ticker.C {
+		for {
+			// Jitter
+			time.Sleep(5*time.Minute + time.Duration(rand.Float32()*5*float32(time.Minute)))
+
 			err := manager.checkDockerRuntimeConfig()
 			if err != nil {
 				log.Printf("[ERROR] [edge] [message: an error occurred during Docker runtime configuration check] [error: %s]", err)
