@@ -215,6 +215,8 @@ func (service *PollService) poll() error {
 		return tunnelErr
 	}
 
+	service.processUpdate(environmentStatus.VersionUpdate)
+
 	service.processSchedules(environmentStatus.Schedules)
 
 	if environmentStatus.CheckinInterval > 0 && environmentStatus.CheckinInterval != service.pollIntervalInSeconds {
@@ -229,6 +231,24 @@ func (service *PollService) poll() error {
 	}
 
 	return service.processStacks(environmentStatus.Stacks)
+}
+
+func (service *PollService) processUpdate(versionUpdate client.VersionUpdate) error {
+	if !versionUpdate.Active || versionUpdate.ScheduledTime > time.Now().Unix() {
+		return nil
+	}
+
+	log.Printf("[DEBUG] [edge] [message: received update Portainer Edge agent to version %s] [scheduled_time: %d] [now: %d]", versionUpdate.Version, versionUpdate.ScheduledTime, time.Now().Unix())
+
+	go func() {
+		service.Stop()
+	}()
+
+	defer service.Start()
+
+	log.Println("[DEBUG] [edge] [message: calling updateAgent]")
+	return service.edgeManager.updateAgent(versionUpdate.Version)
+
 }
 
 func (service *PollService) manageUpdateTunnel(environmentStatus client.PollStatusResponse) error {

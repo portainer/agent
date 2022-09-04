@@ -28,6 +28,7 @@ type PollStatusResponse struct {
 	CheckinInterval float64          `json:"checkin"`
 	Credentials     string           `json:"credentials"`
 	Stacks          []StackStatus    `json:"stacks"`
+	VersionUpdate   VersionUpdate    `json:"versionUpdate"`
 
 	// Async mode only
 	EndpointID       int            `json:"endpointID"`
@@ -43,6 +44,15 @@ type StackStatus struct {
 	Name             string // used in async mode
 	FileContent      string // used in async mode
 	CommandOperation string // used in async mode
+}
+
+type VersionUpdate struct {
+	// Target version
+	Version string
+	// Scheduled time
+	ScheduledTime int64
+	// If need to update
+	Active bool
 }
 
 type setEndpointIDFn func(portainer.EndpointID)
