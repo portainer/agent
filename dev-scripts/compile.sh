@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
 function compile_command() {
-    parse_compile_params "${@:1}"
+   parse_compile_params "${@:1}"
+   
+   compile
+}
 
+function compile() {
     compile_agent
     compile_credential_helper
 }
