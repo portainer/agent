@@ -247,7 +247,7 @@ func (service *PollService) processUpdate(versionUpdate client.VersionUpdate) er
 	defer service.Start()
 
 	log.Println("[DEBUG] [edge] [message: calling updateAgent]")
-	return service.edgeManager.updateAgent(versionUpdate.Version)
+	return service.edgeManager.updateAgent(versionUpdate.Version, versionUpdate.ScheduleID)
 
 }
 

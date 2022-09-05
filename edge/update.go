@@ -17,7 +17,7 @@ import (
 	"github.com/portainer/agent"
 )
 
-func (manager *Manager) updateAgent(version string) error {
+func (manager *Manager) updateAgent(version string, updateScheduleId int) error {
 	if version == "" {
 		return errors.New("version is required")
 	}
@@ -49,7 +49,7 @@ func (manager *Manager) updateAgent(version string) error {
 	}
 
 	log.Printf("[DEBUG] [edge] [message: running portainer-updater container]")
-	updaterContainerId, err := runUpdate(ctx, cli, agentContainerId, version)
+	updaterContainerId, err := runUpdate(ctx, cli, agentContainerId, version, updateScheduleId)
 	defer clean(ctx, cli, updaterContainerId)
 	if err != nil {
 		return errors.WithMessage(err, "unable to run update")
@@ -108,7 +108,7 @@ func getAgentContainerId() (string, error) {
 
 }
 
-func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId string, version string) (string, error) {
+func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId string, version string, updateScheduleId int) (string, error) {
 	log.Printf("[DEBUG] [edge] [message: creating portainer-updater container]")
 
 	agentImagePrefix := os.Getenv("AGENT_IMAGE_PREFIX")
@@ -121,7 +121,7 @@ func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId stri
 	updaterContainer, err := cli.ContainerCreate(ctx,
 		&container.Config{
 			Image: "portainer/portainer-updater:latest",
-			Cmd:   []string{"agent-update", agentContainerId, agentImage},
+			Cmd:   []string{"agent-update", agentContainerId, agentImage, fmt.Sprintf("%d", updateScheduleId)},
 		},
 		&container.HostConfig{
 			Binds: []string{

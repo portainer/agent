@@ -53,6 +53,8 @@ type VersionUpdate struct {
 	ScheduledTime int64
 	// If need to update
 	Active bool
+	// Update schedule ID
+	ScheduleID int
 }
 
 type setEndpointIDFn func(portainer.EndpointID)
