@@ -4,11 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"log"
 	"net/http"
 	"time"
-
-	httpError "github.com/portainer/libhttp/error"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
@@ -16,6 +13,9 @@ import (
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/http/handler"
 	"github.com/portainer/agent/kubernetes"
+	httpError "github.com/portainer/libhttp/error"
+
+	"github.com/rs/zerolog/log"
 )
 
 // APIServer is the web server exposing the API of an agent.
@@ -92,7 +92,12 @@ func (server *APIServer) Start(edgeMode bool) error {
 		WriteTimeout: 30 * time.Minute,
 	}
 
-	log.Printf("[INFO] [http] [server_addr: %s] [server_port: %s] [use_tls: %t] [api_version: %s] [message: Starting Agent API server]", server.addr, server.port, config.UseTLS, agent.Version)
+	log.Info().
+		Str("server_addr", server.addr).
+		Str("server_port", server.port).
+		Bool("use_tls", config.UseTLS).
+		Str("api_version", agent.Version).
+		Msg("starting Agent API server")
 
 	if edgeMode {
 		httpServer.Handler = server.edgeHandler(httpHandler)
@@ -116,11 +121,13 @@ func (server *APIServer) securityShutdown(httpServer *http.Server) {
 		return
 	}
 
-	log.Printf("[INFO] [http] [message: Shutting down API server as no client was associated after %s, keeping alive to prevent restart by docker/kubernetes]", server.agentOptions.AgentSecurityShutdown)
+	log.Info().
+		Dur("timeout", server.agentOptions.AgentSecurityShutdown).
+		Msg("shutting down API server as no client was associated after the timeout, keeping alive to prevent restart by docker/kubernetes")
 
 	err := httpServer.Shutdown(context.Background())
 	if err != nil {
-		log.Fatalf("[ERROR] [http] [message: failed shutting down server] [error: %s]", err)
+		log.Fatal().Stack().Err(err).Msg("failed shutting down server")
 	}
 }
 

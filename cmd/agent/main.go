@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	gohttp "net/http"
 	goos "os"
 	"os/signal"
@@ -23,25 +22,37 @@ import (
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/http"
 	"github.com/portainer/agent/kubernetes"
-	"github.com/portainer/agent/logutils"
 	"github.com/portainer/agent/net"
 	"github.com/portainer/agent/os"
 	cluster "github.com/portainer/agent/serf"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/pkgerrors"
 )
+
+func init() {
+	zerolog.ErrorStackFieldName = "stack_trace"
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	log.Logger = log.Logger.With().Caller().Logger()
+}
 
 func main() {
 	// Generic
 
 	options, err := parseOptions()
 	if err != nil {
-		log.Fatalf("[ERROR] [main] [message: Invalid agent configuration] [error: %s]", err)
+		log.Fatal().Stack().Err(err).Msg("invalid agent configuration")
 	}
+
+	setPrettyLogging(options.PrettyLogging)
+	setLoggingLevel(options.LogLevel)
 
 	if options.EdgeAsyncMode && !options.EdgeMode {
-		log.Fatalf("[ERROR] [main] [message: Edge Async mode cannot be enabled, if Edge Mode is disabled]")
+		log.Fatal().Msg("edge Async mode cannot be enabled if Edge Mode is disabled")
 	}
-
-	logutils.SetupLogger(options.LogLevel)
 
 	if options.SSLCert != "" && options.SSLKey != "" && options.CertRetryInterval > 0 {
 		edge.BlockUntilCertificateIsReady(options.SSLCert, options.SSLKey, options.CertRetryInterval)
@@ -64,32 +75,34 @@ func main() {
 	// Docker & Podman
 
 	if containerPlatform == agent.PlatformDocker || containerPlatform == agent.PlatformPodman {
-		log.Println("[INFO] [main] [message: Agent running on Docker platform]")
+		log.Info().Msg("agent running on Docker platform")
 
 		dockerInfoService = docker.NewInfoService()
 
 		runtimeConfiguration, err = dockerInfoService.GetRuntimeConfigurationFromDockerEngine()
 		if err != nil {
-			log.Fatalf("[ERROR] [main] [message: Unable to retrieve information from Docker] [error: %s]", err)
+			log.Fatal().Stack().Err(err).Msg("unable to retrieve information from Docker")
 		}
 
 		runtimeConfiguration.AgentPort = options.AgentServerPort
-		log.Printf("[DEBUG] [main] [Member tags: %+v]", runtimeConfiguration)
+		log.Debug().Str("member_tags", fmt.Sprintf("%+v", runtimeConfiguration)).Msg("")
 
 		clusterMode := false
 		if runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm {
 			clusterMode = true
-			log.Println("[INFO] [main] [message: Agent running on a Swarm cluster node. Running in cluster mode]")
+			log.Info().Msg("agent running on a Swarm cluster node. Running in cluster mode")
 		}
 
 		containerName, err := os.GetHostName()
 		if err != nil {
-			log.Fatalf("[ERROR] [main] [message: Unable to retrieve container name] [error: %s]", err)
+			log.Fatal().Stack().Err(err).Msg("unable to retrieve container name")
 		}
 
 		advertiseAddr, err = dockerInfoService.GetContainerIpFromDockerEngine(containerName, clusterMode)
 		if err != nil {
-			log.Printf("[WARN] [main] [message: Unable to retrieve agent container IP address, using '%s' instead] [error: %s]", options.AgentServerAddr, err)
+			log.Warn().Str("host_flag", options.AgentServerAddr).Stack().Err(err).
+				Msg("unable to retrieve agent container IP address, using host flag instead")
+
 			advertiseAddr = options.AgentServerAddr
 		}
 
@@ -100,7 +113,7 @@ func main() {
 			if clusterAddr == "" {
 				serviceName, err := dockerInfoService.GetServiceNameFromDockerEngine(containerName)
 				if err != nil {
-					log.Fatalf("[ERROR] [main] [message: Unable to retrieve agent service name from Docker] [error: %s]", err)
+					log.Fatal().Stack().Err(err).Msg("unable to retrieve agent service name from Docker")
 				}
 
 				clusterAddr = fmt.Sprintf("tasks.%s", serviceName)
@@ -112,15 +125,22 @@ func main() {
 
 			joinAddr, err := net.LookupIPAddresses(clusterAddr)
 			if err != nil {
-				log.Fatalf("[ERROR] [main] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
+				log.Fatal().Str("host", clusterAddr).Stack().Err(err).
+					Msg("unable to retrieve a list of IP associated to the host")
 			}
 
 			err = clusterService.Create(advertiseAddr, joinAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
 			if err != nil {
-				log.Fatalf("[ERROR] [main] [message: Unable to create cluster] [error: %s]", err)
+				log.Fatal().Stack().Err(err).Msg("unable to create cluster")
 			}
 
-			log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s] [probe_timeout: %s] [probe_interval: %s]", options.AgentServerPort, clusterAddr, advertiseAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
+			log.Debug().
+				Str("agent_port", options.AgentServerPort).
+				Str("cluster_address", clusterAddr).
+				Str("advertise_address", advertiseAddr).
+				Str("probe_timeout", options.ClusterProbeTimeout.String()).
+				Str("probe_interval", options.ClusterProbeInterval.String()).
+				Msg("")
 
 			defer clusterService.Leave()
 		}
@@ -131,10 +151,11 @@ func main() {
 	// Kubernetes
 	var kubernetesDeployer *exec.KubernetesDeployer
 	if containerPlatform == agent.PlatformKubernetes {
-		log.Println("[INFO] [main] [message: Agent running on Kubernetes platform]")
+		log.Info().Msg("agent running on Kubernetes platform")
+
 		kubeClient, err = kubernetes.NewKubeClient()
 		if err != nil {
-			log.Fatalf("[ERROR] [main] [message: Unable to create Kubernetes client] [error: %s]", err)
+			log.Fatal().Stack().Err(err).Msg("unable to create Kubernetes client")
 		}
 
 		kubernetesDeployer = exec.NewKubernetesDeployer(options.AssetsPath)
@@ -143,7 +164,7 @@ func main() {
 
 		advertiseAddr = os.GetKubernetesPodIP()
 		if advertiseAddr == "" {
-			log.Fatalf("[ERROR] [main] [message: KUBERNETES_POD_IP env var must be specified when running on Kubernetes] [error: %s]", err)
+			log.Fatal().Stack().Err(err).Msg("KUBERNETES_POD_IP env var must be specified when running on Kubernetes")
 		}
 
 		clusterAddr := options.ClusterAddress
@@ -157,15 +178,22 @@ func main() {
 
 		joinAddr, err := net.LookupIPAddresses(clusterAddr)
 		if err != nil {
-			log.Fatalf("[ERROR] [main] [host: %s] [message: Unable to retrieve a list of IP associated to the host] [error: %s]", clusterAddr, err)
+			log.Fatal().Str("host", clusterAddr).Stack().Err(err).
+				Msg("unable to retrieve a list of IP associated to the host")
 		}
 
 		err = clusterService.Create(advertiseAddr, joinAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
 		if err != nil {
-			log.Fatalf("[ERROR] [main] [message: Unable to create cluster] [error: %s]", err)
+			log.Fatal().Stack().Err(err).Msg("unable to create cluster")
 		}
 
-		log.Printf("[DEBUG] [main] [agent_port: %s] [cluster_address: %s] [advertise_address: %s] [probe_timeout: %s] [probe_interval: %s]", options.AgentServerPort, clusterAddr, advertiseAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
+		log.Debug().
+			Str("agent_port", options.AgentServerPort).
+			Str("cluster_address", clusterAddr).
+			Str("advertise_address", advertiseAddr).
+			Str("probe_timeout", options.ClusterProbeTimeout.String()).
+			Str("probe_interval", options.ClusterProbeInterval.String()).
+			Msg("")
 
 		defer clusterService.Leave()
 	}
@@ -175,12 +203,12 @@ func main() {
 	if containerPlatform == agent.PlatformNomad {
 		advertiseAddr, err = net.GetLocalIP()
 		if err != nil {
-			log.Fatalf("[ERROR] [main,nomad] [message: Unable to retrieve local IP associated to the agent] [error: %s]", err)
+			log.Fatal().Stack().Err(err).Msg("unable to retrieve local IP associated to the agent")
 		}
 
 		nomadConfig.NomadAddr = goos.Getenv(agent.NomadAddrEnvVarName)
 		if nomadConfig.NomadAddr == "" {
-			log.Fatalf("[ERROR] [main,nomad] [message: Unable to retrieve environment variable NOMAD_ADDR]")
+			log.Fatal().Msg("unable to retrieve environment variable NOMAD_ADDR")
 		}
 
 		if strings.HasPrefix(nomadConfig.NomadAddr, "https") {
@@ -189,45 +217,50 @@ func main() {
 			// Write the TLS certificate into files and update the paths to nomadConfig for Reversy Tunnel API use
 			nomadCACertContent := goos.Getenv(agent.NomadCACertContentEnvVarName)
 			if len(nomadCACertContent) == 0 {
-				log.Fatalf("[ERROR] [main] [message: Nomad CA Certificate is not exported] [error: %s]", err)
-			} else {
-				err = filesystem.WriteFile(options.DataPath, agent.NomadTLSCACertPath, []byte(nomadCACertContent), 0600)
-				if err != nil {
-					log.Fatalf("[ERROR] [main] [message: Fail to write the Nomad CA Certificate] [error: %s]", err)
-				}
-				nomadConfig.NomadCACert = path.Join(options.DataPath, agent.NomadTLSCACertPath)
+				log.Fatal().Stack().Err(err).Msg("nomad CA Certificate is not exported")
 			}
+
+			err = filesystem.WriteFile(options.DataPath, agent.NomadTLSCACertPath, []byte(nomadCACertContent), 0600)
+			if err != nil {
+				log.Fatal().Stack().Err(err).Msg("fail to write the Nomad CA Certificate")
+			}
+
+			nomadConfig.NomadCACert = path.Join(options.DataPath, agent.NomadTLSCACertPath)
 
 			nomadClientCertContent := goos.Getenv(agent.NomadClientCertContentEnvVarName)
 			if len(nomadClientCertContent) == 0 {
-				log.Fatalf("[ERROR] [main] [message: Nomad Client Certificate is not exported] [error: %s]", err)
-			} else {
-				err = filesystem.WriteFile(options.DataPath, agent.NomadTLSCertPath, []byte(nomadClientCertContent), 0600)
-				if err != nil {
-					log.Fatalf("[ERROR] [main] [message: Fail to write the Nomad Client Certificate] [error: %s]", err)
-				}
-				nomadConfig.NomadClientCert = path.Join(options.DataPath, agent.NomadTLSCertPath)
+				log.Fatal().Stack().Err(err).Msg("Nomad Client Certificate is not exported")
 			}
+
+			err = filesystem.WriteFile(options.DataPath, agent.NomadTLSCertPath, []byte(nomadClientCertContent), 0600)
+			if err != nil {
+				log.Fatal().Stack().Err(err).Msg("fail to write the Nomad Client Certificate")
+			}
+
+			nomadConfig.NomadClientCert = path.Join(options.DataPath, agent.NomadTLSCertPath)
 
 			nomadClientKeyContent := goos.Getenv(agent.NomadClientKeyContentEnvVarName)
 			if len(nomadClientKeyContent) == 0 {
-				log.Fatalf("[ERROR] [main] [message: Nomad Client Key is not exported] [error: %s]", err)
-			} else {
-				err = filesystem.WriteFile(options.DataPath, agent.NomadTLSKeyPath, []byte(nomadClientKeyContent), 0600)
-				if err != nil {
-					log.Fatalf("[ERROR] [main] [message: Fail to write the Nomad Client Key] [error: %s]", err)
-				}
-				nomadConfig.NomadClientKey = path.Join(options.DataPath, agent.NomadTLSKeyPath)
+				log.Fatal().Stack().Err(err).Msg("Nomad Client Key is not exported")
 			}
 
+			err = filesystem.WriteFile(options.DataPath, agent.NomadTLSKeyPath, []byte(nomadClientKeyContent), 0600)
+			if err != nil {
+				log.Fatal().Stack().Err(err).Msg("fail to write the Nomad Client Key")
+			}
+
+			nomadConfig.NomadClientKey = path.Join(options.DataPath, agent.NomadTLSKeyPath)
+
 			if _, err := goos.Stat(nomadConfig.NomadCACert); errors.Is(err, goos.ErrNotExist) {
-				log.Fatalf("[ERROR] [main] [message: Unable to locate the Nomad CA Certificate] [error: %s]", err)
+				log.Fatal().Stack().Err(err).Msg("unable to locate the Nomad CA Certificate")
 			}
+
 			if _, err := goos.Stat(nomadConfig.NomadClientCert); errors.Is(err, goos.ErrNotExist) {
-				log.Fatalf("[ERROR] [main] [message: Unable to locate the Nomad Client Certificate] [error: %s]", err)
+				log.Fatal().Stack().Err(err).Msg("unable to locate the Nomad Client Certificate]")
 			}
+
 			if _, err := goos.Stat(nomadConfig.NomadClientKey); errors.Is(err, goos.ErrNotExist) {
-				log.Fatalf("[ERROR] [main] [message: Unable to locate the Nomad Client Key] [error: %s]", err)
+				log.Fatal().Stack().Err(err).Msg("unable to locate the Nomad Client Key")
 			}
 
 			// Export the TLS certificates path for Nomad Edge Deployer
@@ -238,7 +271,11 @@ func main() {
 
 		nomadConfig.NomadToken = goos.Getenv(agent.NomadTokenEnvVarName)
 
-		log.Printf("[DEBUG] [main,configuration] [agent_port: %s] [advertise_address: %s] [NomadAddr: %s]", options.AgentServerPort, advertiseAddr, nomadConfig.NomadAddr)
+		log.Debug().
+			Str("agent_port", options.AgentServerPort).
+			Str("advertise_address", advertiseAddr).
+			Str("NomadAddr", nomadConfig.NomadAddr).
+			Msg("")
 	}
 	// !Nomad
 
@@ -250,7 +287,7 @@ func main() {
 
 		err := tlsService.GenerateCertsForHost(advertiseAddr)
 		if err != nil {
-			log.Fatalf("[ERROR] [main] [message: Unable to generate self-signed certificates] [error: %s]", err)
+			log.Fatal().Stack().Err(err).Msg("unable to generate self-signed certificates")
 		}
 	}
 
@@ -270,25 +307,23 @@ func main() {
 
 		edgeKey, err := edgeManager.RetrieveEdgeKey(options.EdgeKey, clusterService)
 		if err != nil {
-			log.Printf("[ERROR] [main] [message: Unable to retrieve Edge key] [error: %s]", err)
+			log.Error().Stack().Err(err).Msg("unable to retrieve Edge key")
 		}
 
 		if edgeKey != "" {
-			log.Println("[DEBUG] [main] [message: Edge key found in environment. Associating Edge key]")
+			log.Debug().Msg("edge key found in environment. Associating Edge key")
 
 			err := edgeManager.SetKey(edgeKey)
 			if err != nil {
-				log.Fatalf("[ERROR] [main] [message: Unable to associate Edge key] [error: %s]", err)
+				log.Fatal().Stack().Err(err).Msg("unable to associate Edge key")
 			}
 
 			err = edgeManager.Start()
 			if err != nil {
-				log.Fatalf("[ERROR] [main] [message: Unable to start Edge manager] [error: %s]", err)
+				log.Fatal().Stack().Err(err).Msg("Unable to start Edge manager")
 			}
-
 		} else {
-			log.Println("[DEBUG] [main] [message: Edge key not specified. Serving Edge UI]")
-
+			log.Debug().Msg("edge key not specified. Serving Edge UI")
 			serveEdgeUI(edgeManager, options.EdgeUIServerAddr, options.EdgeUIServerPort)
 		}
 	}
@@ -317,12 +352,12 @@ func main() {
 	}
 	err = registry.StartRegistryServer(edgeManager)
 	if err != nil {
-		log.Fatalf("[ERROR] [main] [message: Unable to start registry server] [error: %s]", err)
+		log.Fatal().Stack().Err(err).Msg("unable to start registry server")
 	}
 
 	err = startAPIServer(config, options.EdgeMode)
 	if err != nil && !errors.Is(err, gohttp.ErrServerClosed) {
-		log.Fatalf("[ERROR] [main] [message: Unable to start Agent API server] [error: %s]", err)
+		log.Fatal().Stack().Err(err).Msg("unable to start Agent API server")
 	}
 
 	// !API
@@ -331,7 +366,7 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	s := <-sigs
 
-	fmt.Printf("[DEBUG] [main] [message: shutting down] [signal: %s]", s)
+	log.Debug().Stringer("signal", s).Msg("shutting down")
 }
 
 func startAPIServer(config *http.APIServerConfig, edgeMode bool) error {
@@ -345,25 +380,47 @@ func parseOptions() (*agent.Options, error) {
 	return optionParser.Options()
 }
 
+func setPrettyLogging(enable bool) {
+	if enable {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: goos.Stderr})
+	}
+}
+
+func setLoggingLevel(level string) {
+	switch level {
+	case "ERROR":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	case "WARN":
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case "INFO":
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case "DEBUG":
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+}
+
 func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
 	edgeServer := httpEdge.NewEdgeServer(edgeManager)
 
 	go func() {
-		log.Printf("[INFO] [main] [server_address: %s] [server_port: %s] [message: Starting Edge UI server]", serverAddr, serverPort)
+		log.Info().Str("server_address", serverAddr).Str("server_port", serverPort).Msg("Starting Edge UI server")
 
 		err := edgeServer.Start(serverAddr, serverPort)
 		if err != nil {
-			log.Fatalf("[ERROR] [main] [message: Unable to start Edge server] [error: %s]", err)
+			log.Fatal().Stack().Err(err).Msg("Unable to start Edge server")
 		}
 
-		log.Println("[INFO] [main] [message: Edge server shutdown]")
+		log.Info().Msg("Edge server shutdown")
 	}()
 
 	go func() {
 		time.Sleep(agent.DefaultEdgeSecurityShutdown * time.Minute)
 
 		if !edgeManager.IsKeySet() {
-			log.Printf("[INFO] [main] [message: Shutting down Edge UI server as no key was specified after %d minutes]", agent.DefaultEdgeSecurityShutdown)
+			log.Info().
+				Int("shutdown_minutes", agent.DefaultEdgeSecurityShutdown).
+				Msg("Shutting down Edge UI server as no key was specified after shutdown_minutes")
+
 			edgeServer.Shutdown()
 		}
 	}()

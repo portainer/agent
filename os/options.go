@@ -27,6 +27,7 @@ const (
 	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
 	EnvKeyEdgeTunnel            = "EDGE_TUNNEL"
 	EnvKeyLogLevel              = "LOG_LEVEL"
+	EnvPrettyLogging            = "PRETTY_LOGGING"
 	EnvKeySSLCert               = "MTLS_SSL_CERT"
 	EnvKeySSLKey                = "MTLS_SSL_KEY"
 	EnvKeySSLCACert             = "MTLS_SSL_CA"
@@ -50,6 +51,7 @@ var (
 	fDataPath              = kingpin.Flag("data", EnvKeyDataPath+" path to the data folder").Envar(EnvKeyDataPath).Default(agent.DefaultDataPath).String()
 	fSharedSecret          = kingpin.Flag("secret", EnvKeyAgentSecret+" shared secret used in the signature verification process").Envar(EnvKeyAgentSecret).String()
 	fLogLevel              = kingpin.Flag("log-level", EnvKeyLogLevel+" defines the log output verbosity (default to INFO)").Envar(EnvKeyLogLevel).Default(agent.DefaultLogLevel).Enum("ERROR", "WARN", "INFO", "DEBUG")
+	fPrettyLogging         = kingpin.Flag("pretty-logging", EnvPrettyLogging+" enables human-friendly colorized output (affects performance)").Envar(EnvPrettyLogging).Bool()
 
 	// Edge mode
 	fEdgeMode              = kingpin.Flag("edge", EnvKeyEdge+" enable Edge mode. Disabled by default, set to 1 or true to enable it").Envar(EnvKeyEdge).Bool()
@@ -92,6 +94,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeInsecurePoll:      *fEdgeInsecurePoll,
 		EdgeTunnel:            *fEdgeTunnel,
 		LogLevel:              *fLogLevel,
+		PrettyLogging:         *fPrettyLogging,
 		SSLCert:               *fSSLCert,
 		SSLKey:                *fSSLKey,
 		SSLCACert:             *fSSLCACert,

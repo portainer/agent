@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -13,6 +12,8 @@ import (
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/filesystem"
 	portainer "github.com/portainer/portainer/api"
+
+	"github.com/rs/zerolog/log"
 )
 
 type edgeKey struct {
@@ -32,7 +33,7 @@ func (manager *Manager) SetKey(key string) error {
 
 	u, _ := url.Parse(edgeKey.PortainerInstanceURL)
 	if u.Scheme != "https" {
-		log.Println("[WARN] [edge] [message: This agent has been configured using an insecure connection, which can limit functionality. We recommend updating the agent to use a secure connection.")
+		log.Warn().Msg("This agent has been configured using an insecure connection, which can limit functionality. We recommend updating the agent to use a secure connection.")
 	}
 
 	manager.mu.Lock()
@@ -48,6 +49,7 @@ func (manager *Manager) SetKey(key string) error {
 	if manager.clusterService != nil {
 		tags := manager.clusterService.GetRuntimeConfiguration()
 		tags.EdgeKeySet = true
+
 		return manager.clusterService.UpdateRuntimeConfiguration(tags)
 	}
 
@@ -139,7 +141,8 @@ func encodeKey(edgeKey *edgeKey) string {
 
 func (manager *Manager) RetrieveEdgeKey(edgeKey string, clusterService agent.ClusterService) (string, error) {
 	if edgeKey != "" {
-		log.Println("[INFO] [edge] [message: Edge key loaded from options]")
+		log.Info().Msg("edge key loaded from options")
+
 		return edgeKey, nil
 	}
 
@@ -177,7 +180,8 @@ func retrieveEdgeKeyFromFilesystem(dataPath string) (string, error) {
 		return "", err
 	}
 
-	log.Println("[INFO] [edge] [message: Edge key loaded from the filesystem]")
+	log.Info().Msg("edge key loaded from the filesystem")
+
 	return string(filesystemKey), nil
 }
 
@@ -192,10 +196,12 @@ func retrieveEdgeKeyFromCluster(clusterService agent.ClusterService) (string, er
 	memberAddr := fmt.Sprintf("%s:%s", member.IPAddress, member.Port)
 	memberKey, err := httpCli.GetEdgeKey(memberAddr)
 	if err != nil {
-		log.Printf("[ERROR] [edge] [message: Unable to retrieve Edge key from cluster member] [error: %s]", err)
+		log.Error().Stack().Err(err).Msg("unable to retrieve Edge key from cluster member")
+
 		return "", err
 	}
 
-	log.Println("[INFO] [edge] [message: Edge key loaded from cluster]")
+	log.Info().Msg("edge key loaded from cluster")
+
 	return memberKey, nil
 }

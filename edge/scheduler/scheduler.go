@@ -6,11 +6,12 @@ package scheduler
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
+
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -58,13 +59,21 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 	for _, schedule := range schedules {
 		managedSchedule, exists := manager.managedSchedules[schedule.ID]
 		if exists && managedSchedule.Version != schedule.Version {
-			log.Printf("[DEBUG] [edge,scheduler] [schedule_id: %d] [version: %d] [message: Found schedule with new version]", schedule.ID, schedule.Version)
+			log.Debug().
+				Int("schedule_id", schedule.ID).
+				Int("version", schedule.Version).
+				Msg("found schedule with new version")
+
 			updateRequired = true
 			break
 		}
 
 		if schedule.CollectLogs {
-			log.Printf("[DEBUG] [edge,scheduler] [schedule_id: %d] [version: %d] [message: Found schedule with logs to collect]", schedule.ID, schedule.Version)
+			log.Debug().
+				Int("schedule_id", schedule.ID).
+				Int("version", schedule.Version).
+				Msg("found schedule with logs to collect")
+
 			updateRequired = true
 			break
 		}
@@ -80,7 +89,8 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 func (manager *CronManager) removeCronFile() error {
 	manager.managedSchedules = map[int]agent.Schedule{}
 	if manager.cronFileExists {
-		log.Println("[DEBUG] [edge,scheduler] [message: no schedules available, removing cron file]")
+		log.Debug().Msg("no schedules available, removing cron file")
+
 		manager.cronFileExists = false
 		return filesystem.RemoveFile(fmt.Sprintf("%s%s/%s", agent.HostRoot, cronDirectory, cronFile))
 	}
@@ -102,13 +112,14 @@ func (manager *CronManager) flushEntries(schedules map[int]agent.Schedule) error
 	for _, schedule := range schedules {
 		cronEntry, err := createCronEntry(&schedule)
 		if err != nil {
-			log.Printf("[ERROR] [edge,scheduler] [schedule_id: %d] [message: Unable to create cron entry] [err: %s]", schedule.ID, err)
+			log.Error().Int("schedule_id", schedule.ID).Stack().Err(err).Msg("unable to create cron entry")
+
 			return err
 		}
 		cronEntries = append(cronEntries, cronEntry)
 	}
 
-	log.Printf("[DEBUG] [edge,scheduler] [schedule_count: %d] [message: Writing cron file on disk]", len(manager.managedSchedules))
+	log.Debug().Int("schedule_count", len(manager.managedSchedules)).Msg("writing cron file on disk")
 
 	cronEntries = append(cronEntries, "")
 	cronFileContent := strings.Join(cronEntries, "\n")
