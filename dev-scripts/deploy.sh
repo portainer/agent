@@ -100,6 +100,7 @@ function deploy_standalone() {
     -e EDGE=${edge} \
     -e EDGE_ID="${edge_id}" \
     -e EDGE_KEY="${edge_key}" \
+    -e AGENT_IMAGE_PREFIX="portainerci/agent" \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /var/lib/docker/volumes:/var/lib/docker/volumes \
     -v /:/host \

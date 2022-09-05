@@ -110,11 +110,18 @@ func getAgentContainerId() (string, error) {
 
 func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId string, version string) (string, error) {
 	log.Printf("[DEBUG] [edge] [message: creating portainer-updater container]")
+
+	agentImagePrefix := os.Getenv("AGENT_IMAGE_PREFIX")
+	if agentImagePrefix == "" {
+		agentImagePrefix = "portainer/agent"
+	}
+
+	agentImage := fmt.Sprintf("%s:%s", agentImagePrefix, version)
+
 	updaterContainer, err := cli.ContainerCreate(ctx,
 		&container.Config{
 			Image: "portainer/portainer-updater:latest",
-			Cmd:   []string{"agent-update", agentContainerId, version},
-			Env:   []string{"DEV=1"}, // TODO: remove or get from env
+			Cmd:   []string{"agent-update", agentContainerId, agentImage},
 		},
 		&container.HostConfig{
 			Binds: []string{
