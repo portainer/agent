@@ -2,13 +2,13 @@ package http
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
-
 	"github.com/portainer/agent/edge"
+
+	"github.com/gorilla/mux"
+	"github.com/rs/zerolog/log"
 )
 
 // EdgeServer expose an UI to associate an Edge key with the agent.
@@ -76,7 +76,7 @@ func (server *EdgeServer) handleKeySetup() http.HandlerFunc {
 func (server *EdgeServer) propagateKeyInCluster() {
 	err := server.edgeManager.PropagateKeyInCluster()
 	if err != nil {
-		log.Printf("[ERROR] [http] [message: Unable to propagate key to cluster] [err: %s]", err)
+		log.Error().Err(err).Msg("unable to propagate key to cluster")
 	}
 }
 

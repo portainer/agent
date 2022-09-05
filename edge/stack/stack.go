@@ -3,7 +3,6 @@ package stack
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -15,6 +14,8 @@ import (
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/nomad"
+
+	"github.com/rs/zerolog/log"
 )
 
 type edgeStackID int
@@ -120,12 +121,15 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 		if stack.Version == version {
 			return nil // stack is unchanged
 		}
-		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for update]", stackID)
+
+		log.Debug().Int("stack_identifier", stackID).Msg("marking stack for update")
+
 		stack.Action = actionUpdate
 		stack.Version = version
 		stack.Status = StatusPending
 	} else {
-		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for deployment]", stackID)
+		log.Debug().Int("stack_identifier", stackID).Msg("marking stack for deployment")
+
 		stack = &edgeStack{
 			ID:      edgeStackID(stackID),
 			Action:  actionDeploy,
@@ -172,7 +176,8 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]int) {
 	for stackID, stack := range manager.stacks {
 		if _, ok := pollResponseStacks[int(stackID)]; !ok {
-			log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: marking stack for deletion]", stackID)
+			log.Debug().Int("stack_identifier", int(stackID)).Msg("marking stack for deletion")
+
 			stack.Action = actionDelete
 			stack.Status = StatusPending
 
@@ -208,7 +213,8 @@ func (manager *StackManager) Start() error {
 		for {
 			select {
 			case <-manager.stopSignal:
-				log.Println("[DEBUG] [edge,stack] [message: shutting down Edge stack manager]")
+				log.Debug().Msg("shutting down Edge stack manager")
+
 				return
 			default:
 				stack := manager.nextPendingStack()
@@ -253,7 +259,8 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: stack deployment]", stack.ID)
+	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("stack deployment")
+
 	stack.Status = StatusDeploying
 	stack.Action = actionIdle
 	responseStatus := int(EdgeStackStatusOk)
@@ -261,12 +268,14 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 	err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
 	if err != nil {
-		log.Printf("[ERROR] [edge,stack] [message: stack deployment failed] [error: %s]", err)
+		log.Error().Err(err).Msg("stack deployment failed")
+
 		stack.Status = StatusError
 		responseStatus = int(EdgeStackStatusError)
 		errorMessage = err.Error()
 	} else {
-		log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [stack_version: %d] [message: stack deployed]", stack.ID, stack.Version)
+		log.Debug().Int("stack_identifier", int(stack.ID)).Int("stack_version", stack.Version).Msg("stack deployed")
+
 		stack.Status = StatusDone
 	}
 
@@ -274,29 +283,32 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 	err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), responseStatus, errorMessage)
 	if err != nil {
-		log.Printf("[ERROR] [edge,stack] [message: unable to update Edge stack status] [error: %s]", err)
+		log.Error().Err(err).Msg("unable to update Edge stack status")
 	}
 }
 
 func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
-	log.Printf("[DEBUG] [edge,stack] [stack_identifier: %d] [message: removing stack]", stack.ID)
+	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("removing stack")
 
 	err := manager.deployer.Remove(ctx, stackName, []string{stackFileLocation})
 	if err != nil {
-		log.Printf("[ERROR] [edge,stack] [message: unable to remove stack] [error: %s]", err)
+		log.Error().Err(err).Msg("unable to remove stack")
+
 		return
 	}
 
 	// Remove stack file folder
 	err = os.RemoveAll(filepath.Dir(stackFileLocation))
 	if err != nil {
-		log.Printf("[ERROR] [edge,stack] [message: unable to delete Edge stack file] [error: %s]", err)
+		log.Error().Err(err).Msg("unable to delete Edge stack file")
+
 		return
 	}
 
 	err = manager.portainerClient.DeleteEdgeStackStatus(int(stack.ID))
 	if err != nil {
-		log.Printf("[ERROR] [internal,edge,stack] [message: unable to delete Edge stack status] [error: %s]", err)
+		log.Error().Err(err).Msg("unable to delete Edge stack status")
+
 		return
 	}
 
