@@ -17,12 +17,13 @@ import (
 
 // PortainerEdgeClient is used to execute HTTP requests against the Portainer API
 type PortainerEdgeClient struct {
-	httpClient      *http.Client
-	serverAddress   string
-	setEndpointIDFn setEndpointIDFn
-	getEndpointIDFn getEndpointIDFn
-	edgeID          string
-	agentPlatform   agent.ContainerPlatform
+	httpClient       *http.Client
+	serverAddress    string
+	setEndpointIDFn  setEndpointIDFn
+	getEndpointIDFn  getEndpointIDFn
+	edgeID           string
+	agentPlatform    agent.ContainerPlatform
+	updateScheduleID int
 }
 
 type globalKeyResponse struct {
@@ -30,14 +31,24 @@ type globalKeyResponse struct {
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
-func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
+func NewPortainerEdgeClient(
+	serverAddress string,
+	setEIDFn setEndpointIDFn,
+	getEIDFn getEndpointIDFn,
+	edgeID string,
+	agentPlatform agent.ContainerPlatform,
+	httpClient *http.Client,
+	updateScheduleID int,
+) *PortainerEdgeClient {
+
 	return &PortainerEdgeClient{
-		serverAddress:   serverAddress,
-		setEndpointIDFn: setEIDFn,
-		getEndpointIDFn: getEIDFn,
-		edgeID:          edgeID,
-		agentPlatform:   agentPlatform,
-		httpClient:      httpClient,
+		serverAddress:    serverAddress,
+		setEndpointIDFn:  setEIDFn,
+		getEndpointIDFn:  getEIDFn,
+		edgeID:           edgeID,
+		agentPlatform:    agentPlatform,
+		httpClient:       httpClient,
+		updateScheduleID: updateScheduleID,
 	}
 }
 
@@ -85,6 +96,10 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
+	log.Printf("[DEBUG] [edge,client] [message: sending update schedule id] [schedule_id: %d]", client.updateScheduleID)
+	if client.updateScheduleID != 0 {
+		req.Header.Set(agent.HTTPUpdateScheduleIDHeaderName, strconv.Itoa(client.updateScheduleID))
+	}
 
 	log.Debug().Int("header", int(client.agentPlatform)).Msg("sending agent platform header")
 

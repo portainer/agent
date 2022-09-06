@@ -30,6 +30,7 @@ type PortainerAsyncClient struct {
 	edgeID                  string
 	agentPlatformIdentifier agent.ContainerPlatform
 	commandTimestamp        *time.Time
+	updateScheduleID        int
 
 	lastAsyncResponse      AsyncResponse
 	lastAsyncResponseMutex sync.Mutex
@@ -41,7 +42,7 @@ type PortainerAsyncClient struct {
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
-func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerAsyncClient {
+func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client, updateScheduleID int) *PortainerAsyncClient {
 	initialCommandTimestamp := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	return &PortainerAsyncClient{
 		serverAddress:           serverAddress,
@@ -51,6 +52,7 @@ func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, get
 		httpClient:              httpClient,
 		agentPlatformIdentifier: containerPlatform,
 		commandTimestamp:        &initialCommandTimestamp,
+		updateScheduleID:        updateScheduleID,
 	}
 }
 
@@ -62,6 +64,7 @@ type AsyncRequest struct {
 	CommandTimestamp *time.Time           `json:"commandTimestamp,omitempty"`
 	Snapshot         *snapshot            `json:"snapshot,omitempty"`
 	EndpointId       portainer.EndpointID `json:"endpointId,omitempty"`
+	UpdateScheduleID int                  `json:"updateScheduleId,omitempty"`
 }
 
 type EndpointLog struct {
@@ -265,6 +268,10 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 
 	if doCommand {
 		payload.CommandTimestamp = client.commandTimestamp
+	}
+
+	if client.updateScheduleID != -1 {
+		payload.UpdateScheduleID = client.updateScheduleID
 	}
 
 	client.lastAsyncResponseMutex.Lock()

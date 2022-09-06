@@ -61,10 +61,10 @@ type setEndpointIDFn func(portainer.EndpointID)
 type getEndpointIDFn func() portainer.EndpointID
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, httpClient *http.Client) PortainerClient {
+func NewPortainerClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, httpClient *http.Client, updateScheduleID int) PortainerClient {
 	if edgeAsyncMode {
-		return NewPortainerAsyncClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient)
+		return NewPortainerAsyncClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient, updateScheduleID)
 	}
 
-	return NewPortainerEdgeClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient)
+	return NewPortainerEdgeClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient, updateScheduleID)
 }

@@ -40,6 +40,7 @@ type PollService struct {
 	portainerURL             string
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
+	updateScheduleID         int
 
 	// Async mode only
 	pingInterval     time.Duration
@@ -68,7 +69,15 @@ type pollServiceConfig struct {
 // The second loop will check for the last activity of the reverse tunnel and close the tunnel if it exceeds the tunnel
 // inactivity duration.
 // If TunnelCapability is disabled, it will only poll for Edge stacks and schedule without managing reverse tunnels.
-func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, logsManager *scheduler.LogsManager, config *pollServiceConfig, portainerClient client.PortainerClient, edgeAsyncMode bool) (*PollService, error) {
+func newPollService(
+	edgeManager *Manager,
+	edgeStackManager *stack.StackManager,
+	logsManager *scheduler.LogsManager,
+	config *pollServiceConfig,
+	portainerClient client.PortainerClient,
+	edgeAsyncMode bool,
+	updateScheduleID int,
+) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
 		return nil, err
@@ -94,6 +103,7 @@ func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, 
 		tunnelServerAddr:         config.TunnelServerAddr,
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
 		portainerClient:          portainerClient,
+		updateScheduleID:         updateScheduleID,
 	}
 
 	if config.TunnelCapability {
@@ -234,7 +244,7 @@ func (service *PollService) poll() error {
 }
 
 func (service *PollService) processUpdate(versionUpdate client.VersionUpdate) error {
-	if !versionUpdate.Active || versionUpdate.ScheduledTime > time.Now().Unix() {
+	if !versionUpdate.Active || versionUpdate.ScheduledTime > time.Now().Unix() || versionUpdate.ScheduleID == service.updateScheduleID {
 		return nil
 	}
 

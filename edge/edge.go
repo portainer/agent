@@ -97,6 +97,8 @@ func (manager *Manager) Start() error {
 		agentPlatform = agent.PlatformDocker
 	}
 
+	updateScheduleID := getUpdateScheduleID()
+
 	portainerClient := client.NewPortainerClient(
 		manager.key.PortainerInstanceURL,
 		manager.SetEndpointID,
@@ -105,6 +107,7 @@ func (manager *Manager) Start() error {
 		manager.agentOptions.EdgeAsyncMode,
 		agentPlatform,
 		buildHTTPClient(10, manager.agentOptions),
+		updateScheduleID,
 	)
 
 	manager.stackManager = stack.NewStackManager(
@@ -122,6 +125,7 @@ func (manager *Manager) Start() error {
 		pollServiceConfig,
 		portainerClient,
 		manager.agentOptions.EdgeAsyncMode,
+		updateScheduleID,
 	)
 	if err != nil {
 		return err
