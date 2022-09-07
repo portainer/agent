@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge/client"
@@ -148,7 +149,10 @@ func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 		return err
 	}
 
-	service.processUpdate(status.VersionUpdate)
+	err = service.processUpdate(status.VersionUpdate)
+	if err != nil {
+		return errors.WithMessage(err, "unable to process update")
+	}
 
 	err = service.processAsyncCommands(status.AsyncCommands)
 	if err != nil {

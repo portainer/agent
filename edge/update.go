@@ -49,7 +49,12 @@ func (manager *Manager) updateAgent(version string, updateScheduleId int) error 
 	}
 
 	log.Printf("[DEBUG] [edge] [message: running portainer-updater container]")
+
 	updaterContainerId, err := runUpdate(ctx, cli, agentContainerId, version, updateScheduleId)
+
+	log.Printf("[ERROR] [edge,update] [message: update failed] [schedule_id: %d] [version: %s] [error: %s]", updateScheduleId, version, err)
+
+	// everything after this line runs only if update failed (on success it will start a new container)
 	defer clean(ctx, cli, updaterContainerId)
 	if err != nil {
 		return errors.WithMessage(err, "unable to run update")
@@ -157,6 +162,13 @@ func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId stri
 		}
 	case <-statusCh:
 	}
+
+	containerInspectResult, err := cli.ContainerInspect(ctx, updaterContainer.ID)
+	if err != nil {
+		return updaterContainer.ID, errors.WithMessage(err, "unable to inspect container")
+	}
+
+	if containerInspectResult.State.ExitCode !=
 
 	return updaterContainer.ID, nil
 }

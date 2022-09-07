@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/chisel"
 	"github.com/portainer/agent/edge/client"
@@ -149,7 +150,7 @@ func (service *PollService) startStatusPollLoop() {
 		case <-pollCh:
 			err := service.poll()
 			if err != nil {
-				log.Error().Err(err).Msg("an error occured during short poll")
+				log.Error().Err(err).Msg("an error occurred during short poll")
 			}
 		case <-service.startSignal:
 			pollCh = service.pollTicker.C
@@ -225,7 +226,10 @@ func (service *PollService) poll() error {
 		return tunnelErr
 	}
 
-	service.processUpdate(environmentStatus.VersionUpdate)
+	err = service.processUpdate(environmentStatus.VersionUpdate)
+	if err != nil {
+		return errors.WithMessage(err, "unable to process update")
+	}
 
 	service.processSchedules(environmentStatus.Schedules)
 
