@@ -89,7 +89,7 @@ func (service *PollService) startStatusPollLoopAsync() {
 
 		err := service.pollAsync(snapshotFlag, commandFlag)
 		if err != nil {
-			log.Error().Err(err).Msg("an error occured during async poll")
+			log.Error().Err(err).Msg("an error occurred during async poll")
 		}
 
 		snapshotFlag, commandFlag, coalescingFlag = false, false, false
@@ -99,7 +99,7 @@ func (service *PollService) startStatusPollLoopAsync() {
 		commandCh = service.commandTicker.C
 	}
 
-	ping()
+	go ping()
 
 	for {
 		select {
@@ -116,7 +116,7 @@ func (service *PollService) startStatusPollLoopAsync() {
 
 		case <-coalescingTicker.C:
 			coalescingTicker.Stop()
-			ping()
+			go ping()
 
 		case <-service.startSignal:
 			pingCh = service.pingTicker.C
