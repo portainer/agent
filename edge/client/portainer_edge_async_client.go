@@ -92,6 +92,7 @@ type AsyncResponse struct {
 	PingInterval     time.Duration `json:"pingInterval"`
 	SnapshotInterval time.Duration `json:"snapshotInterval"`
 	CommandInterval  time.Duration `json:"commandInterval"`
+	VersionUpdate    VersionUpdate `json:"versionUpdate"`
 
 	EndpointID portainer.EndpointID `json:"endpointID"`
 	Commands   []AsyncCommand       `json:"commands"`
@@ -299,6 +300,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		PingInterval:     asyncResponse.PingInterval,
 		SnapshotInterval: asyncResponse.SnapshotInterval,
 		CommandInterval:  asyncResponse.CommandInterval,
+		VersionUpdate:    asyncResponse.VersionUpdate,
 	}
 
 	client.lastAsyncResponse = *asyncResponse
