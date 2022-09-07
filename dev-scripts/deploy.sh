@@ -13,16 +13,19 @@ ips=()
 edge=0
 edge_id=""
 edge_key=""
+image_name=""
 
 LOG_LEVEL=DEBUG
 
 function deploy_command() {
     parse_deploy_params "${@:1}"
-    local ret_value=""
     
-    default_image_name
-    local IMAGE_NAME=$ret_value
-    
+    local IMAGE_NAME=$image_name
+    if [[ -z "$image_name" ]]; then
+        local ret_value=""
+        default_image_name
+        IMAGE_NAME=$ret_value
+    fi
     deploy
 }
 
@@ -208,6 +211,10 @@ function parse_deploy_params() {
             ;;
             --ip)
                 ips+=("$2")
+                shift
+            ;;
+            --image-name)
+                image_name=$2
                 shift
             ;;
             -?*) die "Unknown option: $1" ;;
