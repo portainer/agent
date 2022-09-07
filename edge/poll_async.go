@@ -58,7 +58,9 @@ func (service *PollService) startStatusPollLoopAsync() {
 
 	log.Debug().Msg("starting Portainer async polling client")
 
-	var snapshotFlag, commandFlag, coalescingFlag bool
+	snapshotFlag := true
+	commandFlag := true
+	coalescingFlag := false
 
 	service.pingTicker = createTicker(service.pingInterval)
 	pingCh = service.pingTicker.C
@@ -81,6 +83,24 @@ func (service *PollService) startStatusPollLoopAsync() {
 		}
 	}
 
+	ping := func() {
+
+		log.Debug().Bool("snapshot", snapshotFlag).Bool("command", commandFlag).Msg("sending async-poll")
+
+		err := service.pollAsync(snapshotFlag, commandFlag)
+		if err != nil {
+			log.Error().Err(err).Msg("an error occured during async poll")
+		}
+
+		snapshotFlag, commandFlag, coalescingFlag = false, false, false
+
+		pingCh = service.pingTicker.C
+		snapshotCh = service.snapshotTicker.C
+		commandCh = service.commandTicker.C
+	}
+
+	ping()
+
 	for {
 		select {
 		case <-pingCh:
@@ -96,19 +116,7 @@ func (service *PollService) startStatusPollLoopAsync() {
 
 		case <-coalescingTicker.C:
 			coalescingTicker.Stop()
-
-			log.Debug().Bool("snapshot", snapshotFlag).Bool("command", commandFlag).Msg("sending async-poll")
-
-			err := service.pollAsync(snapshotFlag, commandFlag)
-			if err != nil {
-				log.Error().Err(err).Msg("an error occured during async poll")
-			}
-
-			snapshotFlag, commandFlag, coalescingFlag = false, false, false
-
-			pingCh = service.pingTicker.C
-			snapshotCh = service.snapshotTicker.C
-			commandCh = service.commandTicker.C
+			ping()
 
 		case <-service.startSignal:
 			pingCh = service.pingTicker.C
@@ -124,6 +132,7 @@ func (service *PollService) startStatusPollLoopAsync() {
 }
 
 func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
+	log.Printf("[DEBUG] [edge] [async] [message: polling Portainer] [snapshot: %t] [command: %t]", doSnapshot, doCommand)
 	flags := []string{}
 
 	if doSnapshot {
@@ -139,6 +148,8 @@ func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 		return err
 	}
 
+	service.processUpdate(status.VersionUpdate)
+
 	err = service.processAsyncCommands(status.AsyncCommands)
 	if err != nil {
 		return err
@@ -149,6 +160,8 @@ func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 	if status.PingInterval != service.pingInterval ||
 		status.SnapshotInterval != service.snapshotInterval ||
 		status.CommandInterval != service.commandInterval {
+
+		log.Printf("[DEBUG] [edge] [async] [message: updating polling intervals] [ping: %s] [snapshot: %s] [command: %s]", status.PingInterval, status.SnapshotInterval, status.CommandInterval)
 
 		service.pingInterval = status.PingInterval
 		service.snapshotInterval = status.SnapshotInterval

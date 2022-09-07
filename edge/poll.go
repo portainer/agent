@@ -245,6 +245,7 @@ func (service *PollService) poll() error {
 
 func (service *PollService) processUpdate(versionUpdate client.VersionUpdate) error {
 	if !versionUpdate.Active || versionUpdate.ScheduledTime > time.Now().Unix() || versionUpdate.ScheduleID == service.updateScheduleID {
+		log.Printf("[DEBUG] [edge] [message: no update available] [active: %t] [scheduled_time: %d] [current_time: %d] [schedule_id: %d] [current_schedule_id: %d]", versionUpdate.Active, versionUpdate.ScheduledTime, time.Now().Unix(), versionUpdate.ScheduleID, service.updateScheduleID)
 		return nil
 	}
 
