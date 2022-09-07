@@ -13,6 +13,7 @@ ips=()
 edge=0
 edge_id=""
 edge_key=""
+edge_async=0
 image_name=""
 
 LOG_LEVEL=DEBUG
@@ -103,6 +104,7 @@ function deploy_standalone() {
     -e EDGE=${edge} \
     -e EDGE_ID="${edge_id}" \
     -e EDGE_KEY="${edge_key}" \
+    -e EDGE_ASYNC=${edge_async} \
     -e AGENT_IMAGE_PREFIX="portainerci/agent" \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /var/lib/docker/volumes:/var/lib/docker/volumes \
@@ -166,6 +168,7 @@ function deploy_swarm() {
     -e EDGE=${edge} \
     -e EDGE_ID="${edge_id}" \
     -e EDGE_KEY="${edge_key}" \
+    -e EDGE_ASYNC=${edge_async} \
     --mode global \
     --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
     --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
@@ -208,6 +211,9 @@ function parse_deploy_params() {
             --edge-key)
                 edge_key=$2
                 shift
+            ;;
+            --edge-async)
+                edge_async=1
             ;;
             --ip)
                 ips+=("$2")
