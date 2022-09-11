@@ -12,18 +12,18 @@ import (
 	"github.com/portainer/agent"
 	portainer "github.com/portainer/portainer/api"
 
+	"github.com/portainer/portainer/api/edgetypes"
 	"github.com/rs/zerolog/log"
 )
 
 // PortainerEdgeClient is used to execute HTTP requests against the Portainer API
 type PortainerEdgeClient struct {
-	httpClient       *http.Client
-	serverAddress    string
-	setEndpointIDFn  setEndpointIDFn
-	getEndpointIDFn  getEndpointIDFn
-	edgeID           string
-	agentPlatform    agent.ContainerPlatform
-	updateScheduleID int
+	httpClient      *http.Client
+	serverAddress   string
+	setEndpointIDFn setEndpointIDFn
+	getEndpointIDFn getEndpointIDFn
+	edgeID          string
+	agentPlatform   agent.ContainerPlatform
 }
 
 type globalKeyResponse struct {
@@ -38,17 +38,15 @@ func NewPortainerEdgeClient(
 	edgeID string,
 	agentPlatform agent.ContainerPlatform,
 	httpClient *http.Client,
-	updateScheduleID int,
 ) *PortainerEdgeClient {
 
 	return &PortainerEdgeClient{
-		serverAddress:    serverAddress,
-		setEndpointIDFn:  setEIDFn,
-		getEndpointIDFn:  getEIDFn,
-		edgeID:           edgeID,
-		agentPlatform:    agentPlatform,
-		httpClient:       httpClient,
-		updateScheduleID: updateScheduleID,
+		serverAddress:   serverAddress,
+		setEndpointIDFn: setEIDFn,
+		getEndpointIDFn: getEIDFn,
+		edgeID:          edgeID,
+		agentPlatform:   agentPlatform,
+		httpClient:      httpClient,
 	}
 }
 
@@ -96,9 +94,10 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(options EnvironmentStatu
 	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
-	log.Printf("[DEBUG] [edge,client] [message: sending update schedule id] [schedule_id: %d]", client.updateScheduleID)
-	if client.updateScheduleID != 0 {
-		req.Header.Set(agent.HTTPUpdateScheduleIDHeaderName, strconv.Itoa(client.updateScheduleID))
+	if options.VersionUpdateStatus != nil {
+		req.Header.Set(edgetypes.PortainerAgentUpdateScheduleIDHeader, strconv.Itoa(int(options.VersionUpdateStatus.ScheduleID)))
+		req.Header.Set(edgetypes.PortainerAgentUpdateStatusHeader, strconv.Itoa(int(options.VersionUpdateStatus.Status)))
+		req.Header.Set(edgetypes.PortainerAgentUpdateErrorHeader, options.VersionUpdateStatus.Error)
 	}
 
 	log.Debug().Int("header", int(client.agentPlatform)).Msg("sending agent platform header")
@@ -272,7 +271,6 @@ func (client *PortainerEdgeClient) ProcessAsyncCommands() error {
 }
 
 func (client *PortainerEdgeClient) SetLastCommandTimestamp(timestamp time.Time) {
-	return // edge mode only
 }
 
 func (client *PortainerEdgeClient) EnqueueLogCollectionForStack(logCmd LogCommandData) error {

@@ -5,13 +5,15 @@ import (
 	"time"
 
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/edgetypes"
 
 	"github.com/portainer/agent"
 )
 
 type EnvironmentStatusOptions struct {
-	DoSnapshot bool
-	DoCommand  bool
+	DoSnapshot          bool
+	DoCommand           bool
+	VersionUpdateStatus *edgetypes.VersionUpdateStatus
 }
 
 type PortainerClient interface {
@@ -27,13 +29,13 @@ type PortainerClient interface {
 }
 
 type PollStatusResponse struct {
-	Status          string           `json:"status"`
-	Port            int              `json:"port"`
-	Schedules       []agent.Schedule `json:"schedules"`
-	CheckinInterval float64          `json:"checkin"`
-	Credentials     string           `json:"credentials"`
-	Stacks          []StackStatus    `json:"stacks"`
-	VersionUpdate   VersionUpdate    `json:"versionUpdate"`
+	Status          string                         `json:"status"`
+	Port            int                            `json:"port"`
+	Schedules       []agent.Schedule               `json:"schedules"`
+	CheckinInterval float64                        `json:"checkin"`
+	Credentials     string                         `json:"credentials"`
+	Stacks          []StackStatus                  `json:"stacks"`
+	VersionUpdate   edgetypes.VersionUpdateRequest `json:"versionUpdate"`
 
 	// Async mode only
 	EndpointID       int            `json:"endpointID"`
@@ -51,25 +53,14 @@ type StackStatus struct {
 	CommandOperation string // used in async mode
 }
 
-type VersionUpdate struct {
-	// Target version
-	Version string
-	// Scheduled time
-	ScheduledTime int64
-	// If need to update
-	Active bool
-	// Update schedule ID
-	ScheduleID int
-}
-
 type setEndpointIDFn func(portainer.EndpointID)
 type getEndpointIDFn func() portainer.EndpointID
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, httpClient *http.Client, updateScheduleID int) PortainerClient {
+func NewPortainerClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, httpClient *http.Client) PortainerClient {
 	if edgeAsyncMode {
-		return NewPortainerAsyncClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient, updateScheduleID)
+		return NewPortainerAsyncClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient)
 	}
 
-	return NewPortainerEdgeClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient, updateScheduleID)
+	return NewPortainerEdgeClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient)
 }

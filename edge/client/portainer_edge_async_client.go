@@ -17,6 +17,7 @@ import (
 	"github.com/portainer/agent/kubernetes"
 	portainer "github.com/portainer/portainer/api"
 
+	"github.com/portainer/portainer/api/edgetypes"
 	"github.com/rs/zerolog/log"
 	"github.com/wI2L/jsondiff"
 )
@@ -30,7 +31,6 @@ type PortainerAsyncClient struct {
 	edgeID                  string
 	agentPlatformIdentifier agent.ContainerPlatform
 	commandTimestamp        *time.Time
-	updateScheduleID        int
 
 	lastAsyncResponse      AsyncResponse
 	lastAsyncResponseMutex sync.Mutex
@@ -42,7 +42,7 @@ type PortainerAsyncClient struct {
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
-func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client, updateScheduleID int) *PortainerAsyncClient {
+func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerAsyncClient {
 	initialCommandTimestamp := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	return &PortainerAsyncClient{
 		serverAddress:           serverAddress,
@@ -52,7 +52,6 @@ func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, get
 		httpClient:              httpClient,
 		agentPlatformIdentifier: containerPlatform,
 		commandTimestamp:        &initialCommandTimestamp,
-		updateScheduleID:        updateScheduleID,
 	}
 }
 
@@ -61,10 +60,10 @@ func (client *PortainerAsyncClient) SetTimeout(t time.Duration) {
 }
 
 type AsyncRequest struct {
-	CommandTimestamp *time.Time           `json:"commandTimestamp,omitempty"`
-	Snapshot         *snapshot            `json:"snapshot,omitempty"`
-	EndpointId       portainer.EndpointID `json:"endpointId,omitempty"`
-	UpdateScheduleID int                  `json:"updateScheduleId,omitempty"`
+	CommandTimestamp    *time.Time                     `json:"commandTimestamp,omitempty"`
+	Snapshot            *snapshot                      `json:"snapshot,omitempty"`
+	EndpointId          portainer.EndpointID           `json:"endpointId,omitempty"`
+	VersionUpdateStatus *edgetypes.VersionUpdateStatus `json:"versionUpdateStatus,omitempty"`
 }
 
 type EndpointLog struct {
@@ -89,10 +88,10 @@ type snapshot struct {
 }
 
 type AsyncResponse struct {
-	PingInterval     time.Duration `json:"pingInterval"`
-	SnapshotInterval time.Duration `json:"snapshotInterval"`
-	CommandInterval  time.Duration `json:"commandInterval"`
-	VersionUpdate    VersionUpdate `json:"versionUpdate"`
+	PingInterval     time.Duration                  `json:"pingInterval"`
+	SnapshotInterval time.Duration                  `json:"snapshotInterval"`
+	CommandInterval  time.Duration                  `json:"commandInterval"`
+	VersionUpdate    edgetypes.VersionUpdateRequest `json:"versionUpdate"`
 
 	EndpointID portainer.EndpointID `json:"endpointID"`
 	Commands   []AsyncCommand       `json:"commands"`
@@ -262,9 +261,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(options EnvironmentStat
 		payload.CommandTimestamp = client.commandTimestamp
 	}
 
-	if client.updateScheduleID != -1 {
-		payload.UpdateScheduleID = client.updateScheduleID
-	}
+	payload.VersionUpdateStatus = options.VersionUpdateStatus
 
 	client.lastAsyncResponseMutex.Lock()
 	defer client.lastAsyncResponseMutex.Unlock()

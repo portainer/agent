@@ -4,13 +4,15 @@ import (
 	"log"
 	"os"
 	"strconv"
+
+	"github.com/portainer/portainer/api/edgetypes"
 )
 
 const (
 	envKeyUpdateScheduleID = "UPDATE_SCHEDULE_ID"
 )
 
-func getUpdateScheduleID() int {
+func getUpdateScheduleID() edgetypes.UpdateScheduleID {
 	str := os.Getenv(envKeyUpdateScheduleID)
 	if str == "" {
 		return 0
@@ -22,5 +24,5 @@ func getUpdateScheduleID() int {
 		return 0
 	}
 
-	return id
+	return edgetypes.UpdateScheduleID(id)
 }

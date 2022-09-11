@@ -18,6 +18,7 @@ import (
 	"github.com/portainer/agent/edge/stack"
 	portainer "github.com/portainer/portainer/api"
 
+	"github.com/portainer/portainer/api/edgetypes"
 	"github.com/rs/zerolog/log"
 )
 
@@ -68,6 +69,7 @@ func (manager *Manager) Start() error {
 	}
 
 	apiServerAddr := fmt.Sprintf("%s:%s", manager.advertiseAddr, manager.agentOptions.AgentServerPort)
+	updateScheduleID := getUpdateScheduleID()
 
 	pollServiceConfig := &pollServiceConfig{
 		APIServerAddr:           apiServerAddr,
@@ -79,6 +81,12 @@ func (manager *Manager) Start() error {
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
 		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
 		ContainerPlatform:       manager.containerPlatform,
+		versionUpdateStatus:     edgetypes.VersionUpdateStatus{},
+	}
+
+	if updateScheduleID != 0 {
+		pollServiceConfig.versionUpdateStatus.ScheduleID = updateScheduleID
+		pollServiceConfig.versionUpdateStatus.Status = edgetypes.UpdateScheduleStatusSuccess
 	}
 
 	log.Debug().
@@ -97,8 +105,6 @@ func (manager *Manager) Start() error {
 		agentPlatform = agent.PlatformDocker
 	}
 
-	updateScheduleID := getUpdateScheduleID()
-
 	portainerClient := client.NewPortainerClient(
 		manager.key.PortainerInstanceURL,
 		manager.SetEndpointID,
@@ -107,7 +113,6 @@ func (manager *Manager) Start() error {
 		manager.agentOptions.EdgeAsyncMode,
 		agentPlatform,
 		buildHTTPClient(10, manager.agentOptions),
-		updateScheduleID,
 	)
 
 	manager.stackManager = stack.NewStackManager(

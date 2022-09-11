@@ -13,6 +13,7 @@ import (
 	"github.com/portainer/agent/edge/stack"
 	"github.com/portainer/libcrypto"
 
+	"github.com/portainer/portainer/api/edgetypes"
 	"github.com/rs/zerolog/log"
 )
 
@@ -41,7 +42,7 @@ type PollService struct {
 	portainerURL             string
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
-	updateScheduleID         int
+	versionUpdateStatus      edgetypes.VersionUpdateStatus
 
 	// Async mode only
 	pingInterval     time.Duration
@@ -62,6 +63,7 @@ type pollServiceConfig struct {
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
 	ContainerPlatform       agent.ContainerPlatform
+	versionUpdateStatus     edgetypes.VersionUpdateStatus
 }
 
 // newPollService returns a pointer to a new instance of PollService, and will start two loops in go routines.
@@ -77,7 +79,7 @@ func newPollService(
 	config *pollServiceConfig,
 	portainerClient client.PortainerClient,
 	edgeAsyncMode bool,
-	updateScheduleID int,
+	updateScheduleID edgetypes.UpdateScheduleID,
 ) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
@@ -104,7 +106,11 @@ func newPollService(
 		tunnelServerAddr:         config.TunnelServerAddr,
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
 		portainerClient:          portainerClient,
-		updateScheduleID:         updateScheduleID,
+		versionUpdateStatus:      edgetypes.VersionUpdateStatus{},
+	}
+
+	if updateScheduleID != 0 {
+		pollService.versionUpdateStatus.ScheduleID = updateScheduleID
 	}
 
 	if config.TunnelCapability {
@@ -209,7 +215,9 @@ func (service *PollService) poll() error {
 		service.edgeManager.SetEndpointID(endpointID)
 	}
 
-	environmentStatus, err := service.portainerClient.GetEnvironmentStatus(client.EnvironmentStatusOptions{})
+	environmentStatus, err := service.portainerClient.GetEnvironmentStatus(client.EnvironmentStatusOptions{
+		VersionUpdateStatus: &service.versionUpdateStatus,
+	})
 	if err != nil {
 		return err
 	}
@@ -247,11 +255,17 @@ func (service *PollService) poll() error {
 	return service.processStacks(environmentStatus.Stacks)
 }
 
-func (service *PollService) processUpdate(versionUpdate client.VersionUpdate) error {
-	if !versionUpdate.Active || versionUpdate.ScheduledTime > time.Now().Unix() || versionUpdate.ScheduleID == service.updateScheduleID {
-		log.Printf("[DEBUG] [edge] [message: no update available] [active: %t] [scheduled_time: %d] [current_time: %d] [schedule_id: %d] [current_schedule_id: %d]", versionUpdate.Active, versionUpdate.ScheduledTime, time.Now().Unix(), versionUpdate.ScheduleID, service.updateScheduleID)
+func (service *PollService) processUpdate(versionUpdate edgetypes.VersionUpdateRequest) error {
+	if !versionUpdate.Active ||
+		versionUpdate.ScheduledTime > time.Now().Unix() ||
+		(versionUpdate.ScheduleID == service.versionUpdateStatus.ScheduleID && service.versionUpdateStatus.Status == 2) {
+		log.Printf("[DEBUG] [edge] [message: no update available] [active: %t] [scheduled_time: %d] [current_time: %d] [schedule_id: %d] [current_schedule_id: %d]", versionUpdate.Active, versionUpdate.ScheduledTime, time.Now().Unix(), versionUpdate.ScheduleID, service.versionUpdateStatus.ScheduleID)
 		return nil
 	}
+
+	service.versionUpdateStatus.ScheduleID = versionUpdate.ScheduleID
+	service.versionUpdateStatus.Error = ""
+	service.versionUpdateStatus.Status = 0
 
 	log.Printf("[DEBUG] [edge] [message: received update Portainer Edge agent to version %s] [scheduled_time: %d] [now: %d]", versionUpdate.Version, versionUpdate.ScheduledTime, time.Now().Unix())
 
@@ -261,8 +275,15 @@ func (service *PollService) processUpdate(versionUpdate client.VersionUpdate) er
 
 	defer service.Start()
 
-	return service.edgeManager.updateAgent(versionUpdate.Version, versionUpdate.ScheduleID)
+	err := service.edgeManager.updateAgent(versionUpdate.Version, versionUpdate.ScheduleID)
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: unable to update Portainer Edge agent] [error: %s]", err)
+		service.versionUpdateStatus.Error = err.Error()
+		service.versionUpdateStatus.Status = 1
+		return err
+	}
 
+	return nil
 }
 
 func (service *PollService) manageUpdateTunnel(environmentStatus client.PollStatusResponse) error {

@@ -18,7 +18,6 @@ func TestDataRace(t *testing.T) {
 		false,
 		agent.PlatformDocker,
 		&http.Client{},
-		-1,
 	)
 
 	m := NewLogsManager(cli)

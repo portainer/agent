@@ -135,7 +135,13 @@ func (service *PollService) startStatusPollLoopAsync() {
 func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 	log.Printf("[DEBUG] [edge] [async] [message: polling Portainer] [snapshot: %t] [command: %t]", doSnapshot, doCommand)
 
-	status, err := service.portainerClient.GetEnvironmentStatus(client.EnvironmentStatusOptions{DoCommand: doCommand, DoSnapshot: doSnapshot})
+	statusOptions := client.EnvironmentStatusOptions{
+		DoCommand:           doCommand,
+		DoSnapshot:          doSnapshot,
+		VersionUpdateStatus: &service.versionUpdateStatus,
+	}
+
+	status, err := service.portainerClient.GetEnvironmentStatus(statusOptions)
 	if err != nil {
 		return err
 	}

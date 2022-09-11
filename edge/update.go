@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -15,9 +16,10 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
+	"github.com/portainer/portainer/api/edgetypes"
 )
 
-func (manager *Manager) updateAgent(version string, updateScheduleId int) error {
+func (manager *Manager) updateAgent(version string, updateScheduleId edgetypes.UpdateScheduleID) error {
 	if version == "" {
 		return errors.New("version is required")
 	}
@@ -54,14 +56,24 @@ func (manager *Manager) updateAgent(version string, updateScheduleId int) error 
 
 	log.Printf("[ERROR] [edge,update] [message: update failed] [schedule_id: %d] [version: %s] [error: %s]", updateScheduleId, version, err)
 
+	// In case of a successful update, this code will not be reached
+	// This is because the agent will be deleted at that point in time
+
+	// TODO: We will need to find a way to trigger a clean-up process of the portainer-updater service container
+	// Maybe after the agent starts, it could check for any existing stopped portainer-updater service container and remove it
+
 	// everything after this line runs only if update failed (on success it will start a new container)
 	defer clean(ctx, cli, updaterContainerId)
 	if err != nil {
-		return errors.WithMessage(err, "unable to run update")
+		return errors.WithMessage(err, "update failed")
 	}
 
-	return printLogsToStdout(ctx, cli, updaterContainerId)
+	logs, err := printLogsToStdout(ctx, cli, updaterContainerId)
+	if err != nil {
+		return errors.WithMessage(err, "unable to print logs to stdout")
+	}
 
+	return errors.Errorf("update container exited with logs: %s", logs)
 }
 
 func pullUpdaterImage(ctx context.Context, cli *dockercli.Client) error {
@@ -113,7 +125,7 @@ func getAgentContainerId() (string, error) {
 
 }
 
-func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId string, version string, updateScheduleId int) (string, error) {
+func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId string, version string, updateScheduleId edgetypes.UpdateScheduleID) (string, error) {
 	log.Printf("[DEBUG] [edge] [message: creating portainer-updater container]")
 
 	agentImagePrefix := os.Getenv("AGENT_IMAGE_PREFIX")
@@ -168,7 +180,9 @@ func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId stri
 		return updaterContainer.ID, errors.WithMessage(err, "unable to inspect container")
 	}
 
-	if containerInspectResult.State.ExitCode !=
+	if containerInspectResult.State.ExitCode != 0 {
+		return updaterContainer.ID, errors.Errorf("portainer-updater container exited with non-zero exit code: %s", containerInspectResult.State.Error)
+	}
 
 	return updaterContainer.ID, nil
 }
@@ -183,25 +197,22 @@ func clean(ctx context.Context, cli *dockercli.Client, updaterContainerId string
 	}
 }
 
-func printLogsToStdout(ctx context.Context, cli *dockercli.Client, updaterContainerId string) error {
-
-	// TODO: REVIEW
-	// In case of a successful update, this code will not be reached
-	// This is because the agent will be deleted at that point in time
-	// We will need to find a way to trigger a clean-up process of the portainer-updater service container
-	// Maybe after the agent starts, it could check for any existing stopped portainer-updater service container and remove it
+func printLogsToStdout(ctx context.Context, cli *dockercli.Client, updaterContainerId string) (string, error) {
 
 	// We get the logs of the portainer-updater service container and write them to the agent output
 	// Can be useful to troubleshoot the process in case of an update failure from the portainer-updater service container
 	out, err := cli.ContainerLogs(ctx, updaterContainerId, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: unable to get the portainer-updater container logs] [error: %s]", err)
-		return err
+		return "", err
 	}
+
+	var buf bytes.Buffer
+	tee := io.TeeReader(out, &buf)
 
 	// TODO: REVIEW
 	// This could be something that we only output when the agent log level is set to DEBUG
-	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	stdcopy.StdCopy(os.Stdout, os.Stderr, tee)
 
-	return nil
+	return buf.String(), nil
 }
