@@ -9,9 +9,14 @@ import (
 	"github.com/portainer/agent"
 )
 
+type EnvironmentStatusOptions struct {
+	DoSnapshot bool
+	DoCommand  bool
+}
+
 type PortainerClient interface {
 	GetEnvironmentID() (portainer.EndpointID, error)
-	GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error)
+	GetEnvironmentStatus(options EnvironmentStatusOptions) (*PollStatusResponse, error)
 	GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error)
 	SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error
 	DeleteEdgeStackStatus(edgeStackID int) error

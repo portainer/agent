@@ -134,17 +134,8 @@ func (service *PollService) startStatusPollLoopAsync() {
 
 func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 	log.Printf("[DEBUG] [edge] [async] [message: polling Portainer] [snapshot: %t] [command: %t]", doSnapshot, doCommand)
-	flags := []string{}
 
-	if doSnapshot {
-		flags = append(flags, "snapshot")
-	}
-
-	if doCommand {
-		flags = append(flags, "command")
-	}
-
-	status, err := service.portainerClient.GetEnvironmentStatus(flags...)
+	status, err := service.portainerClient.GetEnvironmentStatus(client.EnvironmentStatusOptions{DoCommand: doCommand, DoSnapshot: doSnapshot})
 	if err != nil {
 		return err
 	}

@@ -86,7 +86,7 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 	return responseData.EndpointID, nil
 }
 
-func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error) {
+func (client *PortainerEdgeClient) GetEnvironmentStatus(options EnvironmentStatusOptions) (*PollStatusResponse, error) {
 	pollURL := fmt.Sprintf("%s/api/endpoints/%d/edge/status", client.serverAddress, client.getEndpointIDFn())
 	req, err := http.NewRequest("GET", pollURL, nil)
 	if err != nil {

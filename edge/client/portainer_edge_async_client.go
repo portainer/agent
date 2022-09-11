@@ -154,23 +154,14 @@ func (client *PortainerAsyncClient) GetEnvironmentID() (portainer.EndpointID, er
 	return 0, errors.New("GetEnvironmentID is not available in async mode")
 }
 
-func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error) {
+func (client *PortainerAsyncClient) GetEnvironmentStatus(options EnvironmentStatusOptions) (*PollStatusResponse, error) {
 	pollURL := fmt.Sprintf("%s/api/endpoints/edge/async", client.serverAddress)
 
 	payload := AsyncRequest{}
 	payload.EndpointId = client.getEndpointIDFn()
 
-	var doSnapshot, doCommand bool
-	for _, f := range flags {
-		if f == "snapshot" {
-			doSnapshot = true
-		} else if f == "command" {
-			doCommand = true
-		}
-	}
-
 	var currentSnapshot snapshot
-	if doSnapshot {
+	if options.DoSnapshot {
 		payload.Snapshot = &snapshot{}
 
 		switch client.agentPlatformIdentifier {
@@ -267,7 +258,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		payload.Snapshot.JobsStatus = client.nextSnapshot.JobsStatus
 	}
 
-	if doCommand {
+	if options.DoCommand {
 		payload.CommandTimestamp = client.commandTimestamp
 	}
 
@@ -283,7 +274,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		return nil, err
 	}
 
-	if doSnapshot {
+	if options.DoSnapshot {
 		client.lastSnapshot.Docker = currentSnapshot.Docker
 		client.lastSnapshot.Kubernetes = currentSnapshot.Kubernetes
 

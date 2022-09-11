@@ -209,7 +209,7 @@ func (service *PollService) poll() error {
 		service.edgeManager.SetEndpointID(endpointID)
 	}
 
-	environmentStatus, err := service.portainerClient.GetEnvironmentStatus()
+	environmentStatus, err := service.portainerClient.GetEnvironmentStatus(client.EnvironmentStatusOptions{})
 	if err != nil {
 		return err
 	}
