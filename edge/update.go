@@ -8,12 +8,12 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockercli "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	"github.com/portainer/portainer/api/edgetypes"
@@ -38,11 +38,13 @@ func (manager *Manager) updateAgent(version string, updateScheduleId edgetypes.U
 
 	log.Printf("[INFO] [edge] [message: starting agent update process] [version: %s]", version)
 
-	// log.Printf("[DEBUG] [edge] [message: pulling latest portainer-updater image]")
-	// err = pullUpdaterImage(ctx, cli)
-	// if err != nil {
-	// 	return errors.WithMessage(err, "unable to pull portainer-updater image")
-	// }
+	if os.Getenv("SKIP_UPDATER_IMAGE_PULL") == "" {
+		log.Printf("[DEBUG] [edge] [message: pulling latest portainer-updater image]")
+		err = pullUpdaterImage(ctx, cli)
+		if err != nil {
+			return errors.WithMessage(err, "unable to pull portainer-updater image")
+		}
+	}
 
 	log.Printf("[DEBUG] [edge] [message: retrieving agent container ID]")
 	agentContainerId, err := getAgentContainerId()
@@ -53,8 +55,6 @@ func (manager *Manager) updateAgent(version string, updateScheduleId edgetypes.U
 	log.Printf("[DEBUG] [edge] [message: running portainer-updater container]")
 
 	updaterContainerId, err := runUpdate(ctx, cli, agentContainerId, version, updateScheduleId)
-
-	log.Printf("[ERROR] [edge,update] [message: update failed] [schedule_id: %d] [version: %s] [error: %s]", updateScheduleId, version, err)
 
 	// In case of a successful update, this code will not be reached
 	// This is because the agent will be deleted at that point in time
@@ -68,12 +68,12 @@ func (manager *Manager) updateAgent(version string, updateScheduleId edgetypes.U
 		return errors.WithMessage(err, "update failed")
 	}
 
-	logs, err := printLogsToStdout(ctx, cli, updaterContainerId)
+	_, err = printLogsToStdout(ctx, cli, updaterContainerId)
 	if err != nil {
 		return errors.WithMessage(err, "unable to print logs to stdout")
 	}
 
-	return errors.Errorf("update container exited with logs: %s", logs)
+	return errors.Errorf("update container exited and didn't update, see logs for more information")
 }
 
 func pullUpdaterImage(ctx context.Context, cli *dockercli.Client) error {
@@ -148,7 +148,7 @@ func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId stri
 				"/var/run/docker.sock:/var/run/docker.sock",
 			},
 		},
-		nil, nil, fmt.Sprintf("portainer-updater-%d", time.Now().Unix()))
+		nil, nil, fmt.Sprintf("portainer-updater-%s", uuid.New()))
 
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: unable to create portainer-updater container] [error: %s]", err)
@@ -175,15 +175,6 @@ func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId stri
 	case <-statusCh:
 	}
 
-	containerInspectResult, err := cli.ContainerInspect(ctx, updaterContainer.ID)
-	if err != nil {
-		return updaterContainer.ID, errors.WithMessage(err, "unable to inspect container")
-	}
-
-	if containerInspectResult.State.ExitCode != 0 {
-		return updaterContainer.ID, errors.Errorf("portainer-updater container exited with non-zero exit code: %s", containerInspectResult.State.Error)
-	}
-
 	return updaterContainer.ID, nil
 }
 
@@ -191,9 +182,11 @@ func clean(ctx context.Context, cli *dockercli.Client, updaterContainerId string
 	// The removal of the portainer-updater service container here is going to happen in the following cases:
 	// * An error occurred during the update process
 	// * The agent is already running the latest version of the image
-	err := cli.ContainerRemove(ctx, updaterContainerId, types.ContainerRemoveOptions{})
-	if err != nil {
-		log.Printf("[ERROR] [edge] [message: unable to remove portainer-updater container] [error: %s]", err)
+	if updaterContainerId != "" {
+		err := cli.ContainerRemove(ctx, updaterContainerId, types.ContainerRemoveOptions{})
+		if err != nil {
+			log.Printf("[ERROR] [edge] [message: unable to remove portainer-updater container] [error: %s]", err)
+		}
 	}
 }
 
@@ -212,7 +205,10 @@ func printLogsToStdout(ctx context.Context, cli *dockercli.Client, updaterContai
 
 	// TODO: REVIEW
 	// This could be something that we only output when the agent log level is set to DEBUG
-	stdcopy.StdCopy(os.Stdout, os.Stderr, tee)
+	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, tee)
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: unable to copy the portainer-updater container logs to the agent output] [error: %s]", err)
+	}
 
 	return buf.String(), nil
 }

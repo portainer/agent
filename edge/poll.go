@@ -79,7 +79,6 @@ func newPollService(
 	config *pollServiceConfig,
 	portainerClient client.PortainerClient,
 	edgeAsyncMode bool,
-	updateScheduleID edgetypes.UpdateScheduleID,
 ) (*PollService, error) {
 	pollFrequency, err := time.ParseDuration(config.PollFrequency)
 	if err != nil {
@@ -106,11 +105,7 @@ func newPollService(
 		tunnelServerAddr:         config.TunnelServerAddr,
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
 		portainerClient:          portainerClient,
-		versionUpdateStatus:      edgetypes.VersionUpdateStatus{},
-	}
-
-	if updateScheduleID != 0 {
-		pollService.versionUpdateStatus.ScheduleID = updateScheduleID
+		versionUpdateStatus:      config.versionUpdateStatus,
 	}
 
 	if config.TunnelCapability {
@@ -258,10 +253,12 @@ func (service *PollService) poll() error {
 func (service *PollService) processUpdate(versionUpdate edgetypes.VersionUpdateRequest) error {
 	if !versionUpdate.Active ||
 		versionUpdate.ScheduledTime > time.Now().Unix() ||
-		(versionUpdate.ScheduleID == service.versionUpdateStatus.ScheduleID && service.versionUpdateStatus.Status == 2) {
+		(versionUpdate.ScheduleID == service.versionUpdateStatus.ScheduleID && service.versionUpdateStatus.Status == edgetypes.UpdateScheduleStatusSuccess) {
 		log.Printf("[DEBUG] [edge] [message: no update available] [active: %t] [scheduled_time: %d] [current_time: %d] [schedule_id: %d] [current_schedule_id: %d]", versionUpdate.Active, versionUpdate.ScheduledTime, time.Now().Unix(), versionUpdate.ScheduleID, service.versionUpdateStatus.ScheduleID)
 		return nil
 	}
+
+	log.Printf("[DEBUG] [edge] [message: update available] [schedule_id: %d] [current_schedule_id: %d] [status: %d]", versionUpdate.ScheduleID, service.versionUpdateStatus.ScheduleID, service.versionUpdateStatus.Status)
 
 	service.versionUpdateStatus.ScheduleID = versionUpdate.ScheduleID
 	service.versionUpdateStatus.Error = ""

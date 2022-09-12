@@ -85,6 +85,7 @@ func (manager *Manager) Start() error {
 	}
 
 	if updateScheduleID != 0 {
+		log.Printf("[DEBUG] [edge] [message: started agent with update schedule ID] [schedule_id: %d]", updateScheduleID)
 		pollServiceConfig.versionUpdateStatus.ScheduleID = updateScheduleID
 		pollServiceConfig.versionUpdateStatus.Status = edgetypes.UpdateScheduleStatusSuccess
 	}
@@ -130,7 +131,6 @@ func (manager *Manager) Start() error {
 		pollServiceConfig,
 		portainerClient,
 		manager.agentOptions.EdgeAsyncMode,
-		updateScheduleID,
 	)
 	if err != nil {
 		return err
