@@ -263,7 +263,7 @@ func (service *PollService) processUpdate(versionUpdate edgetypes.VersionUpdateR
 		return errors.WithMessage(err, "Unable to parse scheduled time")
 	}
 
-	if scheduledTime.Before(time.Now()) {
+	if scheduledTime.After(time.Now()) {
 		log.Printf("[DEBUG] [edge] [message: update scheduled for the future] [scheduled_time: %v]", versionUpdate.ScheduledTime)
 		return nil
 	}
