@@ -251,10 +251,20 @@ func (service *PollService) poll() error {
 }
 
 func (service *PollService) processUpdate(versionUpdate edgetypes.VersionUpdateRequest) error {
-	if !versionUpdate.Active ||
-		versionUpdate.ScheduledTime > time.Now().Unix() ||
-		(versionUpdate.ScheduleID == service.versionUpdateStatus.ScheduleID && service.versionUpdateStatus.Status == edgetypes.UpdateScheduleStatusSuccess) {
-		log.Printf("[DEBUG] [edge] [message: no update available] [active: %t] [scheduled_time: %d] [current_time: %d] [schedule_id: %d] [current_schedule_id: %d]", versionUpdate.Active, versionUpdate.ScheduledTime, time.Now().Unix(), versionUpdate.ScheduleID, service.versionUpdateStatus.ScheduleID)
+	// update is disabled or no new update
+	if !versionUpdate.Active || (versionUpdate.ScheduleID == service.versionUpdateStatus.ScheduleID && service.versionUpdateStatus.Status == edgetypes.UpdateScheduleStatusSuccess) {
+		log.Printf("[DEBUG] [edge] [message: no update available] [active: %t] [schedule_id: %d] [current_schedule_id: %d]", versionUpdate.Active, versionUpdate.ScheduleID, service.versionUpdateStatus.ScheduleID)
+		return nil
+	}
+
+	// update is scheduled for the future
+	scheduledTime, err := time.Parse(edgetypes.UpdateScheduleTimeFormat, string(versionUpdate.ScheduledTime))
+	if err != nil {
+		return errors.WithMessage(err, "Unable to parse scheduled time")
+	}
+
+	if scheduledTime.Before(time.Now()) {
+		log.Printf("[DEBUG] [edge] [message: update scheduled for the future] [scheduled_time: %v]", versionUpdate.ScheduledTime)
 		return nil
 	}
 
@@ -264,15 +274,13 @@ func (service *PollService) processUpdate(versionUpdate edgetypes.VersionUpdateR
 	service.versionUpdateStatus.Error = ""
 	service.versionUpdateStatus.Status = 0
 
-	log.Printf("[DEBUG] [edge] [message: received update Portainer Edge agent to version %s] [scheduled_time: %d] [now: %d]", versionUpdate.Version, versionUpdate.ScheduledTime, time.Now().Unix())
-
 	go func() {
 		service.Stop()
 	}()
 
 	defer service.Start()
 
-	err := service.edgeManager.updateAgent(versionUpdate.Version, versionUpdate.ScheduleID)
+	err = service.edgeManager.updateAgent(versionUpdate.Version, versionUpdate.ScheduleID)
 	if err != nil {
 		log.Printf("[ERROR] [edge] [message: unable to update Portainer Edge agent] [error: %s]", err)
 		service.versionUpdateStatus.Error = err.Error()

@@ -337,6 +337,8 @@ github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a h1:B0z3skIMT+O
 github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a/go.mod h1:n54EEIq+MM0NNtqLeCby8ljL+l275VpolXO0ibHegLE=
 github.com/portainer/libhttp v0.0.0-20220916153711-5d61e12f4b0a h1:BJ5V4EDNhg3ImYbmXnGS8vrMhq6rzsEneIXyJh0g4dc=
 github.com/portainer/libhttp v0.0.0-20220916153711-5d61e12f4b0a/go.mod h1:ckuHnoLA5kLuE5WkvPBXmrw63LUMdSH4aX71QRi9y10=
+github.com/portainer/portainer/api v0.0.0-20220918121218-ee1359d50bbc h1:AWAb87dS9g2xCwkOzSSdpL/1okSruzyoACzCD6/zIYI=
+github.com/portainer/portainer/api v0.0.0-20220918121218-ee1359d50bbc/go.mod h1:P+HmQadvPOoYdXHfbJovCs6bml4yUk/Bb2QIUlVlLBA=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_golang v0.9.2/go.mod h1:OsXs2jCmiKlQ1lTBmv21f2mNfw4xf/QclQDMrYNZzcM=
 github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910/go.mod h1:MbSGuTsp3dbXC40dX6PRTWyKYBIrTGTE9sqQNg2J8bo=

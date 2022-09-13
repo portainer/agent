@@ -21,7 +21,7 @@ require (
 	github.com/portainer/docker-compose-wrapper v0.0.0-20220708023447-a69a4ebaa021
 	github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a
 	github.com/portainer/libhttp v0.0.0-20220916153711-5d61e12f4b0a
-	github.com/portainer/portainer/api v0.0.0-20220712011514-23eca3ce805f
+	github.com/portainer/portainer/api v0.0.0-20220918121218-ee1359d50bbc
 	github.com/rs/zerolog v1.28.0
 	github.com/wI2L/jsondiff v0.2.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
@@ -105,5 +105,3 @@ require (
 )
 
 replace github.com/jaguilar/vt100 => github.com/tonistiigi/vt100 v0.0.0-20190402012908-ad4c4a574305
-
-replace github.com/portainer/portainer/api => ../portainer/api
