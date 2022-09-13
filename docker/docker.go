@@ -26,11 +26,10 @@ func NewInfoService() *InfoService {
 // GetRuntimeConfigurationFromDockerEngine retrieves information from a Docker environment
 // and returns a map of labels.
 func (service *InfoService) GetRuntimeConfigurationFromDockerEngine() (*agent.RuntimeConfiguration, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	cli, err := getCli()
 	if err != nil {
 		return nil, err
 	}
-	defer cli.Close()
 
 	dockerInfo, err := cli.Info(context.Background())
 	if err != nil {
@@ -61,11 +60,10 @@ func (service *InfoService) GetRuntimeConfigurationFromDockerEngine() (*agent.Ru
 // to the first network found that is not an ingress network. If the ignoreNonSwarmNetworks parameter is specified,
 // it will also ignore non Swarm scoped networks.
 func (service *InfoService) GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	cli, err := getCli()
 	if err != nil {
 		return "", err
 	}
-	defer cli.Close()
 
 	containerInspect, err := cli.ContainerInspect(context.Background(), containerName)
 	if err != nil {
@@ -99,11 +97,10 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string,
 // GetServiceNameFromDockerEngine is used to return the name of the Swarm service the agent is part of.
 // The service name is retrieved through container labels.
 func (service *InfoService) GetServiceNameFromDockerEngine(containerName string) (string, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	cli, err := getCli()
 	if err != nil {
 		return "", err
 	}
-	defer cli.Close()
 
 	containerInspect, err := cli.ContainerInspect(context.Background(), containerName)
 	if err != nil {
@@ -135,4 +132,14 @@ func getSwarmConfiguration(config *agent.RuntimeConfiguration, dockerInfo types.
 	}
 
 	return nil
+}
+
+func getCli() (*client.Client, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	if err != nil {
+		return nil, err
+	}
+	defer cli.Close()
+
+	return cli, nil
 }

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/kubernetes"
@@ -123,6 +124,25 @@ type LogCommandData struct {
 	EdgeStackID   portainer.EdgeStackID
 	EdgeStackName string
 	Tail          int
+}
+
+type ContainerCommandData struct {
+	ContainerName          string
+	ContainerStartOptions  types.ContainerStartOptions
+	ContainerRemoveOptions types.ContainerRemoveOptions
+	ContainerOperation     string
+}
+
+type ImageCommandData struct {
+	ImageName          string
+	ImageRemoveOptions types.ImageRemoveOptions
+	ImageOperation     string
+}
+
+type VolumeCommandData struct {
+	VolumeName      string
+	ForceRemove     bool
+	VolumeOperation string
 }
 
 func (client *PortainerAsyncClient) GetEnvironmentID() (portainer.EndpointID, error) {
