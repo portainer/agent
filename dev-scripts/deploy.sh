@@ -107,6 +107,7 @@ function deploy_standalone() {
     -e EDGE_ASYNC=${edge_async} \
     -e AGENT_IMAGE_PREFIX="portainerci/agent" \
     -e SKIP_UPDATER_IMAGE_PULL=1 \
+    -e EDGE_INSECURE_POLL=1 \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /var/lib/docker/volumes:/var/lib/docker/volumes \
     -v /:/host \
@@ -171,6 +172,7 @@ function deploy_swarm() {
     -e EDGE_KEY="${edge_key}" \
     -e EDGE_ASYNC=${edge_async} \
     -e SKIP_UPDATER_IMAGE_PULL=1 \
+    -e EDGE_INSECURE_POLL=1 \
     --mode global \
     --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
     --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
