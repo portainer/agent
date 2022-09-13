@@ -139,6 +139,7 @@ func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId stri
 		&container.Config{
 			Image: "portainer/portainer-updater:latest",
 			Cmd:   []string{"agent-update", agentContainerId, agentImage, fmt.Sprintf("%d", updateScheduleId)},
+			Env:   []string{fmt.Sprintf("SKIP_PULL=%s", os.Getenv("SKIP_UPDATER_IMAGE_PULL"))},
 		},
 		&container.HostConfig{
 			Binds: []string{
