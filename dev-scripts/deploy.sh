@@ -95,27 +95,47 @@ function deploy_standalone() {
     local url=${1:-""}
     msg "Running standalone agent $IMAGE_NAME"
     
-    docker -H "$url" rm -f "${CONTAINER_NAME:-"portainer-agent-dev"}" || true
+    CONTAINER_NAME="${CONTAINER_NAME:-"portainer-agent-dev"}"
+
+    docker -H "$url" rm -f "$CONTAINER_NAME" || true
     
     load_image "$IMAGE_NAME" "$url"
     
-    docker -H "$url" run -d --name "${CONTAINER_NAME:-"portainer-agent-dev"}" \
-    -e LOG_LEVEL=${LOG_LEVEL} \
-    -e EDGE=${edge} \
-    -e EDGE_ID="${edge_id}" \
-    -e EDGE_KEY="${edge_key}" \
-    -e EDGE_ASYNC=${edge_async} \
-    -e AGENT_IMAGE_PREFIX="portainerci/agent" \
-    -e SKIP_UPDATER_IMAGE_PULL=1 \
-    -e EDGE_INSECURE_POLL=1 \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v /var/lib/docker/volumes:/var/lib/docker/volumes \
-    -v /:/host \
-    -p 9001:9001 \
-    -p 80:80 \
-    "${IMAGE_NAME}"
+    cmd=(docker)
+
+    if [ -n "$url" ]; then
+        cmd+=(-H "$url")
+    fi
+
+    cmd+=(run -d --name "$CONTAINER_NAME")
+    cmd+=(-v /var/run/docker.sock:/var/run/docker.sock)
+    cmd+=(-v /var/lib/docker/volumes:/var/lib/docker/volumes)
+    cmd+=(-v /:/host)
+    cmd+=(-e LOG_LEVEL="${LOG_LEVEL}")
+
+    if [[ "$edge" == "1" ]]; then
+        cmd+=(-e EDGE=1)
+        cmd+=(-e EDGE_ID="$edge_id")
+        cmd+=(-e EDGE_ASYNC="$edge_async")
+        cmd+=(-e EDGE_INSECURE_POLL=1)
+
+        if [ -n "$edge_key" ]; then
+            cmd+=(-e EDGE_KEY="$edge_key")
+        else 
+            cmd+=(-p 80:80)
+        fi
+    else 
+        cmd+=(-p 9001:9001)
+    fi
+
+    cmd+=(-e AGENT_IMAGE_PREFIX=portainerci/agent)
+    cmd+=(-e SKIP_UPDATER_IMAGE_PULL=1)
+
+    cmd+=("$IMAGE_NAME")
+
+    "${cmd[@]}"
     
-    docker -H "$url" logs -f "${CONTAINER_NAME:-"portainer-agent-dev"}"
+    docker -H "$url" logs -f "$CONTAINER_NAME"
 }
 
 function deploy_podman() {
