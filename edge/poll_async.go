@@ -304,7 +304,7 @@ func (service *PollService) processContainerCommand(command client.AsyncCommand)
 		log.Printf("[ERROR] [edge] [message: error with '%s' operation on container command] [error: %s]", command.Operation, err)
 	}
 
-	return nil
+	return err
 }
 
 func (service *PollService) processImageCommand(command client.AsyncCommand) error {
@@ -325,7 +325,7 @@ func (service *PollService) processImageCommand(command client.AsyncCommand) err
 		log.Printf("[ERROR] [edge] [message: error with '%s' operation on image command] [error: %s]", command.Operation, err)
 	}
 
-	return nil
+	return err
 }
 
 func (service *PollService) processVolumeCommand(command client.AsyncCommand) error {
@@ -346,5 +346,5 @@ func (service *PollService) processVolumeCommand(command client.AsyncCommand) er
 		log.Printf("[ERROR] [edge] [message: error with '%s' operation on volume command] [error: %s]", command.Operation, err)
 	}
 
-	return nil
+	return err
 }

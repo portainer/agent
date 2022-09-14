@@ -1,12 +1,13 @@
 package docker
 
-import "context"
+import (
+	"context"
+
+	"github.com/docker/docker/client"
+)
 
 func VolumeDelete(name string, force bool) error {
-	cli, err := getCli()
-	if err != nil {
-		return err
-	}
-
-	return cli.VolumeRemove(context.Background(), name, force)
+	return withCli(func(cli *client.Client) error {
+		return cli.VolumeRemove(context.Background(), name, force)
+	})
 }
