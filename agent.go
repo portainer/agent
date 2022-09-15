@@ -74,6 +74,7 @@ type (
 		AgentServerAddr       string
 		AgentServerPort       string
 		AgentSecurityShutdown time.Duration
+		ClusterModeEnabled    bool
 		ClusterAddress        string
 		ClusterProbeTimeout   time.Duration
 		ClusterProbeInterval  time.Duration

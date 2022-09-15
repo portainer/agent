@@ -78,8 +78,12 @@ func main() {
 
 		clusterMode := false
 		if runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm {
-			clusterMode = true
-			log.Println("[INFO] [main] [message: Agent running on a Swarm cluster node. Running in cluster mode]")
+			if options.ClusterModeEnabled {
+				clusterMode = true
+				log.Println("[INFO] [main] [message: Agent running on a Swarm cluster node. Running in cluster mode]")
+			} else {
+				log.Println("[INFO] [main] [message: Detected a Swarm cluster node. Although, Cluster mode is disabled.]")
+			}
 		}
 
 		containerName, err := os.GetHostName()
