@@ -22,6 +22,16 @@ func NewHandler(notaryService *security.NotaryService) *Handler {
 
 	h.Handle("/sosivio/namespaces",
 		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.namespaces))).Methods(http.MethodGet)
-
+	h.Handle("/sosivio/commandcenter",
+		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.commandCenter))).Methods(http.MethodGet)
 	return h
+}
+
+// TODO: REVIEW-POC-SOSIVIO
+// Port to libhttp.
+// Raw returns raw data. Returns a pointer to a
+// HandlerError if encoding fails.
+func Raw(rw http.ResponseWriter, data []byte) *httperror.HandlerError {
+	rw.Write(data)
+	return nil
 }
