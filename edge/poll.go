@@ -257,6 +257,12 @@ func (service *PollService) processUpdate(versionUpdate edgetypes.VersionUpdateR
 		return nil
 	}
 
+	if versionUpdate.Active && service.versionUpdateStatus.Status == edgetypes.UpdateScheduleStatusSkip {
+		log.Printf("[DEBUG] [edge] [message: skipping update] [schedule_id: %d] [error: %s]", versionUpdate.ScheduleID, service.versionUpdateStatus.Error)
+		service.versionUpdateStatus.ScheduleID = versionUpdate.ScheduleID
+		return nil
+	}
+
 	// update is scheduled for the future
 	scheduledTime, err := time.Parse(edgetypes.UpdateScheduleTimeFormat, string(versionUpdate.ScheduledTime))
 	if err != nil {

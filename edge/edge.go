@@ -62,6 +62,10 @@ func NewManager(parameters *ManagerParameters) *Manager {
 	}
 }
 
+func (manager *Manager) isRemoteUpdateSupported() bool {
+	return manager.containerPlatform == agent.PlatformDocker && manager.clusterService == nil
+}
+
 // Start starts the manager
 func (manager *Manager) Start() error {
 	if !manager.IsKeySet() {
@@ -88,6 +92,11 @@ func (manager *Manager) Start() error {
 		log.Printf("[DEBUG] [edge] [message: started agent with update schedule ID] [schedule_id: %d]", updateScheduleID)
 		pollServiceConfig.versionUpdateStatus.ScheduleID = updateScheduleID
 		pollServiceConfig.versionUpdateStatus.Status = edgetypes.UpdateScheduleStatusSuccess
+	}
+
+	if !manager.isRemoteUpdateSupported() {
+		pollServiceConfig.versionUpdateStatus.Error = "Skipping version update check: agent is not running in standalone Docker mode"
+		pollServiceConfig.versionUpdateStatus.Status = edgetypes.UpdateScheduleStatusSkip
 	}
 
 	log.Debug().

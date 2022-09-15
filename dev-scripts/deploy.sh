@@ -118,6 +118,7 @@ function deploy_standalone() {
         cmd+=(-e EDGE_ID="$edge_id")
         cmd+=(-e EDGE_ASYNC="$edge_async")
         cmd+=(-e EDGE_INSECURE_POLL=1)
+        cmd+=(--add-host=host.docker.internal:host-gateway)
 
         if [ -n "$edge_key" ]; then
             cmd+=(-e EDGE_KEY="$edge_key")
@@ -193,6 +194,7 @@ function deploy_swarm() {
     -e EDGE_ASYNC=${edge_async} \
     -e SKIP_UPDATER_IMAGE_PULL=1 \
     -e EDGE_INSECURE_POLL=1 \
+    --host=host.docker.internal:host-gateway \
     --mode global \
     --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
     --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
