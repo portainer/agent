@@ -142,6 +142,7 @@ type (
 		RemotePort        string
 		LocalAddr         string
 		Credentials       string
+		AgentOptions      *Options
 	}
 
 	// ClusterService is used to manage a cluster of agents.

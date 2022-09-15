@@ -39,6 +39,7 @@ type PollService struct {
 	portainerURL             string
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
+	agentOptions             *agent.Options
 
 	// Async mode only
 	pingInterval     time.Duration
@@ -59,6 +60,7 @@ type pollServiceConfig struct {
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
 	ContainerPlatform       agent.ContainerPlatform
+	AgentOptions            *agent.Options
 }
 
 // newPollService returns a pointer to a new instance of PollService, and will start two loops in go routines.
@@ -90,6 +92,7 @@ func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, 
 		edgeManager:              edgeManager,
 		edgeStackManager:         edgeStackManager,
 		portainerURL:             config.PortainerURL,
+		agentOptions:             config.AgentOptions,
 		tunnelServerAddr:         config.TunnelServerAddr,
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
 		portainerClient:          portainerClient,
@@ -253,6 +256,7 @@ func (service *PollService) createTunnel(encodedCredentials string, remotePort i
 		ServerFingerprint: service.tunnelServerFingerprint,
 		Credentials:       string(credentials),
 		RemotePort:        strconv.Itoa(remotePort),
+		AgentOptions:      service.agentOptions,
 	}
 
 	err = service.tunnelClient.CreateTunnel(tunnelConfig)
