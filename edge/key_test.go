@@ -1,7 +1,6 @@
 package edge
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -11,7 +10,7 @@ import (
 func TestKeyDataRace(t *testing.T) {
 	mgr := NewManager(&ManagerParameters{
 		Options: &agent.Options{
-			DataPath: os.TempDir(),
+			DataPath: t.TempDir(),
 		},
 	})
 
