@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/constants"
 	"github.com/portainer/portainer/api/edgetypes"
 )
 
@@ -143,10 +144,7 @@ func runUpdate(ctx context.Context, cli *dockercli.Client, agentContainerId stri
 		},
 		&container.HostConfig{
 			Binds: []string{
-				// TODO: REVIEW
-				// This implementation will only work on Linux filesystems
-				// For Windows, use a named pipe approach
-				"/var/run/docker.sock:/var/run/docker.sock",
+				constants.DockerSocketBind,
 			},
 		},
 		nil, nil, fmt.Sprintf("portainer-updater-%s", uuid.New()))
