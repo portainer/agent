@@ -136,3 +136,13 @@ func getSwarmConfiguration(config *agent.RuntimeConfiguration, dockerInfo types.
 
 	return nil
 }
+
+func withCli(callback func(cli *client.Client) error) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	return callback(cli)
+}

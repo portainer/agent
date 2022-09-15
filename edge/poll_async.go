@@ -8,6 +8,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/stack"
 )
@@ -174,6 +175,12 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 			err = service.processScheduleCommand(command)
 		case "edgeLog":
 			err = service.processLogCommand(command)
+		case "container":
+			err = service.processContainerCommand(command)
+		case "image":
+			err = service.processImageCommand(command)
+		case "volume":
+			err = service.processVolumeCommand(command)
 		default:
 			return fmt.Errorf("command type %s not supported", command.Type)
 		}
@@ -269,4 +276,75 @@ func (service *PollService) processLogCommand(command client.AsyncCommand) error
 	service.portainerClient.EnqueueLogCollectionForStack(logCmd)
 
 	return nil
+}
+
+func (service *PollService) processContainerCommand(command client.AsyncCommand) error {
+	var containerCmd client.ContainerCommandData
+
+	err := mapstructure.Decode(command.Value, &containerCmd)
+	if err != nil {
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to ContainerCommandData: %s", command.Value, err)
+		return err
+	}
+
+	switch containerCmd.ContainerOperation {
+	case "start":
+		err = docker.ContainerStart(containerCmd.ContainerName, containerCmd.ContainerStartOptions)
+	case "restart":
+		err = docker.ContainerRestart(containerCmd.ContainerName)
+	case "stop":
+		err = docker.ContainerStop(containerCmd.ContainerName)
+	case "delete":
+		err = docker.ContainerDelete(containerCmd.ContainerName, containerCmd.ContainerRemoveOptions)
+	case "kill":
+		err = docker.ContainerKill(containerCmd.ContainerName)
+	}
+
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: error with '%s' operation on container command] [error: %s]", command.Operation, err)
+	}
+
+	return err
+}
+
+func (service *PollService) processImageCommand(command client.AsyncCommand) error {
+	var imageCommand client.ImageCommandData
+
+	err := mapstructure.Decode(command.Value, &imageCommand)
+	if err != nil {
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to ImageCommandData: %s", command.Value, err)
+		return err
+	}
+
+	switch imageCommand.ImageOperation {
+	case "delete":
+		_, err = docker.ImageDelete(imageCommand.ImageName, imageCommand.ImageRemoveOptions)
+	}
+
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: error with '%s' operation on image command] [error: %s]", command.Operation, err)
+	}
+
+	return err
+}
+
+func (service *PollService) processVolumeCommand(command client.AsyncCommand) error {
+	var volumeCommand client.VolumeCommandData
+
+	err := mapstructure.Decode(command.Value, &volumeCommand)
+	if err != nil {
+		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to VolumeCommandData: %s", command.Value, err)
+		return err
+	}
+
+	switch volumeCommand.VolumeOperation {
+	case "delete":
+		err = docker.VolumeDelete(volumeCommand.VolumeName, volumeCommand.ForceRemove)
+	}
+
+	if err != nil {
+		log.Printf("[ERROR] [edge] [message: error with '%s' operation on volume command] [error: %s]", command.Operation, err)
+	}
+
+	return err
 }
