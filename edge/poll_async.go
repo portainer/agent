@@ -3,14 +3,15 @@ package edge
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/stack"
+
+	"github.com/mitchellh/mapstructure"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -45,7 +46,8 @@ func (service *PollService) failSafe() {
 	zeroCommand := service.commandInterval <= zeroDuration
 
 	if zeroPing && zeroSnapshot && zeroCommand {
-		log.Println("[WARN] [edge] [async] [message: activating fail-safe mechanism for the async poll]")
+		log.Warn().Msg("activating fail-safe mechanism for the async poll")
+
 		service.pingInterval = failSafeInterval
 		updateTicker(service.pingTicker, failSafeInterval)
 	}
@@ -54,7 +56,7 @@ func (service *PollService) failSafe() {
 func (service *PollService) startStatusPollLoopAsync() {
 	var pingCh, snapshotCh, commandCh <-chan time.Time
 
-	log.Println("[DEBUG] [edge] [message: starting Portainer async polling client]")
+	log.Debug().Msg("starting Portainer async polling client")
 
 	var snapshotFlag, commandFlag, coalescingFlag bool
 
@@ -95,11 +97,11 @@ func (service *PollService) startStatusPollLoopAsync() {
 		case <-coalescingTicker.C:
 			coalescingTicker.Stop()
 
-			log.Printf("[DEBUG] [edge] [async] [snapshot: %v] [command: %v] [message: sending async-poll]", snapshotFlag, commandFlag)
+			log.Debug().Bool("snapshot", snapshotFlag).Bool("command", commandFlag).Msg("sending async-poll")
 
 			err := service.pollAsync(snapshotFlag, commandFlag)
 			if err != nil {
-				log.Printf("[ERROR] [edge] [message: an error occured during async poll] [error: %s]", err)
+				log.Error().Err(err).Msg("an error occured during async poll")
 			}
 
 			snapshotFlag, commandFlag, coalescingFlag = false, false, false
@@ -114,7 +116,7 @@ func (service *PollService) startStatusPollLoopAsync() {
 			commandCh = service.commandTicker.C
 
 		case <-service.stopSignal:
-			log.Println("[DEBUG] [edge] [async] [message: stopping Portainer async-polling client]")
+			log.Debug().Msg("stopping Portainer async-polling client")
 
 			pingCh, snapshotCh, commandCh = nil, nil, nil
 		}
@@ -199,7 +201,8 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 	var stackData client.EdgeStackData
 	err := mapstructure.Decode(command.Value, &stackData)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to EdgeStackData: %s", command.Value, err)
+		log.Debug().Err(err).Msg("failed to decode EdgeStackData")
+
 		return err
 	}
 
@@ -209,6 +212,7 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 	switch command.Operation {
 	case "add", "replace":
 		err = service.edgeStackManager.DeployStack(ctx, stackData)
+
 		if err != nil {
 			responseStatus = int(stack.EdgeStackStatusError)
 			errorMessage = err.Error()
@@ -234,7 +238,8 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 	var jobData client.EdgeJobData
 	err := mapstructure.Decode(command.Value, &jobData)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to EdgeJobData: %s", command.Value, err)
+		log.Debug().Err(err).Msg("failed to decode EdgeJobData")
+
 		return err
 	}
 
@@ -258,7 +263,7 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 	}
 
 	if err != nil {
-		log.Printf("[ERROR] [edge] [message: error with '%s' operation on schedule] [error: %s]", command.Operation, err)
+		log.Error().Str("operation", command.Operation).Err(err).Msg("error with operation on schedule")
 	}
 
 	return nil
@@ -269,7 +274,8 @@ func (service *PollService) processLogCommand(command client.AsyncCommand) error
 
 	err := mapstructure.Decode(command.Value, &logCmd)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to LogCommandData: %s", command.Value, err)
+		log.Debug().Err(err).Msg("failed to decode LogCommandData")
+
 		return err
 	}
 

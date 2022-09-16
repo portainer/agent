@@ -3,11 +3,12 @@ package docker
 import (
 	"context"
 	"errors"
-	"log"
+
+	"github.com/portainer/agent"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/portainer/agent"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -73,7 +74,9 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string,
 	}
 
 	if len(containerInspect.NetworkSettings.Networks) > 1 {
-		log.Printf("[WARN] [docker] [network_count: %d] [message: Agent container running in more than a single Docker network. This might cause communication issues]", len(containerInspect.NetworkSettings.Networks))
+		log.Warn().
+			Int("network_count", len(containerInspect.NetworkSettings.Networks)).
+			Msg("agent container running in more than a single Docker network. This might cause communication issues")
 	}
 
 	for networkName, network := range containerInspect.NetworkSettings.Networks {
@@ -83,12 +86,21 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string,
 		}
 
 		if networkInspect.Ingress || (ignoreNonSwarmNetworks && networkInspect.Scope != "swarm") {
-			log.Printf("[DEBUG] [docker] [network_name: %s] [scope: %s] [ingress: %t] [message: Skipping invalid container network]", networkInspect.Name, networkInspect.Scope, networkInspect.Ingress)
+			log.Debug().
+				Str("network_name", networkInspect.Name).
+				Str("scope", networkInspect.Scope).
+				Bool("ingress", networkInspect.Ingress).
+				Msg("skipping invalid container network")
+
 			continue
 		}
 
 		if network.IPAddress != "" {
-			log.Printf("[DEBUG] [docker] [ip_address: %s] [network_name: %s] [message: Retrieving IP address from container network]", network.IPAddress, networkName)
+			log.Debug().
+				Str("ip_address", network.IPAddress).
+				Str("network_name", networkName).
+				Msg("retrieving IP address from container network")
+
 			return network.IPAddress, nil
 		}
 	}

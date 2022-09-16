@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 // APIClient is used to execute HTTP requests against the agent API
@@ -45,7 +45,8 @@ func (client *APIClient) GetEdgeKey(serverAddr string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client] [response_code: %d] [message: GetEdgeKey operation failed]", resp.StatusCode)
+		log.Error().Int("response_code", resp.StatusCode).Msg("GetEdgeKey operation failed")
+
 		return "", errors.New("GetEdgeKey operation failed")
 	}
 
@@ -87,7 +88,7 @@ func (client *APIClient) SetEdgeKey(serverAddr, key string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNoContent {
-		log.Printf("[ERROR] [http,client] [response_code: %d] [message: SetEdgeKey operation failed]", resp.StatusCode)
+		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeKey operation failed")
 	}
 
 	return nil

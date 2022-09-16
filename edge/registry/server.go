@@ -3,19 +3,19 @@ package registry
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge"
+	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/request"
 	"github.com/portainer/libhttp/response"
 
-	httperror "github.com/portainer/libhttp/error"
+	"github.com/gorilla/mux"
+	"github.com/rs/zerolog/log"
 )
 
 type Handler struct {
@@ -41,7 +41,7 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 
 	serverUrl, _ := request.RetrieveQueryParameter(r, "serverurl", false)
 
-	log.Printf("[INFO] [edge,registry] [message: Looking up credentials for %s]", serverUrl)
+	log.Info().Str("server_url", serverUrl).Msg("looking up credentials")
 
 	if serverUrl == "" {
 		return response.Empty(rw)
@@ -98,7 +98,8 @@ func LookupCredentials(credentials []agent.RegistryCredentials, serverUrl string
 }
 
 func StartRegistryServer(edgeManager *edge.Manager) (err error) {
-	log.Println("[INFO] [edge,registry] [message: Starting registry credential server]")
+	log.Info().Msg("starting registry credential server")
+
 	h := NewEdgeRegistryHandler(edgeManager)
 
 	server := &http.Server{

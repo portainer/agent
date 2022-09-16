@@ -2,11 +2,12 @@ package scheduler
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/filesystem"
+
+	"github.com/rs/zerolog/log"
 )
 
 type LogsManager struct {
@@ -22,30 +23,34 @@ func NewLogsManager(cli client.PortainerClient) *LogsManager {
 }
 
 func (manager *LogsManager) Start() {
-	log.Printf("[DEBUG] [edge,scheduler] [message: logs manager started]")
+	log.Debug().Msg("logs manager started")
+
 	go manager.loop()
 }
 
 func (manager *LogsManager) loop() {
 	for {
 		for _, jobID := range <-manager.jobsCh {
-			log.Printf("[DEBUG] [edge,scheduler] [job_identifier: %d] [message: started job log collection]", jobID)
+			log.Debug().Int("job_identifier", jobID).Msg("started job log collection")
 
 			logFileLocation := fmt.Sprintf("%s%s/schedule_%d.log", agent.HostRoot, agent.ScheduleScriptDirectory, jobID)
 			exist, err := filesystem.FileExists(logFileLocation)
 			if err != nil {
-				log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed fetching log file]", err)
+				log.Error().Err(err).Msg("failed fetching log file")
+
 				continue
 			}
 
 			var file []byte
 			if !exist {
 				file = []byte("")
-				log.Printf("[DEBUG] [edge,scheduler] [job_identifier: %d] [message: file doesn't exist]", jobID)
+
+				log.Debug().Int("job_identifier", jobID).Msg("file doesn't exist")
 			} else {
 				file, err = filesystem.ReadFromFile(logFileLocation)
 				if err != nil {
-					log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed fetching log file]", err)
+					log.Error().Err(err).Msg("failed fetching log file")
+
 					continue
 				}
 			}
@@ -56,7 +61,8 @@ func (manager *LogsManager) loop() {
 			}
 			err = manager.portainerClient.SetEdgeJobStatus(edgeJobStatus)
 			if err != nil {
-				log.Printf("[ERROR] [edge,scheduler] [error: %s] [message: Failed sending log file to portainer]", err)
+				log.Error().Err(err).Msg("failed sending log file to portainer")
+
 				continue
 			}
 		}

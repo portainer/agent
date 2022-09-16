@@ -3,13 +3,13 @@ package chisel
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/portainer/agent"
 
 	chclient "github.com/jpillora/chisel/client"
+	"github.com/rs/zerolog/log"
 )
 
 const tunnelClientTimeout = 10 * time.Second
@@ -32,7 +32,12 @@ func NewClient() *Client {
 func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 	remote := fmt.Sprintf("R:%s:%s", tunnelConfig.RemotePort, tunnelConfig.LocalAddr)
 
-	log.Printf("[DEBUG] [chisel] [remote_port: %s] [local_addr: %s] [server: %s] [server_fingerprint: %s] [message: Creating reverse tunnel client]", tunnelConfig.RemotePort, tunnelConfig.LocalAddr, tunnelConfig.ServerAddr, tunnelConfig.ServerFingerprint)
+	log.Debug().
+		Str("remote_port", tunnelConfig.RemotePort).
+		Str("local_addr", tunnelConfig.LocalAddr).
+		Str("server", tunnelConfig.ServerAddr).
+		Str("server_fingerprint", tunnelConfig.ServerFingerprint).
+		Msg("creating reverse tunnel client")
 
 	config := &chclient.Config{
 		Server:      tunnelConfig.ServerAddr,
