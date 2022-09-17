@@ -1,15 +1,16 @@
 package websocket
 
 import (
-	"github.com/portainer/agent"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/websocket"
+	"github.com/portainer/agent"
 	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/request"
+
+	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
 )
 
 func (handler *Handler) websocketPodExec(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
@@ -59,7 +60,7 @@ func (handler *Handler) websocketPodExec(w http.ResponseWriter, r *http.Request)
 
 	err = <-errorChan
 	if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
-		log.Printf("websocket error: %s \n", err.Error())
+		log.Error().Err(err).Msg("websocket error")
 	}
 
 	return nil

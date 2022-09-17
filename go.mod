@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/logutils v1.0.0
 	github.com/hashicorp/nomad/api v0.0.0-20220211135303-4afc67b7002e
 	github.com/hashicorp/serf v0.8.3
-	github.com/jaypipes/ghw v0.8.1-0.20220131141055-fb0598ce62c8
+	github.com/jaypipes/ghw v0.9.0
 	github.com/jpillora/chisel v1.7.7
 	github.com/koding/websocketproxy v0.0.0-20181220232114-7ed82d81a28c
 	github.com/mitchellh/mapstructure v1.4.3
@@ -21,7 +21,7 @@ require (
 	github.com/portainer/libcrypto v0.0.0-20210422035235-c652195c5c3a
 	github.com/portainer/libhttp v0.0.0-20211208103139-07a5f798eb3f
 	github.com/portainer/portainer/api v0.0.0-20220712011514-23eca3ce805f
-	github.com/sirupsen/logrus v1.8.1
+	github.com/rs/zerolog v1.28.0
 	github.com/wI2L/jsondiff v0.2.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	k8s.io/api v0.22.5
@@ -61,10 +61,12 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/memberlist v0.1.4 // indirect
-	github.com/jaypipes/pcidb v0.6.0 // indirect
+	github.com/jaypipes/pcidb v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/jpillora/sizestr v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/miekg/dns v1.1.50 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
@@ -73,6 +75,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/tidwall/gjson v1.14.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
@@ -81,7 +84,7 @@ require (
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 // indirect
+	golang.org/x/sys v0.0.0-20220817070843-5a390386f1f2 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
@@ -92,7 +95,7 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v1.0.0 // indirect
 	k8s.io/klog/v2 v2.30.0 // indirect
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b // indirect

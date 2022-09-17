@@ -2,10 +2,11 @@ package kubernetes
 
 import (
 	"context"
-	"log"
 	"time"
 
 	portainer "github.com/portainer/portainer/api"
+
+	"github.com/rs/zerolog/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -26,12 +27,12 @@ func CreateSnapshot() (*portainer.KubernetesSnapshot, error) {
 
 	err = snapshotVersion(snapshot, cli)
 	if err != nil {
-		log.Printf("[WARN] [kubernetes,snapshot] [message: unable to snapshot cluster version] [err: %s]", err)
+		log.Warn().Err(err).Msg("unable to snapshot cluster version")
 	}
 
 	err = snapshotNodes(snapshot, cli)
 	if err != nil {
-		log.Printf("[WARN] [kubernetes,snapshot] [message: unable to snapshot cluster nodes][err: %s]", err)
+		log.Warn().Err(err).Msg("unable to snapshot cluster nodes")
 	}
 
 	snapshot.Time = time.Now().Unix()

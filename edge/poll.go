@@ -2,7 +2,6 @@ package edge
 
 import (
 	"encoding/base64"
-	"log"
 	"math/rand"
 	"strconv"
 	"time"
@@ -13,6 +12,8 @@ import (
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 	"github.com/portainer/libcrypto"
+
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -129,7 +130,10 @@ func (service *PollService) Stop() {
 func (service *PollService) startStatusPollLoop() {
 	var pollCh <-chan time.Time
 
-	log.Printf("[DEBUG] [edge] [poll_interval_seconds: %f] [server_url: %s] [message: starting Portainer short-polling client]", service.pollIntervalInSeconds, service.portainerURL)
+	log.Debug().
+		Float64("poll_interval_seconds", service.pollIntervalInSeconds).
+		Str("server_url", service.portainerURL).
+		Msg("starting Portainer short-polling client")
 
 	lastPollFailed := false
 	for {
@@ -145,7 +149,7 @@ func (service *PollService) startStatusPollLoop() {
 
 			err := service.poll()
 			if err != nil {
-				log.Printf("[ERROR] [edge] [message: an error occured during short poll] [error: %s]", err)
+				log.Error().Err(err).Msg("an error occured during short poll")
 
 				lastPollFailed = true
 				service.pollTicker.Reset(time.Duration(service.pollIntervalInSeconds) * time.Second)
@@ -153,7 +157,8 @@ func (service *PollService) startStatusPollLoop() {
 		case <-service.startSignal:
 			pollCh = service.pollTicker.C
 		case <-service.stopSignal:
-			log.Println("[DEBUG] [edge] [message: stopping Portainer short-polling client]")
+			log.Debug().Msg("stopping Portainer short-polling client")
+
 			pollCh = nil
 		}
 	}
@@ -162,7 +167,10 @@ func (service *PollService) startStatusPollLoop() {
 func (service *PollService) startActivityMonitoringLoop() {
 	ticker := time.NewTicker(tunnelActivityCheckInterval)
 
-	log.Printf("[DEBUG] [edge] [monitoring_interval_seconds: %f] [inactivity_timeout: %s] [message: starting activity monitoring loop]", tunnelActivityCheckInterval.Seconds(), service.inactivityTimeout.String())
+	log.Debug().
+		Float64("monitoring_interval_seconds", tunnelActivityCheckInterval.Seconds()).
+		Str("inactivity_timeout", service.inactivityTimeout.String()).
+		Msg("")
 
 	for {
 		select {
@@ -172,14 +180,19 @@ func (service *PollService) startActivityMonitoringLoop() {
 			}
 
 			elapsed := time.Since(service.lastActivity)
-			log.Printf("[DEBUG] [edge] [tunnel_last_activity_seconds: %f] [message: tunnel activity monitoring]", elapsed.Seconds())
+
+			log.Debug().
+				Float64("tunnel_last_activity_seconds", elapsed.Seconds()).
+				Msg("tunnel activity monitoring")
 
 			if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > service.inactivityTimeout.Seconds() {
-				log.Printf("[INFO] [edge] [tunnel_last_activity_seconds: %f] [message: shutting down tunnel after inactivity period]", elapsed.Seconds())
+				log.Info().
+					Float64("tunnel_last_activity_seconds", elapsed.Seconds()).
+					Msg("shutting down tunnel after inactivity period")
 
 				err := service.tunnelClient.CloseTunnel()
 				if err != nil {
-					log.Printf("[ERROR] [edge] [message: unable to shutdown tunnel] [error: %s]", err)
+					log.Error().Err(err).Msg("unable to shutdown tunnel")
 				}
 			}
 		case <-service.updateLastActivitySignal:
@@ -205,7 +218,12 @@ func (service *PollService) poll() error {
 		return err
 	}
 
-	log.Printf("[DEBUG] [edge] [status: %s] [port: %d] [schedule_count: %d] [checkin_interval_seconds: %f]", environmentStatus.Status, environmentStatus.Port, len(environmentStatus.Schedules), environmentStatus.CheckinInterval)
+	log.Debug().
+		Str("status", environmentStatus.Status).
+		Int("port", environmentStatus.Port).
+		Int("schedule_count", len(environmentStatus.Schedules)).
+		Float64("checkin_interval_seconds", environmentStatus.CheckinInterval).
+		Msg("")
 
 	tunnelErr := service.manageUpdateTunnel(*environmentStatus)
 	if tunnelErr != nil {
@@ -215,7 +233,11 @@ func (service *PollService) poll() error {
 	service.processSchedules(environmentStatus.Schedules)
 
 	if environmentStatus.CheckinInterval > 0 && environmentStatus.CheckinInterval != service.pollIntervalInSeconds {
-		log.Printf("[DEBUG] [edge] [old_interval: %f] [new_interval: %f] [message: updating poll interval]", service.pollIntervalInSeconds, environmentStatus.CheckinInterval)
+		log.Debug().
+			Float64("old_interval", service.pollIntervalInSeconds).
+			Float64("new_interval", environmentStatus.CheckinInterval).
+			Msg("updating poll interval")
+
 		service.pollIntervalInSeconds = environmentStatus.CheckinInterval
 		service.portainerClient.SetTimeout(time.Duration(environmentStatus.CheckinInterval) * time.Second)
 		service.pollTicker.Reset(time.Duration(service.pollIntervalInSeconds) * time.Second)
@@ -230,20 +252,23 @@ func (service *PollService) manageUpdateTunnel(environmentStatus client.PollStat
 	}
 
 	if environmentStatus.Status == agent.TunnelStatusIdle && service.tunnelClient.IsTunnelOpen() {
-		log.Printf("[DEBUG] [edge] [status: %s] [message: Idle status detected, shutting down tunnel]", environmentStatus.Status)
+		log.Debug().
+			Str("status", environmentStatus.Status).
+			Msg("idle status detected, shutting down tunnel")
 
 		err := service.tunnelClient.CloseTunnel()
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: Unable to shutdown tunnel] [error: %s]", err)
+			log.Error().Err(err).Msg("unable to shutdown tunnel")
 		}
 	}
 
 	if environmentStatus.Status == agent.TunnelStatusRequired && !service.tunnelClient.IsTunnelOpen() {
-		log.Println("[DEBUG] [edge] [message: Required status detected, creating reverse tunnel]")
+		log.Debug().Msg("required status detected, creating reverse tunnel")
 
 		err := service.createTunnel(environmentStatus.Credentials, environmentStatus.Port)
 		if err != nil {
-			log.Printf("[ERROR] [edge] [message: Unable to create tunnel] [error: %s]", err)
+			log.Error().Err(err).Msg("unable to create tunnel")
+
 			return err
 		}
 	}
@@ -282,7 +307,7 @@ func (service *PollService) createTunnel(encodedCredentials string, remotePort i
 func (service *PollService) processSchedules(schedules []agent.Schedule) {
 	err := service.scheduleManager.Schedule(schedules)
 	if err != nil {
-		log.Printf("[ERROR] [edge] [message: an error occurred during schedule management] [err: %s]", err)
+		log.Error().Err(err).Msg("an error occurred during schedule management")
 	}
 }
 
@@ -298,7 +323,8 @@ func (service *PollService) processStacks(pollResponseStacks []client.StackStatu
 
 	err := service.edgeStackManager.UpdateStacksStatus(stacks)
 	if err != nil {
-		log.Printf("[ERROR] [edge] [message: an error occurred during stack management] [error: %s]", err)
+		log.Error().Err(err).Msg("an error occurred during stack management")
+
 		return err
 	}
 

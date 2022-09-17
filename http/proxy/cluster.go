@@ -6,12 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/portainer/agent"
+
+	"github.com/rs/zerolog/log"
 )
 
 const defaultClusterRequestTimeout = 120
@@ -71,7 +72,11 @@ func (clusterProxy *ClusterProxy) ClusterOperation(request *http.Request, cluste
 
 	for result := range dataChannel {
 		if result.err != nil {
-			log.Printf("[WARN] [http,proxy] [node: %s] [message: Unable to retrieve node resources for aggregation] [error: %s]", result.nodeName, result.err)
+			log.Warn().
+				Str("node", result.nodeName).
+				Err(result.err).
+				Msg("unable to retrieve node resources for aggregation")
+
 			continue
 		}
 

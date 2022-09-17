@@ -1,8 +1,9 @@
 package net
 
 import (
-	"log"
 	"net"
+
+	"github.com/rs/zerolog/log"
 )
 
 // LookupIPAddresses returns a slice of IPv4 and IPv6 addresses associated to the host
@@ -17,7 +18,8 @@ func LookupIPAddresses(host string) ([]string, error) {
 
 	for idx, ip := range ips {
 		ipAddresses = append(ipAddresses, ip.String())
-		log.Printf("[DEBUG] [net] [host: %s] [result: %d] [ip: %s]", host, idx+1, ip.String())
+
+		log.Debug().Str("host", host).Int("result", idx+1).Str("ip", ip.String()).Msg("")
 	}
 
 	return ipAddresses, nil

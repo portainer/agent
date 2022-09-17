@@ -6,16 +6,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/kubernetes"
 	portainer "github.com/portainer/portainer/api"
+
+	"github.com/rs/zerolog/log"
 	"github.com/wI2L/jsondiff"
 )
 
@@ -125,6 +127,25 @@ type LogCommandData struct {
 	Tail          int
 }
 
+type ContainerCommandData struct {
+	ContainerName          string
+	ContainerStartOptions  types.ContainerStartOptions
+	ContainerRemoveOptions types.ContainerRemoveOptions
+	ContainerOperation     string
+}
+
+type ImageCommandData struct {
+	ImageName          string
+	ImageRemoveOptions types.ImageRemoveOptions
+	ImageOperation     string
+}
+
+type VolumeCommandData struct {
+	VolumeName      string
+	ForceRemove     bool
+	VolumeOperation string
+}
+
 func (client *PortainerAsyncClient) GetEnvironmentID() (portainer.EndpointID, error) {
 	return 0, errors.New("GetEnvironmentID is not available in async mode")
 }
@@ -152,7 +173,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		case agent.PlatformDocker:
 			dockerSnapshot, err := docker.CreateSnapshot()
 			if err != nil {
-				log.Printf("[WARN] [edge,client] [message: could not create the Docker snapshot: %s]", err)
+				log.Warn().Err(err).Msg("could not create the Docker snapshot")
 			}
 
 			payload.Snapshot.Docker = dockerSnapshot
@@ -164,20 +185,25 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 					payload.Snapshot.DockerPatch = dockerPatch
 					payload.Snapshot.Docker = nil
 				} else {
-					log.Printf("[WARN] [edge,client] [message: could not generate the Docker snapshot patch: %s]", err)
+					log.Warn().Err(err).Msg("could not generate the Docker snapshot patch")
 				}
 			}
 
 			for _, stack := range client.stackLogCollectionQueue {
 				cs, err := docker.GetContainersWithLabel("com.docker.compose.project=edge_" + stack.EdgeStackName)
 				if err != nil {
-					log.Printf("[WARN] [edge,client] [message: could not retrieve containers for stack '%s': %s]", stack.EdgeStackName, err)
+					log.Warn().
+						Str("stack", stack.EdgeStackName).
+						Err(err).
+						Msg("could not retrieve containers for stack")
+
 					continue
 				}
 
 				cs2, err := docker.GetContainersWithLabel("com.docker.stack.namespace=edge_" + stack.EdgeStackName)
 				if err != nil {
-					log.Printf("[WARN] [edge,client] [message: could not retrieve containers for stack '%s': %s]", stack.EdgeStackName, err)
+					log.Warn().Err(err).Msg("could not retrieve containers for stack")
+
 					continue
 				}
 
@@ -190,7 +216,11 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 				for _, c := range cs {
 					stdOut, stdErr, err := docker.GetContainerLogs(c.ID, strconv.Itoa(stack.Tail))
 					if err != nil {
-						log.Printf("[WARN] [edge,client] [message: could not retrieve logs for container '%s': %s]", c.ID, err)
+						log.Warn().
+							Str("container_id", c.ID).
+							Err(err).
+							Msg("could not retrieve logs for container")
+
 						continue
 					}
 
@@ -209,7 +239,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		case agent.PlatformKubernetes:
 			kubeSnapshot, err := kubernetes.CreateSnapshot()
 			if err != nil {
-				log.Printf("[WARN] [edge,client] [message: could not create the Kubernetes snapshot: %s]", err)
+				log.Warn().Err(err).Msg("could not create the Kubernetes snapshot")
 			}
 
 			payload.Snapshot.Kubernetes = kubeSnapshot
@@ -221,7 +251,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 					payload.Snapshot.KubernetesPatch = kubePatch
 					payload.Snapshot.KubernetesPatch = nil
 				} else {
-					log.Printf("[WARN] [edge,client] [message: could not generate the Kubernetes snapshot patch: %s]", err)
+					log.Warn().Err(err).Msg("could not generate the Kubernetes snapshot patch")
 				}
 			}
 		}
@@ -317,8 +347,9 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
+	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 
-	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(client.agentPlatformIdentifier)))
+	log.Debug().Int("header", int(client.agentPlatformIdentifier)).Msg("sending agent platform header")
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
@@ -327,7 +358,8 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[DEBUG] [internal,edge,poll] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
+		log.Debug().Int("response_code", resp.StatusCode).Msg("poll request failure")
+
 		return nil, errors.New("short poll request failed")
 	}
 
