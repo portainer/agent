@@ -3,8 +3,12 @@
 AGENT_VERSION=${AGENT_VERSION:-""}
 
 function compile_command() {
-    parse_compile_params "${@:1}"
+   parse_compile_params "${@:1}"
+   
+   compile
+}
 
+function compile() {
     compile_agent
     compile_credential_helper
 }
@@ -17,7 +21,7 @@ function compile_agent() {
 
     cd cmd/agent || exit 1
 
-    cmd=(go build --installsuffix cgo --gcflags="-trimpath $(pwd)")
+    local cmd=(go build --installsuffix cgo --gcflags="-trimpath $(pwd)")
 
     ldflags="-s"
     if [[ -n "$AGENT_VERSION" ]]; then
@@ -25,6 +29,7 @@ function compile_agent() {
     fi
     
     GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 "${cmd[@]}" --ldflags "$ldflags"
+
     rc=$?
     if [[ $rc != 0 ]]; then exit $rc; fi
     cd ../..
@@ -64,7 +69,7 @@ function parse_compile_params() {
 }
 
 function usage_compile() {
-    cmd_name="./dev.sh"
+    local cmd_name="./dev.sh"
     cat <<EOF
 Usage: $cmd_name compile [-h] [-v|--verbose]
 
