@@ -382,6 +382,8 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	if resp.StatusCode != http.StatusOK {
 		log.Debug().Int("response_code", resp.StatusCode).Msg("poll request failure")
 
+		logError(resp)
+
 		return nil, errors.New("short poll request failed")
 	}
 
