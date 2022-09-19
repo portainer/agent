@@ -3,8 +3,12 @@
 AGENT_VERSION=${AGENT_VERSION:-""}
 
 function compile_command() {
-    parse_compile_params "${@:1}"
+   parse_compile_params "${@:1}"
+   
+   compile
+}
 
+function compile() {
     compile_agent
     compile_credential_helper
 }
@@ -65,9 +69,9 @@ function parse_compile_params() {
 }
 
 function usage_compile() {
-    cmd="./dev.sh"
+    local cmd_name="./dev.sh"
     cat <<EOF
-Usage: $cmd compile [-h] [-v|--verbose]
+Usage: $cmd_name compile [-h] [-v|--verbose]
 
 This script is intended to help with compiling of the agent codebase
 
