@@ -21,6 +21,7 @@ import (
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
+	"github.com/portainer/agent/healthcheck"
 	"github.com/portainer/agent/http"
 	"github.com/portainer/agent/kubernetes"
 	"github.com/portainer/agent/net"
@@ -295,6 +296,14 @@ func main() {
 
 	// !Security
 
+	if options.HealthCheck {
+		err := healthcheck.Run(options, clusterService)
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed healthcheck")
+		}
+		goos.Exit(0)
+	}
+
 	// Edge
 	var edgeManager *edge.Manager
 	if options.EdgeMode {
@@ -307,7 +316,7 @@ func main() {
 		}
 		edgeManager = edge.NewManager(edgeManagerParameters)
 
-		edgeKey, err := edgeManager.RetrieveEdgeKey(options.EdgeKey, clusterService)
+		edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, clusterService, options.DataPath)
 		if err != nil {
 			log.Error().Err(err).Msg("unable to retrieve Edge key")
 		}
