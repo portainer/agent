@@ -297,6 +297,8 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		if asyncResponse.NeedFullSnapshot && !client.snapshotRetried {
 			client.snapshotRetried = true
 
+			log.Debug().Msg("retrying with full snapshot")
+
 			return client.GetEnvironmentStatus("snapshot")
 		}
 
