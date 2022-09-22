@@ -33,12 +33,11 @@ type PortainerAsyncClient struct {
 	agentPlatformIdentifier agent.ContainerPlatform
 	commandTimestamp        *time.Time
 
-	lastAsyncResponse      AsyncResponse
-	lastAsyncResponseMutex sync.Mutex
-	lastSnapshot           snapshot
-	nextSnapshot           snapshot
-	nextSnapshotMutex      sync.Mutex
-	snapshotRetried        bool
+	lastAsyncResponse AsyncResponse
+	lastSnapshot      snapshot
+	nextSnapshot      snapshot
+	nextSnapshotMutex sync.Mutex
+	snapshotRetried   bool
 
 	stackLogCollectionQueue []LogCommandData
 }
@@ -275,18 +274,14 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		}
 
 		client.nextSnapshotMutex.Lock()
-		defer client.nextSnapshotMutex.Unlock()
-
 		payload.Snapshot.StackStatus = client.nextSnapshot.StackStatus
 		payload.Snapshot.JobsStatus = client.nextSnapshot.JobsStatus
+		client.nextSnapshotMutex.Unlock()
 	}
 
 	if doCommand {
 		payload.CommandTimestamp = client.commandTimestamp
 	}
-
-	client.lastAsyncResponseMutex.Lock()
-	defer client.lastAsyncResponseMutex.Unlock()
 
 	asyncResponse, err := client.executeAsyncRequest(payload, pollURL)
 	if err != nil {
@@ -295,9 +290,8 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 
 	if doSnapshot {
 		if asyncResponse.NeedFullSnapshot && !client.snapshotRetried {
-			client.snapshotRetried = true
-
 			log.Debug().Msg("retrying with full snapshot")
+			client.snapshotRetried = true
 
 			return client.GetEnvironmentStatus("snapshot")
 		}
@@ -455,15 +449,17 @@ func (client *PortainerAsyncClient) EnqueueLogCollectionForStack(logCmd LogComma
 }
 
 func snapshotHash(snapshot any) (uint32, bool) {
-	h := fnv.New32a()
-	enc := json.NewEncoder(h)
+	b := &bytes.Buffer{}
 
-	err := enc.Encode(snapshot)
+	err := json.NewEncoder(b).Encode(snapshot)
 	if err != nil {
 		log.Error().Err(err).Msg("could not encode the snapshot")
 
 		return 0, false
 	}
+
+	h := fnv.New32a()
+	h.Write(bytes.TrimSpace(b.Bytes()))
 
 	return h.Sum32(), true
 }
