@@ -22,6 +22,10 @@ func NewHandler(notaryService *security.NotaryService) *Handler {
 
 	h.Handle("/sosivio/namespaces",
 		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.namespaces))).Methods(http.MethodGet)
+	h.Handle("/sosivio/pods",
+		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.pods))).Methods(http.MethodGet)
+	h.Handle("/sosivio/nodes",
+		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.nodes))).Methods(http.MethodGet)
 	h.Handle("/sosivio/commandcenter",
 		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.commandCenter))).Methods(http.MethodGet)
 	return h
