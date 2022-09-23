@@ -2,13 +2,13 @@ package serf
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"time"
 
 	"github.com/hashicorp/logutils"
 	"github.com/hashicorp/serf/serf"
 	"github.com/portainer/agent"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -75,7 +75,7 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, p
 	conf.ReconnectInterval = 10 * time.Second
 	conf.ReconnectTimeout = 1 * time.Minute
 
-	log.Printf("[DEBUG] [serf] [advertise_address: %s] [join_address: %s]", advertiseAddr, joinAddr)
+	log.Debug().Str("advertise_address", advertiseAddr).Strs("join_address", joinAddr).Msg("")
 
 	cluster, err := serf.Create(conf)
 	if err != nil {
@@ -84,9 +84,10 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, p
 
 	nodeCount, err := cluster.Join(joinAddr, true)
 	if err != nil {
-		log.Printf("[DEBUG] [serf] [message: Unable to join cluster] [error: %s]", err)
+		log.Debug().Err(err).Msg("unable to join cluster")
 	}
-	log.Printf("[DEBUG] [serf] [contacted_nodes: %d]", nodeCount)
+
+	log.Debug().Int("contacted_nodes", nodeCount).Msg("")
 
 	service.cluster = cluster
 

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -18,6 +17,8 @@ import (
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 	portainer "github.com/portainer/portainer/api"
+
+	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -80,7 +81,14 @@ func (manager *Manager) Start() error {
 		ContainerPlatform:       manager.containerPlatform,
 	}
 
-	log.Printf("[DEBUG] [edge] [api_addr: %s] [edge_id: %s] [poll_frequency: %s] [inactivity_timeout: %s] [insecure_poll: %t] [tunnel_capability: %t]", pollServiceConfig.APIServerAddr, pollServiceConfig.EdgeID, pollServiceConfig.PollFrequency, pollServiceConfig.InactivityTimeout, manager.agentOptions.EdgeInsecurePoll, manager.agentOptions.EdgeTunnel)
+	log.Debug().
+		Str("api_addr", pollServiceConfig.APIServerAddr).
+		Str("edge_id", pollServiceConfig.EdgeID).
+		Str("poll_frequency", pollServiceConfig.PollFrequency).
+		Str("inactivity_timeout", pollServiceConfig.InactivityTimeout).
+		Bool("insecure_poll", manager.agentOptions.EdgeInsecurePoll).
+		Bool("tunnel_capability", manager.agentOptions.EdgeTunnel).
+		Msg("")
 
 	// When the header is not set to PlatformDocker Portainer assumes the platform to be kubernetes.
 	// However, Portainer should handle podman agents the same way as docker agents.
@@ -96,7 +104,7 @@ func (manager *Manager) Start() error {
 		manager.agentOptions.EdgeID,
 		manager.agentOptions.EdgeAsyncMode,
 		agentPlatform,
-		buildHTTPClient(10, manager.agentOptions),
+		client.BuildHTTPClient(10, manager.agentOptions),
 	)
 
 	manager.stackManager = stack.NewStackManager(
@@ -132,7 +140,8 @@ func (manager *Manager) ResetActivityTimer() {
 func (manager *Manager) SetEndpointID(endpointID portainer.EndpointID) {
 	manager.mu.Lock()
 	if manager.key.EndpointID != endpointID {
-		log.Printf("[INFO] [edge] [message: setting endpointID to %d]", endpointID)
+		log.Info().Int("endpoint_id", int(endpointID)).Msg("setting endpoint ID")
+
 		manager.key.EndpointID = endpointID
 	}
 	manager.mu.Unlock()
@@ -157,7 +166,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 		for range ticker.C {
 			err := manager.checkDockerRuntimeConfig()
 			if err != nil {
-				log.Printf("[ERROR] [edge] [message: an error occurred during Docker runtime configuration check] [error: %s]", err)
+				log.Error().Msg("an error occurred during Docker runtime configuration check")
 			}
 		}
 	}()
@@ -175,13 +184,15 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 
 			err := manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
 			if err != nil {
-				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
+				log.Error().Err(err).Msg("unable to set engine status")
+
 				return
 			}
 
 			err = manager.stackManager.Start()
 			if err != nil {
-				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to Start stack manager] [error: %s]", err)
+				log.Error().Err(err).Msg("unable to Start stack manager")
+
 				return
 			}
 		}
@@ -200,13 +211,15 @@ func (manager *Manager) startEdgeBackgroundProcessOnNomad(runtimeCheckFrequency 
 
 			err := manager.stackManager.SetEngineStatus(stack.EngineTypeNomad)
 			if err != nil {
-				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to set engine status] [error: %s]", err)
+				log.Error().Err(err).Msg("unable to set engine status")
+
 				return
 			}
 
 			err = manager.stackManager.Start()
 			if err != nil {
-				log.Printf("[ERROR] [internal,edge,runtime] [message: unable to start stack manager] [error: %s]", err)
+				log.Error().Err(err).Msg("unable to start stack manager")
+
 				return
 			}
 		}
@@ -242,7 +255,10 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 	agentRunsOnLeaderNode := runtimeConfiguration.DockerConfiguration.Leader
 	agentRunsOnSwarm := runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm
 
-	log.Printf("[DEBUG] [edge] [message: Docker runtime configuration check] [engine_status: %d] [leader_node: %t]", runtimeConfiguration.DockerConfiguration.EngineStatus, agentRunsOnLeaderNode)
+	log.Debug().
+		Str("engine_status", fmt.Sprintf("%+v", runtimeConfiguration.DockerConfiguration.EngineStatus)).
+		Bool("leader_node", agentRunsOnLeaderNode).
+		Msg("Docker runtime configuration check")
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
 		engineStatus := stack.EngineTypeDockerStandalone
@@ -294,8 +310,9 @@ func buildTransport(options *agent.Options) *http.Transport {
 		if options.SSLCACert != "" {
 			caCert, err := ioutil.ReadFile(options.SSLCACert)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal().Err(err).Msg("")
 			}
+
 			caCertPool = x509.NewCertPool()
 			caCertPool.AppendCertsFromPEM(caCert)
 		}

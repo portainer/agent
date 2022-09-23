@@ -3,9 +3,11 @@ package proxy
 import (
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 func reproduceDockerAPIResponse(data []interface{}, requestPath string) interface{} {
@@ -47,7 +49,10 @@ func responseToJSONArray(response *http.Response, requestPath string) ([]interfa
 	} else {
 		responseData, ok = responseObject.([]interface{})
 		if !ok {
-			log.Printf("[ERROR] [http,proxy] [message: unexpected response from Docker daemon] [response: %+v]", responseData)
+			log.Error().
+				Str("response", fmt.Sprintf("%+v", responseData)).
+				Msg("unexpected response from Docker daemon")
+
 			return nil, errors.New("invalid response from Docker daemon")
 		}
 	}

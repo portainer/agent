@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/portainer/agent"
 	portainer "github.com/portainer/portainer/api"
+
+	"github.com/rs/zerolog/log"
 )
 
 // PortainerEdgeClient is used to execute HTTP requests against the Portainer API
@@ -60,7 +61,8 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[DEBUG] [edge] [response_code: %d] [message: Global key request failure]", resp.StatusCode)
+		log.Debug().Int("response_code", resp.StatusCode).Msg("global key request failure")
+
 		return 0, errors.New("global key request failed")
 	}
 
@@ -84,7 +86,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
 
-	log.Printf("[DEBUG] [internal,edge,poll] [message: sending agent platform header] [header: %s]", strconv.Itoa(int(client.agentPlatform)))
+	log.Debug().Int("header", int(client.agentPlatform)).Msg("sending agent platform header")
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
@@ -93,7 +95,8 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[DEBUG] [internal,edge,poll] [response_code: %d] [message: Poll request failure]", resp.StatusCode)
+		log.Debug().Int("response_code", resp.StatusCode).Msg("poll request failure]")
+
 		return nil, errors.New("short poll request failed")
 	}
 
@@ -124,7 +127,8 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client] [response_code: %d] [message: GetEdgeStackConfig operation failed]", resp.StatusCode)
+		log.Error().Int("response_code", resp.StatusCode).Msg("GetEdgeStackConfig operation failed")
+
 		return nil, errors.New("GetEdgeStackConfig operation failed")
 	}
 
@@ -173,7 +177,8 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(edgeStackID, edgeStackStat
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client] [response_code: %d] [message: SetEdgeStackStatus operation failed]", resp.StatusCode)
+		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeStackStatus operation failed")
+
 		return errors.New("SetEdgeStackStatus operation failed")
 	}
 
@@ -199,7 +204,8 @@ func (client *PortainerEdgeClient) DeleteEdgeStackStatus(edgeStackID int) error 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
-		log.Printf("[ERROR] [http,client,portainer] [response_code: %d] [message: DeleteEdgeStackStatus operation failed]", resp.StatusCode)
+		log.Error().Int("response_code", resp.StatusCode).Msg("DeleteEdgeStackStatus operation failed")
+
 		return errors.New("DeleteEdgeStackStatus operation failed")
 	}
 
@@ -238,7 +244,8 @@ func (client *PortainerEdgeClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobS
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[ERROR] [http,client] [response_code: %d] [message: SetEdgeJobStatus operation failed]", resp.StatusCode)
+		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeJobStatus operation failed")
+
 		return errors.New("SetEdgeJobStatus operation failed")
 	}
 

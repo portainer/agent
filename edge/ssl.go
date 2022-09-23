@@ -1,9 +1,10 @@
 package edge
 
 import (
-	"log"
 	"os"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // BlockUntilCertificateIsReady blocks the server start until the TLS certificates are ready
@@ -25,7 +26,8 @@ func BlockUntilCertificateIsReady(certPath, keyPath string, retryInterval time.D
 			break
 		}
 
-		log.Printf("[INFO] [edge] [message: Waiting for certificate to be ready]")
+		log.Info().Msg("Waiting for certificate to be ready")
+
 		time.Sleep(retryInterval)
 	}
 }

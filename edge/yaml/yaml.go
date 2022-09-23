@@ -4,19 +4,19 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
+	"github.com/portainer/agent"
+
+	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	v1 "k8s.io/api/apps/v1"
 	v1Types "k8s.io/api/core/v1"
 	v1AMacTypes "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-
-	"github.com/docker/distribution/reference"
-	"github.com/pkg/errors"
-	"github.com/portainer/agent"
-	v1 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -86,7 +86,7 @@ func getRegistryDomain(image string) (string, error) {
 
 func (y *yaml) AddImagePullSecrets() (string, error) {
 	ymlFiles := strings.Split(y.fileContent, "---\n")
-	log.Printf("[INFO] yaml length %d", len(ymlFiles))
+	log.Info().Int("length", len(ymlFiles)).Msg("yaml")
 
 	pullSecrets := make([]v1Types.Secret, 0)
 	for i, f := range ymlFiles {
@@ -124,25 +124,28 @@ func (y *yaml) AddImagePullSecrets() (string, error) {
 
 			ymlStr, err := encodeYAML(yml)
 			if err != nil {
-				log.Printf("[ERROR] [edge,stack] error while encoding YAML with imagePullSecrets")
+				log.Error().Msg("error while encoding YAML with imagePullSecrets")
+
 				continue
 			}
 			ymlFiles[i] = ymlStr
 		default:
-			fmt.Printf("[INFO] default case %T", obj)
+			log.Info().Str("type", fmt.Sprintf("%T", obj)).Msg("default case")
 			_ = o
 		}
 	}
 
 	// All pullSecrets to original YAML file
 	for _, yml := range pullSecrets {
-
 		y := yml.DeepCopyObject()
+
 		ymlStr, err := encodeYAML(y)
 		if err != nil {
-			log.Printf("[ERROR] [edge,stack] error while encoding YAML with imagePullSecrets")
+			log.Error().Msg("error while encoding YAML with imagePullSecrets")
+
 			continue
 		}
+
 		ymlFiles = append(ymlFiles, ymlStr)
 	}
 
@@ -157,8 +160,10 @@ func slug(s string) string {
 }
 
 func encodeYAML(yml runtime.Object) (string, error) {
-	e := json.NewYAMLSerializer(json.DefaultMetaFactory, nil, nil)
 	var buf bytes.Buffer
+
+	e := json.NewYAMLSerializer(json.DefaultMetaFactory, nil, nil)
 	err := e.Encode(yml, &buf)
+
 	return buf.String(), err
 }

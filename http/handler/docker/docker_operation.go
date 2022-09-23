@@ -2,7 +2,6 @@ package docker
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 
@@ -10,6 +9,8 @@ import (
 	"github.com/portainer/agent/http/proxy"
 	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/response"
+
+	"github.com/rs/zerolog/log"
 )
 
 func (handler *Handler) dockerOperation(rw http.ResponseWriter, request *http.Request) *httperror.HandlerError {
@@ -64,7 +65,10 @@ func (handler *Handler) executeOperationOnManagerNode(rw http.ResponseWriter, re
 	} else {
 		targetMember := handler.clusterService.GetMemberByRole(agent.NodeRoleManager)
 		if targetMember == nil {
-			log.Printf("[ERROR] [http,handler,docker] [request: %s] [message: unable to redirect request to a manager node: no manager node found]", request.URL)
+			log.Error().
+				Stringer("request", request.URL).
+				Msg("unable to redirect request to a manager node: no manager node found")
+
 			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent located on a manager node", errors.New("Unable to find an agent on any manager node")}
 		}
 		proxy.AgentHTTPRequest(rw, request, targetMember, handler.useTLS)
@@ -80,7 +84,11 @@ func (handler *Handler) executeOperationOnNode(rw http.ResponseWriter, request *
 	} else {
 		targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
 		if targetMember == nil {
-			log.Printf("[ERROR] [http,handler,docker] [target_node: %s] [request: %s] [message: unable to redirect request to specified node: agent not found in cluster]", agentTargetHeader, request.URL)
+			log.Error().
+				Str("target_node", agentTargetHeader).
+				Stringer("request", request.URL).
+				Msg("unable to redirect request to specified node: agent not found in cluster")
+
 			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
 		}
 

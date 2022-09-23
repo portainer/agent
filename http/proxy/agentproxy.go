@@ -2,11 +2,12 @@ package proxy
 
 import (
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/portainer/agent"
 	httperror "github.com/portainer/libhttp/error"
+
+	"github.com/rs/zerolog/log"
 )
 
 // AgentProxy enables redirection to different nodes
@@ -35,17 +36,23 @@ func (p *AgentProxy) Redirect(next http.Handler) http.Handler {
 		}
 
 		agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
-
 		if agentTargetHeader == p.runtimeConfiguration.NodeName || agentTargetHeader == "" {
 			next.ServeHTTP(rw, r)
-		} else {
-			targetMember := p.clusterService.GetMemberByNodeName(agentTargetHeader)
-			if targetMember == nil {
-				log.Printf("[ERROR] [http,proxy] [target_node: %s] [request: %s] [message: unable to redirect request to specified node: agent not found in cluster]", agentTargetHeader, r.URL)
-				return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
-			}
-			AgentHTTPRequest(rw, r, targetMember, p.useTLS)
+			return nil
 		}
+
+		targetMember := p.clusterService.GetMemberByNodeName(agentTargetHeader)
+		if targetMember == nil {
+			log.Error().
+				Str("target_node", agentTargetHeader).
+				Str("request", r.URL.String()).
+				Msg("unable to redirect request to specified node: agent not found in cluster")
+
+			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
+		}
+
+		AgentHTTPRequest(rw, r, targetMember, p.useTLS)
+
 		return nil
 	})
 }

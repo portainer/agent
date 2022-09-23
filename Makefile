@@ -18,12 +18,12 @@ all: $(agent) $(docker-credential-portainer) download-binaries
 
 $(agent):
 	@echo "Building agent..."
-	@CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build --installsuffix cgo --ldflags "-s" -o dist/$@ cmd/agent/main.go
+	@CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build --installsuffix cgo --gcflags="-trimpath $(pwd)" --ldflags "-s" -o dist/$@ cmd/agent/main.go
 
 $(docker-credential-portainer):
 	@echo "Building docker-credential-portainer..."
 	@cd cmd/docker-credential-portainer; \
-	CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build --installsuffix cgo --ldflags "-s" -o ../../dist/$@
+	CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build --installsuffix cgo --gcflags="-trimpath $(pwd)" --ldflags "-s" -o ../../dist/$@
 
 download-binaries:
 	@./setup.sh $(PLATFORM) $(ARCH)
