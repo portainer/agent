@@ -2,6 +2,13 @@
 
 set -Eeuo pipefail
 
+
+DEBUG=${DEBUG:-""}
+if [[ -n "$DEBUG" ]]; then
+    set -x
+fi
+
+
 trap cleanup SIGINT SIGTERM ERR EXIT
 
 # script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd -P)
