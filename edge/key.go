@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type edgeKey struct {
+type EdgeKey struct {
 	PortainerInstanceURL    string
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
@@ -106,7 +106,7 @@ func (manager *Manager) PropagateKeyInCluster() error {
 
 // parseEdgeKey decodes a base64 encoded key and extract the decoded information from the following
 // format: <portainer_instance_url>|<tunnel_server_addr>|<tunnel_server_fingerprint>|<endpoint_id>
-func ParseEdgeKey(key string) (*edgeKey, error) {
+func ParseEdgeKey(key string) (*EdgeKey, error) {
 	decodedKey, err := base64.RawStdEncoding.DecodeString(key)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func ParseEdgeKey(key string) (*edgeKey, error) {
 		return nil, errors.New("invalid key format")
 	}
 
-	edgeKey := &edgeKey{
+	edgeKey := &EdgeKey{
 		PortainerInstanceURL:    keyInfo[0],
 		TunnelServerAddr:        keyInfo[1],
 		TunnelServerFingerprint: keyInfo[2],
@@ -133,7 +133,7 @@ func ParseEdgeKey(key string) (*edgeKey, error) {
 	return edgeKey, nil
 }
 
-func encodeKey(edgeKey *edgeKey) string {
+func encodeKey(edgeKey *EdgeKey) string {
 	keyInfo := fmt.Sprintf("%s|%s|%s|%d", edgeKey.PortainerInstanceURL, edgeKey.TunnelServerAddr, edgeKey.TunnelServerFingerprint, edgeKey.EndpointID)
 	encodedKey := base64.RawStdEncoding.EncodeToString([]byte(keyInfo))
 	return encodedKey

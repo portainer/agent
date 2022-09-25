@@ -29,7 +29,7 @@ type (
 		agentOptions      *agent.Options
 		clusterService    agent.ClusterService
 		dockerInfoService agent.DockerInfoService
-		key               *edgeKey
+		key               *EdgeKey
 		logsManager       *scheduler.LogsManager
 		pollService       *PollService
 		stackManager      *stack.StackManager

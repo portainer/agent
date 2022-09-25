@@ -2,15 +2,22 @@ package healthcheck
 
 import (
 	"fmt"
-	"log"
+
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/edge/client"
+	"github.com/portainer/agent/filesystem"
+	"github.com/rs/zerolog/log"
+)
+
+const (
+	pollCheckedFileName = "poll_checked"
 )
 
 func Run(options *agent.Options, clusterService agent.ClusterService) error {
@@ -18,7 +25,7 @@ func Run(options *agent.Options, clusterService agent.ClusterService) error {
 
 		// Healthcheck not considered for regular agent in the scope of the agent auto-upgrade POC
 		// We might want to consider having an healthcheck for the regular agent if that is needed/valuable
-		log.Println("[INFO] [healthcheck] [message: No pre-flight checks available for regular agent deployment. Exiting.]")
+		log.Info().Msg("No pre-flight checks available for regular agent deployment. Exiting.")
 		return nil
 	}
 
@@ -28,7 +35,7 @@ func Run(options *agent.Options, clusterService agent.ClusterService) error {
 	}
 
 	if edgeKey == "" {
-		log.Println("[INFO] [healthcheck] [message: No pre-flight checks available when edge key is manually entered. Exiting.]")
+		log.Info().Msg("No pre-flight checks available when edge key is manually entered. Exiting.")
 		return nil
 	}
 
@@ -37,26 +44,47 @@ func Run(options *agent.Options, clusterService agent.ClusterService) error {
 		return errors.WithMessage(err, "Failed decoding key")
 	}
 
+	err = checkNetwork(options, decodedKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func checkNetwork(options *agent.Options, decodedKey *edge.EdgeKey) error {
+	exists, err := filesystem.FileExists(path.Join(options.DataPath, pollCheckedFileName))
+	if err != nil {
+		return errors.WithMessage(err, "Failed checking if poll check file exists")
+	}
+	if exists {
+		log.Info().Msg("Skipping network checks as it has already been performed")
+		return nil
+	}
+
 	_, err = checkUrl(decodedKey.PortainerInstanceURL)
 	if err != nil {
 		return err
 	}
-	log.Printf("[DEBUG] [healthcheck] [message: Url reachable]")
+	log.Debug().Msg("Url reachable")
 
 	err = checkPolling(decodedKey.PortainerInstanceURL, options)
 	if err != nil {
 		return err
 	}
-	log.Printf("[DEBUG] [healthcheck] [message: Portainer status check passed]")
+	log.Debug().Msg("Portainer status check passed")
 
-	// We then check that the agent can establish a TCP connection to the Portainer instance tunnel server
 	err = checkTunnel(decodedKey.TunnelServerAddr)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("[DEBUG] [healthcheck] [message: Agent can open TCP connection to Portainer]")
+	log.Debug().Msg("Agent can open TCP connection to Portainer")
 
+	err = filesystem.WriteFile(options.DataPath, pollCheckedFileName, []byte("true"), 0644)
+	if err != nil {
+		return errors.WithMessage(err, "Failed writing poll check file")
+	}
 	return nil
 }
 
