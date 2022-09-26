@@ -13,7 +13,7 @@ func (handler *Handler) namespaces(rw http.ResponseWriter, r *http.Request) *htt
 	// TODO: REVIEW-POC-SOSIVIO
 	// Make use of a proper HTTP client here to manage timeouts
 	// Alternatively, a proxy can probably be used to handle ALL Sosivio related requests.
-	resp, err := http.Get("http://poc-api.portainer.svc.cluster.local:8088/api/v1/namespaces")
+	resp, err := http.Get("http://poc-api.portainer.svc.cluster.local:8088/api/v1/namespaces?" + r.URL.RawQuery)
 	if err != nil {
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to query Sosivio API", err}
 	}
