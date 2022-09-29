@@ -26,7 +26,8 @@ func Run(options *agent.Options) error {
 		// Healthcheck not considered for regular agent in the scope of the agent auto-upgrade POC
 		// We might want to consider having an healthcheck for the regular agent if that is needed/valuable
 		log.Info().Msg("No pre-flight checks available for regular agent deployment. Exiting.")
-		return nil
+		return createHealthcheckPassedFile(options.DataPath)
+
 	}
 
 	edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, nil, options.DataPath)
@@ -49,7 +50,7 @@ func Run(options *agent.Options) error {
 		return err
 	}
 
-	return nil
+	return createHealthcheckPassedFile(options.DataPath)
 }
 
 func checkNetwork(options *agent.Options, decodedKey *edge.EdgeKey) error {
@@ -85,6 +86,15 @@ func checkNetwork(options *agent.Options, decodedKey *edge.EdgeKey) error {
 	if err != nil {
 		return errors.WithMessage(err, "Failed writing poll check file")
 	}
+	return nil
+}
+
+func createHealthcheckPassedFile(dataPath string) error {
+	err := filesystem.WriteFile(dataPath, filesystem.HealthCheckDoneFileName, []byte("true"), 0644)
+	if err != nil {
+		return errors.WithMessage(err, "Failed writing healthcheck file")
+	}
+
 	return nil
 }
 

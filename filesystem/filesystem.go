@@ -12,6 +12,11 @@ import (
 	"time"
 
 	"github.com/portainer/agent/constants"
+	"github.com/rs/zerolog/log"
+)
+
+const (
+	HealthCheckDoneFileName = "healthcheck_done"
 )
 
 // FileInfo represents information about a file on the filesystem
@@ -193,3 +198,14 @@ func containsDotDot(v string) bool {
 }
 
 func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
+
+func IsHealthcheckFileExists(dataPath string) bool {
+	exists, err := FileExists(path.Join(dataPath, HealthCheckDoneFileName))
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed checking healthcheck file")
+		return false
+	}
+
+	return exists
+
+}

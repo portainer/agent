@@ -130,6 +130,7 @@ func main() {
 
 			// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
 			// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
+			waitUntilHealthCheckPassed(options.DataPath)
 			time.Sleep(3 * time.Second)
 
 			joinAddr, err := net.LookupIPAddresses(clusterAddr)
@@ -183,6 +184,7 @@ func main() {
 
 		// TODO: Workaround. Kubernetes only adds entries in the DNS for running containers. We need to wait a bit
 		// for the container to be considered running by Kubernetes and an entry to be added to the DNS.
+		waitUntilHealthCheckPassed(options.DataPath)
 		time.Sleep(3 * time.Second)
 
 		joinAddr, err := net.LookupIPAddresses(clusterAddr)
@@ -427,4 +429,15 @@ func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
 			edgeServer.Shutdown()
 		}
 	}()
+}
+
+func waitUntilHealthCheckPassed(dataPath string) {
+	for {
+		if filesystem.IsHealthcheckFileExists(dataPath) {
+			return
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
 }
