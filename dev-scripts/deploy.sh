@@ -168,6 +168,7 @@ function deploy_swarm() {
     --mount type=bind,src=//,dst=/host \
     --publish target=9001,published=9001 \
     --publish mode=host,published=80,target=80 \
+     --restart-condition none \
     "${IMAGE_NAME}"
     
     docker -H "$url" service logs -f portainer-agent-dev
