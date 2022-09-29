@@ -50,6 +50,15 @@ func main() {
 
 	setLoggingLevel(options.LogLevel)
 
+	if options.HealthCheck {
+		err := healthcheck.Run(options)
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed healthcheck")
+		}
+
+		goos.Exit(0)
+	}
+
 	if options.EdgeAsyncMode && !options.EdgeMode {
 		log.Fatal().Msg("edge Async mode cannot be enabled if Edge Mode is disabled")
 	}
@@ -292,14 +301,6 @@ func main() {
 	}
 
 	// !Security
-
-	if options.HealthCheck {
-		err := healthcheck.Run(options, clusterService)
-		if err != nil {
-			log.Fatal().Err(err).Msg("failed healthcheck")
-		}
-		goos.Exit(0)
-	}
 
 	// Edge
 	var edgeManager *edge.Manager

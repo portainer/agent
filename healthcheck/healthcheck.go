@@ -20,7 +20,7 @@ const (
 	pollCheckedFileName = "poll_checked"
 )
 
-func Run(options *agent.Options, clusterService agent.ClusterService) error {
+func Run(options *agent.Options) error {
 	if !options.EdgeMode {
 
 		// Healthcheck not considered for regular agent in the scope of the agent auto-upgrade POC
@@ -29,7 +29,7 @@ func Run(options *agent.Options, clusterService agent.ClusterService) error {
 		return nil
 	}
 
-	edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, clusterService, options.DataPath)
+	edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, nil, options.DataPath)
 	if err != nil {
 		return errors.WithMessage(err, "Unable to retrieve Edge key")
 	}
