@@ -257,6 +257,8 @@ const (
 	// HTTPPublicKeyHeaderName is the name of the header containing the public key
 	// of a Portainer instance.
 	HTTPPublicKeyHeaderName = "X-PortainerAgent-PublicKey"
+	// HTTPResponseAgentTimeZone is the name of the header containing the timezone
+	HTTPResponseAgentTimeZone = "X-PortainerAgent-TimeZone"
 	// HTTPResponseAgentHeaderName is the name of the header that is automatically added
 	// to each agent response.
 	HTTPResponseAgentHeaderName = "Portainer-Agent"

@@ -368,9 +368,10 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
-	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
 	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
+	req.Header.Set(agent.HTTPResponseAgentTimeZone, time.Local.String())
 
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
 	log.Debug().Int("header", int(client.agentPlatformIdentifier)).Msg("sending agent platform header")
 
 	resp, err := client.httpClient.Do(req)
