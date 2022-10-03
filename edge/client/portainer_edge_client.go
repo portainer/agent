@@ -46,6 +46,10 @@ func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
 }
 
 func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, error) {
+	if client.edgeID == "" {
+		return 0, errors.New("edge ID not set")
+	}
+
 	gkURL := fmt.Sprintf("%s/api/endpoints/global-key", client.serverAddress)
 	req, err := http.NewRequest(http.MethodPost, gkURL, nil)
 	if err != nil {
@@ -84,7 +88,10 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 
 	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
-	req.Header.Set(agent.HTTPResponseAgentTimeZone, time.Local.String())
+
+	timeZone := time.Local.String()
+	req.Header.Set(agent.HTTPResponseAgentTimeZone, timeZone)
+	log.Debug().Str("timeZone", timeZone).Msg("sending timeZone header")
 
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
 	log.Debug().Int("header", int(client.agentPlatform)).Msg("sending agent platform header")
