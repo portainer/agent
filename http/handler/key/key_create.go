@@ -2,13 +2,13 @@ package key
 
 import (
 	"errors"
-	"log"
 	"net/http"
 
-	"github.com/portainer/libhttp/request"
-
 	httperror "github.com/portainer/libhttp/error"
+	"github.com/portainer/libhttp/request"
 	"github.com/portainer/libhttp/response"
+
+	"github.com/rs/zerolog/log"
 )
 
 type keyCreatePayload struct {
@@ -31,7 +31,7 @@ func (handler *Handler) keyCreate(w http.ResponseWriter, r *http.Request) *httpe
 		return &httperror.HandlerError{http.StatusConflict, "An Edge key is already associated to this agent", errors.New("Edge key already associated")}
 	}
 
-	log.Println("[INFO] [http,handler,key] [message: Received Edge key association request]")
+	log.Info().Msg("received Edge key association request")
 
 	var payload keyCreatePayload
 	err := request.DecodeAndValidateJSONPayload(r, &payload)
