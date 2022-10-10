@@ -2,7 +2,7 @@ package edge
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/portainer/agent"
@@ -19,6 +19,33 @@ const (
 	coalescingInterval = 100 * time.Millisecond
 	failSafeInterval   = time.Minute
 )
+
+type operationError struct {
+	Command   string
+	Operation string
+	Err       error
+}
+
+func newOperationError(cmd, op string, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	return &operationError{
+		Command:   cmd,
+		Operation: op,
+		Err:       err,
+	}
+}
+
+func (o *operationError) Error() string {
+	return o.Err.Error()
+}
+
+func (o *operationError) Is(target error) bool {
+	_, ok := target.(*operationError)
+	return ok
+}
 
 func createTicker(interval time.Duration) *time.Ticker {
 	if interval > zeroDuration {
@@ -139,10 +166,7 @@ func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 		return err
 	}
 
-	err = service.processAsyncCommands(status.AsyncCommands)
-	if err != nil {
-		return err
-	}
+	service.processAsyncCommands(status.AsyncCommands)
 
 	service.scheduleManager.ProcessScheduleLogsCollection()
 
@@ -164,7 +188,7 @@ func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 	return nil
 }
 
-func (service *PollService) processAsyncCommands(commands []client.AsyncCommand) error {
+func (service *PollService) processAsyncCommands(commands []client.AsyncCommand) {
 	ctx := context.Background()
 
 	for _, command := range commands {
@@ -184,26 +208,27 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 		case "volume":
 			err = service.processVolumeCommand(command)
 		default:
-			return fmt.Errorf("command type %s not supported", command.Type)
+			err = newOperationError(command.Type, "n/a", errors.New("command type not supported"))
 		}
 
-		if err != nil {
-			return err
+		var opErr *operationError
+		if errors.As(err, &opErr) {
+			log.Error().
+				Str("command", opErr.Command).
+				Str("operation", opErr.Operation).
+				Err(err).
+				Msg("error with command operation")
 		}
 
 		service.portainerClient.SetLastCommandTimestamp(command.Timestamp)
 	}
-
-	return nil
 }
 
 func (service *PollService) processStackCommand(ctx context.Context, command client.AsyncCommand) error {
 	var stackData client.EdgeStackData
 	err := mapstructure.Decode(command.Value, &stackData)
 	if err != nil {
-		log.Debug().Err(err).Msg("failed to decode EdgeStackData")
-
-		return err
+		return newOperationError("stack", "n/a", err)
 	}
 
 	responseStatus := int(stack.EdgeStackStatusOk)
@@ -228,7 +253,7 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 		}
 
 	default:
-		return fmt.Errorf("operation %v not supported", command.Operation)
+		return newOperationError("schedule", command.Operation, errors.New("operation not supported"))
 	}
 
 	return service.portainerClient.SetEdgeStackStatus(stackData.ID, responseStatus, errorMessage)
@@ -238,9 +263,7 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 	var jobData client.EdgeJobData
 	err := mapstructure.Decode(command.Value, &jobData)
 	if err != nil {
-		log.Debug().Err(err).Msg("failed to decode EdgeJobData")
-
-		return err
+		return newOperationError("schedule", "n/a", err)
 	}
 
 	schedule := agent.Schedule{
@@ -259,14 +282,10 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 		err = service.scheduleManager.RemoveSchedule(schedule)
 
 	default:
-		return fmt.Errorf("operation %v not supported", command.Operation)
+		err = errors.New("operation not supported")
 	}
 
-	if err != nil {
-		log.Error().Str("operation", command.Operation).Err(err).Msg("error with operation on schedule")
-	}
-
-	return nil
+	return newOperationError("schedule", command.Operation, err)
 }
 
 func (service *PollService) processLogCommand(command client.AsyncCommand) error {
@@ -274,9 +293,7 @@ func (service *PollService) processLogCommand(command client.AsyncCommand) error
 
 	err := mapstructure.Decode(command.Value, &logCmd)
 	if err != nil {
-		log.Debug().Err(err).Msg("failed to decode LogCommandData")
-
-		return err
+		return newOperationError("log", "n/a", err)
 	}
 
 	service.portainerClient.EnqueueLogCollectionForStack(logCmd)
@@ -289,8 +306,7 @@ func (service *PollService) processContainerCommand(command client.AsyncCommand)
 
 	err := mapstructure.Decode(command.Value, &containerCmd)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to ContainerCommandData: %s", command.Value, err)
-		return err
+		return newOperationError("container", "n/a", err)
 	}
 
 	switch containerCmd.ContainerOperation {
@@ -306,11 +322,7 @@ func (service *PollService) processContainerCommand(command client.AsyncCommand)
 		err = docker.ContainerKill(containerCmd.ContainerName)
 	}
 
-	if err != nil {
-		log.Printf("[ERROR] [edge] [message: error with '%s' operation on container command] [error: %s]", command.Operation, err)
-	}
-
-	return err
+	return newOperationError("container", command.Operation, err)
 }
 
 func (service *PollService) processImageCommand(command client.AsyncCommand) error {
@@ -318,8 +330,7 @@ func (service *PollService) processImageCommand(command client.AsyncCommand) err
 
 	err := mapstructure.Decode(command.Value, &imageCommand)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to ImageCommandData: %s", command.Value, err)
-		return err
+		return newOperationError("image", "n/a", errors.New("failed to decode ImageCommandData"))
 	}
 
 	switch imageCommand.ImageOperation {
@@ -327,11 +338,7 @@ func (service *PollService) processImageCommand(command client.AsyncCommand) err
 		_, err = docker.ImageDelete(imageCommand.ImageName, imageCommand.ImageRemoveOptions)
 	}
 
-	if err != nil {
-		log.Printf("[ERROR] [edge] [message: error with '%s' operation on image command] [error: %s]", command.Operation, err)
-	}
-
-	return err
+	return newOperationError("image", command.Operation, err)
 }
 
 func (service *PollService) processVolumeCommand(command client.AsyncCommand) error {
@@ -339,8 +346,7 @@ func (service *PollService) processVolumeCommand(command client.AsyncCommand) er
 
 	err := mapstructure.Decode(command.Value, &volumeCommand)
 	if err != nil {
-		log.Printf("[DEBUG] [http,client,portainer] failed to convert %v to VolumeCommandData: %s", command.Value, err)
-		return err
+		return newOperationError("volume", "n/a", err)
 	}
 
 	switch volumeCommand.VolumeOperation {
@@ -348,9 +354,5 @@ func (service *PollService) processVolumeCommand(command client.AsyncCommand) er
 		err = docker.VolumeDelete(volumeCommand.VolumeName, volumeCommand.ForceRemove)
 	}
 
-	if err != nil {
-		log.Printf("[ERROR] [edge] [message: error with '%s' operation on volume command] [error: %s]", command.Operation, err)
-	}
-
-	return err
+	return newOperationError("volume", command.Operation, err)
 }
