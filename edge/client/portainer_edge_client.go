@@ -23,6 +23,7 @@ type PortainerEdgeClient struct {
 	getEndpointIDFn getEndpointIDFn
 	edgeID          string
 	agentPlatform   agent.ContainerPlatform
+	updateID        int
 }
 
 type globalKeyResponse struct {
@@ -30,7 +31,7 @@ type globalKeyResponse struct {
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
-func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
+func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, updateID int, httpClient *http.Client) *PortainerEdgeClient {
 	return &PortainerEdgeClient{
 		serverAddress:   serverAddress,
 		setEndpointIDFn: setEIDFn,
@@ -38,6 +39,7 @@ func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getE
 		edgeID:          edgeID,
 		agentPlatform:   agentPlatform,
 		httpClient:      httpClient,
+		updateID:        updateID,
 	}
 }
 
@@ -95,6 +97,8 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
 	log.Debug().Int("header", int(client.agentPlatform)).Msg("sending agent platform header")
+
+	req.Header.Set(agent.HTTPResponseUpdateIDHeaderName, strconv.Itoa(client.updateID))
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
