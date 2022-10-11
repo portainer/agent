@@ -4,7 +4,7 @@ AGENT_VERSION=${AGENT_VERSION:-""}
 
 function compile_command() {
    parse_compile_params "${@:1}"
-   
+
    compile
 }
 
@@ -21,13 +21,13 @@ function compile_agent() {
 
     cd cmd/agent || exit 1
 
-    local cmd=(go build --installsuffix cgo --gcflags="-trimpath $(pwd)")
+    local cmd=(go build -trimpath --installsuffix cgo)
 
     ldflags="-s"
     if [[ -n "$AGENT_VERSION" ]]; then
         ldflags="$ldflags -X 'github.com/portainer/agent.Version=${AGENT_VERSION}'"
     fi
-    
+
     GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 "${cmd[@]}" --ldflags "$ldflags"
 
     rc=$?
@@ -45,7 +45,7 @@ function compile_credential_helper() {
     mkdir -p $TARGET_DIST
 
     cd cmd/docker-credential-portainer || exit 1
-    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 go build --installsuffix cgo --gcflags="-trimpath $(pwd)" --ldflags '-s'
+    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 go build -trimpath --installsuffix cgo --ldflags '-s'
     rc=$?
     if [[ $rc != 0 ]]; then exit $rc; fi
     cd ../..
