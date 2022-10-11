@@ -89,6 +89,7 @@ type (
 		EdgeInsecurePoll      bool
 		EdgeTunnel            bool
 		LogLevel              string
+		LogMode               string
 		HealthCheck           bool
 		SSLCert               string
 		SSLKey                string

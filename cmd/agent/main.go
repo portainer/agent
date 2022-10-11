@@ -49,6 +49,7 @@ func main() {
 	}
 
 	setLoggingLevel(options.LogLevel)
+	setLoggingMode(options.LogMode)
 
 	if options.EdgeAsyncMode && !options.EdgeMode {
 		log.Fatal().Msg("edge Async mode cannot be enabled if Edge Mode is disabled")
@@ -398,6 +399,15 @@ func setLoggingLevel(level string) {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	case "DEBUG":
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+}
+
+func setLoggingMode(mode string) {
+	switch mode {
+	case "PRETTY":
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: goos.Stderr, NoColor: true})
+	case "JSON":
+		log.Logger = log.Output(goos.Stderr)
 	}
 }
 
