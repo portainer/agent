@@ -23,8 +23,8 @@ func NewHandler(cs agent.ClusterService, notaryService *security.NotaryService) 
 		clusterService: cs,
 	}
 
-	h.Handle("/agents",
-		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.agentList))).Methods(http.MethodGet)
+	h.Handle("/agents", notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.agentList))).Methods(http.MethodGet)
+	h.Handle("/agents_upgrade", notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.agentUpgrade))).Methods(http.MethodPost)
 
 	return h
 }
