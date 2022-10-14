@@ -405,10 +405,21 @@ func setLoggingLevel(level string) {
 func setLoggingMode(mode string) {
 	switch mode {
 	case "PRETTY":
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: goos.Stderr, NoColor: true})
+		log.Logger = log.Output(zerolog.ConsoleWriter{
+			Out:           goos.Stderr,
+			NoColor:       true,
+			TimeFormat:    "2006/01/02 03:04PM",
+			FormatMessage: formatMessage})
 	case "JSON":
 		log.Logger = log.Output(goos.Stderr)
 	}
+}
+
+func formatMessage(i interface{}) string {
+	if i == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s |", i)
 }
 
 func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
