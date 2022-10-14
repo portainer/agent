@@ -18,7 +18,6 @@ func logError(resp *http.Response) {
 		log.Debug().Err(err).Msg("Failed to decode error response")
 		return
 	}
-	log.Debug().Str("error_response_message", errorData.Details).Str("error_response_details", errorData.Details).Int("status_code", resp.StatusCode).Msg("poll request failure]")
 
-	return
+	log.Debug().Str("error_response_message", errorData.Details).Str("error_response_details", errorData.Details).Int("status_code", resp.StatusCode).Msg("poll request failure")
 }

@@ -258,9 +258,7 @@ func (client *PortainerEdgeClient) ProcessAsyncCommands() error {
 	return nil // edge mode only
 }
 
-func (client *PortainerEdgeClient) SetLastCommandTimestamp(timestamp time.Time) {
-	return // edge mode only
-}
+func (client *PortainerEdgeClient) SetLastCommandTimestamp(timestamp time.Time) {} // edge mode only
 
 func (client *PortainerEdgeClient) EnqueueLogCollectionForStack(logCmd LogCommandData) error {
 	return nil
