@@ -37,7 +37,7 @@ function build_archive() {
 function build_binary() {
   platform=$1
   arch=$2
-  GOOS="${platform}" GOARCH="${arch}" CGO_ENABLED=0 go build -a --installsuffix cgo --gcflags="-trimpath $(pwd)" --ldflags '-s' "${MAIN}"
+  GOOS="${platform}" GOARCH="${arch}" CGO_ENABLED=0 go build -a -trimpath --installsuffix cgo --ldflags '-s' "${MAIN}"
   mv main "dist/agent"
 }
 

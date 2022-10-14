@@ -14,7 +14,7 @@ function compile_agent() {
     mkdir -p $TARGET_DIST
 
     cd cmd/agent || exit 1
-    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 go build --installsuffix cgo --gcflags="-trimpath $(pwd)" --ldflags '-s'
+    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 go build -trimpath --installsuffix cgo --ldflags '-s'
     rc=$?
     if [[ $rc != 0 ]]; then exit $rc; fi
     cd ../..
@@ -30,7 +30,7 @@ function compile_credential_helper() {
     mkdir -p $TARGET_DIST
 
     cd cmd/docker-credential-portainer || exit 1
-    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 go build --installsuffix cgo --gcflags="-trimpath $(pwd)" --ldflags '-s'
+    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 go build -trimpath --installsuffix cgo --ldflags '-s'
     rc=$?
     if [[ $rc != 0 ]]; then exit $rc; fi
     cd ../..
