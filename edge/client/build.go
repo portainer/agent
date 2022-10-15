@@ -25,11 +25,8 @@ func BuildHTTPClient(timeout float64, options *agent.Options) *http.Client {
 func buildTransport(options *agent.Options) *http.Transport {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 
-	transport.TLSClientConfig = &tls.Config{
-		ClientSessionCache: tls.NewLRUClientSessionCache(0),
-		MinVersion:         tls.VersionTLS12,
-		CipherSuites:       crypto.TLS12CipherSuites,
-	}
+	transport.TLSClientConfig = crypto.CreateTLSConfiguration()
+	transport.TLSClientConfig.ClientSessionCache = tls.NewLRUClientSessionCache(0)
 
 	if options.EdgeInsecurePoll {
 		transport.TLSClientConfig.InsecureSkipVerify = true
