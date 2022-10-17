@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"os"
 	"path"
@@ -31,7 +30,7 @@ type FileDetails struct {
 
 // ReadFromFile returns the content of a file.
 func ReadFromFile(filePath string) ([]byte, error) {
-	return ioutil.ReadFile(filePath)
+	return os.ReadFile(filePath)
 }
 
 // FileExists will verify that a file exists under the specified file path.
@@ -76,19 +75,23 @@ func RemoveFile(filePath string) error {
 
 // ListFilesInsideDirectory returns a slice of FileInfo for each file in the specified directory inside a volume
 func ListFilesInsideDirectory(directoryPath string) ([]FileInfo, error) {
-
-	files, err := ioutil.ReadDir(directoryPath)
+	files, err := os.ReadDir(directoryPath)
 	if err != nil {
 		return nil, err
 	}
 
 	fileList := make([]FileInfo, 0)
 	for _, f := range files {
+		fi, err := f.Info()
+		if err != nil {
+			return nil, err
+		}
+
 		file := FileInfo{
 			Name:    f.Name(),
-			Size:    f.Size(),
+			Size:    fi.Size(),
 			Dir:     f.IsDir(),
-			ModTime: f.ModTime().Unix(),
+			ModTime: fi.ModTime().Unix(),
 		}
 
 		fileList = append(fileList, file)
@@ -112,7 +115,7 @@ func WriteFile(folder, filename string, file []byte, mode uint32) error {
 
 	filePath := path.Join(folder, filename)
 
-	return ioutil.WriteFile(filePath, file, os.FileMode(mode))
+	return os.WriteFile(filePath, file, os.FileMode(mode))
 }
 
 // WriteFile takes a path, filename, a file and the mode that should be associated

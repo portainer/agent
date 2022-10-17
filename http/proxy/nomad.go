@@ -3,11 +3,11 @@ package proxy
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/crypto"
@@ -28,7 +28,7 @@ func NewNomadProxy(nomadConfig agent.NomadConfig) http.Handler {
 		// Create a CA certificate pool and add cert.pem to it
 		if nomadConfig.NomadCACert != "" {
 			var caCertPool *x509.CertPool
-			caCert, err := ioutil.ReadFile(nomadConfig.NomadCACert)
+			caCert, err := os.ReadFile(nomadConfig.NomadCACert)
 			if err != nil {
 				log.Fatalf("[ERROR] [proxy,nomad] [message: failed to read Nomad CA Cert]")
 			}
