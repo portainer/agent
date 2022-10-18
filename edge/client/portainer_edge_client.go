@@ -3,12 +3,12 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	portainer "github.com/portainer/portainer/api"
 
@@ -96,6 +96,8 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 
 	if resp.StatusCode != http.StatusOK {
 		log.Debug().Int("response_code", resp.StatusCode).Msg("poll request failure]")
+
+		logError(resp)
 
 		return nil, errors.New("short poll request failed")
 	}

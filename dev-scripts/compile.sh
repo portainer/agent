@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 
-function compile_command() {
-    parse_compile_params "${@:1}"
+AGENT_VERSION=${AGENT_VERSION:-""}
 
+function compile_command() {
+   parse_compile_params "${@:1}"
+   
+   compile
+}
+
+function compile() {
     compile_agent
     compile_credential_helper
 }
@@ -14,7 +20,16 @@ function compile_agent() {
     mkdir -p $TARGET_DIST
 
     cd cmd/agent || exit 1
-    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 go build -trimpath --installsuffix cgo --ldflags '-s'
+
+    local cmd=(go build -trimpath --installsuffix cgo)
+
+    ldflags="-s"
+    if [[ -n "$AGENT_VERSION" ]]; then
+        ldflags="$ldflags -X 'github.com/portainer/agent.Version=${AGENT_VERSION}'"
+    fi
+
+    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 "${cmd[@]}" --ldflags "$ldflags"
+
     rc=$?
     if [[ $rc != 0 ]]; then exit $rc; fi
     cd ../..
@@ -54,9 +69,9 @@ function parse_compile_params() {
 }
 
 function usage_compile() {
-    cmd="./dev.sh"
+    local cmd_name="./dev.sh"
     cat <<EOF
-Usage: $cmd compile [-h] [-v|--verbose]
+Usage: $cmd_name compile [-h] [-v|--verbose]
 
 This script is intended to help with compiling of the agent codebase
 
