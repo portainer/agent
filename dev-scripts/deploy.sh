@@ -13,16 +13,20 @@ ips=()
 edge=0
 edge_id=""
 edge_key=""
+edge_async=0
+image_name=""
 
 LOG_LEVEL=DEBUG
 
 function deploy_command() {
     parse_deploy_params "${@:1}"
-    local ret_value=""
     
-    default_image_name
-    local IMAGE_NAME=$ret_value
-    
+    local IMAGE_NAME=$image_name
+    if [[ -z "$image_name" ]]; then
+        local ret_value=""
+        default_image_name
+        IMAGE_NAME=$ret_value
+    fi
     deploy
 }
 
@@ -91,23 +95,48 @@ function deploy_standalone() {
     local url=${1:-""}
     msg "Running standalone agent $IMAGE_NAME"
     
-    docker -H "$url" rm -f portainer-agent-dev || true
+    CONTAINER_NAME="${CONTAINER_NAME:-"portainer-agent-dev"}"
+
+    docker -H "$url" rm -f "$CONTAINER_NAME" || true
     
     load_image "$IMAGE_NAME" "$url"
     
-    docker -H "$url" run -d --name portainer-agent-dev \
-    -e LOG_LEVEL=${LOG_LEVEL} \
-    -e EDGE=${edge} \
-    -e EDGE_ID="${edge_id}" \
-    -e EDGE_KEY="${edge_key}" \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v /var/lib/docker/volumes:/var/lib/docker/volumes \
-    -v /:/host \
-    -p 9001:9001 \
-    -p 80:80 \
-    "${IMAGE_NAME}"
+    cmd=(docker)
+
+    if [ -n "$url" ]; then
+        cmd+=(-H "$url")
+    fi
+
+    cmd+=(run -d --name "$CONTAINER_NAME")
+    cmd+=(-v /var/run/docker.sock:/var/run/docker.sock)
+    cmd+=(-v /var/lib/docker/volumes:/var/lib/docker/volumes)
+    cmd+=(-v /:/host)
+    cmd+=(-e LOG_LEVEL="${LOG_LEVEL}")
+
+    if [[ "$edge" == "1" ]]; then
+        cmd+=(-e EDGE=1)
+        cmd+=(-e EDGE_ID="$edge_id")
+        cmd+=(-e EDGE_ASYNC="$edge_async")
+        cmd+=(-e EDGE_INSECURE_POLL=1)
+        cmd+=(--add-host=host.docker.internal:host-gateway)
+
+        if [ -n "$edge_key" ]; then
+            cmd+=(-e EDGE_KEY="$edge_key")
+        else 
+            cmd+=(-p 80:80)
+        fi
+    else 
+        cmd+=(-p 9001:9001)
+    fi
+
+    cmd+=(-e AGENT_IMAGE_PREFIX=portainerci/agent)
+    cmd+=(-e SKIP_UPDATER_IMAGE_PULL=1)
+
+    cmd+=("$IMAGE_NAME")
+
+    "${cmd[@]}"
     
-    docker -H "$url" logs -f portainer-agent-dev
+    docker -H "$url" logs -f "$CONTAINER_NAME"
 }
 
 function deploy_podman() {
@@ -118,7 +147,7 @@ function deploy_podman() {
     # Create local folder for podman volumes
     mkdir -p /run/user/1000/podman/myvolumes
     
-    podman run -d --name portainer-agent-dev \
+    podman run -d --name "${CONTAINER_NAME:-"portainer-agent-dev"}" \
     -e LOG_LEVEL=${LOG_LEVEL} \
     -e PODMAN=1 \
     -v /run/user/1000/podman/podman.sock:/var/run/docker.sock \
@@ -128,7 +157,7 @@ function deploy_podman() {
     -p 8080:80 \
     "${IMAGE_NAME}"
     
-    podman logs -f portainer-agent-dev
+    podman logs -f "${CONTAINER_NAME:-"portainer-agent-dev"}"
 }
 
 function deploy_swarm() {
@@ -156,12 +185,16 @@ function deploy_swarm() {
     sleep 2
     
     docker -H "$url" network create --driver overlay portainer-agent-dev-net
-    docker -H "$url" service create --name portainer-agent-dev \
+    docker -H "$url" service create --name "${CONTAINER_NAME:-"portainer-agent-dev"}" \
     --network portainer-agent-dev-net \
     -e LOG_LEVEL="${LOG_LEVEL}" \
     -e EDGE=${edge} \
     -e EDGE_ID="${edge_id}" \
     -e EDGE_KEY="${edge_key}" \
+    -e EDGE_ASYNC=${edge_async} \
+    -e SKIP_UPDATER_IMAGE_PULL=1 \
+    -e EDGE_INSECURE_POLL=1 \
+    --host=host.docker.internal:host-gateway \
     --mode global \
     --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
     --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
@@ -205,8 +238,15 @@ function parse_deploy_params() {
                 edge_key=$2
                 shift
             ;;
+            --edge-async)
+                edge_async=1
+            ;;
             --ip)
                 ips+=("$2")
+                shift
+            ;;
+            --image-name)
+                image_name=$2
                 shift
             ;;
             -?*) die "Unknown option: $1" ;;

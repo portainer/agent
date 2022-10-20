@@ -2,8 +2,8 @@ package kubernetesproxy
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/portainer/agent"
 	httperror "github.com/portainer/libhttp/error"
@@ -12,7 +12,7 @@ import (
 func (handler *Handler) kubernetesOperation(rw http.ResponseWriter, request *http.Request) *httperror.HandlerError {
 	token := request.Header.Get(agent.HTTPKubernetesSATokenHeaderName)
 	if token == "" {
-		adminToken, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+		adminToken, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
 		if err != nil {
 			return &httperror.HandlerError{http.StatusInternalServerError, "Unable to read service account token file", err}
 		}

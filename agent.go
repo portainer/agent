@@ -89,6 +89,7 @@ type (
 		EdgeInsecurePoll      bool
 		EdgeTunnel            bool
 		LogLevel              string
+		LogMode               string
 		HealthCheck           bool
 		SSLCert               string
 		SSLKey                string
@@ -208,9 +209,13 @@ type (
 	}
 )
 
-const (
+var (
 	// Version represents the version of the agent.
 	Version = "2.17.0"
+)
+
+const (
+
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.

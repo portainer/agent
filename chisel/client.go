@@ -4,15 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/portainer/agent"
 
 	chclient "github.com/jpillora/chisel/client"
 	"github.com/rs/zerolog/log"
 )
-
-const tunnelClientTimeout = 10 * time.Second
 
 // Client is used to create a reverse proxy tunnel connected to a Portainer instance.
 type Client struct {
