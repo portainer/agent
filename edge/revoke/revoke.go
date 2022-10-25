@@ -10,7 +10,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	neturl "net/url"
 	"sync"
@@ -171,7 +171,7 @@ func (service *Service) fetchCRL(url string) (*pkix.CertificateList, error) {
 		return nil, errors.New("failed to retrieve CRL")
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +200,7 @@ func (service *Service) fetchRemote(url string) (*x509.Certificate, error) {
 
 	defer resp.Body.Close()
 
-	in, err := ioutil.ReadAll(resp.Body)
+	in, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

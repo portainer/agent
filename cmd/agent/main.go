@@ -52,6 +52,7 @@ func main() {
 	}
 
 	setLoggingLevel(options.LogLevel)
+	setLoggingMode(options.LogMode)
 
 	if options.EdgeAsyncMode && !options.EdgeMode {
 		log.Fatal().Msg("edge Async mode cannot be enabled if Edge Mode is disabled")
@@ -402,6 +403,26 @@ func setLoggingLevel(level string) {
 	case "DEBUG":
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
+}
+
+func setLoggingMode(mode string) {
+	switch mode {
+	case "PRETTY":
+		log.Logger = log.Output(zerolog.ConsoleWriter{
+			Out:           goos.Stderr,
+			NoColor:       true,
+			TimeFormat:    "2006/01/02 03:04PM",
+			FormatMessage: formatMessage})
+	case "JSON":
+		log.Logger = log.Output(goos.Stderr)
+	}
+}
+
+func formatMessage(i interface{}) string {
+	if i == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s |", i)
 }
 
 func serveEdgeUI(edgeManager *edge.Manager, serverAddr, serverPort string) {
