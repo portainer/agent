@@ -43,17 +43,19 @@ func Run(options *agent.Options, clusterService agent.ClusterService) error {
 	}
 	log.Printf("[DEBUG] [healthcheck] [message: Url reachable]")
 
-	err = checkPolling(decodedKey.PortainerInstanceURL, options)
-	if err != nil {
-		return err
-	}
-	log.Printf("[DEBUG] [healthcheck] [message: Portainer status check passed]")
+	/*
+		err = checkPolling(decodedKey.PortainerInstanceURL, options)
+		if err != nil {
+			return err
+		}
+		log.Printf("[DEBUG] [healthcheck] [message: Portainer status check passed]")
 
-	// We then check that the agent can establish a TCP connection to the Portainer instance tunnel server
-	err = checkTunnel(decodedKey.TunnelServerAddr)
-	if err != nil {
-		return err
-	}
+		// We then check that the agent can establish a TCP connection to the Portainer instance tunnel server
+		err = checkTunnel(decodedKey.TunnelServerAddr)
+		if err != nil {
+			return err
+		}
+	*/
 
 	log.Printf("[DEBUG] [healthcheck] [message: Agent can open TCP connection to Portainer]")
 
