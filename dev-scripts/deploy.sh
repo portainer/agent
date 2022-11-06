@@ -15,6 +15,7 @@ edge_id=""
 edge_key=""
 edge_async=0
 image_name=""
+env_vars=()
 
 LOG_LEVEL=DEBUG
 
@@ -118,7 +119,6 @@ function deploy_standalone() {
         cmd+=(-e EDGE_ID="$edge_id")
         cmd+=(-e EDGE_ASYNC="$edge_async")
         cmd+=(-e EDGE_INSECURE_POLL=1)
-        cmd+=(--add-host=host.docker.internal:host-gateway)
 
         if [ -n "$edge_key" ]; then
             cmd+=(-e EDGE_KEY="$edge_key")
@@ -129,8 +129,11 @@ function deploy_standalone() {
         cmd+=(-p 9001:9001)
     fi
 
-    cmd+=(-e AGENT_IMAGE_PREFIX=portainerci/agent)
-    cmd+=(-e SKIP_UPDATER_IMAGE_PULL=1)
+    for env_var in "${env_vars[@]}"; do
+        cmd+=(-e "$env_var")
+    done
+
+    cmd+=(--add-host=host.docker.internal:host-gateway)
 
     cmd+=("$IMAGE_NAME")
 
@@ -185,24 +188,47 @@ function deploy_swarm() {
     sleep 2
     
     docker -H "$url" network create --driver overlay portainer-agent-dev-net
-    docker -H "$url" service create --name "${CONTAINER_NAME:-"portainer-agent-dev"}" \
-    --network portainer-agent-dev-net \
-    -e LOG_LEVEL="${LOG_LEVEL}" \
-    -e EDGE=${edge} \
-    -e EDGE_ID="${edge_id}" \
-    -e EDGE_KEY="${edge_key}" \
-    -e EDGE_ASYNC=${edge_async} \
-    -e SKIP_UPDATER_IMAGE_PULL=1 \
-    -e EDGE_INSECURE_POLL=1 \
-    --host=host.docker.internal:host-gateway \
-    --mode global \
-    --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \
-    --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \
-    --mount type=bind,src=//,dst=/host \
-    --publish target=9001,published=9001 \
-    --publish mode=host,published=80,target=80 \
-    "${IMAGE_NAME}"
+
+    cmd=(docker)
     
+    if [ -n "$url" ]; then
+        cmd+=(-H "$url")
+    fi
+
+    cmd+=(service create --name "${CONTAINER_NAME:-"portainer-agent-dev"}")
+    cmd+=(--network portainer-agent-dev-net)
+    cmd+=(-e LOG_LEVEL="${LOG_LEVEL}")
+
+    if [[ "$edge" == "1" ]]; then
+        cmd+=(-e EDGE=1)
+        cmd+=(-e EDGE_ID="$edge_id")
+        cmd+=(-e EDGE_ASYNC="$edge_async")
+        cmd+=(-e EDGE_INSECURE_POLL=1)
+
+        if [ -n "$edge_key" ]; then
+            cmd+=(-e EDGE_KEY="$edge_key")
+        else 
+            cmd+=(-p 80:80)
+        fi
+    else 
+        cmd+=(-p 9001:9001)
+    fi
+
+    for env_var in "${env_vars[@]}"; do
+        cmd+=(-e "$env_var")
+    done
+
+    cmd+=(--host host.docker.internal:host-gateway)
+    cmd+=(--mode global)
+    cmd+=(--mount "type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock")
+    cmd+=(--mount "type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes")
+    cmd+=(--mount "type=bind,src=//,dst=/host")
+    cmd+=(--publish "target=9001,published=9001")
+    cmd+=(--publish "mode=host,published=80,target=80")
+    cmd+=("${IMAGE_NAME}")
+    
+    "${cmd[@]}"
+
     docker -H "$url" service logs -f portainer-agent-dev
 }
 
@@ -243,6 +269,10 @@ function parse_deploy_params() {
             ;;
             --ip)
                 ips+=("$2")
+                shift
+            ;;
+            --env)
+                env_vars+=("$2")
                 shift
             ;;
             --image-name)
