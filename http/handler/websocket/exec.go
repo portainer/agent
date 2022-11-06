@@ -49,13 +49,13 @@ func (handler *Handler) handleExecRequest(rw http.ResponseWriter, r *http.Reques
 
 	websocketConn, err := handler.connectionUpgrader.Upgrade(rw, r, nil)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "An error occured during websocket exec operation: unable to upgrade connection", err}
+		return &httperror.HandlerError{http.StatusInternalServerError, "An error occurred during websocket exec operation: unable to upgrade connection", err}
 	}
 	defer websocketConn.Close()
 
 	err = hijackExecStartOperation(websocketConn, execID)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "An error occured during websocket exec hijack operation", err}
+		return &httperror.HandlerError{http.StatusInternalServerError, "An error occurred during websocket exec hijack operation", err}
 	}
 
 	return nil
