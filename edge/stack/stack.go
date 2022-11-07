@@ -374,6 +374,12 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackData.ID)
 	fileName := "docker-compose.yml"
 	fileContent := stackData.StackFileContent
+
+	stackConfig, err := manager.portainerClient.GetEdgeStackConfig(int(stackData.ID))
+	if err != nil {
+		return "", "", err
+	}
+
 	if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stackData.Name)
 		if len(stackData.RegistryCredentials) > 0 {
@@ -395,6 +401,38 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 
 	stackName := fmt.Sprintf("edge_%s", stackData.Name)
 	stackFileLocation := fmt.Sprintf("%s/%s", folder, fileName)
+
+	// The stack information will be shared with edge agent registry server (request by docker credential helper)
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	stack, processedStack := manager.stacks[edgeStackID(stackData.ID)]
+	if !processedStack {
+		log.Debug().Int("stack_identifier", stackData.ID).Msg("marking stack for deployment")
+
+		stack = &edgeStack{
+			ID:      edgeStackID(stackData.ID),
+			Action:  actionDeploy,
+			Status:  StatusPending,
+			Version: stackData.Version,
+		}
+	} else {
+		if stack.Version == stackData.Version {
+			return stackName, stackFileLocation, nil
+		}
+		log.Debug().Int("stack_identifier", stackData.ID).Msg("marking stack for update")
+
+		stack.Action = actionUpdate
+		stack.Version = stackData.Version
+		stack.Status = StatusPending
+	}
+
+	stack.FileFolder = folder
+	stack.FileName = fileName
+	stack.Name = stackConfig.Name
+	stack.RegistryCredentials = stackConfig.RegistryCredentials
+	manager.stacks[stack.ID] = stack
+
 	return stackName, stackFileLocation, nil
 }
 
