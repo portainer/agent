@@ -438,34 +438,10 @@ func (client *PortainerAsyncClient) DeleteEdgeStackStatus(edgeStackID int) error
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
 func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
-	requestURL := fmt.Sprintf("%s/api/endpoints/%d/edge/stacks/%d", client.serverAddress, client.getEndpointIDFn(), edgeStackID)
-
-	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
-
-	resp, err := client.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Error().Int("response_code", resp.StatusCode).Msg("GetEdgeStackConfig operation failed")
-
-		return nil, errors.New("GetEdgeStackConfig operation failed")
-	}
-
-	var data EdgeStackData
-	err = json.NewDecoder(resp.Body).Decode(&data)
-	if err != nil {
-		return nil, err
-	}
-
-	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent, RegistryCredentials: data.RegistryCredentials}, nil
+	// Async mode MUST NOT make any extra requests to Portainer, all the
+	// information exchange needs to happen via the async polling loop, which
+	// uses /endpoints/edge/async. This is a strict requirement.
+	return nil, nil // unused in async mode
 }
 
 func (client *PortainerAsyncClient) EnqueueLogCollectionForStack(logCmd LogCommandData) error {
