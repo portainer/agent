@@ -375,11 +375,6 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	fileName := "docker-compose.yml"
 	fileContent := stackData.StackFileContent
 
-	stackConfig, err := manager.portainerClient.GetEdgeStackConfig(int(stackData.ID))
-	if err != nil {
-		return "", "", err
-	}
-
 	if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stackData.Name)
 		if len(stackData.RegistryCredentials) > 0 {
@@ -429,8 +424,8 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 
 	stack.FileFolder = folder
 	stack.FileName = fileName
-	stack.Name = stackConfig.Name
-	stack.RegistryCredentials = stackConfig.RegistryCredentials
+	stack.Name = stackData.Name
+	stack.RegistryCredentials = stackData.RegistryCredentials
 	manager.stacks[stack.ID] = stack
 
 	return stackName, stackFileLocation, nil
