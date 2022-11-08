@@ -139,7 +139,7 @@ func (service *PollService) startStatusPollLoop() {
 		case <-pollCh:
 			err := service.poll()
 			if err != nil {
-				log.Error().Err(err).Msg("an error occured during short poll")
+				log.Error().Err(err).Msg("an error occurred during short poll")
 			}
 		case <-service.startSignal:
 			pollCh = service.pollTicker.C
