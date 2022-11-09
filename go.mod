@@ -9,6 +9,7 @@ require (
 	github.com/docker/docker v20.10.16+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hashicorp/logutils v1.0.0
 	github.com/hashicorp/nomad/api v0.0.0-20220211135303-4afc67b7002e
 	github.com/hashicorp/serf v0.8.3
@@ -59,7 +60,6 @@ require (
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/memberlist v0.1.4 // indirect
 	github.com/jaypipes/pcidb v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
