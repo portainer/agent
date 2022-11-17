@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/Microsoft/go-winio v0.5.1
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
+	github.com/cbroglie/mustache v1.4.0
 	github.com/docker/distribution v2.8.0+incompatible
 	github.com/docker/docker v20.10.16+incompatible
 	github.com/gorilla/mux v1.8.0

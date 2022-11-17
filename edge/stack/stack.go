@@ -1,13 +1,16 @@
 package stack
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/cbroglie/mustache"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/yaml"
@@ -158,6 +161,49 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	}
 	if manager.engineType == EngineTypeNomad {
 		fileName = fmt.Sprintf("%s.hcl", stack.Name)
+
+		if strings.Contains(fileContent, "portainer-updater") {
+			// gather all the necessary environment variables
+			envsData := new(bytes.Buffer)
+			nomadCaCert, exist := os.LookupEnv(agent.NomadCACertContentEnvVarName)
+			if exist {
+				// The nomad agent has configured TLS certificate
+				fmt.Fprintf(envsData, "%s=%s\n", agent.NomadCACertContentEnvVarName, nomadCaCert)
+			}
+
+			nomadClientCert, exist := os.LookupEnv(agent.NomadClientCertContentEnvVarName)
+			if exist {
+				fmt.Fprintf(envsData, "%s=%s\n", agent.NomadClientCertContentEnvVarName, nomadClientCert)
+			}
+
+			nomadClientKey, exist := os.LookupEnv(agent.NomadClientKeyContentEnvVarName)
+			if exist {
+				fmt.Fprintf(envsData, "%s=%s\n", agent.NomadClientKeyContentEnvVarName, nomadClientKey)
+			}
+
+			// agentJobID := os.Getenv("NOMAD_JOB_ID")
+			// fmt.Fprintf(envsData, "%s = %s\n", "NOMAD_JOB_ID", agentJobID)
+
+			serverAddr := os.Getenv(agent.NomadAddrEnvVarName)
+			fmt.Fprintf(envsData, "%s = %s\n", agent.NomadAddrEnvVarName, serverAddr)
+
+			// dc := os.Getenv("NOMAD_DC")
+			// fmt.Fprintf(envsData, "%s = %s\n", "NOMAD_DC", dc)
+
+			// namespace := os.Getenv("NOMAD_NAMESPACE")
+			// fmt.Fprintf(envsData, "%s = %s\n", "NOMAD_NAMESPACE", namespace)
+
+			// region := os.Getenv("NOMAD_REGION")
+			// fmt.Fprintf(envsData, "% s= %s\n", "NOMAD_REGION", region)
+
+			fileContent, err = mustache.Render(fileContent, map[string]string{
+				"agent_envs": envsData.String(),
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Println("file content=", fileContent)
+		}
 	}
 
 	err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
@@ -171,6 +217,14 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	manager.stacks[stack.ID] = stack
 
 	return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), int(EdgeStackStatusAcknowledged), "")
+}
+
+func createKeyValuePairs(m map[string]string) string {
+	b := new(bytes.Buffer)
+	for key, value := range m {
+		fmt.Fprintf(b, "%s=\"%s\"\n", key, value)
+	}
+	return b.String()
 }
 
 func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]int) {
