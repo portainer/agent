@@ -3,12 +3,14 @@ package nomad
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	nomadapi "github.com/hashicorp/nomad/api"
 	"github.com/pkg/errors"
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
 )
 
@@ -81,6 +83,9 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 		PreserveCounts: false,
 		EvalPriority:   0,
 	}
+
+	// Inject TSL certificate info
+	addTLSInfo(newJob)
 
 	// Submit the job
 	_, _, err = d.client.Jobs().RegisterOpts(newJob, runOpts, &nomadapi.WriteOptions{Region: *newJob.Region, Namespace: *newJob.Namespace})
@@ -168,4 +173,36 @@ func compareJobs(old, new *nomadapi.Job) bool {
 	}
 
 	return false
+}
+
+// addTLSInfo will inject Nomad TLS certificate info to updater job if the TLS certificate is provided
+func addTLSInfo(job *nomadapi.Job) {
+	// Always make sure that job.ID matches with the job ID in nomad mustache template on server side
+	// Suggest to use a job name with format "portainer-updater-{uuid}""
+	targetJobName := "portainer-updater"
+	if *job.ID == targetJobName && *job.TaskGroups[0].Name == targetJobName && job.TaskGroups[0].Tasks[0].Name == targetJobName {
+		task := job.TaskGroups[0].Tasks[0]
+
+		if task.Env == nil {
+			task.Env = make(map[string]string)
+		}
+		task.Env[agent.NomadAddrEnvVarName] = os.Getenv(agent.NomadAddrEnvVarName)
+
+		nomadCaCert, exist := os.LookupEnv(agent.NomadCACertContentEnvVarName)
+		if exist {
+			// The nomad agent has configured TLS certificate
+			task.Env[agent.NomadCACertContentEnvVarName] = nomadCaCert
+		}
+
+		nomadClientCert, exist := os.LookupEnv(agent.NomadClientCertContentEnvVarName)
+		if exist {
+			task.Env[agent.NomadClientCertContentEnvVarName] = nomadClientCert
+		}
+
+		nomadClientKey, exist := os.LookupEnv(agent.NomadClientKeyContentEnvVarName)
+		if exist {
+			task.Env[agent.NomadClientKeyContentEnvVarName] = nomadClientKey
+		}
+		job.TaskGroups[0].Tasks[0] = task
+	}
 }
