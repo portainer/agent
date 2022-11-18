@@ -438,6 +438,9 @@ func (client *PortainerAsyncClient) DeleteEdgeStackStatus(edgeStackID int) error
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
 func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
+	// Async mode MUST NOT make any extra requests to Portainer, all the
+	// information exchange needs to happen via the async polling loop, which
+	// uses /endpoints/edge/async. This is a strict requirement.
 	return nil, nil // unused in async mode
 }
 
