@@ -48,7 +48,6 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 		return response.Empty(rw)
 	}
 
-	// TODO AWS-IAM-ECR
 	// We could technically filter out non ECR registry URLs here and not apply this logic to all the registries
 	// The cost of going through this logic for all server/registries is to authenticate against IAM RA for each registry
 	// We could filter non ECR registries based on a URL pattern: https://docs.aws.amazon.com/AmazonECR/latest/userguide/Registries.html
@@ -56,7 +55,7 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 	if handler.awsConfig != nil {
 		log.Info().Msg("using local AWS config for credential lookup")
 
-		c, err := doAWSAuthAndRetrieveCredentials(serverUrl, handler.awsConfig)
+		c, err := doAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, handler.awsConfig)
 		if err != nil {
 			return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve credentials", err}
 		}

@@ -80,15 +80,13 @@ var (
 	fCertRetryInterval = kingpin.Flag("certificate-retry-interval", "Interval used to block initialization until the certificate is available").Envar(EnvKeyCertRetryInterval).Duration()
 
 	// AWS IAM Roles Anywhere + ECR
-	// TODO AWS-IAM-ECR
-	// Review flag comments
 	fAWSClientCert     = kingpin.Flag("aws-cert", "Path to the x509 certificate used to authenticate against IAM Roles Anywhere").Envar(EnvKeyAWSClientCert).Default(agent.DefaultAWSClientCertPath).String()
 	fAWSClientKey      = kingpin.Flag("aws-key", "Path to the private key used to authenticate against IAM Roles Anywhere").Envar(EnvKeyAWSClientKey).Default(agent.DefaultAWSClientKeyPath).String()
-	fAWSClientBundle   = kingpin.Flag("aws-bundle", "Path to the x509 certificate bundle used to authenticate against IAM Roles Anywhere").Envar(EnvKeyAWSClientBundle).String()
-	fAWSRoleARN        = kingpin.Flag("aws-role-arn", "AWS IAM Role ARN used for authentication against IAM Roles Anyhwere").Envar(EnvKeyAWSRoleARN).String()
-	fAWSTrustAnchorARN = kingpin.Flag("aws-trust-anchor-arn", "AWS IAM Trust anchor ARN used for authentication against IAM Roles Anyhwere").Envar(EnvKeyAWSTrustAnchorARN).String()
-	fAWSProfileARN     = kingpin.Flag("aws-profile-arn", "AWS profile ARN used for authentication against IAM Roles Anyhwere").Envar(EnvKeyAWSProfileARN).String()
-	fAWSRegion         = kingpin.Flag("aws-region", "AWS region used for authentication against IAM Roles Anyhwere").Envar(EnvKeyAWSRegion).String()
+	fAWSClientBundle   = kingpin.Flag("aws-bundle", "Path to the x509 intermediate certificate bundle used to authenticate against IAM Roles Anywhere").Envar(EnvKeyAWSClientBundle).String()
+	fAWSRoleARN        = kingpin.Flag("aws-role-arn", "AWS IAM target role to assume (IAM Roles Anywhere authentication)").Envar(EnvKeyAWSRoleARN).String()
+	fAWSTrustAnchorARN = kingpin.Flag("aws-trust-anchor-arn", "AWS IAM Trust anchor used for authentication against IAM Roles Anyhwere").Envar(EnvKeyAWSTrustAnchorARN).String()
+	fAWSProfileARN     = kingpin.Flag("aws-profile-arn", "AWS profile ARN used to pull policies from (IAM Roles Anywhere authentication)").Envar(EnvKeyAWSProfileARN).String()
+	fAWSRegion         = kingpin.Flag("aws-region", "AWS region used when signing against IAM Roles Anyhwere").Envar(EnvKeyAWSRegion).String()
 )
 
 func IsValidAWSConfig(opts *agent.Options) bool {
