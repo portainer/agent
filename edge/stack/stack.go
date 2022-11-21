@@ -373,6 +373,7 @@ func (manager *StackManager) DeployStack(ctx context.Context, stackData client.E
 		}
 	}
 
+	log.Info().Msg("deploying stack")
 	err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
 	if err != nil {
 		return err
