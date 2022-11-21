@@ -313,20 +313,6 @@ func main() {
 			ContainerPlatform: containerPlatform,
 		}
 
-		if os.IsValidAWSConfig(options) {
-			log.Info().Msg("AWS configuration detected")
-			awsConfig := agent.AWSConfig{
-				ClientCertPath: options.AWSClientCert,
-				ClientKeyPath:  options.AWSClientKey,
-				RoleARN:        options.AWSRoleARN,
-				TrustAnchorARN: options.AWSTrustAnchorARN,
-				ProfileARN:     options.AWSProfileARN,
-				Region:         options.AWSRegion,
-			}
-
-			edgeManagerParameters.AWSConfig = &awsConfig
-		}
-
 		edgeManager = edge.NewManager(edgeManagerParameters)
 
 		edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, clusterService, options.DataPath)
@@ -375,21 +361,36 @@ func main() {
 		config.Addr = advertiseAddr
 	}
 
-	// TODO AWS-IAM-ECR
-	// instead of skipping, should probably do the credentials lookup in the registry server
-	if edgeManager.GetAWSConfig() == nil {
-		log.Info().Msg("AWS config not found, starting registry server")
-		err = registry.StartRegistryServer(edgeManager)
-		if err != nil {
-			log.Fatal().Err(err).Msg("unable to start registry server")
-		}
-	} else {
-		log.Info().Msg("AWS config found, registry server won't be started")
-		err = os.DeleteDockerConfig()
-		if err != nil {
-			log.Error().Err(err).Msg("unable to delete docker config")
+	var awsConfig agent.AWSConfig
+	if os.IsValidAWSConfig(options) {
+		log.Info().Msg("AWS configuration detected")
+		awsConfig = agent.AWSConfig{
+			ClientCertPath: options.AWSClientCert,
+			ClientKeyPath:  options.AWSClientKey,
+			RoleARN:        options.AWSRoleARN,
+			TrustAnchorARN: options.AWSTrustAnchorARN,
+			ProfileARN:     options.AWSProfileARN,
+			Region:         options.AWSRegion,
 		}
 	}
+
+	err = registry.StartRegistryServer(edgeManager, &awsConfig)
+	if err != nil {
+		log.Fatal().Err(err).Msg("unable to start registry server")
+	}
+
+	// // TODO AWS-IAM-ECR
+	// // instead of skipping, should probably do the credentials lookup in the registry server
+	// if edgeManager.GetAWSConfig() == nil {
+	// 	log.Info().Msg("AWS config not found, starting registry server")
+
+	// } else {
+	// 	log.Info().Msg("AWS config found, registry server won't be started")
+	// 	err = os.DeleteDockerConfig()
+	// 	if err != nil {
+	// 		log.Error().Err(err).Msg("unable to delete docker config")
+	// 	}
+	// }
 
 	err = startAPIServer(config, options.EdgeMode)
 	if err != nil && !errors.Is(err, gohttp.ErrServerClosed) {

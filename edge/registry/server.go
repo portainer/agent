@@ -21,12 +21,14 @@ import (
 type Handler struct {
 	*mux.Router
 	EdgeManager *edge.Manager
+	awsConfig   *agent.AWSConfig
 }
 
-func NewEdgeRegistryHandler(edgeManager *edge.Manager) *Handler {
+func NewEdgeRegistryHandler(edgeManager *edge.Manager, awsConfig *agent.AWSConfig) *Handler {
 	h := &Handler{
 		Router:      mux.NewRouter(),
 		EdgeManager: edgeManager,
+		awsConfig:   awsConfig,
 	}
 
 	h.Handle("/lookup", httperror.LoggerHandler(h.LookupHandler)).Methods(http.MethodGet)
@@ -45,6 +47,27 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 
 	if serverUrl == "" {
 		return response.Empty(rw)
+	}
+
+	// TODO AWS-IAM-ECR
+	// We could technically filter out non ECR registry URLs here and not apply this logic to all the registries
+	// The cost of going through this logic for all server/registries is to authenticate against IAM RA for each registry
+	// We could filter non ECR registries based on a URL pattern: https://docs.aws.amazon.com/AmazonECR/latest/userguide/Registries.html
+	// BUT, to keep support for DNS aliases with ECR registries (e.g. mapping a custom domain such as myregistry.portainer.io to an ECR registry) I've decided to avoid the filter
+	if handler.awsConfig != nil {
+		log.Info().Msg("using local AWS config for credential lookup")
+
+		c, err := doAWSAuthAndRetrieveCredentials(serverUrl, handler.awsConfig)
+		if err != nil {
+			return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve credentials", err}
+		}
+
+		// Only write credentials if credentials are found
+		// For non ECR registries, credentials will be set to nil
+		// Therefore we want to fallback to the default credential lookup
+		if c != nil {
+			return response.JSON(rw, c)
+		}
 	}
 
 	credentials := stackManager.GetEdgeRegistryCredentials()
@@ -75,6 +98,7 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 	return response.Empty(rw)
 }
 
+// TODO: This is not used and can be cleaned up
 func LookupCredentials(credentials []agent.RegistryCredentials, serverUrl string) (*agent.RegistryCredentials, error) {
 	u, err := url.Parse(serverUrl)
 	if err != nil {
@@ -97,10 +121,10 @@ func LookupCredentials(credentials []agent.RegistryCredentials, serverUrl string
 	return nil, fmt.Errorf("No credentials found for %s", serverUrl)
 }
 
-func StartRegistryServer(edgeManager *edge.Manager) (err error) {
+func StartRegistryServer(edgeManager *edge.Manager, awsConfig *agent.AWSConfig) (err error) {
 	log.Info().Msg("starting registry credential server")
 
-	h := NewEdgeRegistryHandler(edgeManager)
+	h := NewEdgeRegistryHandler(edgeManager, awsConfig)
 
 	server := &http.Server{
 		Addr:         "127.0.0.1:9005",

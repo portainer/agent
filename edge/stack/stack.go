@@ -268,18 +268,6 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	responseStatus := int(EdgeStackStatusOk)
 	errorMessage := ""
 
-	// TODO AWS-IAM-ECR
-	// This must not be done concurrently
-	if manager.awsConfig != nil {
-		// TODO AWS-IAM-ECR
-		// Review verbosity
-		log.Info().Msg("using local AWS authentication")
-		err := doAWSAuthentication(stackFileLocation, manager.awsConfig)
-		if err != nil {
-			log.Warn().Err(err).Msg("unable to authenticate with AWS")
-		}
-	}
-
 	err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
 	if err != nil {
 		log.Error().Err(err).Msg("stack deployment failed")
@@ -373,28 +361,7 @@ func (manager *StackManager) DeployStack(ctx context.Context, stackData client.E
 		return err
 	}
 
-	// TODO AWS-IAM-ECR
-	// This must not be done concurrently
-	if manager.awsConfig != nil {
-		// TODO AWS-IAM-ECR
-		// Review verbosity
-		log.Info().Msg("using local AWS authentication")
-		err := doAWSAuthentication(stackFileLocation, manager.awsConfig)
-		if err != nil {
-			log.Warn().Err(err).Msg("unable to authenticate with AWS")
-		}
-	}
-
-	err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
-	if err != nil {
-		return err
-	}
-
-	if manager.awsConfig != nil {
-		return doAWSLogout()
-	}
-
-	return nil
+	return manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
 }
 
 func (manager *StackManager) DeleteStack(ctx context.Context, stackData client.EdgeStackData) error {
