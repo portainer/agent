@@ -314,6 +314,7 @@ func main() {
 		}
 
 		if os.IsValidAWSConfig(options) {
+			log.Info().Msg("AWS configuration detected")
 			awsConfig := agent.AWSConfig{
 				ClientCertPath: options.AWSClientCert,
 				ClientKeyPath:  options.AWSClientKey,
