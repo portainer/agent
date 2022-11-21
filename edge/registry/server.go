@@ -2,7 +2,6 @@ package registry
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -96,29 +95,6 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 	}
 
 	return response.Empty(rw)
-}
-
-// TODO: This is not used and can be cleaned up
-func LookupCredentials(credentials []agent.RegistryCredentials, serverUrl string) (*agent.RegistryCredentials, error) {
-	u, err := url.Parse(serverUrl)
-	if err != nil {
-		return nil, err
-	}
-
-	var key string
-	if strings.HasSuffix(u.Hostname(), ".docker.io") {
-		key = "docker.io"
-	} else {
-		key = u.Hostname()
-	}
-
-	for _, c := range credentials {
-		if key == c.ServerURL {
-			return &c, nil
-		}
-	}
-
-	return nil, fmt.Errorf("No credentials found for %s", serverUrl)
 }
 
 func StartRegistryServer(edgeManager *edge.Manager, awsConfig *agent.AWSConfig) (err error) {

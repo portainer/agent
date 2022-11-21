@@ -1,8 +1,6 @@
 package os
 
-import (
-	"os"
-)
+import "os"
 
 func GetHostName() (string, error) {
 	return os.Hostname()
