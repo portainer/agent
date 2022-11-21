@@ -3,8 +3,8 @@ package registry
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/aws/credentials"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	iamra "github.com/aws/rolesanywhere-credential-helper/aws_signing_helper"
 	"github.com/awslabs/amazon-ecr-credential-helper/ecr-login/api"
 	"github.com/portainer/agent"
