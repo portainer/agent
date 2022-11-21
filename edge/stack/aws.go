@@ -81,6 +81,8 @@ func authenticateAgainstServer(serverURL string, client api.Client, awsConfig *a
 		return err
 	}
 
+	log.Info().Str("server_url", serverURL).Str("pass", creds.Password).Str("user", creds.Username).Msg("executing docker login")
+
 	cmd := exec.Command("docker", "login", "-u", creds.Username, "-p", creds.Password, serverURL)
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("docker.exe", "login", "-u", creds.Username, "-p", creds.Password, serverURL)
