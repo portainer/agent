@@ -19,10 +19,15 @@ func doAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *
 
 	factory := api.DefaultClientFactory{}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
+	cfg, err := config.LoadDefaultConfig(
+		context.TODO(),
 		config.WithRegion(awsConfig.Region),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(iamraCreds.AccessKeyId, iamraCreds.SecretAccessKey, iamraCreds.SessionToken)),
 	)
+	if err != nil {
+		log.Err(err).Msg("unable to build AWS client config")
+		return nil, err
+	}
 
 	client := factory.NewClient(cfg)
 
