@@ -39,6 +39,11 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve stack manager", errors.New("Stack manager is not available")}
 	}
 
+	if stackManager.HasAWSConfig() {
+		log.Info().Msg("AWS config found, skipping registry lookup")
+		return response.Empty(rw)
+	}
+
 	serverUrl, _ := request.RetrieveQueryParameter(r, "serverurl", false)
 
 	log.Info().Str("server_url", serverUrl).Msg("looking up credentials")
