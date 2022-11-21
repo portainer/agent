@@ -312,6 +312,20 @@ func main() {
 			DockerInfoService: dockerInfoService,
 			ContainerPlatform: containerPlatform,
 		}
+
+		if os.IsValidAWSConfig(options) {
+			awsConfig := agent.AWSConfig{
+				ClientCertPath: options.AWSClientCert,
+				ClientKeyPath:  options.AWSClientKey,
+				RoleARN:        options.AWSRoleARN,
+				TrustAnchorARN: options.AWSTrustAnchorARN,
+				ProfileARN:     options.AWSProfileARN,
+				Region:         options.AWSRegion,
+			}
+
+			edgeManagerParameters.AWSConfig = &awsConfig
+		}
+
 		edgeManager = edge.NewManager(edgeManagerParameters)
 
 		edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, clusterService, options.DataPath)

@@ -83,15 +83,17 @@ type StackManager struct {
 	portainerClient client.PortainerClient
 	assetsPath      string
 	mu              sync.Mutex
+	awsConfig       *agent.AWSConfig
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(cli client.PortainerClient, assetsPath string) *StackManager {
+func NewStackManager(cli client.PortainerClient, assetsPath string, awsConfig *agent.AWSConfig) *StackManager {
 	return &StackManager{
 		stacks:          map[edgeStackID]*edgeStack{},
 		stopSignal:      nil,
 		portainerClient: cli,
 		assetsPath:      assetsPath,
+		awsConfig:       awsConfig,
 	}
 }
 
@@ -359,7 +361,28 @@ func (manager *StackManager) DeployStack(ctx context.Context, stackData client.E
 		return err
 	}
 
-	return manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
+	// TODO AWS-IAM-ECR
+	// This must not be done concurrently
+	if manager.awsConfig != nil {
+		// TODO AWS-IAM-ECR
+		// Review verbosity
+		log.Info().Msg("using local AWS authentication")
+		err := doAWSAuthentication(stackFileLocation, manager.awsConfig)
+		if err != nil {
+			log.Warn().Err(err).Msg("unable to authenticate with AWS")
+		}
+	}
+
+	err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
+	if err != nil {
+		return err
+	}
+
+	if manager.awsConfig != nil {
+		return doAWSLogout()
+	}
+
+	return nil
 }
 
 func (manager *StackManager) DeleteStack(ctx context.Context, stackData client.EdgeStackData) error {
