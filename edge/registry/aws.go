@@ -34,7 +34,7 @@ func doAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *
 	creds, err := client.GetCredentials(serverURL)
 	if err != nil {
 		// This might not be an ECR registry
-		// Therefore we deliberately not return an error here so that the logic can fallback to other credential providers
+		// Therefore we deliberately not return an error here so that the upstream logic can fallback to other credential providers
 		log.Warn().Str("server_url", serverURL).Err(err).Msg("unable to retrieve credentials from server")
 		return nil, nil
 	}
