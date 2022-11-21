@@ -28,7 +28,6 @@ type (
 		pollService       *PollService
 		stackManager      *stack.StackManager
 		mu                sync.Mutex
-		awsConfig         *agent.AWSConfig
 	}
 
 	// ManagerParameters represents an object used to create a Manager
@@ -38,17 +37,12 @@ type (
 		ClusterService    agent.ClusterService
 		DockerInfoService agent.DockerInfoService
 		ContainerPlatform agent.ContainerPlatform
-		// AWSConfig         *agent.AWSConfig
 	}
 )
 
 func (manager *Manager) GetStackManager() *stack.StackManager {
 	return manager.stackManager
 }
-
-// func (manager *Manager) GetAWSConfig() *agent.AWSConfig {
-// 	return manager.awsConfig
-// }
 
 // NewManager returns a pointer to a new instance of Manager
 func NewManager(parameters *ManagerParameters) *Manager {
@@ -58,7 +52,6 @@ func NewManager(parameters *ManagerParameters) *Manager {
 		agentOptions:      parameters.Options,
 		advertiseAddr:     parameters.AdvertiseAddr,
 		containerPlatform: parameters.ContainerPlatform,
-		// awsConfig:         parameters.AWSConfig,
 	}
 }
 
@@ -111,7 +104,6 @@ func (manager *Manager) Start() error {
 	manager.stackManager = stack.NewStackManager(
 		portainerClient,
 		manager.agentOptions.AssetsPath,
-		manager.awsConfig,
 	)
 
 	manager.logsManager = scheduler.NewLogsManager(portainerClient)

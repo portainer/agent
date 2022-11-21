@@ -83,17 +83,15 @@ type StackManager struct {
 	portainerClient client.PortainerClient
 	assetsPath      string
 	mu              sync.Mutex
-	awsConfig       *agent.AWSConfig
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(cli client.PortainerClient, assetsPath string, awsConfig *agent.AWSConfig) *StackManager {
+func NewStackManager(cli client.PortainerClient, assetsPath string) *StackManager {
 	return &StackManager{
 		stacks:          map[edgeStackID]*edgeStack{},
 		stopSignal:      nil,
 		portainerClient: cli,
 		assetsPath:      assetsPath,
-		awsConfig:       awsConfig,
 	}
 }
 

@@ -379,19 +379,6 @@ func main() {
 		log.Fatal().Err(err).Msg("unable to start registry server")
 	}
 
-	// // TODO AWS-IAM-ECR
-	// // instead of skipping, should probably do the credentials lookup in the registry server
-	// if edgeManager.GetAWSConfig() == nil {
-	// 	log.Info().Msg("AWS config not found, starting registry server")
-
-	// } else {
-	// 	log.Info().Msg("AWS config found, registry server won't be started")
-	// 	err = os.DeleteDockerConfig()
-	// 	if err != nil {
-	// 		log.Error().Err(err).Msg("unable to delete docker config")
-	// 	}
-	// }
-
 	err = startAPIServer(config, options.EdgeMode)
 	if err != nil && !errors.Is(err, gohttp.ErrServerClosed) {
 		log.Fatal().Err(err).Msg("unable to start Agent API server")
