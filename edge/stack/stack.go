@@ -97,10 +97,6 @@ func NewStackManager(cli client.PortainerClient, assetsPath string, awsConfig *a
 	}
 }
 
-func (manager *StackManager) HasAWSConfig() bool {
-	return manager.awsConfig != nil
-}
-
 func (manager *StackManager) UpdateStacksStatus(pollResponseStacks map[int]int) error {
 	if !manager.isEnabled {
 		return nil

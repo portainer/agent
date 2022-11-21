@@ -374,9 +374,17 @@ func main() {
 	if options.EdgeMode {
 		config.Addr = advertiseAddr
 	}
-	err = registry.StartRegistryServer(edgeManager)
-	if err != nil {
-		log.Fatal().Err(err).Msg("unable to start registry server")
+
+	// TODO AWS-IAM-ECR
+	// instead of skipping, should probably do the credentials lookup in the registry server
+	if edgeManager.GetAWSConfig() == nil {
+		log.Info().Msg("AWS config not found, starting registry server")
+		err = registry.StartRegistryServer(edgeManager)
+		if err != nil {
+			log.Fatal().Err(err).Msg("unable to start registry server")
+		}
+	} else {
+		log.Info().Msg("AWS config found, registry server won't be started")
 	}
 
 	err = startAPIServer(config, options.EdgeMode)

@@ -46,6 +46,10 @@ func (manager *Manager) GetStackManager() *stack.StackManager {
 	return manager.stackManager
 }
 
+func (manager *Manager) GetAWSConfig() *agent.AWSConfig {
+	return manager.awsConfig
+}
+
 // NewManager returns a pointer to a new instance of Manager
 func NewManager(parameters *ManagerParameters) *Manager {
 	return &Manager{
