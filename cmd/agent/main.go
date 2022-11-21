@@ -385,6 +385,10 @@ func main() {
 		}
 	} else {
 		log.Info().Msg("AWS config found, registry server won't be started")
+		err = os.DeleteDockerConfig()
+		if err != nil {
+			log.Error().Err(err).Msg("unable to delete docker config")
+		}
 	}
 
 	err = startAPIServer(config, options.EdgeMode)
