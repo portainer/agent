@@ -50,6 +50,11 @@ func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string,
 	return err
 }
 
+// Pull is a dummy method for Swarm
+func (service *DockerSwarmStackService) Pull(ctx context.Context, name string, filePaths []string) error {
+	return nil
+}
+
 // Remove executes the docker stack rm command.
 func (service *DockerSwarmStackService) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
 	command := service.prepareDockerCommand(service.binaryPath)
