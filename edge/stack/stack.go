@@ -29,6 +29,7 @@ type edgeStack struct {
 	Status              edgeStackStatus
 	Action              edgeStackAction
 	RegistryCredentials []agent.RegistryCredentials
+	Namespace           string
 }
 
 type edgeStackStatus int
@@ -145,6 +146,7 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 
 	stack.Name = stackConfig.Name
 	stack.RegistryCredentials = stackConfig.RegistryCredentials
+	stack.Namespace = stackConfig.Namespace
 
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 	fileName := "docker-compose.yml"
@@ -169,6 +171,12 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	stack.FileName = fileName
 
 	manager.stacks[stack.ID] = stack
+
+	log.Debug().
+		Int("stack_identifier", int(stack.ID)).
+		Str("stack_name", stack.Name).
+		Str("namespace", stack.Namespace).
+		Msg("stack acknowledged")
 
 	return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), int(EdgeStackStatusAcknowledged), "")
 }
@@ -259,14 +267,23 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("stack deployment")
+	log.Debug().Int("stack_identifier", int(stack.ID)).
+		Str("stack_name", stackName).
+		Str("namespace", stack.Namespace).
+		Msg("stack deployment")
 
 	stack.Status = StatusDeploying
 	stack.Action = actionIdle
 	responseStatus := int(EdgeStackStatusOk)
 	errorMessage := ""
 
-	err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
+	err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
+		agent.DeployOptions{
+			DeployerBaseOptions: agent.DeployerBaseOptions{
+				Namespace: stack.Namespace,
+			},
+		},
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("stack deployment failed")
 
@@ -290,7 +307,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
 	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("removing stack")
 
-	err := manager.deployer.Remove(ctx, stackName, []string{stackFileLocation})
+	err := manager.deployer.Remove(ctx, stackName, []string{stackFileLocation}, agent.RemoveOptions{})
 	if err != nil {
 		log.Error().Err(err).Msg("unable to remove stack")
 
@@ -359,7 +376,13 @@ func (manager *StackManager) DeployStack(ctx context.Context, stackData client.E
 		return err
 	}
 
-	return manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation}, false)
+	return manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
+		agent.DeployOptions{
+			DeployerBaseOptions: agent.DeployerBaseOptions{
+				Namespace: stackData.Namespace,
+			},
+		},
+	)
 }
 
 func (manager *StackManager) DeleteStack(ctx context.Context, stackData client.EdgeStackData) error {
@@ -367,7 +390,13 @@ func (manager *StackManager) DeleteStack(ctx context.Context, stackData client.E
 	if err != nil {
 		return err
 	}
-	return manager.deployer.Remove(ctx, stackName, []string{stackFileLocation})
+	return manager.deployer.Remove(ctx, stackName, []string{stackFileLocation},
+		agent.RemoveOptions{
+			DeployerBaseOptions: agent.DeployerBaseOptions{
+				Namespace: stackData.Namespace,
+			},
+		},
+	)
 }
 
 func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData, writeFile bool) (string, string, error) {
@@ -381,10 +410,6 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 			yml := yaml.NewYAML(fileContent, stackData.RegistryCredentials)
 			fileContent, _ = yml.AddImagePullSecrets()
 		}
-	}
-
-	if manager.engineType == EngineTypeKubernetes {
-		fileName = fmt.Sprintf("%s.yml", stackData.Name)
 	}
 
 	if writeFile {
