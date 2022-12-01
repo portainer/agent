@@ -158,7 +158,6 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	}
 	if manager.engineType == EngineTypeNomad {
 		fileName = fmt.Sprintf("%s.hcl", stack.Name)
-
 	}
 
 	err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)

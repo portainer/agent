@@ -180,8 +180,19 @@ func addTLSInfo(job *nomadapi.Job) {
 	// Always make sure that job.ID matches with the job ID in nomad mustache template on server side
 	// Suggest to use a job name with format "portainer-updater-{uuid}""
 	targetJobName := "portainer-updater"
-	if *job.ID == targetJobName && *job.TaskGroups[0].Name == targetJobName && job.TaskGroups[0].Tasks[0].Name == targetJobName {
+	if *job.ID == targetJobName &&
+		len(job.TaskGroups) > 0 &&
+		*job.TaskGroups[0].Name == targetJobName &&
+		len(job.TaskGroups[0].Tasks) > 0 &&
+		job.TaskGroups[0].Tasks[0].Name == targetJobName {
 		task := job.TaskGroups[0].Tasks[0]
+
+		// Inject TLS certificate info only when the portainer-update job
+		// is configured the argument "portainer-updater"
+		_, ok := task.Config["portainer-updater"]
+		if !ok {
+			return
+		}
 
 		if task.Env == nil {
 			task.Env = make(map[string]string)
