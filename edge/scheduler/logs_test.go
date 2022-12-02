@@ -17,6 +17,7 @@ func TestDataRace(t *testing.T) {
 		"edgeID",
 		false,
 		agent.PlatformDocker,
+		0,
 		&http.Client{},
 	)
 
