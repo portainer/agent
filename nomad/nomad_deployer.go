@@ -84,8 +84,10 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 		EvalPriority:   0,
 	}
 
-	// Inject TSL certificate info
-	addTLSInfo(newJob)
+	if shouldApplyTLS(newJob) {
+		// Inject TSL certificate info
+		addTLSInfo(newJob)
+	}
 
 	// Submit the job
 	_, _, err = d.client.Jobs().RegisterOpts(newJob, runOpts, &nomadapi.WriteOptions{Region: *newJob.Region, Namespace: *newJob.Namespace})
@@ -177,43 +179,43 @@ func compareJobs(old, new *nomadapi.Job) bool {
 
 // addTLSInfo will inject Nomad TLS certificate info to updater job if the TLS certificate is provided
 func addTLSInfo(job *nomadapi.Job) {
-	// Always make sure that job.ID matches with the job ID in nomad mustache template on server side
-	// Suggest to use a job name with format "portainer-updater-{uuid}""
+	task := job.TaskGroups[0].Tasks[0]
+
+	// Inject TLS certificate info only when the portainer-update job
+	// is configured the argument "portainer-updater"
+	_, ok := task.Config["portainer-updater"]
+	if !ok {
+		return
+	}
+
+	if task.Env == nil {
+		task.Env = make(map[string]string)
+	}
+	task.Env[agent.NomadAddrEnvVarName] = os.Getenv(agent.NomadAddrEnvVarName)
+
+	nomadCaCert, exist := os.LookupEnv(agent.NomadCACertContentEnvVarName)
+	if exist {
+		// The nomad agent has configured TLS certificate
+		task.Env[agent.NomadCACertContentEnvVarName] = nomadCaCert
+	}
+
+	nomadClientCert, exist := os.LookupEnv(agent.NomadClientCertContentEnvVarName)
+	if exist {
+		task.Env[agent.NomadClientCertContentEnvVarName] = nomadClientCert
+	}
+
+	nomadClientKey, exist := os.LookupEnv(agent.NomadClientKeyContentEnvVarName)
+	if exist {
+		task.Env[agent.NomadClientKeyContentEnvVarName] = nomadClientKey
+	}
+	job.TaskGroups[0].Tasks[0] = task
+}
+
+func shouldApplyTLS(job *nomadapi.Job) bool {
 	targetJobName := "portainer-updater"
-	if *job.ID == targetJobName &&
+	return *job.ID == targetJobName &&
 		len(job.TaskGroups) > 0 &&
 		*job.TaskGroups[0].Name == targetJobName &&
 		len(job.TaskGroups[0].Tasks) > 0 &&
-		job.TaskGroups[0].Tasks[0].Name == targetJobName {
-		task := job.TaskGroups[0].Tasks[0]
-
-		// Inject TLS certificate info only when the portainer-update job
-		// is configured the argument "portainer-updater"
-		_, ok := task.Config["portainer-updater"]
-		if !ok {
-			return
-		}
-
-		if task.Env == nil {
-			task.Env = make(map[string]string)
-		}
-		task.Env[agent.NomadAddrEnvVarName] = os.Getenv(agent.NomadAddrEnvVarName)
-
-		nomadCaCert, exist := os.LookupEnv(agent.NomadCACertContentEnvVarName)
-		if exist {
-			// The nomad agent has configured TLS certificate
-			task.Env[agent.NomadCACertContentEnvVarName] = nomadCaCert
-		}
-
-		nomadClientCert, exist := os.LookupEnv(agent.NomadClientCertContentEnvVarName)
-		if exist {
-			task.Env[agent.NomadClientCertContentEnvVarName] = nomadClientCert
-		}
-
-		nomadClientKey, exist := os.LookupEnv(agent.NomadClientKeyContentEnvVarName)
-		if exist {
-			task.Env[agent.NomadClientKeyContentEnvVarName] = nomadClientKey
-		}
-		job.TaskGroups[0].Tasks[0] = task
-	}
+		job.TaskGroups[0].Tasks[0].Name == targetJobName
 }
