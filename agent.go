@@ -90,7 +90,6 @@ type (
 		EdgeTunnel            bool
 		LogLevel              string
 		LogMode               string
-		HealthCheck           bool
 		SSLCert               string
 		SSLKey                string
 		SSLCACert             string
