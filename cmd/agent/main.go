@@ -88,7 +88,7 @@ func main() {
 		log.Debug().Str("member_tags", fmt.Sprintf("%+v", runtimeConfiguration)).Msg("")
 
 		clusterMode := false
-		if runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm {
+		if containerPlatform == agent.PlatformDocker && runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm {
 			clusterMode = true
 			log.Info().Msg("agent running on a Swarm cluster node. Running in cluster mode")
 		}
@@ -106,8 +106,7 @@ func main() {
 			advertiseAddr = options.AgentServerAddr
 		}
 
-		if containerPlatform == agent.PlatformDocker && clusterMode {
-			clusterService = cluster.NewClusterService(runtimeConfiguration)
+		if clusterMode {
 
 			clusterAddr := options.ClusterAddress
 			if clusterAddr == "" {
@@ -119,30 +118,13 @@ func main() {
 				clusterAddr = fmt.Sprintf("tasks.%s", serviceName)
 			}
 
-			// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
-			// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
-			time.Sleep(3 * time.Second)
+			clusterService = cluster.NewClusterService(runtimeConfiguration, cluster.ClusterServiceOptions{
+				ProbeTimeout:  options.ClusterProbeTimeout,
+				ProbeInterval: options.ClusterProbeInterval,
+				AdvertiseAddr: advertiseAddr,
+				ClusterAddr:   clusterAddr,
+			})
 
-			joinAddr, err := net.LookupIPAddresses(clusterAddr)
-			if err != nil {
-				log.Fatal().Str("host", clusterAddr).Err(err).
-					Msg("unable to retrieve a list of IP associated to the host")
-			}
-
-			err = clusterService.Create(advertiseAddr, joinAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
-			if err != nil {
-				log.Fatal().Err(err).Msg("unable to create cluster")
-			}
-
-			log.Debug().
-				Str("agent_port", options.AgentServerPort).
-				Str("cluster_address", clusterAddr).
-				Str("advertise_address", advertiseAddr).
-				Str("probe_timeout", options.ClusterProbeTimeout.String()).
-				Str("probe_interval", options.ClusterProbeInterval.String()).
-				Msg("")
-
-			defer clusterService.Leave()
 		}
 	}
 
@@ -160,42 +142,22 @@ func main() {
 
 		kubernetesDeployer = exec.NewKubernetesDeployer(options.AssetsPath)
 
-		clusterService = cluster.NewClusterService(runtimeConfiguration)
-
 		advertiseAddr = os.GetKubernetesPodIP()
 		if advertiseAddr == "" {
 			log.Fatal().Err(err).Msg("KUBERNETES_POD_IP env var must be specified when running on Kubernetes")
 		}
-
 		clusterAddr := options.ClusterAddress
 		if clusterAddr == "" {
 			clusterAddr = "s-portainer-agent-headless"
 		}
 
-		// TODO: Workaround. Kubernetes only adds entries in the DNS for running containers. We need to wait a bit
-		// for the container to be considered running by Kubernetes and an entry to be added to the DNS.
-		time.Sleep(3 * time.Second)
+		clusterService = cluster.NewClusterService(runtimeConfiguration, cluster.ClusterServiceOptions{
+			ProbeTimeout:  options.ClusterProbeTimeout,
+			ProbeInterval: options.ClusterProbeInterval,
+			AdvertiseAddr: advertiseAddr,
+			ClusterAddr:   clusterAddr,
+		})
 
-		joinAddr, err := net.LookupIPAddresses(clusterAddr)
-		if err != nil {
-			log.Fatal().Str("host", clusterAddr).Err(err).
-				Msg("unable to retrieve a list of IP associated to the host")
-		}
-
-		err = clusterService.Create(advertiseAddr, joinAddr, options.ClusterProbeTimeout, options.ClusterProbeInterval)
-		if err != nil {
-			log.Fatal().Err(err).Msg("unable to create cluster")
-		}
-
-		log.Debug().
-			Str("agent_port", options.AgentServerPort).
-			Str("cluster_address", clusterAddr).
-			Str("advertise_address", advertiseAddr).
-			Str("probe_timeout", options.ClusterProbeTimeout.String()).
-			Str("probe_interval", options.ClusterProbeInterval.String()).
-			Msg("")
-
-		defer clusterService.Leave()
 	}
 	// !Kubernetes
 
@@ -353,6 +315,18 @@ func main() {
 	err = registry.StartRegistryServer(edgeManager)
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable to start registry server")
+	}
+
+	if clusterService != nil {
+		go func() {
+
+			err := clusterService.Create()
+			if err != nil {
+				log.Fatal().Err(err).Msg("unable to create cluster")
+			}
+		}()
+
+		defer clusterService.Leave()
 	}
 
 	err = startAPIServer(config, options.EdgeMode)

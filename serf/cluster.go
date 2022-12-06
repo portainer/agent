@@ -7,7 +7,9 @@ import (
 
 	"github.com/hashicorp/logutils"
 	"github.com/hashicorp/serf/serf"
+	"github.com/pkg/errors"
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/net"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,12 +32,27 @@ const (
 type ClusterService struct {
 	runtimeConfiguration *agent.RuntimeConfiguration
 	cluster              *serf.Serf
+	probeTimeout         time.Duration
+	probeInterval        time.Duration
+	advertiseAddr        string
+	clusterAddr          string
+}
+
+type ClusterServiceOptions struct {
+	ProbeTimeout  time.Duration
+	ProbeInterval time.Duration
+	AdvertiseAddr string
+	ClusterAddr   string
 }
 
 // NewClusterService returns a pointer to a ClusterService.
-func NewClusterService(runtimeConfiguration *agent.RuntimeConfiguration) *ClusterService {
+func NewClusterService(runtimeConfiguration *agent.RuntimeConfiguration, options ClusterServiceOptions) *ClusterService {
 	return &ClusterService{
 		runtimeConfiguration: runtimeConfiguration,
+		probeTimeout:         options.ProbeTimeout,
+		probeInterval:        options.ProbeInterval,
+		advertiseAddr:        options.AdvertiseAddr,
+		clusterAddr:          options.ClusterAddr,
 	}
 }
 
@@ -47,7 +64,30 @@ func (service *ClusterService) Leave() {
 }
 
 // Create will create the agent configuration and automatically join the cluster.
-func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, probeTimeout, probeInterval time.Duration) error {
+func (service *ClusterService) Create() error {
+	// TODO: Workaround. looks like the Docker DNS cannot find any info on tasks.<service_name>
+	// sometimes... Waiting a bit before starting the discovery (at least 3 seconds) seems to solve the problem.
+	time.Sleep(3 * time.Second)
+
+	log.Debug().
+		Str("cluster_address", service.clusterAddr).
+		Str("advertise_address", service.advertiseAddr).
+		Msg("creating cluster")
+
+	joinAddr, err := net.LookupIPAddresses(service.clusterAddr)
+	if err != nil {
+		log.Err(err).
+			Str("host", service.clusterAddr).
+			Msg("unable to retrieve a list of IP associated to the host")
+		return errors.WithMessage(err, "unable to retrieve a list of IP associated to the host")
+	}
+
+	log.Debug().
+		Str("cluster_address", service.clusterAddr).
+		Str("advertise_address", service.advertiseAddr).
+		Strs("join_address", joinAddr).
+		Msg("found IP addresses for cluster address")
+
 	filter := &logutils.LevelFilter{
 		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
 		MinLevel: logutils.LogLevel("INFO"),
@@ -60,26 +100,24 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, p
 	conf.Tags = convertRuntimeConfigurationToTagMap(service.runtimeConfiguration)
 	conf.MemberlistConfig.LogOutput = filter
 	conf.LogOutput = filter
-	conf.MemberlistConfig.AdvertiseAddr = advertiseAddr
+	conf.MemberlistConfig.AdvertiseAddr = service.advertiseAddr
 
-	// These parameters should only be overriden if experiencing agent cluster instability
+	// These parameters should only be overridden if experiencing agent cluster instability
 	// Default memberlist values should work in most clustering use cases but some
 	// cluster/network topologies might cause the agent cluster to be unstable and
 	// seeing a lot of agent join/leave cluster events.
 	// There is no recommended value/range to be set here and instead it is recommended
 	// to experiment with different values if facing instability issues.
-	conf.MemberlistConfig.ProbeTimeout = probeTimeout
-	conf.MemberlistConfig.ProbeInterval = probeInterval
+	conf.MemberlistConfig.ProbeTimeout = service.probeTimeout
+	conf.MemberlistConfig.ProbeInterval = service.probeInterval
 
 	// Override default Serf configuration with Swarm/overlay sane defaults
 	conf.ReconnectInterval = 10 * time.Second
 	conf.ReconnectTimeout = 1 * time.Minute
 
-	log.Debug().Str("advertise_address", advertiseAddr).Strs("join_address", joinAddr).Msg("")
-
 	cluster, err := serf.Create(conf)
 	if err != nil {
-		return err
+		return errors.WithMessage(err, "unable to create serf cluster")
 	}
 
 	nodeCount, err := cluster.Join(joinAddr, true)
@@ -87,9 +125,14 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, p
 		log.Debug().Err(err).Msg("unable to join cluster")
 	}
 
-	log.Debug().Int("contacted_nodes", nodeCount).Msg("")
-
 	service.cluster = cluster
+
+	log.Debug().
+		Str("cluster_address", service.clusterAddr).
+		Str("advertise_address", service.advertiseAddr).
+		Strs("join_address", joinAddr).
+		Int("contacted_nodes", nodeCount).
+		Msg("started cluster service")
 
 	return nil
 }
@@ -97,6 +140,9 @@ func (service *ClusterService) Create(advertiseAddr string, joinAddr []string, p
 // Members returns the list of cluster members.
 func (service *ClusterService) Members() []agent.ClusterMember {
 	var clusterMembers = make([]agent.ClusterMember, 0)
+	if service.cluster == nil {
+		return clusterMembers
+	}
 
 	members := service.cluster.Members()
 
@@ -166,6 +212,10 @@ func (service *ClusterService) GetMemberWithEdgeKeySet() *agent.ClusterMember {
 
 // UpdateRuntimeConfiguration propagate the new runtimeConfiguration to the cluster
 func (service *ClusterService) UpdateRuntimeConfiguration(runtimeConfiguration *agent.RuntimeConfiguration) error {
+	if service.cluster == nil {
+		return nil
+	}
+
 	service.runtimeConfiguration = runtimeConfiguration
 	tagsMap := convertRuntimeConfigurationToTagMap(runtimeConfiguration)
 	return service.cluster.SetTags(tagsMap)

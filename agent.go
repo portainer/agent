@@ -148,7 +148,7 @@ type (
 
 	// ClusterService is used to manage a cluster of agents.
 	ClusterService interface {
-		Create(advertiseAddr string, joinAddr []string, probeTimeout, probeInterval time.Duration) error
+		Create() error
 		Members() []ClusterMember
 		Leave()
 		GetMemberByRole(role DockerNodeRole) *ClusterMember
