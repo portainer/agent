@@ -97,46 +97,46 @@ function deploy_standalone() {
     msg "Running standalone agent $IMAGE_NAME"
     
     CONTAINER_NAME="${CONTAINER_NAME:-"portainer-agent-dev"}"
-
+    
     docker -H "$url" rm -f "$CONTAINER_NAME" || true
     
     load_image "$IMAGE_NAME" "$url"
     
     cmd=(docker)
-
+    
     if [ -n "$url" ]; then
         cmd+=(-H "$url")
     fi
-
+    
     cmd+=(run -d --name "$CONTAINER_NAME")
     cmd+=(-v /var/run/docker.sock:/var/run/docker.sock)
     cmd+=(-v /var/lib/docker/volumes:/var/lib/docker/volumes)
     cmd+=(-v /:/host)
     cmd+=(-e LOG_LEVEL="${LOG_LEVEL}")
-
+    
     if [[ "$edge" == "1" ]]; then
         cmd+=(-e EDGE=1)
         cmd+=(-e EDGE_ID="$edge_id")
         cmd+=(-e EDGE_ASYNC="$edge_async")
         cmd+=(-e EDGE_INSECURE_POLL=1)
-
+        
         if [ -n "$edge_key" ]; then
             cmd+=(-e EDGE_KEY="$edge_key")
-        else 
+        else
             cmd+=(-p 80:80)
         fi
-    else 
+    else
         cmd+=(-p 9001:9001)
     fi
-
+    
     for env_var in "${env_vars[@]}"; do
         cmd+=(-e "$env_var")
     done
-
+    
     cmd+=(--add-host=host.docker.internal:host-gateway)
-
+    
     cmd+=("$IMAGE_NAME")
-
+    
     "${cmd[@]}"
     
     docker -H "$url" logs -f "$CONTAINER_NAME"
@@ -183,52 +183,51 @@ function deploy_swarm() {
     docker -H "$url" service rm portainer-agent-dev || true
     docker -H "$url" network rm portainer-agent-dev-net || true
     
+    sleep 5
+    
     load_image "$IMAGE_NAME" "$url" "${node_ips[@]}"
     
-    sleep 2
-    
     docker -H "$url" network create --driver overlay portainer-agent-dev-net
-
+    
     cmd=(docker)
     
     if [ -n "$url" ]; then
         cmd+=(-H "$url")
     fi
-
+    
     cmd+=(service create --name "${CONTAINER_NAME:-"portainer-agent-dev"}")
     cmd+=(--network portainer-agent-dev-net)
     cmd+=(-e LOG_LEVEL="${LOG_LEVEL}")
-
+    cmd+=(--restart-condition "none")
+    
     if [[ "$edge" == "1" ]]; then
         cmd+=(-e EDGE=1)
         cmd+=(-e EDGE_ID="$edge_id")
         cmd+=(-e EDGE_ASYNC="$edge_async")
         cmd+=(-e EDGE_INSECURE_POLL=1)
-
+        
         if [ -n "$edge_key" ]; then
             cmd+=(-e EDGE_KEY="$edge_key")
-        else 
-            cmd+=(-p 80:80)
+        else
+            cmd+=(--publish "mode=host,published=80,target=80")
         fi
-    else 
-        cmd+=(-p 9001:9001)
+    else
+        cmd+=(-p 9001:9001/tcp)
     fi
-
+    
     for env_var in "${env_vars[@]}"; do
         cmd+=(-e "$env_var")
     done
-
+    
     cmd+=(--host host.docker.internal:host-gateway)
     cmd+=(--mode global)
     cmd+=(--mount "type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock")
     cmd+=(--mount "type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes")
     cmd+=(--mount "type=bind,src=//,dst=/host")
-    cmd+=(--publish "target=9001,published=9001")
-    cmd+=(--publish "mode=host,published=80,target=80")
     cmd+=("${IMAGE_NAME}")
     
     "${cmd[@]}"
-
+    
     docker -H "$url" service logs -f portainer-agent-dev
 }
 
@@ -293,9 +292,9 @@ function parse_deploy_params() {
 }
 
 function usage_deploy() {
-    cmd="./dev.sh"
+    cmdStr="./dev.sh"
     cat <<EOF
-Usage: $cmd deploy [-h] [-v|--verbose] [--local] [-s|--swarm]
+Usage: $cmdStr deploy [-h] [-v|--verbose] [--local] [-s|--swarm]
         [-c|--compile] [-b|--build] [-e|--edge] [--edge-id EDGE_ID] [--edge-key EDGE_KEY]
         [--ip SWARM_MANAGER_IP] [--ip SWARM_NODE_IP1] [--ip SWARM_NODE_IP2]
 

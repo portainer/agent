@@ -55,7 +55,7 @@ case $1 in
         "$1"_command "${@:2}"
     ;;
     swarm)
-        deploy_command -s --ip 10.0.7.10 --ip 10.0.7.11 "${@:2}"
+        deploy_command -s --ip 192.168.56.101 --ip 192.168.56.111 "${@:2}"
     ;;
     podman)
         deploy_command -p -c "${@:2}"
