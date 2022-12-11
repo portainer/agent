@@ -7,7 +7,6 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/docker/distribution v2.8.0+incompatible
 	github.com/docker/docker v20.10.16+incompatible
-	github.com/docker/docker-credential-helpers v0.7.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/logutils v1.0.0

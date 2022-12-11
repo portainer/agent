@@ -13,14 +13,14 @@ credential-helper=docker-credential-portainer
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: $(agent) $(docker-credential-portainer) download-binaries clean help
+.PHONY: agent credential-helper download-binaries clean help
 
 ##@ Building
 
-all: $(agent) $(docker-credential-portainer) download-binaries ## Build everything
+all: agent credential-helper download-binaries ## Build everything
 
 agent: ## Build the agent
-	@echo "Building agent..."
+	@echo "Building Portainer agent..."
 	@CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -trimpath --installsuffix cgo --ldflags "-s" -o dist/$(agent) cmd/agent/main.go
 
 credential-helper: ## Build the credential helper (used by edge private registries)

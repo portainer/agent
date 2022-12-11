@@ -3,8 +3,8 @@
 
 When edge stacks are deployed in portainer, portainer will send down a list of credentials with the stack.
 
-The edge agent holds these credentials in an in-memory database.  This credential helper will request them when required.
-This binary is called by docker and docker-compose automatically.
+The edge agent holds these credentials in an in-memory database.  This credential helper will request them when required via REST API calls
+to "http://localhost:9005". This binary is called by docker and docker-compose automatically.
 
 # Usage
 
