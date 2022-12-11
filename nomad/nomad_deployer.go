@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
+	"github.com/rs/zerolog/log"
 )
 
 // Deployer represents a service to deploy resources inside a Nomad environment.
@@ -84,9 +85,8 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 		EvalPriority:   0,
 	}
 
-	if shouldApplyTLS(newJob) {
-		// Inject TSL certificate info
-		addTLSInfo(newJob)
+	if isUpdateJob(newJob) {
+		addNomadDefaultEnv(newJob)
 	}
 
 	// Submit the job
@@ -177,22 +177,35 @@ func compareJobs(old, new *nomadapi.Job) bool {
 	return false
 }
 
-// addTLSInfo will inject Nomad TLS certificate info to updater job if the TLS certificate is provided
-func addTLSInfo(job *nomadapi.Job) {
+// addNomadDefaultEnv injects environment varibles inherited from Nomad environment
+func addNomadDefaultEnv(job *nomadapi.Job) {
 	task := job.TaskGroups[0].Tasks[0]
 
-	// Inject TLS certificate info only when the portainer-update job
-	// is configured the argument "portainer-updater"
-	_, ok := task.Config["portainer-updater"]
+	// Inject Nomad environment variables only when the custom env "PORTAINER_UPDATER"
+	// is configured as Nomad update job environment variable
+	_, ok := task.Env[agent.PortainerUpdaterEnv]
 	if !ok {
+		log.Debug().Msg("fail to look up the custom env PORTAINER_UPDATE")
 		return
 	}
 
 	if task.Env == nil {
 		task.Env = make(map[string]string)
 	}
+
+	// By injecting the below environment variables, Nomad SDK client can
+	// be initialized correctly, which is able to communicate with Nomad
+	// API from another Nomad job "portainer-updater"
 	task.Env[agent.NomadAddrEnvVarName] = os.Getenv(agent.NomadAddrEnvVarName)
 
+	task.Env[agent.NomadRegionEnvVarName] = os.Getenv(agent.NomadRegionEnvVarName)
+
+	task.Env[agent.NomadNamespaceEnvVarName] = os.Getenv(agent.NomadNamespaceEnvVarName)
+
+	task.Env[agent.NomadTokenEnvVarName] = os.Getenv(agent.NomadTokenEnvVarName)
+
+	// Inject Nomad TLS certificate info to updater job if the TLS
+	// certificates are provided
 	nomadCaCert, exist := os.LookupEnv(agent.NomadCACertContentEnvVarName)
 	if exist {
 		// The nomad agent has configured TLS certificate
@@ -208,10 +221,11 @@ func addTLSInfo(job *nomadapi.Job) {
 	if exist {
 		task.Env[agent.NomadClientKeyContentEnvVarName] = nomadClientKey
 	}
+
 	job.TaskGroups[0].Tasks[0] = task
 }
 
-func shouldApplyTLS(job *nomadapi.Job) bool {
+func isUpdateJob(job *nomadapi.Job) bool {
 	targetJobName := "portainer-updater"
 	return *job.ID == targetJobName &&
 		len(job.TaskGroups) > 0 &&
