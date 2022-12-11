@@ -6,13 +6,16 @@ ARCH=$(shell go env GOARCH)
 
 ifeq ("$(PLATFORM)", "windows")
 agent=agent.exe
-docker-credential-portainer=docker-credential-portainer.exe
+credential-helper=docker-credential-portainer.exe
 else
 agent=agent
-docker-credential-portainer=docker-credential-portainer
+credential-helper=docker-credential-portainer
 endif
 
+.DEFAULT_GOAL := help
 .PHONY: $(agent) $(docker-credential-portainer) download-binaries clean help
+
+##@ Building
 
 all: $(agent) $(docker-credential-portainer) download-binaries ## Build everything
 
@@ -20,16 +23,26 @@ agent: ## Build the agent
 	@echo "Building agent..."
 	@CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -trimpath --installsuffix cgo --ldflags "-s" -o dist/$(agent) cmd/agent/main.go
 
-docker-credential-portainer: ## Build the credential helper used by edge private registries
-	@echo "Building docker-credential-portainer..."
-	@cd cmd/docker-credential-portainer; \
-	CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -trimpath --installsuffix cgo --ldflags "-s" -o ../../dist/$(docker-credential-portainer)
+credential-helper: ## Build the credential helper (used by edge private registries)
+	@echo "Building Portainer credential-helper..."
+	@cd cmd/$(credential-helper); \
+	CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -trimpath --installsuffix cgo --ldflags "-s" -o ../../dist/$(credential-helper)
 
 download-binaries: ## Download dependant binaries
 	@./setup.sh $(PLATFORM) $(ARCH)
 
+##@ Dependencies
+
+tidy: ## Tidy up the go.mod file
+	@go mod tidy
+
+##@ Cleanup
+
 clean: ## Remove all build and download artifacts
+	@echo "Clearing the dist directory..."
 	@rm -f dist/*
 
-help: 
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+##@ Helpers
+
+help:  ## Display this help
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
