@@ -5,6 +5,8 @@ import (
 	"errors"
 	"path"
 	"runtime"
+
+	"github.com/portainer/agent"
 )
 
 // DockerSwarmStackService represents a service for managing stacks by using the Docker binary.
@@ -27,7 +29,7 @@ func NewDockerSwarmStackService(binaryPath string) (*DockerSwarmStackService, er
 }
 
 // Deploy executes the docker stack deploy command.
-func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string, filePaths []string, prune bool) error {
+func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string, filePaths []string, options agent.DeployOptions) error {
 	if len(filePaths) == 0 {
 		return errors.New("missing file paths")
 	}
@@ -37,7 +39,7 @@ func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string,
 	command := service.prepareDockerCommand(service.binaryPath)
 
 	args := []string{}
-	if prune {
+	if options.Prune {
 		args = append(args, "stack", "deploy", "--prune", "--with-registry-auth", "--compose-file", stackFilePath, name)
 	} else {
 		args = append(args, "stack", "deploy", "--with-registry-auth", "--compose-file", stackFilePath, name)
@@ -49,7 +51,7 @@ func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string,
 }
 
 // Remove executes the docker stack rm command.
-func (service *DockerSwarmStackService) Remove(ctx context.Context, name string, filePaths []string) error {
+func (service *DockerSwarmStackService) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
 	command := service.prepareDockerCommand(service.binaryPath)
 	args := []string{"stack", "rm", name}
 

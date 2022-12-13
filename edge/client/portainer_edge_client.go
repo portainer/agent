@@ -152,7 +152,12 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 		return nil, err
 	}
 
-	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent, RegistryCredentials: data.RegistryCredentials}, nil
+	return &agent.EdgeStackConfig{
+		Name:                data.Name,
+		FileContent:         data.StackFileContent,
+		RegistryCredentials: data.RegistryCredentials,
+		Namespace:           data.Namespace,
+	}, nil
 }
 
 type setEdgeStackStatusPayload struct {

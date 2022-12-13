@@ -119,6 +119,8 @@ type EdgeStackData struct {
 	Name                string
 	StackFileContent    string
 	RegistryCredentials []agent.RegistryCredentials
+	// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
+	Namespace string
 }
 
 type EdgeJobData struct {
