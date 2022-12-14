@@ -49,14 +49,14 @@ func (handler *Handler) handleAttachRequest(w http.ResponseWriter, r *http.Reque
 
 	websocketConn, err := handler.connectionUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "An error occured during websocket attach operation: unable to upgrade connection", err}
+		return &httperror.HandlerError{http.StatusInternalServerError, "An error occurred during websocket attach operation: unable to upgrade connection", err}
 
 	}
 	defer websocketConn.Close()
 
 	err = hijackAttachStartOperation(websocketConn, attachID)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "An error occured during websocket attach operation", err}
+		return &httperror.HandlerError{http.StatusInternalServerError, "An error occurred during websocket attach operation", err}
 	}
 
 	return nil

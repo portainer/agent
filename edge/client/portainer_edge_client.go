@@ -25,6 +25,7 @@ type PortainerEdgeClient struct {
 	getEndpointIDFn getEndpointIDFn
 	edgeID          string
 	agentPlatform   agent.ContainerPlatform
+	updateID        int
 	reqCache        *lru.Cache
 }
 
@@ -33,7 +34,7 @@ type globalKeyResponse struct {
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
-func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
+func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, updateID int, httpClient *http.Client) *PortainerEdgeClient {
 	c := &PortainerEdgeClient{
 		serverAddress:   serverAddress,
 		setEndpointIDFn: setEIDFn,
@@ -41,6 +42,7 @@ func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getE
 		edgeID:          edgeID,
 		agentPlatform:   agentPlatform,
 		httpClient:      httpClient,
+		updateID:        updateID,
 	}
 
 	cache, err := lru.New(8)
@@ -58,6 +60,10 @@ func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
 }
 
 func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, error) {
+	if client.edgeID == "" {
+		return 0, errors.New("edge ID not set")
+	}
+
 	gkURL := fmt.Sprintf("%s/api/endpoints/global-key", client.serverAddress)
 	req, err := http.NewRequest(http.MethodPost, gkURL, nil)
 	if err != nil {
@@ -94,12 +100,19 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 		return nil, err
 	}
 
-	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
-	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
-	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
 	req.Header.Set("If-None-Match", client.cacheHeaders())
 
+	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+
+	timeZone := time.Local.String()
+	req.Header.Set(agent.HTTPResponseAgentTimeZone, timeZone)
+	log.Debug().Str("timeZone", timeZone).Msg("sending timeZone header")
+
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
 	log.Debug().Int("header", int(client.agentPlatform)).Msg("sending agent platform header")
+
+	req.Header.Set(agent.HTTPResponseUpdateIDHeaderName, strconv.Itoa(client.updateID))
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
@@ -160,7 +173,12 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 		return nil, err
 	}
 
-	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent, RegistryCredentials: data.RegistryCredentials}, nil
+	return &agent.EdgeStackConfig{
+		Name:                data.Name,
+		FileContent:         data.StackFileContent,
+		RegistryCredentials: data.RegistryCredentials,
+		Namespace:           data.Namespace,
+	}, nil
 }
 
 type setEdgeStackStatusPayload struct {

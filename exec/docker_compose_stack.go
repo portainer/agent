@@ -3,6 +3,7 @@ package exec
 import (
 	"context"
 
+	"github.com/portainer/agent"
 	libstack "github.com/portainer/docker-compose-wrapper"
 	"github.com/portainer/docker-compose-wrapper/compose"
 )
@@ -30,12 +31,12 @@ func NewDockerComposeStackService(binaryPath string) (*DockerComposeStackService
 }
 
 // Deploy executes the docker stack deploy command.
-func (service *DockerComposeStackService) Deploy(ctx context.Context, name string, filePaths []string, prune bool) error {
+func (service *DockerComposeStackService) Deploy(ctx context.Context, name string, filePaths []string, options agent.DeployOptions) error {
 	return service.deployer.Deploy(ctx, "", "", name, filePaths, "", true)
 }
 
 // Remove executes the docker stack rm command.
-func (service *DockerComposeStackService) Remove(ctx context.Context, name string, filePaths []string) error {
+func (service *DockerComposeStackService) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
 	return service.deployer.Remove(ctx, "", "", name, filePaths, "")
 
 }

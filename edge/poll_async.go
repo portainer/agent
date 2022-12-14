@@ -128,7 +128,7 @@ func (service *PollService) startStatusPollLoopAsync() {
 
 			err := service.pollAsync(snapshotFlag, commandFlag)
 			if err != nil {
-				log.Error().Err(err).Msg("an error occured during async poll")
+				log.Error().Err(err).Msg("an error occurred during async poll")
 			}
 
 			snapshotFlag, commandFlag, coalescingFlag = false, false, false
