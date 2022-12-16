@@ -43,6 +43,8 @@ type (
 		Name                string
 		FileContent         string
 		RegistryCredentials []RegistryCredentials
+		// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
+		Namespace string
 	}
 
 	// EdgeJobStatus represents an Edge job status
@@ -94,6 +96,7 @@ type (
 		SSLCert               string
 		SSLKey                string
 		SSLCACert             string
+		UpdateID              int
 		CertRetryInterval     time.Duration
 	}
 
@@ -172,8 +175,22 @@ type (
 	}
 
 	Deployer interface {
-		Deploy(ctx context.Context, name string, filePaths []string, prune bool) error
-		Remove(ctx context.Context, name string, filePaths []string) error
+		Deploy(ctx context.Context, name string, filePaths []string, options DeployOptions) error
+		Remove(ctx context.Context, name string, filePaths []string, options RemoveOptions) error
+	}
+
+	DeployerBaseOptions struct {
+		// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
+		Namespace string
+	}
+
+	DeployOptions struct {
+		DeployerBaseOptions
+		Prune bool
+	}
+
+	RemoveOptions struct {
+		DeployerBaseOptions
 	}
 
 	// KubernetesInfoService is used to retrieve information from a Kubernetes environment.
@@ -215,7 +232,6 @@ var (
 )
 
 const (
-
 	// APIVersion represents the version of the agent's API.
 	APIVersion = "2"
 	// DefaultAgentAddr is the default address used by the Agent API server.
@@ -258,6 +274,10 @@ const (
 	// HTTPPublicKeyHeaderName is the name of the header containing the public key
 	// of a Portainer instance.
 	HTTPPublicKeyHeaderName = "X-PortainerAgent-PublicKey"
+	// HTTPResponseAgentTimeZone is the name of the header containing the timezone
+	HTTPResponseAgentTimeZone = "X-PortainerAgent-TimeZone"
+	// HTTPResponseUpdateIDHeaderName is the name of the header that will have the update ID that started this container
+	HTTPResponseUpdateIDHeaderName = "X-PortainerAgent-Update-ID"
 	// HTTPResponseAgentHeaderName is the name of the header that is automatically added
 	// to each agent response.
 	HTTPResponseAgentHeaderName = "Portainer-Agent"
