@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
+	agentos "github.com/portainer/agent/os"
 	"github.com/rs/zerolog/log"
 )
 
@@ -65,7 +66,8 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 
 		// If new job has critical config changes
 		// Purge the old job before register the new one
-		if diff := compareJobs(newJob, oldJob); diff {
+		diff := compareJobs(newJob, oldJob)
+		if diff {
 			err = d.verifyAndPurgeJob(oldJob)
 			if err != nil {
 				return errors.Wrap(err, "failed to purge former Nomad job")
@@ -85,7 +87,14 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 		EvalPriority:   0,
 	}
 
+	// Check if this is a portainer-updater job
 	if isUpdateJob(newJob) {
+		// If if this is a portainer-updater job
+		// Purge the old job before register the new one
+		err = d.verifyAndPurgeJob(newJob)
+		if err != nil {
+			return errors.Wrap(err, "failed to purge former Nomad job")
+		}
 		addNomadDefaultEnv(newJob)
 	}
 
@@ -197,11 +206,8 @@ func addNomadDefaultEnv(job *nomadapi.Job) {
 	// be initialized correctly, which is able to communicate with Nomad
 	// API from another Nomad job "portainer-updater"
 	task.Env[agent.NomadAddrEnvVarName] = os.Getenv(agent.NomadAddrEnvVarName)
-
 	task.Env[agent.NomadRegionEnvVarName] = os.Getenv(agent.NomadRegionEnvVarName)
-
 	task.Env[agent.NomadNamespaceEnvVarName] = os.Getenv(agent.NomadNamespaceEnvVarName)
-
 	task.Env[agent.NomadTokenEnvVarName] = os.Getenv(agent.NomadTokenEnvVarName)
 
 	// Inject Nomad TLS certificate info to updater job if the TLS
@@ -211,16 +217,21 @@ func addNomadDefaultEnv(job *nomadapi.Job) {
 		// The nomad agent has configured TLS certificate
 		task.Env[agent.NomadCACertContentEnvVarName] = nomadCaCert
 	}
-
 	nomadClientCert, exist := os.LookupEnv(agent.NomadClientCertContentEnvVarName)
 	if exist {
 		task.Env[agent.NomadClientCertContentEnvVarName] = nomadClientCert
 	}
-
 	nomadClientKey, exist := os.LookupEnv(agent.NomadClientKeyContentEnvVarName)
 	if exist {
 		task.Env[agent.NomadClientKeyContentEnvVarName] = nomadClientKey
 	}
+
+	// Inject portainer agent env
+	task.Env[agentos.EnvKeyEdge] = os.Getenv(agentos.EnvKeyEdge)
+	task.Env[agentos.EnvKeyEdgeKey] = os.Getenv(agentos.EnvKeyEdgeKey)
+	task.Env[agentos.EnvKeyEdgeID] = os.Getenv(agentos.EnvKeyEdgeID)
+	task.Env[agentos.EnvKeyEdgeInsecurePoll] = os.Getenv(agentos.EnvKeyEdgeInsecurePoll)
+	task.Env[agentos.EnvKeyAgentSecret] = os.Getenv(agentos.EnvKeyAgentSecret)
 
 	job.TaskGroups[0].Tasks[0] = task
 }
