@@ -32,6 +32,7 @@ type PortainerAsyncClient struct {
 	edgeID                  string
 	agentPlatformIdentifier agent.ContainerPlatform
 	commandTimestamp        *time.Time
+	updateID                int
 
 	lastAsyncResponse AsyncResponse
 	lastSnapshot      snapshot
@@ -43,7 +44,7 @@ type PortainerAsyncClient struct {
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
-func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerAsyncClient {
+func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, updateID int, httpClient *http.Client) *PortainerAsyncClient {
 	initialCommandTimestamp := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	return &PortainerAsyncClient{
 		serverAddress:           serverAddress,
@@ -53,6 +54,7 @@ func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, get
 		httpClient:              httpClient,
 		agentPlatformIdentifier: containerPlatform,
 		commandTimestamp:        &initialCommandTimestamp,
+		updateID:                updateID,
 	}
 }
 
@@ -117,6 +119,8 @@ type EdgeStackData struct {
 	Name                string
 	StackFileContent    string
 	RegistryCredentials []agent.RegistryCredentials
+	// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
+	Namespace string
 }
 
 type EdgeJobData struct {
@@ -368,10 +372,18 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	}
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
-	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
 	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
+	req.Header.Set(agent.HTTPResponseAgentTimeZone, time.Local.String())
+	req.Header.Set(agent.HTTPResponseUpdateIDHeaderName, strconv.Itoa(client.updateID))
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
 
-	log.Debug().Int("header", int(client.agentPlatformIdentifier)).Msg("sending agent platform header")
+	log.Debug().
+		Str(agent.HTTPEdgeIdentifierHeaderName, client.edgeID).
+		Int(agent.HTTPResponseUpdateIDHeaderName, (client.updateID)).
+		Int(agent.HTTPResponseAgentPlatform, (int(client.agentPlatformIdentifier))).
+		Str(agent.HTTPResponseAgentHeaderName, agent.Version).
+		Str(agent.HTTPResponseAgentTimeZone, time.Local.String()).
+		Msg("Sending async request with headers")
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
@@ -438,6 +450,9 @@ func (client *PortainerAsyncClient) DeleteEdgeStackStatus(edgeStackID int) error
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
 func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
+	// Async mode MUST NOT make any extra requests to Portainer, all the
+	// information exchange needs to happen via the async polling loop, which
+	// uses /endpoints/edge/async. This is a strict requirement.
 	return nil, nil // unused in async mode
 }
 

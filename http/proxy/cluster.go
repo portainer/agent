@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -160,7 +160,7 @@ func (clusterProxy *ClusterProxy) copyAndExecuteRequest(request *http.Request, m
 }
 
 func copyRequest(request *http.Request, member *agent.ClusterMember, useTLS bool) (*http.Request, error) {
-	body, err := ioutil.ReadAll(request.Body)
+	body, err := io.ReadAll(request.Body)
 	if err != nil {
 		return nil, err
 	}
