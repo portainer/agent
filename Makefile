@@ -6,28 +6,43 @@ ARCH=$(shell go env GOARCH)
 
 ifeq ("$(PLATFORM)", "windows")
 agent=agent.exe
-docker-credential-portainer=docker-credential-portainer.exe
+credential-helper=docker-credential-portainer.exe
 else
 agent=agent
-docker-credential-portainer=docker-credential-portainer
+credential-helper=docker-credential-portainer
 endif
 
-.PHONY: $(agent) $(docker-credential-portainer) download-binaries clean
+.DEFAULT_GOAL := help
+.PHONY: agent credential-helper download-binaries clean help
 
-all: $(agent) $(docker-credential-portainer) download-binaries
+##@ Building
 
-$(agent):
-	@echo "Building agent..."
-	@CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -trimpath --installsuffix cgo --ldflags "-s" -o dist/$@ cmd/agent/main.go
+all: agent credential-helper download-binaries ## Build everything
 
-$(docker-credential-portainer):
-	@echo "Building docker-credential-portainer..."
-	@cd cmd/docker-credential-portainer; \
-	CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -trimpath --installsuffix cgo --ldflags "-s" -o ../../dist/$@
+agent: ## Build the agent
+	@echo "Building Portainer agent..."
+	@CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -trimpath --installsuffix cgo --ldflags "-s" -o dist/$(agent) cmd/agent/main.go
 
-download-binaries:
+credential-helper: ## Build the credential helper (used by edge private registries)
+	@echo "Building Portainer credential-helper..."
+	@cd cmd/$(credential-helper); \
+	CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -trimpath --installsuffix cgo --ldflags "-s" -o ../../dist/$(credential-helper)
+
+download-binaries: ## Download dependant binaries
 	@./setup.sh $(PLATFORM) $(ARCH)
 
-clean:
+##@ Dependencies
+
+tidy: ## Tidy up the go.mod file
+	@go mod tidy
+
+##@ Cleanup
+
+clean: ## Remove all build and download artifacts
+	@echo "Clearing the dist directory..."
 	@rm -f dist/*
 
+##@ Helpers
+
+help:  ## Display this help
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
