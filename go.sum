@@ -307,12 +307,16 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/portainer/docker-compose-wrapper v0.0.0-20221122145319-915b021aea84 h1:d1P8i0pCPvAfxH6nSLUFm6NYoi8tMrIpafaZXSV8Lac=
 github.com/portainer/docker-compose-wrapper v0.0.0-20221122145319-915b021aea84/go.mod h1:03UmPLyjiPUexGJuW20mQXvmsoSpeErvMlItJGtq/Ww=
+github.com/portainer/docker-compose-wrapper v0.0.0-20221215210951-2c30d1b17a27 h1:PceCpp86SDYb3lZHT4KpuBCkmcJMW5x1qrdFNEfAdUo=
+github.com/portainer/docker-compose-wrapper v0.0.0-20221215210951-2c30d1b17a27/go.mod h1:03UmPLyjiPUexGJuW20mQXvmsoSpeErvMlItJGtq/Ww=
 github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a h1:B0z3skIMT+OwVNJPQhKp52X+9OWW6A9n5UWig3lHBJk=
 github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a/go.mod h1:n54EEIq+MM0NNtqLeCby8ljL+l275VpolXO0ibHegLE=
 github.com/portainer/libhttp v0.0.0-20221121135534-76f46e09c9a9 h1:L7o0L+1qq+LzKjzgRB6bDIh5ZrZ5A1oSS+WgWzDgJIo=
 github.com/portainer/libhttp v0.0.0-20221121135534-76f46e09c9a9/go.mod h1:H49JLiywwLt2rrJVroafEWy8fIs0i7mThAThK40sbb8=
 github.com/portainer/portainer/api v0.0.0-20221218040023-bfb92b5f957f h1:AZa2+M/Vjm5ZpNan/8wCs2f7T1cosvOlKpwAsrKbUzI=
 github.com/portainer/portainer/api v0.0.0-20221218040023-bfb92b5f957f/go.mod h1:tBui6pqdzXkk2DY0ambtjtRbNsrvnNNnEkDe0aXUeeU=
+github.com/portainer/portainer/api v0.0.0-20221221001851-919a854d9366 h1:t6K8jUJDfg58r6MB5fY/S5GhONCCNMMy0GpacPeReVM=
+github.com/portainer/portainer/api v0.0.0-20221221001851-919a854d9366/go.mod h1:zxnTNvI31lLoceLYyjHCfrLlNNZ5uECGkdWzAlc6pxY=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_golang v0.9.2/go.mod h1:OsXs2jCmiKlQ1lTBmv21f2mNfw4xf/QclQDMrYNZzcM=
 github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910/go.mod h1:MbSGuTsp3dbXC40dX6PRTWyKYBIrTGTE9sqQNg2J8bo=

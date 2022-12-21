@@ -17,10 +17,10 @@ require (
 	github.com/koding/websocketproxy v0.0.0-20181220232114-7ed82d81a28c
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pkg/errors v0.9.1
-	github.com/portainer/docker-compose-wrapper v0.0.0-20221122145319-915b021aea84
+	github.com/portainer/docker-compose-wrapper v0.0.0-20221215210951-2c30d1b17a27
 	github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a
 	github.com/portainer/libhttp v0.0.0-20221121135534-76f46e09c9a9
-	github.com/portainer/portainer/api v0.0.0-20221218040023-bfb92b5f957f
+	github.com/portainer/portainer/api v0.0.0-20221221001851-919a854d9366
 	github.com/rs/zerolog v1.28.0
 	github.com/wI2L/jsondiff v0.2.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
