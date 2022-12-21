@@ -157,17 +157,23 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 		FileContent:         data.StackFileContent,
 		RegistryCredentials: data.RegistryCredentials,
 		Namespace:           data.Namespace,
+		PrePullImage:        data.PrePullImage,
+		RePullImage:         data.RePullImage,
 	}, nil
 }
 
 type setEdgeStackStatusPayload struct {
 	Error      string
-	Status     int
+	Status     portainer.EdgeStackStatusType
 	EndpointID portainer.EndpointID
 }
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
-func (client *PortainerEdgeClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
+func (client *PortainerEdgeClient) SetEdgeStackStatus(
+	edgeStackID int,
+	edgeStackStatus portainer.EdgeStackStatusType,
+	error string,
+) error {
 	payload := setEdgeStackStatusPayload{
 		Error:      error,
 		Status:     edgeStackStatus,
