@@ -249,18 +249,11 @@ we can leverage the internal Docker DNS to automatically join existing agents or
 * EDGE_INSECURE_POLL (*optional*): enable this option if you need the agent to poll a HTTPS Portainer instance with self-signed certificates. Disabled by default, set to `1` to enable it
 
 
-For more information about deployment scenarios, see: https://portainer.readthedocs.io/en/stable/agent.html
+For more information about deployment scenarios, see: https://docs.portainer.io/start/install/agent
 
 ## Development
 
-1. Install go >= 1.11.2
-2. Install dep: https://golang.github.io/dep/docs/installation.html
-
-If you want to add any extra dependency:
-
-```
-dep ensure -add github.com/foo/bar
-```
+1. Install go >= 1.16.0
 
 ### 3. Run 
 
@@ -277,4 +270,21 @@ dep ensure -add github.com/foo/bar
 ```
 
 - The dev script has more commands, you can see them by running `./dev.sh`
+
+There is also a `Makefile` with some useful commands.
+
+Run `make help` to see them
+
+e.g. to build just the agent binary:
+
+```
+make agent
+```
+
+To build everything and download dependant binaries:
+
+```
+make all
+```
+
 
