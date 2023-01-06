@@ -2,6 +2,7 @@ package edge
 
 import (
 	"encoding/base64"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -134,12 +135,24 @@ func (service *PollService) startStatusPollLoop() {
 		Str("server_url", service.portainerURL).
 		Msg("starting Portainer short-polling client")
 
+	lastPollFailed := false
 	for {
 		select {
 		case <-pollCh:
+			// Jitter
+			if lastPollFailed {
+				lastPollFailed = false
+				t := time.Duration(rand.Float64() * service.pollIntervalInSeconds * float64(time.Second))
+				time.Sleep(t)
+				service.pollTicker.Reset(time.Duration(service.pollIntervalInSeconds) * time.Second)
+			}
+
 			err := service.poll()
 			if err != nil {
-				log.Error().Err(err).Msg("an error occurred during short poll")
+				log.Error().Err(err).Msg("an error occured during short poll")
+
+				lastPollFailed = true
+				service.pollTicker.Reset(time.Duration(service.pollIntervalInSeconds) * time.Second)
 			}
 		case <-service.startSignal:
 			pollCh = service.pollTicker.C
@@ -200,6 +213,8 @@ func (service *PollService) poll() error {
 
 	environmentStatus, err := service.portainerClient.GetEnvironmentStatus()
 	if err != nil {
+		service.edgeManager.SetEndpointID(0)
+
 		return err
 	}
 
