@@ -281,7 +281,7 @@ e.g. to build just the agent binary:
 make agent
 ```
 
-To build everything and download dependant binaries:
+To build all binaries and download third party dependancies:
 
 ```
 make all
