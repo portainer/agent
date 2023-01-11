@@ -114,4 +114,4 @@ filename="agent.go"
 sed "s/$CURRENT_VERSION/$NEW_VERSION/g" "$filename" > "$tmp" && mv "$tmp" "$filename"
 echo "Updated $filename."
 echo
-echo "IMPORTANT! Before committing, please ensure the files have updated correctly with `git diff`"
+echo "IMPORTANT! Before committing, please ensure the files have updated correctly with 'git diff'"
