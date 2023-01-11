@@ -13,7 +13,7 @@ type PortainerClient interface {
 	GetEnvironmentID() (portainer.EndpointID, error)
 	GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error)
 	GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error)
-	SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error
+	SetEdgeStackStatus(edgeStackID int, edgeStackStatus portainer.EdgeStackStatusType, error string) error
 	DeleteEdgeStackStatus(edgeStackID int) error
 	SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error
 	SetTimeout(t time.Duration)
@@ -49,10 +49,10 @@ type setEndpointIDFn func(portainer.EndpointID)
 type getEndpointIDFn func() portainer.EndpointID
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, httpClient *http.Client) PortainerClient {
+func NewPortainerClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, updateID int, httpClient *http.Client) PortainerClient {
 	if edgeAsyncMode {
-		return NewPortainerAsyncClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient)
+		return NewPortainerAsyncClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, updateID, httpClient)
 	}
 
-	return NewPortainerEdgeClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, httpClient)
+	return NewPortainerEdgeClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, updateID, httpClient)
 }

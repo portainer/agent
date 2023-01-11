@@ -3,14 +3,13 @@ package edge
 import (
 	"context"
 	"errors"
+	portainer "github.com/portainer/portainer/api"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge/client"
-	"github.com/portainer/agent/edge/stack"
-
-	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 )
 
@@ -231,7 +230,7 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 		return newOperationError("stack", "n/a", err)
 	}
 
-	responseStatus := int(stack.EdgeStackStatusOk)
+	responseStatus := portainer.EdgeStackStatusAcknowledged
 	errorMessage := ""
 
 	switch command.Operation {
@@ -239,16 +238,16 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 		err = service.edgeStackManager.DeployStack(ctx, stackData)
 
 		if err != nil {
-			responseStatus = int(stack.EdgeStackStatusError)
+			responseStatus = portainer.EdgeStackStatusError
 			errorMessage = err.Error()
 		}
 
 	case "remove":
-		responseStatus = int(stack.EdgeStackStatusRemove)
+		responseStatus = portainer.EdgeStackStatusRemove
 
 		err = service.edgeStackManager.DeleteStack(ctx, stackData)
 		if err != nil {
-			responseStatus = int(stack.EdgeStackStatusError)
+			responseStatus = portainer.EdgeStackStatusError
 			errorMessage = err.Error()
 		}
 

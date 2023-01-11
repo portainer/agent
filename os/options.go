@@ -40,6 +40,7 @@ const (
 	EnvKeyAWSTrustAnchorARN     = "AWS_TRUST_ANCHOR_ARN"
 	EnvKeyAWSProfileARN         = "AWS_PROFILE_ARN"
 	EnvKeyAWSRegion             = "AWS_REGION"
+	EnvKeyUpdateID              = "UPDATE_ID"
 )
 
 type EnvOptionParser struct{}
@@ -61,6 +62,7 @@ var (
 	fLogLevel              = kingpin.Flag("log-level", EnvKeyLogLevel+" defines the log output verbosity (default to INFO)").Envar(EnvKeyLogLevel).Default(agent.DefaultLogLevel).Enum("ERROR", "WARN", "INFO", "DEBUG")
 	fLogMode               = kingpin.Flag("log-mode", EnvKeyLogMode+" defines the logging output mode").Envar(EnvKeyLogMode).Default("PRETTY").Enum("PRETTY", "JSON")
 	fHealthCheck           = kingpin.Flag("health-check", "run the agent in healthcheck mode and exit after running preflight checks").Envar(EnvKeyHealthCheck).Default("false").Bool()
+	fUpdateID              = kingpin.Flag("update-id", "the edge update identifier that started this agent").Envar(EnvKeyUpdateID).Int()
 
 	// Edge mode
 	fEdgeMode              = kingpin.Flag("edge", EnvKeyEdge+" enable Edge mode. Disabled by default, set to 1 or true to enable it").Envar(EnvKeyEdge).Bool()
@@ -121,6 +123,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		SSLCert:               *fSSLCert,
 		SSLKey:                *fSSLKey,
 		SSLCACert:             *fSSLCACert,
+		UpdateID:              *fUpdateID,
 		CertRetryInterval:     *fCertRetryInterval,
 		AWSClientCert:         *fAWSClientCert,
 		AWSClientKey:          *fAWSClientKey,

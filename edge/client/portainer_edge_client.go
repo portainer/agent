@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	portainer "github.com/portainer/portainer/api"
 
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,6 +25,8 @@ type PortainerEdgeClient struct {
 	getEndpointIDFn getEndpointIDFn
 	edgeID          string
 	agentPlatform   agent.ContainerPlatform
+	updateID        int
+	reqCache        *lru.Cache
 }
 
 type globalKeyResponse struct {
@@ -30,15 +34,25 @@ type globalKeyResponse struct {
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
-func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, httpClient *http.Client) *PortainerEdgeClient {
-	return &PortainerEdgeClient{
+func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, updateID int, httpClient *http.Client) *PortainerEdgeClient {
+	c := &PortainerEdgeClient{
 		serverAddress:   serverAddress,
 		setEndpointIDFn: setEIDFn,
 		getEndpointIDFn: getEIDFn,
 		edgeID:          edgeID,
 		agentPlatform:   agentPlatform,
 		httpClient:      httpClient,
+		updateID:        updateID,
 	}
+
+	cache, err := lru.New(8)
+	if err == nil {
+		c.reqCache = cache
+	} else {
+		log.Warn().Err(err).Msg("could not initialize the cache")
+	}
+
+	return c
 }
 
 func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
@@ -46,6 +60,10 @@ func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
 }
 
 func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, error) {
+	if client.edgeID == "" {
+		return 0, errors.New("edge ID not set")
+	}
+
 	gkURL := fmt.Sprintf("%s/api/endpoints/global-key", client.serverAddress)
 	req, err := http.NewRequest(http.MethodPost, gkURL, nil)
 	if err != nil {
@@ -82,17 +100,30 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 		return nil, err
 	}
 
+	req.Header.Set("If-None-Match", client.cacheHeaders())
+
 	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
-	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
 
+	timeZone := time.Local.String()
+	req.Header.Set(agent.HTTPResponseAgentTimeZone, timeZone)
+	log.Debug().Str("timeZone", timeZone).Msg("sending timeZone header")
+
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
 	log.Debug().Int("header", int(client.agentPlatform)).Msg("sending agent platform header")
+
+	req.Header.Set(agent.HTTPResponseUpdateIDHeaderName, strconv.Itoa(client.updateID))
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	cachedResp, ok := client.cachedResponse(resp)
+	if ok {
+		return cachedResp, nil
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		log.Debug().Int("response_code", resp.StatusCode).Msg("poll request failure]")
@@ -107,6 +138,8 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 	if err != nil {
 		return nil, err
 	}
+
+	client.cacheResponse(resp.Header.Get("ETag"), &responseData)
 
 	return &responseData, nil
 }
@@ -140,17 +173,28 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 		return nil, err
 	}
 
-	return &agent.EdgeStackConfig{Name: data.Name, FileContent: data.StackFileContent, RegistryCredentials: data.RegistryCredentials}, nil
+	return &agent.EdgeStackConfig{
+		Name:                data.Name,
+		FileContent:         data.StackFileContent,
+		RegistryCredentials: data.RegistryCredentials,
+		Namespace:           data.Namespace,
+		PrePullImage:        data.PrePullImage,
+		RePullImage:         data.RePullImage,
+	}, nil
 }
 
 type setEdgeStackStatusPayload struct {
 	Error      string
-	Status     int
+	Status     portainer.EdgeStackStatusType
 	EndpointID portainer.EndpointID
 }
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
-func (client *PortainerEdgeClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
+func (client *PortainerEdgeClient) SetEdgeStackStatus(
+	edgeStackID int,
+	edgeStackStatus portainer.EdgeStackStatusType,
+	error string,
+) error {
 	payload := setEdgeStackStatusPayload{
 		Error:      error,
 		Status:     edgeStackStatus,
@@ -262,4 +306,41 @@ func (client *PortainerEdgeClient) SetLastCommandTimestamp(timestamp time.Time) 
 
 func (client *PortainerEdgeClient) EnqueueLogCollectionForStack(logCmd LogCommandData) error {
 	return nil
+}
+
+func (client *PortainerEdgeClient) cacheHeaders() string {
+	if client.reqCache == nil {
+		return ""
+	}
+
+	ks := client.reqCache.Keys()
+
+	var strKs []string
+	for _, k := range ks {
+		strKs = append(strKs, k.(string))
+	}
+
+	return strings.Join(strKs, ",")
+}
+
+func (client *PortainerEdgeClient) cachedResponse(r *http.Response) (*PollStatusResponse, bool) {
+	etag := r.Header.Get("ETag")
+
+	if client.reqCache == nil || r.StatusCode != http.StatusNotModified || etag == "" {
+		return nil, false
+	}
+
+	if resp, ok := client.reqCache.Get(etag); ok {
+		return resp.(*PollStatusResponse), true
+	}
+
+	return nil, false
+}
+
+func (client *PortainerEdgeClient) cacheResponse(etag string, resp *PollStatusResponse) {
+	if client.reqCache == nil || etag == "" {
+		return
+	}
+
+	client.reqCache.Add(etag, resp)
 }
