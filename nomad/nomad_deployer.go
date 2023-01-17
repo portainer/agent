@@ -111,6 +111,11 @@ func (d *Deployer) Pull(ctx context.Context, name string, filePaths []string) er
 	return nil
 }
 
+// Validate is a dummy method for Nomad
+func (d *Deployer) Validate(ctx context.Context, name string, filePaths []string) error {
+	return nil
+}
+
 // Remove attempts to purge a Nomad job via provided Nomad job file
 func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
 	if len(filePaths) == 0 {
