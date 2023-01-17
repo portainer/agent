@@ -77,6 +77,11 @@ func (deployer *KubernetesDeployer) Pull(ctx context.Context, name string, fileP
 	return nil
 }
 
+// Validate is a dummy method for Kube
+func (deployer *KubernetesDeployer) Validate(ctx context.Context, name string, filePaths []string) error {
+	return nil
+}
+
 // DeployRawConfig will deploy a Kubernetes manifest inside a specific namespace
 // it will use kubectl to deploy the manifest and receives a raw config.
 // kubectl uses in-cluster config.

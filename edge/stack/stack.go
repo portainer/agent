@@ -238,6 +238,13 @@ func (manager *StackManager) Start() error {
 				stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
 				manager.mu.Unlock()
 
+				if stack.Action != actionIdle {
+					err = manager.validateStackFile(ctx, stack, stackName, stackFileLocation)
+					if err != nil {
+						return
+					}
+				}
+
 				if stack.Action == actionDeploy || stack.Action == actionUpdate {
 					err = manager.pullImages(ctx, stack, stackName, stackFileLocation)
 					if err == nil {
@@ -270,6 +277,28 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 	}
 
 	return nil
+}
+
+func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) error {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("validating stack")
+
+	err := manager.deployer.Validate(ctx, stackName, []string{stackFileLocation})
+	if err != nil {
+		log.Error().Err(err).Msg("stack validation failed")
+		stack.Status = StatusError
+
+		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusError, err.Error())
+		if statusUpdateErr != nil {
+			log.Error().Err(statusUpdateErr).Msg("unable to update Edge stack status")
+		}
+	} else {
+		log.Debug().Int("stack_identifier", int(stack.ID)).Int("stack_version", stack.Version).Msg("stack validated")
+	}
+
+	return err
 }
 
 func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) error {

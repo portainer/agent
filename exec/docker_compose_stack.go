@@ -10,8 +10,7 @@ import (
 
 // DockerComposeStackService represents a service for managing stacks by using the Docker binary.
 type DockerComposeStackService struct {
-	deployer   libstack.Deployer
-	binaryPath string
+	deployer libstack.Deployer
 }
 
 // NewDockerComposeStackService initializes a new DockerStackService service.
@@ -23,8 +22,7 @@ func NewDockerComposeStackService(binaryPath string) (*DockerComposeStackService
 	}
 
 	service := &DockerComposeStackService{
-		binaryPath: binaryPath,
-		deployer:   deployer,
+		deployer: deployer,
 	}
 
 	return service, nil
@@ -51,4 +49,9 @@ func (service *DockerComposeStackService) Remove(ctx context.Context, name strin
 	return service.deployer.Remove(ctx, filePaths, libstack.Options{
 		ProjectName: name,
 	})
+}
+
+// Validate executes docker config command to validate file format
+func (service *DockerComposeStackService) Validate(ctx context.Context, name string, filePaths []string) error {
+	return service.deployer.Validate(ctx, filePaths, libstack.Options{})
 }
