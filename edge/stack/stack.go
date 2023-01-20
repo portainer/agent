@@ -224,42 +224,46 @@ func (manager *StackManager) Start() error {
 				log.Debug().Msg("shutting down Edge stack manager")
 				return
 			default:
-				stack := manager.nextPendingStack()
-				if stack == nil {
-					timer1 := time.NewTimer(queueSleepInterval)
-					<-timer1.C
-					continue
-				}
-
-				ctx := context.TODO()
-
-				manager.mu.Lock()
-				stackName := fmt.Sprintf("edge_%s", stack.Name)
-				stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
-				manager.mu.Unlock()
-
-				if stack.Action != actionIdle {
-					// validate the stack file and failfast if the stack format is invalid
-					// each deployer has its own Validate function
-					err = manager.validateStackFile(ctx, stack, stackName, stackFileLocation)
-					if err != nil {
-						return
-					}
-				}
-
-				if stack.Action == actionDeploy || stack.Action == actionUpdate {
-					err = manager.pullImages(ctx, stack, stackName, stackFileLocation)
-					if err == nil {
-						manager.deployStack(ctx, stack, stackName, stackFileLocation)
-					}
-				} else if stack.Action == actionDelete {
-					manager.deleteStack(ctx, stack, stackName, stackFileLocation)
-				}
+				manager.performActionOnStack(queueSleepInterval)
 			}
 		}
 	}()
 
 	return nil
+}
+
+func (manager *StackManager) performActionOnStack(queueSleepInterval time.Duration) {
+	stack := manager.nextPendingStack()
+	if stack == nil {
+		timer1 := time.NewTimer(queueSleepInterval)
+		<-timer1.C
+		return
+	}
+	ctx := context.TODO()
+
+	manager.mu.Lock()
+	stackName := fmt.Sprintf("edge_%s", stack.Name)
+	stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
+	manager.mu.Unlock()
+
+	switch stack.Action {
+	case actionDeploy, actionUpdate:
+		// validate the stack file and failfast if the stack format is invalid
+		// each deployer has its own Validate function
+		err := manager.validateStackFile(ctx, stack, stackName, stackFileLocation)
+		if err != nil {
+			return
+		}
+
+		err = manager.pullImages(ctx, stack, stackName, stackFileLocation)
+		if err != nil {
+			return
+		}
+
+		manager.deployStack(ctx, stack, stackName, stackFileLocation)
+	case actionDelete:
+		manager.deleteStack(ctx, stack, stackName, stackFileLocation)
+	}
 }
 
 func (manager *StackManager) nextPendingStack() *edgeStack {
@@ -298,7 +302,7 @@ func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeS
 		},
 	)
 	if err != nil {
-		log.Error().Err(err).Msg("stack validation failed")
+		log.Error().Int("stack_identifier", int(stack.ID)).Err(err).Msg("stack validation failed")
 		stack.Status = StatusError
 
 		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusError, err.Error())
