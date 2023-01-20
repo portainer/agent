@@ -70,7 +70,7 @@ func (service *DockerSwarmStackService) Pull(ctx context.Context, name string, f
 }
 
 // Validate uses compose to validate the stack files
-func (service *DockerSwarmStackService) Validate(ctx context.Context, name string, filePaths []string) error {
+func (service *DockerSwarmStackService) Validate(ctx context.Context, name string, filePaths []string, options agent.ValidateOptions) error {
 	return service.composeDeployer.Validate(ctx, filePaths, libstack.Options{})
 }
 

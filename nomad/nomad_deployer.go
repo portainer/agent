@@ -112,7 +112,8 @@ func (d *Deployer) Pull(ctx context.Context, name string, filePaths []string) er
 }
 
 // Validate is a dummy method for Nomad
-func (d *Deployer) Validate(ctx context.Context, name string, filePaths []string) error {
+func (d *Deployer) Validate(ctx context.Context, name string, filePaths []string, options agent.ValidateOptions) error {
+	// We can use PlanOpts() to validate the HCL file and see if the file is valid
 	return nil
 }
 
