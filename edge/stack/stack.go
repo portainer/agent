@@ -239,6 +239,8 @@ func (manager *StackManager) Start() error {
 				manager.mu.Unlock()
 
 				if stack.Action != actionIdle {
+					// validate the stack file and failfast if the stack format is invalid
+					// each deployer has its own Validate function
 					err = manager.validateStackFile(ctx, stack, stackName, stackFileLocation)
 					if err != nil {
 						return
@@ -283,9 +285,18 @@ func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeS
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("validating stack")
+	log.Debug().Int("stack_identifier", int(stack.ID)).
+		Str("stack_name", stackName).
+		Str("namespace", stack.Namespace).
+		Msg("validating stack")
 
-	err := manager.deployer.Validate(ctx, stackName, []string{stackFileLocation})
+	err := manager.deployer.Validate(ctx, stackName, []string{stackFileLocation},
+		agent.ValidateOptions{
+			DeployerBaseOptions: agent.DeployerBaseOptions{
+				Namespace: stack.Namespace,
+			},
+		},
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("stack validation failed")
 		stack.Status = StatusError
