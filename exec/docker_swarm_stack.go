@@ -7,11 +7,14 @@ import (
 	"runtime"
 
 	"github.com/portainer/agent"
+	libstack "github.com/portainer/docker-compose-wrapper"
+	"github.com/portainer/docker-compose-wrapper/compose"
 )
 
 // DockerSwarmStackService represents a service for managing stacks by using the Docker binary.
 type DockerSwarmStackService struct {
-	binaryPath string
+	command         string
+	composeDeployer libstack.Deployer
 }
 
 type DockerSwarmDeployOpts struct {
@@ -21,8 +24,21 @@ type DockerSwarmDeployOpts struct {
 // NewDockerSwarmStackService initializes a new DockerStackService service.
 // It also updates the configuration of the Docker CLI binary.
 func NewDockerSwarmStackService(binaryPath string) (*DockerSwarmStackService, error) {
+	// Assume Linux as a default
+	command := path.Join(binaryPath, "docker")
+
+	if runtime.GOOS == "windows" {
+		command = path.Join(binaryPath, "docker.exe")
+	}
+
+	composeDeployer, err := compose.NewComposeDeployer(binaryPath, "")
+	if err != nil {
+		return nil, err
+	}
+
 	service := &DockerSwarmStackService{
-		binaryPath: binaryPath,
+		command:         command,
+		composeDeployer: composeDeployer,
 	}
 
 	return service, nil
@@ -36,8 +52,6 @@ func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string,
 
 	stackFilePath := filePaths[0]
 
-	command := service.prepareDockerCommand(service.binaryPath)
-
 	args := []string{}
 	if options.Prune {
 		args = append(args, "stack", "deploy", "--prune", "--with-registry-auth", "--compose-file", stackFilePath, name)
@@ -46,7 +60,7 @@ func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string,
 	}
 
 	stackFolder := path.Dir(stackFilePath)
-	_, err := runCommandAndCaptureStdErr(command, args, &cmdOpts{WorkingDir: stackFolder})
+	_, err := runCommandAndCaptureStdErr(service.command, args, &cmdOpts{WorkingDir: stackFolder})
 	return err
 }
 
@@ -55,22 +69,15 @@ func (service *DockerSwarmStackService) Pull(ctx context.Context, name string, f
 	return nil
 }
 
-// Remove executes the docker stack rm command.
-func (service *DockerSwarmStackService) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
-	command := service.prepareDockerCommand(service.binaryPath)
-	args := []string{"stack", "rm", name}
-
-	_, err := runCommandAndCaptureStdErr(command, args, nil)
-	return err
+// Validate uses compose to validate the stack files
+func (service *DockerSwarmStackService) Validate(ctx context.Context, name string, filePaths []string, options agent.ValidateOptions) error {
+	return service.composeDeployer.Validate(ctx, filePaths, libstack.Options{})
 }
 
-func (service *DockerSwarmStackService) prepareDockerCommand(binaryPath string) string {
-	// Assume Linux as a default
-	command := path.Join(binaryPath, "docker")
+// Remove executes the docker stack rm command.
+func (service *DockerSwarmStackService) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
+	args := []string{"stack", "rm", name}
 
-	if runtime.GOOS == "windows" {
-		command = path.Join(binaryPath, "docker.exe")
-	}
-
-	return command
+	_, err := runCommandAndCaptureStdErr(service.command, args, nil)
+	return err
 }
