@@ -180,6 +180,7 @@ type (
 		Deploy(ctx context.Context, name string, filePaths []string, options DeployOptions) error
 		Remove(ctx context.Context, name string, filePaths []string, options RemoveOptions) error
 		Pull(ctx context.Context, name string, filePaths []string) error
+		Validate(ctx context.Context, name string, filePaths []string, options ValidateOptions) error
 	}
 
 	DeployerBaseOptions struct {
@@ -193,6 +194,10 @@ type (
 	}
 
 	RemoveOptions struct {
+		DeployerBaseOptions
+	}
+
+	ValidateOptions struct {
 		DeployerBaseOptions
 	}
 
