@@ -311,6 +311,8 @@ github.com/portainer/docker-compose-wrapper v0.0.0-20221215210951-2c30d1b17a27 h
 github.com/portainer/docker-compose-wrapper v0.0.0-20221215210951-2c30d1b17a27/go.mod h1:03UmPLyjiPUexGJuW20mQXvmsoSpeErvMlItJGtq/Ww=
 github.com/portainer/docker-compose-wrapper v0.0.0-20230117155756-fbb0d9459d95 h1:0fO1tKIgBSmdEN3VgkMCkT76dJ79OfRixR0zHARdiV0=
 github.com/portainer/docker-compose-wrapper v0.0.0-20230117155756-fbb0d9459d95/go.mod h1:03UmPLyjiPUexGJuW20mQXvmsoSpeErvMlItJGtq/Ww=
+github.com/portainer/docker-compose-wrapper v0.0.0-20230123164750-d741077aeffb h1:eSamlz9CswkJK6KTJsOf7DQQ9LGafaMN+pwh39+xrs8=
+github.com/portainer/docker-compose-wrapper v0.0.0-20230123164750-d741077aeffb/go.mod h1:03UmPLyjiPUexGJuW20mQXvmsoSpeErvMlItJGtq/Ww=
 github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a h1:B0z3skIMT+OwVNJPQhKp52X+9OWW6A9n5UWig3lHBJk=
 github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a/go.mod h1:n54EEIq+MM0NNtqLeCby8ljL+l275VpolXO0ibHegLE=
 github.com/portainer/libhttp v0.0.0-20221121135534-76f46e09c9a9 h1:L7o0L+1qq+LzKjzgRB6bDIh5ZrZ5A1oSS+WgWzDgJIo=
