@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -498,15 +499,19 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	fileName := "docker-compose.yml"
 	fileContent := stackData.StackFileContent
 
-	if manager.engineType == EngineTypeKubernetes {
+	if manager.engineType == EngineTypeDockerStandalone {
+		if len(stackData.RegistryCredentials) > 0 && strings.HasPrefix(stackData.Name, "edge-update-schedule") {
+			yml := yaml.NewYAML(fileContent, stackData.RegistryCredentials)
+
+			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
+		}
+	} else if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stackData.Name)
 		if len(stackData.RegistryCredentials) > 0 {
 			yml := yaml.NewYAML(fileContent, stackData.RegistryCredentials)
 			fileContent, _ = yml.AddImagePullSecrets()
 		}
-	}
-
-	if manager.engineType == EngineTypeNomad {
+	} else if manager.engineType == EngineTypeNomad {
 		fileName = fmt.Sprintf("%s.hcl", stackData.Name)
 	}
 
