@@ -160,14 +160,20 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 	fileName := "docker-compose.yml"
 	fileContent := stackConfig.FileContent
-	if manager.engineType == EngineTypeKubernetes {
+
+	if manager.engineType == EngineTypeDockerStandalone {
+		if len(stackConfig.RegistryCredentials) > 0 && strings.HasPrefix(stackConfig.Name, "edge-update-schedule") {
+			yml := yaml.NewYAML(fileContent, stackConfig.RegistryCredentials)
+
+			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
+		}
+	} else if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stack.Name)
 		if len(stackConfig.RegistryCredentials) > 0 {
 			yml := yaml.NewYAML(fileContent, stackConfig.RegistryCredentials)
 			fileContent, _ = yml.AddImagePullSecrets()
 		}
-	}
-	if manager.engineType == EngineTypeNomad {
+	} else if manager.engineType == EngineTypeNomad {
 		fileName = fmt.Sprintf("%s.hcl", stack.Name)
 	}
 

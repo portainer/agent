@@ -168,6 +168,7 @@ func (y *yaml) AddImagePullSecrets() (string, error) {
 func (y *yaml) AddCredentialsAsEnvForSpecificService(serviceName string) (string, error) {
 	envs := make(map[string]string)
 
+	log.Info().Int("registry credential number", len(y.registryCredentials)).Msg("private rigstry")
 	for _, cred := range y.registryCredentials {
 		envs["REGISTRY_USED"] = "1"
 		envs["REGISTRY_USERNAME"] = cred.Username
@@ -209,6 +210,7 @@ func addEnvsForSpecificService(fileContent, serviceName string, envs map[string]
 		return "", errors.Wrap(err, fmt.Sprintf("Cannot find the service: %s", serviceName))
 	}
 
+	log.Info().Int("number", len(envs)).Msg("environment variable")
 	for k, v := range envs {
 		service.Environment = append(service.Environment, fmt.Sprintf("%s=%s", k, v))
 	}
