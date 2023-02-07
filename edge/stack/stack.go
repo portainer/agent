@@ -163,14 +163,13 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 
 	if manager.engineType == EngineTypeDockerStandalone {
 		if len(stackConfig.RegistryCredentials) > 0 && strings.HasPrefix(stackConfig.Name, "edge-update-schedule") {
-			yml := yaml.NewYAML(fileContent, stackConfig.RegistryCredentials)
-
+			yml := yaml.NewDockerComposeYAML(fileContent, stackConfig.RegistryCredentials)
 			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
 		}
 	} else if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stack.Name)
 		if len(stackConfig.RegistryCredentials) > 0 {
-			yml := yaml.NewYAML(fileContent, stackConfig.RegistryCredentials)
+			yml := yaml.NewKubernetesYAML(fileContent, stackConfig.RegistryCredentials)
 			fileContent, _ = yml.AddImagePullSecrets()
 		}
 	} else if manager.engineType == EngineTypeNomad {
@@ -507,14 +506,13 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 
 	if manager.engineType == EngineTypeDockerStandalone {
 		if len(stackData.RegistryCredentials) > 0 && strings.HasPrefix(stackData.Name, "edge-update-schedule") {
-			yml := yaml.NewYAML(fileContent, stackData.RegistryCredentials)
-
+			yml := yaml.NewDockerComposeYAML(fileContent, stackData.RegistryCredentials)
 			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
 		}
 	} else if manager.engineType == EngineTypeKubernetes {
 		fileName = fmt.Sprintf("%s.yml", stackData.Name)
 		if len(stackData.RegistryCredentials) > 0 {
-			yml := yaml.NewYAML(fileContent, stackData.RegistryCredentials)
+			yml := yaml.NewKubernetesYAML(fileContent, stackData.RegistryCredentials)
 			fileContent, _ = yml.AddImagePullSecrets()
 		}
 	} else if manager.engineType == EngineTypeNomad {
