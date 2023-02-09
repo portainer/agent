@@ -26,6 +26,14 @@ var TLS12CipherSuites = []uint16{
 	tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 }
 
+// CreateTLSConfiguration creates a basic tls.Config with recommended TLS settings
+func CreateTLSConfiguration() *tls.Config {
+	return &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		CipherSuites: TLS12CipherSuites,
+	}
+}
+
 // TLSService is a service used to generate TLS cert and key files
 // to setup HTTPS.
 type TLSService struct{}

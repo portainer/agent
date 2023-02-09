@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"net/http"
 	"time"
@@ -104,10 +103,7 @@ func (server *APIServer) Start(edgeMode bool) error {
 		return httpServer.ListenAndServe()
 	}
 
-	httpServer.TLSConfig = &tls.Config{
-		MinVersion:   tls.VersionTLS12,
-		CipherSuites: crypto.TLS12CipherSuites,
-	}
+	httpServer.TLSConfig = crypto.CreateTLSConfiguration()
 
 	go server.securityShutdown(httpServer)
 

@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"bytes"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/crypto"
 
 	"github.com/rs/zerolog/log"
 )
@@ -27,9 +27,8 @@ type ClusterProxy struct {
 // NewClusterProxy returns a pointer to a ClusterProxy.
 // It also sets the default values used in the underlying http.Client.
 func NewClusterProxy(useTLS bool) *ClusterProxy {
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true,
-	}
+	tlsConfig := crypto.CreateTLSConfiguration()
+	tlsConfig.InsecureSkipVerify = true
 
 	return &ClusterProxy{
 		client: &http.Client{

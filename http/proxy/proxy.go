@@ -1,14 +1,15 @@
 package proxy
 
 import (
-	"crypto/tls"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 
+	"github.com/portainer/agent"
+	"github.com/portainer/agent/crypto"
+
 	"github.com/gorilla/websocket"
 	"github.com/koding/websocketproxy"
-	"github.com/portainer/agent"
 )
 
 // AgentHTTPRequest redirects a HTTP request to another agent.
@@ -49,10 +50,12 @@ func proxyWebsocketRequest(rw http.ResponseWriter, request *http.Request, target
 		out.Set(agent.HTTPPublicKeyHeaderName, request.Header.Get(agent.HTTPPublicKeyHeaderName))
 		out.Set(agent.HTTPTargetHeaderName, targetNode)
 	}
+
+	tlsConfig := crypto.CreateTLSConfiguration()
+	tlsConfig.InsecureSkipVerify = true
+
 	proxy.Dialer = &websocket.Dialer{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
+		TLSClientConfig: tlsConfig,
 	}
 
 	proxy.ServeHTTP(rw, request)
@@ -73,12 +76,13 @@ func newAgentReverseProxy(target *url.URL, targetNode string) *httputil.ReverseP
 		req.Header.Set(agent.HTTPTargetHeaderName, targetNode)
 	}
 
+	tlsConfig := crypto.CreateTLSConfiguration()
+	tlsConfig.InsecureSkipVerify = true
+
 	return &httputil.ReverseProxy{
 		Director: director,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+			TLSClientConfig: tlsConfig,
 		},
 	}
 }
