@@ -25,7 +25,7 @@ agent: ## Build the agent
 
 credential-helper: ## Build the credential helper (used by edge private registries)
 	@echo "Building Portainer credential-helper..."
-	@cd cmd/$(credential-helper); \
+	@cd cmd/docker-credential-portainer && \
 	CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -trimpath --installsuffix cgo --ldflags "-s" -o ../../dist/$(credential-helper)
 
 download-binaries: ## Download dependant binaries
