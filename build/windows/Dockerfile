@@ -16,7 +16,12 @@ COPY --from=core /Windows/System32/netapi32.dll /Windows/System32/netapi32.dll
 
 USER ContainerAdministrator
 
-COPY dist /app/
+COPY dist/agent.exe /app/
+COPY dist/docker.exe /app/
+COPY dist/docker-compose.exe /app/
+COPY dist/docker-credential-portainer.exe /app/
+COPY dist/kubectl.exe /app/
+
 COPY static /app/static
 COPY config /Users/ContainerAdministrator/.docker/
 
