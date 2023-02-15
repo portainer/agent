@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -108,6 +109,20 @@ func main() {
 				Msg("unable to retrieve agent container IP address, using host flag instead")
 
 			advertiseAddr = options.AgentServerAddr
+		}
+
+		if containerPlatform == agent.PlatformDocker && options.UpdateID != 0 {
+			ctx := context.Background()
+			go func(ctx context.Context) {
+				// retry three times to make sure that the updater container exits by itself.
+				// It is because if the updater container is forced to remove, the previous agent
+				// container can be skipped to be removed by updater container, which will cause
+				// the container name conflict for remote update next time.
+				err = docker.Retry(ctx, 3, 30*time.Second, docker.CleanUpGhostUpdaterStack)
+				if err != nil {
+					log.Warn().Int("Update ID", options.UpdateID).Err(err).Msg("unable to clean up ghost updater stack")
+				}
+			}(ctx)
 		}
 
 		if containerPlatform == agent.PlatformDocker && clusterMode {
