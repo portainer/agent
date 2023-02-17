@@ -64,10 +64,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@master
 
-      - name: Use golang 1.18
+      - name: Use golang 1.19.4
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18' 
+          go-version: '1.19.4' 
 
       - name: Compile the codebase
         run: ./dev.sh compile
