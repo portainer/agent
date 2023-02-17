@@ -89,6 +89,9 @@ jobs:
         with:
           go-version: '1.19.4'
 
+      - name: Download 3rd-Party Binaries
+        run: ./setup.sh
+
       - name: Compile the codebase
         run: ./dev.sh compile
 
