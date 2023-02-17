@@ -35,6 +35,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
+          yarn global add snyk
           snyk test --file=./go.mod --json-file-output=snyk.json 2>/dev/null || :
 
       - name: Upload go security scan result as artifact
