@@ -2,7 +2,9 @@ package os
 
 import (
 	"strconv"
+	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -41,6 +43,9 @@ const (
 	EnvKeyAWSProfileARN         = "AWS_PROFILE_ARN"
 	EnvKeyAWSRegion             = "AWS_REGION"
 	EnvKeyUpdateID              = "UPDATE_ID"
+	EnvKeyEdgeGroups            = "EDGE_GROUPS"
+	EnvKeyEnvironmentGroup      = "PORTAINER_GROUP"
+	EnvKeyTags                  = "PORTAINER_TAGS"
 )
 
 type EnvOptionParser struct{}
@@ -74,6 +79,9 @@ var (
 	fEdgeInactivityTimeout = kingpin.Flag("edge-inactivity", EnvKeyEdgeInactivityTimeout+" timeout used by the agent to close the reverse tunnel after inactivity (default to 5m)").Envar(EnvKeyEdgeInactivityTimeout).Default(agent.DefaultEdgeSleepInterval).String()
 	fEdgeInsecurePoll      = kingpin.Flag("edge-insecurepoll", EnvKeyEdgeInsecurePoll+" enable this option if you need the agent to poll a HTTPS Portainer instance with self-signed certificates. Disabled by default, set to 1 to enable it").Envar(EnvKeyEdgeInsecurePoll).Bool()
 	fEdgeTunnel            = kingpin.Flag("edge-tunnel", EnvKeyEdgeTunnel+" disable this option if you wish to prevent the agent from opening tunnels over websockets").Envar(EnvKeyEdgeTunnel).Default("true").Bool()
+	fEdgeGroupsIDs         = kingpin.Flag("edge-groups", EnvKeyEdgeGroups+" a colon-separated list of Edge groups identifiers. Used for AEEC, the created environment will be added to these edge groups").Envar(EnvKeyEdgeGroups).String()
+	fEnvironmentGroupID    = kingpin.Flag("environment-group", EnvKeyEnvironmentGroup+" an Environment group identifier. Used for AEEC, the created environment will be associated to this group").Envar(EnvKeyEnvironmentGroup).Int()
+	fTagsIDs               = kingpin.Flag("tags", EnvKeyTags+" a colon-separated list of tags to associate to the environment. Used for AEEC.").Envar(EnvKeyTags).String()
 
 	// mTLS edge agent certs
 	fSSLCert           = kingpin.Flag("sslcert", "Path to the SSL certificate used to identify the agent to Portainer").Envar(EnvKeySSLCert).String()
@@ -97,6 +105,15 @@ func IsValidAWSConfig(opts *agent.Options) bool {
 
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	kingpin.Parse()
+	edgeGroupsIDs, err := parseListValue(fEdgeGroupsIDs)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed parsing edge group ids")
+	}
+
+	tagsIDs, err := parseListValue(fTagsIDs)
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed parsing tag ids")
+	}
 
 	return &agent.Options{
 		AssetsPath:            *fAssetsPath,
@@ -123,7 +140,6 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		SSLCert:               *fSSLCert,
 		SSLKey:                *fSSLKey,
 		SSLCACert:             *fSSLCACert,
-		UpdateID:              *fUpdateID,
 		CertRetryInterval:     *fCertRetryInterval,
 		AWSClientCert:         *fAWSClientCert,
 		AWSClientKey:          *fAWSClientKey,
@@ -132,5 +148,28 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		AWSTrustAnchorARN:     *fAWSTrustAnchorARN,
 		AWSProfileARN:         *fAWSProfileARN,
 		AWSRegion:             *fAWSRegion,
+		EdgeMetaFields: agent.EdgeMetaFields{
+			EdgeGroupsIDs:      edgeGroupsIDs,
+			EnvironmentGroupID: *fEnvironmentGroupID,
+			TagsIDs:            tagsIDs,
+			UpdateID:           *fUpdateID,
+		},
 	}, nil
+}
+
+func parseListValue(flagValue *string) ([]int, error) {
+	if flagValue == nil {
+		return nil, nil
+	}
+
+	var arr []int
+	for _, strValue := range strings.Split(*flagValue, ":") {
+		intValue, err := strconv.Atoi(strValue)
+		if err != nil {
+			return nil, err
+		}
+		arr = append(arr, intValue)
+	}
+
+	return arr, nil
 }
