@@ -3,6 +3,8 @@ package docker
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/portainer/agent"
 
@@ -125,6 +127,43 @@ func (service *InfoService) GetServiceNameFromDockerEngine(containerName string)
 	return containerInspect.Config.Labels[serviceNameLabel], nil
 }
 
+func CleanUpGhostUpdaterStack(ctx context.Context) error {
+	return withCli(func(cli *client.Client) error {
+		foundRunningContainer := false
+		containers, err := cli.ContainerList(ctx, types.ContainerListOptions{All: true})
+		if err != nil {
+			return fmt.Errorf("failed to list containers: %s", err.Error())
+		}
+		for _, container := range containers {
+			_, ok := container.Labels["io.portainer.hideStack"]
+			if ok {
+				if container.State == "exited" {
+					err = cli.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{Force: true})
+					if err != nil {
+						return fmt.Errorf("failed to remove container: %s", err.Error())
+					}
+
+					if container.NetworkSettings != nil {
+						for _, networkSetting := range container.NetworkSettings.Networks {
+							err = cli.NetworkRemove(ctx, networkSetting.NetworkID)
+							if err != nil {
+								return fmt.Errorf("failed to remove network: %s", err.Error())
+							}
+						}
+					}
+				} else if container.State == "running" {
+					foundRunningContainer = true
+				}
+			}
+		}
+
+		if foundRunningContainer {
+			return errors.New("Found running updater container. Retry after 30 seconds.")
+		}
+		return nil
+	})
+}
+
 func getStandaloneConfiguration(config *agent.RuntimeConfiguration) {
 	config.DockerConfiguration.EngineStatus = agent.EngineStatusStandalone
 }
@@ -157,4 +196,17 @@ func withCli(callback func(cli *client.Client) error) error {
 	defer cli.Close()
 
 	return callback(cli)
+}
+
+// Retry executes the given function f up to maxRetries times with a delay of delayBetweenRetries
+func Retry(ctx context.Context, maxRetries int, delayBetweenRetries time.Duration, f func(ctx context.Context) error) error {
+	var err error
+	for i := 0; i < maxRetries; i++ {
+		err = f(ctx)
+		if err == nil {
+			return nil
+		}
+		time.Sleep(delayBetweenRetries)
+	}
+	return err
 }
