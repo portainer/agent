@@ -47,6 +47,7 @@ type (
 		Namespace    string
 		PrePullImage bool
 		RePullImage  bool
+		RetryDeploy  bool
 	}
 
 	// EdgeJobStatus represents an Edge job status

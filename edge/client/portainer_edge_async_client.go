@@ -123,6 +123,7 @@ type EdgeStackData struct {
 	Namespace    string
 	PrePullImage bool
 	RePullImage  bool
+	RetryDeploy  bool
 }
 
 type EdgeJobData struct {
