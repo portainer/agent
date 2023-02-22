@@ -64,7 +64,8 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 		return 0, errors.New("edge ID not set")
 	}
 
-	var payloadJson []byte
+	// set default payload
+	payloadJson := []byte("{}")
 	if len(client.metaFields.EdgeGroupsIDs) > 0 || len(client.metaFields.TagsIDs) > 0 || client.metaFields.EnvironmentGroupID > 0 {
 		payload := &MetaFields{
 			EdgeGroupsIDs:      client.metaFields.EdgeGroupsIDs,

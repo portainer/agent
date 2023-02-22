@@ -157,13 +157,15 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	}, nil
 }
 
+const listSeparator = ":"
+
 func parseListValue(flagValue *string) ([]int, error) {
-	if flagValue == nil {
+	if flagValue == nil || *flagValue == "" {
 		return nil, nil
 	}
 
 	var arr []int
-	for _, strValue := range strings.Split(*flagValue, ":") {
+	for _, strValue := range strings.Split(*flagValue, listSeparator) {
 		intValue, err := strconv.Atoi(strValue)
 		if err != nil {
 			return nil, err
