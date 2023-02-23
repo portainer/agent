@@ -6,6 +6,17 @@ import (
 )
 
 type (
+	// AWSConfig is a configuration used to authenticate against AWS IAM Roles Anywhere
+	AWSConfig struct {
+		ClientCertPath   string
+		ClientKeyPath    string
+		ClientBundlePath string
+		RoleARN          string
+		TrustAnchorARN   string
+		ProfileARN       string
+		Region           string
+	}
+
 	// ClusterMember is the representation of an agent inside a cluster.
 	ClusterMember struct {
 		IPAddress  string
@@ -101,6 +112,13 @@ type (
 		SSLCACert             string
 		UpdateID              int
 		CertRetryInterval     time.Duration
+		AWSClientCert         string
+		AWSClientKey          string
+		AWSClientBundle       string
+		AWSRoleARN            string
+		AWSTrustAnchorARN     string
+		AWSProfileARN         string
+		AWSRegion             string
 	}
 
 	NomadConfig struct {
@@ -237,7 +255,7 @@ type (
 
 var (
 	// Version represents the version of the agent.
-	Version = "2.18.0"
+	Version = "2.17.0"
 )
 
 const (
@@ -349,6 +367,10 @@ const (
 	KubernetesServiceHost = "KUBERNETES_SERVICE_HOST"
 	// KubernetesServicePortHttps is the environment variable of the kubernetes API server https port
 	KubernetesServicePortHttps = "KUBERNETES_SERVICE_PORT_HTTPS"
+	// DefaultAWSClientCertPath is the default path to the AWS client certificate file
+	DefaultAWSClientCertPath = "/certs/aws-client.crt"
+	// DefaultAWSClientKeyPath is the default path to the AWS client key file
+	DefaultAWSClientKeyPath = "/certs/aws-client.key"
 )
 
 const (

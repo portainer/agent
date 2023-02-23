@@ -330,6 +330,7 @@ func main() {
 			DockerInfoService: dockerInfoService,
 			ContainerPlatform: containerPlatform,
 		}
+
 		edgeManager = edge.NewManager(edgeManagerParameters)
 
 		edgeKey, err := edge.RetrieveEdgeKey(options.EdgeKey, clusterService, options.DataPath)
@@ -377,7 +378,21 @@ func main() {
 	if options.EdgeMode {
 		config.Addr = advertiseAddr
 	}
-	err = registry.StartRegistryServer(edgeManager)
+
+	var awsConfig agent.AWSConfig
+	if os.IsValidAWSConfig(options) {
+		log.Info().Msg("AWS configuration detected")
+		awsConfig = agent.AWSConfig{
+			ClientCertPath: options.AWSClientCert,
+			ClientKeyPath:  options.AWSClientKey,
+			RoleARN:        options.AWSRoleARN,
+			TrustAnchorARN: options.AWSTrustAnchorARN,
+			ProfileARN:     options.AWSProfileARN,
+			Region:         options.AWSRegion,
+		}
+	}
+
+	err = registry.StartRegistryServer(edgeManager, &awsConfig)
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable to start registry server")
 	}
