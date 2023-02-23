@@ -311,6 +311,7 @@ Available flags:
 -e, --edge  [EDGE_ID EDGE_KEY]          Deploy an edge agent (optional with EDGE_ID and EDGE_KEY)
 --edge-id EDGE_ID                       Set agent edge id to EDGE_ID (required when using -e without edge-id)
 --edge-key EDGE_KEY                     Set agent edge key to EDGE_KEY
+--edge-async                            Enable EDGE_ASYNC mode
 --ip IP                                 can be provided zero, once or more times. for standalone only the first ip is considered
                                             for swarm the first ip is the manager and the rest are nodes
 EOF
