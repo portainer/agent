@@ -31,8 +31,10 @@ func (manager *Manager) SetKey(key string) error {
 		return err
 	}
 
-	u, _ := url.Parse(edgeKey.PortainerInstanceURL)
-	if u.Scheme != "https" {
+	u, err := url.Parse(edgeKey.PortainerInstanceURL)
+	if err != nil {
+		return err
+	} else if u.Scheme != "https" {
 		log.Warn().Msg("This agent has been configured using an insecure connection, which can limit functionality. We recommend updating the agent to use a secure connection.")
 	}
 
