@@ -316,6 +316,10 @@ const (
 	NomadTokenEnvVarName = "NOMAD_TOKEN"
 	// NomadAddrEnvVarName represent the name of environment variable of the Nomad addr
 	NomadAddrEnvVarName = "NOMAD_ADDR"
+	// NomadRegionEnvVarName represent the name of environment variable of the Nomad region
+	NomadRegionEnvVarName = "NOMAD_REGION"
+	// NomadNamespaceEnvVarName represent the name of environment variable of the Nomad namespace
+	NomadNamespaceEnvVarName = "NOMAD_NAMESPACE"
 	// NomadCACertEnvVarName represent the name of environment variable of the Nomad ca certificate
 	NomadCACertEnvVarName = "NOMAD_CACERT"
 	// NomadClientCertEnvVarName represent the name of environment variable of the Nomad client certificate
@@ -328,6 +332,8 @@ const (
 	NomadClientCertContentEnvVarName = "NOMAD_CLIENT_CERT_CONTENT"
 	// NomadClientKeyContentEnvVarName represent the name of environment variable of the Nomad client key content
 	NomadClientKeyContentEnvVarName = "NOMAD_CLIENT_KEY_CONTENT"
+	// PortainerUpdaterEnv is custom environment variable used to identify if a task runs portainer-updater
+	PortainerUpdaterEnv = "PORTAINER_UPDATER"
 	// HTTPResponseAgentApiVersion is the name of the header that will have the
 	// Portainer Agent API Version.
 	HTTPResponseAgentApiVersion = "Portainer-Agent-API-Version"
