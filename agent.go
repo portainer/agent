@@ -43,6 +43,10 @@ type (
 		Name                string
 		FileContent         string
 		RegistryCredentials []RegistryCredentials
+		// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
+		Namespace    string
+		PrePullImage bool
+		RePullImage  bool
 	}
 
 	// EdgeJobStatus represents an Edge job status
@@ -173,8 +177,28 @@ type (
 	}
 
 	Deployer interface {
-		Deploy(ctx context.Context, name string, filePaths []string, prune bool) error
-		Remove(ctx context.Context, name string, filePaths []string) error
+		Deploy(ctx context.Context, name string, filePaths []string, options DeployOptions) error
+		Remove(ctx context.Context, name string, filePaths []string, options RemoveOptions) error
+		Pull(ctx context.Context, name string, filePaths []string) error
+		Validate(ctx context.Context, name string, filePaths []string, options ValidateOptions) error
+	}
+
+	DeployerBaseOptions struct {
+		// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
+		Namespace string
+	}
+
+	DeployOptions struct {
+		DeployerBaseOptions
+		Prune bool
+	}
+
+	RemoveOptions struct {
+		DeployerBaseOptions
+	}
+
+	ValidateOptions struct {
+		DeployerBaseOptions
 	}
 
 	// KubernetesInfoService is used to retrieve information from a Kubernetes environment.
@@ -212,7 +236,7 @@ type (
 
 var (
 	// Version represents the version of the agent.
-	Version = "2.17.0"
+	Version = "2.17.1"
 )
 
 const (

@@ -9,6 +9,7 @@ import (
 
 	nomadapi "github.com/hashicorp/nomad/api"
 	"github.com/pkg/errors"
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
 )
 
@@ -28,7 +29,7 @@ func NewDeployer() (*Deployer, error) {
 }
 
 // Deploy attempts to run a Nomad job via provided job file
-func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, prune bool) error {
+func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, options agent.DeployOptions) error {
 	if len(filePaths) == 0 {
 		return errors.New("missing Nomad job file paths")
 	}
@@ -105,8 +106,19 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 	return nil
 }
 
+// Pull is a dummy method for Nomad
+func (d *Deployer) Pull(ctx context.Context, name string, filePaths []string) error {
+	return nil
+}
+
+// Validate is a dummy method for Nomad
+func (d *Deployer) Validate(ctx context.Context, name string, filePaths []string, options agent.ValidateOptions) error {
+	// We can use PlanOpts() to validate the HCL file and see if the file is valid
+	return nil
+}
+
 // Remove attempts to purge a Nomad job via provided Nomad job file
-func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string) error {
+func (d *Deployer) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
 	if len(filePaths) == 0 {
 		return errors.New("missing Nomad job file paths")
 	}

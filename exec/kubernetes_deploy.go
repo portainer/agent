@@ -31,7 +31,7 @@ func NewKubernetesDeployer(binaryPath string) *KubernetesDeployer {
 // Deploy will deploy a Kubernetes manifest inside the default namespace
 // it will use kubectl to deploy the manifest.
 // kubectl uses in-cluster config.
-func (deployer *KubernetesDeployer) Deploy(ctx context.Context, name string, filePaths []string, prune bool) error {
+func (deployer *KubernetesDeployer) Deploy(ctx context.Context, name string, filePaths []string, options agent.DeployOptions) error {
 	if len(filePaths) == 0 {
 		return errors.New("missing file paths")
 	}
@@ -39,7 +39,7 @@ func (deployer *KubernetesDeployer) Deploy(ctx context.Context, name string, fil
 	stackFilePath := filePaths[0]
 
 	args, err := buildArgs(&argOptions{
-		Namespace: "default",
+		Namespace: options.Namespace,
 	})
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func (deployer *KubernetesDeployer) Deploy(ctx context.Context, name string, fil
 	return err
 }
 
-func (deployer *KubernetesDeployer) Remove(ctx context.Context, name string, filePaths []string) error {
+func (deployer *KubernetesDeployer) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
 	if len(filePaths) == 0 {
 		return errors.New("missing file paths")
 	}
@@ -59,7 +59,7 @@ func (deployer *KubernetesDeployer) Remove(ctx context.Context, name string, fil
 	stackFilePath := filePaths[0]
 
 	args, err := buildArgs(&argOptions{
-		Namespace: "default",
+		Namespace: options.Namespace,
 	})
 	if err != nil {
 		return err
@@ -69,7 +69,32 @@ func (deployer *KubernetesDeployer) Remove(ctx context.Context, name string, fil
 
 	_, err = runCommandAndCaptureStdErr(deployer.command, args, nil)
 	return err
+}
 
+// Pull is a dummy method for Kube
+func (deployer *KubernetesDeployer) Pull(ctx context.Context, name string, filePaths []string) error {
+	return nil
+}
+
+// Validate runs a dry-run of manifest apply to validate the manifest format
+func (deployer *KubernetesDeployer) Validate(ctx context.Context, name string, filePaths []string, options agent.ValidateOptions) error {
+	if len(filePaths) == 0 {
+		return errors.New("missing file paths")
+	}
+
+	stackFilePath := filePaths[0]
+
+	args, err := buildArgs(&argOptions{
+		Namespace: options.Namespace,
+	})
+	if err != nil {
+		return err
+	}
+
+	args = append(args, "apply", "-f", stackFilePath, "--dry-run=server")
+
+	_, err = runCommandAndCaptureStdErr(deployer.command, args, nil)
+	return err
 }
 
 // DeployRawConfig will deploy a Kubernetes manifest inside a specific namespace
@@ -96,6 +121,10 @@ type argOptions struct {
 
 func buildArgs(opts *argOptions) ([]string, error) {
 	args := []string{}
+
+	if opts == nil {
+		return args, nil
+	}
 
 	if opts.Namespace != "" {
 		args = append(args, "--namespace", opts.Namespace)

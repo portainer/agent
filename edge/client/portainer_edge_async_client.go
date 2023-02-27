@@ -119,6 +119,10 @@ type EdgeStackData struct {
 	Name                string
 	StackFileContent    string
 	RegistryCredentials []agent.RegistryCredentials
+	// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
+	Namespace    string
+	PrePullImage bool
+	RePullImage  bool
 }
 
 type EdgeJobData struct {
@@ -303,7 +307,14 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		client.lastSnapshot.Docker = currentSnapshot.Docker
 		client.lastSnapshot.Kubernetes = currentSnapshot.Kubernetes
 
+		if client.lastSnapshot.StackStatus == nil {
+			client.lastSnapshot.StackStatus = make(map[portainer.EdgeStackID]portainer.EdgeStackStatus)
+		}
+		for k, v := range client.nextSnapshot.StackStatus {
+			client.lastSnapshot.StackStatus[k] = v
+		}
 		client.nextSnapshot.StackStatus = nil
+
 		client.nextSnapshot.JobsStatus = nil
 
 		client.stackLogCollectionQueue = nil
@@ -407,7 +418,11 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 }
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
-func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID, edgeStackStatus int, error string) error {
+func (client *PortainerAsyncClient) SetEdgeStackStatus(
+	edgeStackID int,
+	edgeStackStatus portainer.EdgeStackStatusType,
+	error string,
+) error {
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
 
@@ -415,11 +430,31 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID, edgeStackSta
 		client.nextSnapshot.StackStatus = make(map[portainer.EdgeStackID]portainer.EdgeStackStatus)
 	}
 
-	client.nextSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = portainer.EdgeStackStatus{
-		EndpointID: client.getEndpointIDFn(),
-		Type:       portainer.EdgeStackStatusType(edgeStackStatus),
-		Error:      error,
+	status, ok := client.nextSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)]
+	if !ok {
+		status = client.lastSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)]
 	}
+
+	details := &status.Details
+	switch edgeStackStatus {
+	case portainer.EdgeStackStatusOk:
+		details.Ok = true
+	case portainer.EdgeStackStatusError:
+		details.Error = true
+	case portainer.EdgeStackStatusAcknowledged:
+		*details = portainer.EdgeStackStatusDetails{
+			Acknowledged: true,
+		}
+	case portainer.EdgeStackStatusRemove:
+		details.Remove = true
+	case portainer.EdgeStackStatusImagesPulled:
+		details.ImagesPulled = true
+	}
+
+	status.EndpointID = client.getEndpointIDFn()
+	status.Error = error
+
+	client.nextSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = status
 
 	return nil
 }
