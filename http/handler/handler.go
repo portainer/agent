@@ -19,6 +19,7 @@ import (
 	"github.com/portainer/agent/http/handler/kubernetesproxy"
 	"github.com/portainer/agent/http/handler/nomadproxy"
 	"github.com/portainer/agent/http/handler/ping"
+	"github.com/portainer/agent/http/handler/sosivio"
 	"github.com/portainer/agent/http/handler/websocket"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
@@ -40,6 +41,7 @@ type Handler struct {
 	webSocketHandler       *websocket.Handler
 	hostHandler            *host.Handler
 	pingHandler            *ping.Handler
+	sosivioHandler         *sosivio.Handler
 	containerPlatform      agent.ContainerPlatform
 }
 
@@ -78,6 +80,7 @@ func NewHandler(config *Config) *Handler {
 		webSocketHandler:       websocket.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.KubeClient),
 		hostHandler:            host.NewHandler(config.SystemService, agentProxy, notaryService),
 		pingHandler:            ping.NewHandler(),
+		sosivioHandler:         sosivio.NewHandler(notaryService),
 		containerPlatform:      config.ContainerPlatform,
 	}
 }
@@ -119,6 +122,8 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		h.kubernetesProxyHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/nomad"):
 		h.nomadProxyHandler.ServeHTTP(rw, request)
+	case strings.HasPrefix(request.URL.Path, "/sosivio"):
+		h.sosivioHandler.ServeHTTP(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/"):
 		h.dockerProxyHandler.ServeHTTP(rw, request)
 	}
