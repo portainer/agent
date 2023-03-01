@@ -46,7 +46,7 @@ func (service *DockerComposeStackService) Pull(ctx context.Context, name string,
 
 // Remove executes the docker stack rm command.
 func (service *DockerComposeStackService) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
-	return service.deployer.Remove(ctx, filePaths, libstack.Options{
+	return service.deployer.Remove(ctx, name, filePaths, libstack.Options{
 		ProjectName: name,
 	})
 }

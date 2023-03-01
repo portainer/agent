@@ -129,7 +129,7 @@ func snapshotSwarmServices(snapshot *portainer.DockerSnapshot, cli *client.Clien
 }
 
 func snapshotContainers(snapshot *portainer.DockerSnapshot, cli *client.Client) error {
-	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+	rawContainers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
 	if err != nil {
 		return err
 	}
@@ -139,6 +139,22 @@ func snapshotContainers(snapshot *portainer.DockerSnapshot, cli *client.Client) 
 	healthyContainers := 0
 	unhealthyContainers := 0
 	stacks := make(map[string]struct{})
+
+	containers := make([]portainer.DockerContainerSnapshot, 0)
+
+	for _, container := range rawContainers {
+		response, err := cli.ContainerInspect(context.Background(), container.ID)
+		if err != nil {
+			log.Warn().Err(err).Msg("failed to retrieve env for container " + container.ID + ". Skipping.")
+			containers = append(containers, portainer.DockerContainerSnapshot{Container: container})
+			continue
+		}
+		containers = append(containers, portainer.DockerContainerSnapshot{
+			Container: container,
+			Env:       response.Config.Env,
+		})
+	}
+
 	for _, container := range containers {
 		if container.State == "exited" {
 			stoppedContainers++
