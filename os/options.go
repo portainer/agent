@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/portainer/agent"
+
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -76,9 +77,9 @@ var (
 	fEdgeTunnel            = kingpin.Flag("edge-tunnel", EnvKeyEdgeTunnel+" disable this option if you wish to prevent the agent from opening tunnels over websockets").Envar(EnvKeyEdgeTunnel).Default("true").Bool()
 
 	// mTLS edge agent certs
-	fSSLCert           = kingpin.Flag("sslcert", "Path to the SSL certificate used to identify the agent to Portainer").Envar(EnvKeySSLCert).String()
-	fSSLKey            = kingpin.Flag("sslkey", "Path to the SSL key used to identify the agent to Portainer").Envar(EnvKeySSLKey).String()
-	fSSLCACert         = kingpin.Flag("sslcacert", "Path to the SSL CA certificate used to validate the Portainer server").Envar(EnvKeySSLCACert).String()
+	fSSLCert           = kingpin.Flag("mtlscert", "Path to the mTLS certificate used to identify the agent to Portainer").Envar(EnvKeySSLCert).String()
+	fSSLKey            = kingpin.Flag("mtlskey", "Path to the mTLS key used to identify the agent to Portainer").Envar(EnvKeySSLKey).String()
+	fSSLCACert         = kingpin.Flag("mtlscacert", "Path to the mTLS CA certificate used to validate the Portainer server").Envar(EnvKeySSLCACert).String()
 	fCertRetryInterval = kingpin.Flag("certificate-retry-interval", "Interval used to block initialization until the certificate is available").Envar(EnvKeyCertRetryInterval).Duration()
 
 	// AWS IAM Roles Anywhere + ECR
@@ -93,6 +94,12 @@ var (
 
 func IsValidAWSConfig(opts *agent.Options) bool {
 	return opts.AWSRoleARN != "" && opts.AWSTrustAnchorARN != "" && opts.AWSProfileARN != "" && opts.AWSRegion != ""
+}
+
+func init() {
+	kingpin.Flag("sslcert", "(DEPRECATED) Path to the mTLS certificate used to identify the agent to Portainer").Envar(EnvKeySSLCert).StringVar(fSSLCert)
+	kingpin.Flag("sslkey", "(DEPRECATED) Path to the mTLS key used to identify the agent to Portainer").Envar(EnvKeySSLKey).StringVar(fSSLKey)
+	kingpin.Flag("sslcacert", "(DEPRECATED) Path to the mTLS CA certificate used to validate the Portainer server").Envar(EnvKeySSLCACert).StringVar(fSSLCACert)
 }
 
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
