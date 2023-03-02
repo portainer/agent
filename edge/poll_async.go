@@ -3,6 +3,7 @@ package edge
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/portainer/agent"
@@ -11,6 +12,7 @@ import (
 	portainer "github.com/portainer/portainer/api"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/portainer/agent/filesystem"
 	"github.com/rs/zerolog/log"
 )
 
@@ -207,6 +209,8 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 			err = service.processImageCommand(command)
 		case "volume":
 			err = service.processVolumeCommand(command)
+		case "normalStack":
+			err = service.processNormalStackCommand(ctx, command)
 		default:
 			err = newOperationError(command.Type, "n/a", errors.New("command type not supported"))
 		}
@@ -355,4 +359,27 @@ func (service *PollService) processVolumeCommand(command client.AsyncCommand) er
 	}
 
 	return newOperationError("volume", command.Operation, err)
+}
+
+func (service *PollService) processNormalStackCommand(ctx context.Context, command client.AsyncCommand) error {
+	var normalStackCommand client.NormalStackCommandData
+	err := mapstructure.Decode(command.Value, &normalStackCommand)
+	if err != nil {
+		return newOperationError("normalStack", "n/a", err)
+	}
+
+	switch normalStackCommand.NormalStackOperation {
+	case "remove":
+		folder := fmt.Sprintf("%s/%s", command.Path, normalStackCommand.Name)
+		fileName := "docker-compose.yml"
+		fileContent := normalStackCommand.StackFileContent
+		err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
+		if err != nil {
+			return err
+		}
+
+		err = service.edgeManager.stackManager.DeleteNormalStack(ctx, normalStackCommand.Name, fmt.Sprintf("%s/%s", folder, fileName))
+	}
+
+	return newOperationError("normalStack", command.Operation, err)
 }
