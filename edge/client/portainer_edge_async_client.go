@@ -169,9 +169,9 @@ type VolumeCommandData struct {
 }
 
 type NormalStackCommandData struct {
-	Name                 string
-	StackFileContent     string
-	NormalStackOperation string
+	Name             string
+	StackFileContent string
+	StackOperation   string
 }
 
 func (client *PortainerAsyncClient) GetEnvironmentID() (portainer.EndpointID, error) {

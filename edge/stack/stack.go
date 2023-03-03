@@ -615,7 +615,7 @@ func (manager *StackManager) GetEdgeRegistryCredentials() []agent.RegistryCreden
 }
 
 func (manager *StackManager) DeleteNormalStack(ctx context.Context, stackName, stackFileLocation string) error {
-	// log.Debug().Int("stack_identifier", int(stack.ID)).Msg("removing normal stack")
+	log.Debug().Str("stack_name", stackName).Msg("removing normal stack")
 
 	err := manager.deployer.Remove(ctx, stackName, []string{stackFileLocation}, agent.RemoveOptions{})
 	if err != nil {

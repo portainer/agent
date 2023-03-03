@@ -368,14 +368,14 @@ func (service *PollService) processNormalStackCommand(ctx context.Context, comma
 		return newOperationError("normalStack", "n/a", err)
 	}
 
-	switch normalStackCommand.NormalStackOperation {
+	switch normalStackCommand.StackOperation {
 	case "remove":
 		folder := fmt.Sprintf("%s/%s", command.Path, normalStackCommand.Name)
 		fileName := "docker-compose.yml"
 		fileContent := normalStackCommand.StackFileContent
 		err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
 		if err != nil {
-			return err
+			break
 		}
 
 		err = service.edgeManager.stackManager.DeleteNormalStack(ctx, normalStackCommand.Name, fmt.Sprintf("%s/%s", folder, fileName))
