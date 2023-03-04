@@ -243,8 +243,8 @@ func (manager *StackManager) Start() error {
 func (manager *StackManager) performActionOnStack(queueSleepInterval time.Duration) {
 	stack := manager.nextPendingStack()
 	if stack == nil {
-		timer1 := time.NewTimer(queueSleepInterval)
-		<-timer1.C
+		time.Sleep(queueSleepInterval)
+
 		return
 	}
 	ctx := context.TODO()
@@ -524,21 +524,33 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	stack, processedStack := manager.stacks[edgeStackID(stackData.ID)]
 	if processedStack {
 		if deleteStack {
+			log.Debug().Int("stack_id", stackData.ID).Msg("marking stack for removal")
+
 			stack.Action = actionDelete
 		} else {
 			if stack.Version == stackData.Version {
 				return nil
 			}
-			log.Debug().Int("stack_identifier", stackData.ID).Msg("marking stack for update")
+
+			log.Debug().Int("stack_id", stackData.ID).Msg("marking stack for update")
 
 			stack.Action = actionUpdate
 		}
 	} else {
-		log.Debug().Int("stack_identifier", stackData.ID).Msg("marking stack for deployment")
+		if deleteStack {
+			log.Debug().Int("stack_id", stackData.ID).Msg("marking stack for removal")
 
-		stack = &edgeStack{
-			ID:     edgeStackID(stackData.ID),
-			Action: actionDeploy,
+			stack = &edgeStack{
+				ID:     edgeStackID(stackData.ID),
+				Action: actionDelete,
+			}
+		} else {
+			log.Debug().Int("stack_id", stackData.ID).Msg("marking stack for deployment")
+
+			stack = &edgeStack{
+				ID:     edgeStackID(stackData.ID),
+				Action: actionDeploy,
+			}
 		}
 	}
 

@@ -3,13 +3,14 @@ package edge
 import (
 	"context"
 	"errors"
-	portainer "github.com/portainer/portainer/api"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge/client"
+	portainer "github.com/portainer/portainer/api"
+
+	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 )
 
