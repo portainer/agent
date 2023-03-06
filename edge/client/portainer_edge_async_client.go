@@ -434,11 +434,7 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 }
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
-func (client *PortainerAsyncClient) SetEdgeStackStatus(
-	edgeStackID int,
-	edgeStackStatus portainer.EdgeStackStatusType,
-	error string,
-) error {
+func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStackStatus portainer.EdgeStackStatusType, err string) error {
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
 
@@ -468,7 +464,7 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(
 	}
 
 	status.EndpointID = client.getEndpointIDFn()
-	status.Error = error
+	status.Error = err
 
 	client.nextSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = status
 
