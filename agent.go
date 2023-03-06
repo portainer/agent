@@ -84,6 +84,16 @@ type (
 		} `json:"Agent"`
 	}
 
+	EdgeMetaFields struct {
+		// EdgeGroupsIDs - Used for AEEC, the created environment will be added to these edge groups
+		EdgeGroupsIDs []int
+		// EnvironmentGroupID - Used for AEEC, the created environment will be added to this edge group
+		EnvironmentGroupID int
+		// TagsIDs - Used for AEEC, the created environment will be added to these edge tags
+		TagsIDs  []int
+		UpdateID int
+	}
+
 	// Options are the options used to start an agent.
 	Options struct {
 		AssetsPath            string
@@ -104,13 +114,13 @@ type (
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
 		EdgeTunnel            bool
+		EdgeMetaFields        EdgeMetaFields
 		LogLevel              string
 		LogMode               string
 		HealthCheck           bool
 		SSLCert               string
 		SSLKey                string
 		SSLCACert             string
-		UpdateID              int
 		CertRetryInterval     time.Duration
 		AWSClientCert         string
 		AWSClientKey          string

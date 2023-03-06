@@ -32,7 +32,7 @@ type PortainerAsyncClient struct {
 	edgeID                  string
 	agentPlatformIdentifier agent.ContainerPlatform
 	commandTimestamp        *time.Time
-	updateID                int
+	metaFields              agent.EdgeMetaFields
 
 	lastAsyncResponse AsyncResponse
 	lastSnapshot      snapshot
@@ -44,7 +44,7 @@ type PortainerAsyncClient struct {
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
-func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, updateID int, httpClient *http.Client) *PortainerAsyncClient {
+func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *http.Client) *PortainerAsyncClient {
 	initialCommandTimestamp := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	return &PortainerAsyncClient{
 		serverAddress:           serverAddress,
@@ -54,7 +54,7 @@ func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, get
 		httpClient:              httpClient,
 		agentPlatformIdentifier: containerPlatform,
 		commandTimestamp:        &initialCommandTimestamp,
-		updateID:                updateID,
+		metaFields:              metaFields,
 	}
 }
 
@@ -62,10 +62,17 @@ func (client *PortainerAsyncClient) SetTimeout(t time.Duration) {
 	client.httpClient.Timeout = t
 }
 
+type MetaFields struct {
+	EdgeGroupsIDs      []int `json:"edgeGroupsIds"`
+	TagsIDs            []int `json:"tagsIds"`
+	EnvironmentGroupID int   `json:"environmentGroupId"`
+}
+
 type AsyncRequest struct {
 	CommandTimestamp *time.Time           `json:"commandTimestamp,omitempty"`
 	Snapshot         *snapshot            `json:"snapshot,omitempty"`
 	EndpointId       portainer.EndpointID `json:"endpointId,omitempty"`
+	MetaFields       *MetaFields          `json:"metaFields"`
 }
 
 type EndpointLog struct {
@@ -290,6 +297,14 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		payload.CommandTimestamp = client.commandTimestamp
 	}
 
+	if len(client.metaFields.EdgeGroupsIDs) > 0 || len(client.metaFields.TagsIDs) > 0 || client.metaFields.EnvironmentGroupID > 0 {
+		payload.MetaFields = &MetaFields{
+			EdgeGroupsIDs:      client.metaFields.EdgeGroupsIDs,
+			TagsIDs:            client.metaFields.TagsIDs,
+			EnvironmentGroupID: client.metaFields.EnvironmentGroupID,
+		}
+	}
+
 	asyncResponse, err := client.executeAsyncRequest(payload, pollURL)
 	if err != nil {
 		return nil, err
@@ -384,12 +399,12 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 	req.Header.Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	req.Header.Set(agent.HTTPResponseAgentTimeZone, time.Local.String())
-	req.Header.Set(agent.HTTPResponseUpdateIDHeaderName, strconv.Itoa(client.updateID))
+	req.Header.Set(agent.HTTPResponseUpdateIDHeaderName, strconv.Itoa(client.metaFields.UpdateID))
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatformIdentifier)))
 
 	log.Debug().
 		Str(agent.HTTPEdgeIdentifierHeaderName, client.edgeID).
-		Int(agent.HTTPResponseUpdateIDHeaderName, (client.updateID)).
+		Int(agent.HTTPResponseUpdateIDHeaderName, (client.metaFields.UpdateID)).
 		Int(agent.HTTPResponseAgentPlatform, (int(client.agentPlatformIdentifier))).
 		Str(agent.HTTPResponseAgentHeaderName, agent.Version).
 		Str(agent.HTTPResponseAgentTimeZone, time.Local.String()).

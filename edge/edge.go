@@ -98,7 +98,7 @@ func (manager *Manager) Start() error {
 		manager.agentOptions.EdgeID,
 		manager.agentOptions.EdgeAsyncMode,
 		agentPlatform,
-		manager.agentOptions.UpdateID,
+		manager.agentOptions.EdgeMetaFields,
 		client.BuildHTTPClient(10, manager.agentOptions),
 	)
 

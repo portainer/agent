@@ -25,7 +25,7 @@ type PortainerEdgeClient struct {
 	getEndpointIDFn getEndpointIDFn
 	edgeID          string
 	agentPlatform   agent.ContainerPlatform
-	updateID        int
+	metaFields      agent.EdgeMetaFields
 	reqCache        *lru.Cache
 }
 
@@ -34,7 +34,7 @@ type globalKeyResponse struct {
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
-func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, updateID int, httpClient *http.Client) *PortainerEdgeClient {
+func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *http.Client) *PortainerEdgeClient {
 	c := &PortainerEdgeClient{
 		serverAddress:   serverAddress,
 		setEndpointIDFn: setEIDFn,
@@ -42,7 +42,7 @@ func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getE
 		edgeID:          edgeID,
 		agentPlatform:   agentPlatform,
 		httpClient:      httpClient,
-		updateID:        updateID,
+		metaFields:      metaFields,
 	}
 
 	cache, err := lru.New(8)
@@ -64,8 +64,24 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 		return 0, errors.New("edge ID not set")
 	}
 
+	// set default payload
+	payloadJson := []byte("{}")
+	if len(client.metaFields.EdgeGroupsIDs) > 0 || len(client.metaFields.TagsIDs) > 0 || client.metaFields.EnvironmentGroupID > 0 {
+		payload := &MetaFields{
+			EdgeGroupsIDs:      client.metaFields.EdgeGroupsIDs,
+			TagsIDs:            client.metaFields.TagsIDs,
+			EnvironmentGroupID: client.metaFields.EnvironmentGroupID,
+		}
+
+		var err error
+		payloadJson, err = json.Marshal(payload)
+		if err != nil {
+			return 0, errors.WithMessage(err, "failed to marshal meta fields")
+		}
+	}
+
 	gkURL := fmt.Sprintf("%s/api/endpoints/global-key", client.serverAddress)
-	req, err := http.NewRequest(http.MethodPost, gkURL, nil)
+	req, err := http.NewRequest(http.MethodPost, gkURL, bytes.NewReader(payloadJson))
 	if err != nil {
 		return 0, err
 	}
@@ -112,7 +128,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
 	log.Debug().Int("header", int(client.agentPlatform)).Msg("sending agent platform header")
 
-	req.Header.Set(agent.HTTPResponseUpdateIDHeaderName, strconv.Itoa(client.updateID))
+	req.Header.Set(agent.HTTPResponseUpdateIDHeaderName, strconv.Itoa(client.metaFields.UpdateID))
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
