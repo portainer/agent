@@ -9,18 +9,19 @@ import (
 
 type GhostUpdaterCleaner interface {
 	Clean(ctx context.Context) error
+	UpdateID() int
 }
 
-func Remove(ctx context.Context, updateID int, fn GhostUpdaterCleaner) error {
+func Remove(ctx context.Context, cleaner GhostUpdaterCleaner) error {
 	// Make three attempts to allow the updater container to exit on its own.
 	// This is important because if the updater container is forcibly removed
 	// before it exits naturally, it may skip removing the previous agent's
 	// container by the updater container, resulting in a container name conflict
 	// during the next remote update.
 
-	err := retry(ctx, 3, 30*time.Second, fn.Clean)
+	err := retry(ctx, 3, 30*time.Second, cleaner.Clean)
 	if err != nil {
-		log.Warn().Int("Update ID", updateID).Err(err).Msg("unable to clean up ghost updater stack")
+		log.Warn().Int("Update ID", cleaner.UpdateID()).Err(err).Msg("unable to clean up ghost updater stack")
 		return err
 	}
 	return nil

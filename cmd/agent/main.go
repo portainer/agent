@@ -114,7 +114,7 @@ func main() {
 		}
 
 		if containerPlatform == agent.PlatformDocker && options.EdgeMetaFields.UpdateID != 0 {
-			updaterCleaner = updates.NewDockerUpdaterCleaner()
+			updaterCleaner = updates.NewDockerUpdaterCleaner(options.EdgeMetaFields.UpdateID)
 		}
 
 		if containerPlatform == agent.PlatformDocker && clusterMode {
@@ -283,7 +283,7 @@ func main() {
 		nomadConfig.NomadToken = goos.Getenv(agent.NomadTokenEnvVarName)
 
 		if options.EdgeMetaFields.UpdateID != 0 {
-			updaterCleaner = updates.NewNomadUpdaterCleaner()
+			updaterCleaner = updates.NewNomadUpdaterCleaner(options.EdgeMetaFields.UpdateID)
 		}
 
 		log.Debug().
@@ -298,7 +298,7 @@ func main() {
 	if updaterCleaner != nil {
 		ctx := context.Background()
 
-		go updates.Remove(ctx, options.EdgeMetaFields.UpdateID, updaterCleaner)
+		go updates.Remove(ctx, updaterCleaner)
 	}
 	// !Clean the updater
 

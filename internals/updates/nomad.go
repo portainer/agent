@@ -9,10 +9,13 @@ import (
 )
 
 type NomadUpdaterCleaner struct {
+	updateID int
 }
 
-func NewNomadUpdaterCleaner() *NomadUpdaterCleaner {
-	return &NomadUpdaterCleaner{}
+func NewNomadUpdaterCleaner(updateID int) *NomadUpdaterCleaner {
+	return &NomadUpdaterCleaner{
+		updateID: updateID,
+	}
 }
 
 func (nu *NomadUpdaterCleaner) Clean(ctx context.Context) error {
@@ -47,4 +50,8 @@ func (nu *NomadUpdaterCleaner) Clean(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (nu *NomadUpdaterCleaner) UpdateID() int {
+	return nu.updateID
 }
