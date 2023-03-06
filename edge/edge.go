@@ -99,7 +99,7 @@ func (manager *Manager) Start() error {
 		manager.agentOptions.EdgeAsyncMode,
 		agentPlatform,
 		manager.agentOptions.EdgeMetaFields,
-		client.BuildHTTPClient(10, manager.agentOptions),
+		client.BuildHTTPClient(30, manager.agentOptions),
 	)
 
 	manager.stackManager = stack.NewStackManager(
