@@ -19,6 +19,9 @@ func TestAddEnvironmentVariablesToService(t *testing.T) {
 services:
   updater:
     image: portainer/portainer-updater:latest
+    labels:
+      - io.portainer.hideStack=true
+      - io.portainer.updater=true
     command: ["portainer", "--image", "portainerci/portainer:2.18", "--env-type", "standalone"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock`,
@@ -26,6 +29,9 @@ services:
 services:
   updater:
     image: portainer/portainer-updater:latest
+    labels:
+      - io.portainer.hideStack=true
+      - io.portainer.updater=true
     command:
       - portainer
       - --image
@@ -46,6 +52,9 @@ services:
 services:
   updater:
     image: portainer/portainer-updater:latest
+    labels:
+      - io.portainer.hideStack=true
+      - io.portainer.updater=true
     command: ["portainer", "--image", "portainerci/portainer:2.18", "--env-type", "standalone"]
     environment:
       - SKIP_PULL=1
@@ -55,6 +64,9 @@ services:
 services:
   updater:
     image: portainer/portainer-updater:latest
+    labels:
+      - io.portainer.hideStack=true
+      - io.portainer.updater=true
     command:
       - portainer
       - --image

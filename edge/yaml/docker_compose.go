@@ -21,6 +21,7 @@ type Compose struct {
 
 type Service struct {
 	Image       string   `yaml:"image"`
+	Labels      []string `yaml:"labels"`
 	Command     []string `yaml:"command"`
 	Environment []string `yaml:"environment"`
 	Volumes     []string `yaml:"volumes"`
