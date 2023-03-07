@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -159,15 +160,26 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
 	fileName := "docker-compose.yml"
 	fileContent := stackConfig.FileContent
-	if manager.engineType == EngineTypeKubernetes {
+
+	switch manager.engineType {
+	case EngineTypeDockerStandalone:
+		if len(stackConfig.RegistryCredentials) > 0 && strings.HasPrefix(stackConfig.Name, "edge-update-schedule") {
+			yml := yaml.NewDockerComposeYAML(fileContent, stackConfig.RegistryCredentials)
+			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
+		}
+		break
+	case EngineTypeKubernetes:
 		fileName = fmt.Sprintf("%s.yml", stack.Name)
 		if len(stackConfig.RegistryCredentials) > 0 {
-			yml := yaml.NewYAML(fileContent, stackConfig.RegistryCredentials)
+			yml := yaml.NewKubernetesYAML(fileContent, stackConfig.RegistryCredentials)
 			fileContent, _ = yml.AddImagePullSecrets()
 		}
-	}
-	if manager.engineType == EngineTypeNomad {
+		break
+	case EngineTypeNomad:
 		fileName = fmt.Sprintf("%s.hcl", stack.Name)
+		break
+	default:
+		return fmt.Errorf("engine type %d not supported", manager.engineType)
 	}
 
 	err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
@@ -498,16 +510,25 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	fileName := "docker-compose.yml"
 	fileContent := stackData.StackFileContent
 
-	if manager.engineType == EngineTypeKubernetes {
+	switch manager.engineType {
+	case EngineTypeDockerStandalone:
+		if len(stackData.RegistryCredentials) > 0 && strings.HasPrefix(stackData.Name, "edge-update-schedule") {
+			yml := yaml.NewDockerComposeYAML(fileContent, stackData.RegistryCredentials)
+			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
+		}
+		break
+	case EngineTypeKubernetes:
 		fileName = fmt.Sprintf("%s.yml", stackData.Name)
 		if len(stackData.RegistryCredentials) > 0 {
-			yml := yaml.NewYAML(fileContent, stackData.RegistryCredentials)
+			yml := yaml.NewKubernetesYAML(fileContent, stackData.RegistryCredentials)
 			fileContent, _ = yml.AddImagePullSecrets()
 		}
-	}
-
-	if manager.engineType == EngineTypeNomad {
+		break
+	case EngineTypeNomad:
 		fileName = fmt.Sprintf("%s.hcl", stackData.Name)
+		break
+	default:
+		return fmt.Errorf("engine type %d not supported", manager.engineType)
 	}
 
 	if !deleteStack {
