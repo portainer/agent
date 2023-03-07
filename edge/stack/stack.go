@@ -182,21 +182,6 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 		return fmt.Errorf("engine type %d not supported", manager.engineType)
 	}
 
-	if manager.engineType == EngineTypeDockerStandalone {
-		if len(stackConfig.RegistryCredentials) > 0 && strings.HasPrefix(stackConfig.Name, "edge-update-schedule") {
-			yml := yaml.NewDockerComposeYAML(fileContent, stackConfig.RegistryCredentials)
-			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
-		}
-	} else if manager.engineType == EngineTypeKubernetes {
-		fileName = fmt.Sprintf("%s.yml", stack.Name)
-		if len(stackConfig.RegistryCredentials) > 0 {
-			yml := yaml.NewKubernetesYAML(fileContent, stackConfig.RegistryCredentials)
-			fileContent, _ = yml.AddImagePullSecrets()
-		}
-	} else if manager.engineType == EngineTypeNomad {
-		fileName = fmt.Sprintf("%s.hcl", stack.Name)
-	}
-
 	err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
 	if err != nil {
 		return err
