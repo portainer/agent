@@ -379,10 +379,10 @@ func main() {
 		config.Addr = advertiseAddr
 	}
 
-	var awsConfig agent.AWSConfig
+	var awsConfig *agent.AWSConfig = nil
 	if os.IsValidAWSConfig(options) {
 		log.Info().Msg("AWS configuration detected")
-		awsConfig = agent.AWSConfig{
+		awsConfig = &agent.AWSConfig{
 			ClientCertPath: options.AWSClientCert,
 			ClientKeyPath:  options.AWSClientKey,
 			RoleARN:        options.AWSRoleARN,
@@ -392,7 +392,7 @@ func main() {
 		}
 	}
 
-	err = registry.StartRegistryServer(edgeManager, &awsConfig)
+	err = registry.StartRegistryServer(edgeManager, awsConfig)
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable to start registry server")
 	}
