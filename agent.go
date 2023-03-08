@@ -53,6 +53,7 @@ type (
 	EdgeStackConfig struct {
 		Name                string
 		FileContent         string
+		DotEnvFileContent   string
 		RegistryCredentials []RegistryCredentials
 		// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
 		Namespace    string
@@ -215,7 +216,8 @@ type (
 
 	DeployerBaseOptions struct {
 		// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
-		Namespace string
+		Namespace  string
+		WorkingDir string
 	}
 
 	DeployOptions struct {

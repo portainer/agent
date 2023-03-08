@@ -191,6 +191,13 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 		return err
 	}
 
+	if stackConfig.DotEnvFileContent != "" {
+		err = filesystem.WriteFile(folder, ".env", []byte(stackConfig.DotEnvFileContent), 0644)
+		if err != nil {
+			return err
+		}
+	}
+
 	stack.FileFolder = folder
 	stack.FileName = fileName
 
@@ -403,7 +410,8 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 		err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
 			agent.DeployOptions{
 				DeployerBaseOptions: agent.DeployerBaseOptions{
-					Namespace: stack.Namespace,
+					Namespace:  stack.Namespace,
+					WorkingDir: stack.FileFolder,
 				},
 			},
 		)

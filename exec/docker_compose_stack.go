@@ -33,6 +33,7 @@ func (service *DockerComposeStackService) Deploy(ctx context.Context, name strin
 	return service.deployer.Deploy(ctx, filePaths, libstack.DeployOptions{
 		Options: libstack.Options{
 			ProjectName: name,
+			WorkingDir:  options.WorkingDir,
 		},
 	})
 }
