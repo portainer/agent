@@ -9,6 +9,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge"
+	"github.com/portainer/agent/edge/aws"
 	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/request"
 	"github.com/portainer/libhttp/response"
@@ -55,7 +56,7 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 	if handler.awsConfig != nil {
 		log.Info().Msg("using local AWS config for credential lookup")
 
-		c, err := doAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, handler.awsConfig)
+		c, err := aws.DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, handler.awsConfig)
 		if err != nil {
 			return httperror.InternalServerError("Unable to retrieve credentials", err)
 		}

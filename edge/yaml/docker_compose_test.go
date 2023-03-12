@@ -1,109 +1,84 @@
 package yaml
 
 import (
+	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/pkg/errors"
 )
 
-func TestAddEnvironmentVariablesToService(t *testing.T) {
+func TestUpdateServiceWithEnv(t *testing.T) {
+	compose := Compose{
+		Version: "3",
+		Services: map[string]Service{
+			"updater": {
+				Image: "portainer/portainer-updater:latest",
+				Labels: []string{
+					"io.portainer.hideStack=true",
+					"io.portainer.updater=true",
+				},
+				Command: []string{
+					"portainer", "--image", "portainerci/portainer:2.18", "--env-type", "standalone",
+				},
+				Volumes: []string{
+					"/var/run/docker.sock:/var/run/docker.sock",
+				},
+			},
+		},
+	}
+	serviceName := "updater"
+	envs := map[string]string{
+		"ENV_VAR_1": "value1",
+		"ENV_VAR_2": "value2",
+	}
+
+	updatedYAML, err := updateServiceWithEnv(compose, serviceName, envs)
+	if err != nil {
+		t.Errorf("error while updating service with environment variables: %s", err)
+	}
+
+	// Verify that the YAML contains the added environment variables
+	if !strings.Contains(updatedYAML, "ENV_VAR_1=value1") || !strings.Contains(updatedYAML, "ENV_VAR_2=value2") {
+		t.Errorf("expected environment variables not found in the updated YAML: %s", updatedYAML)
+	}
+}
+
+func TestExtractRegistryServerUrl(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		expected string
-		wantErr  bool
+		name      string
+		imageName string
+		expected  string
+		err       error
 	}{
 		{
-			name: "environment stanza does not exist",
-			input: `version: "3"
-services:
-  updater:
-    image: portainer/portainer-updater:latest
-    labels:
-      - io.portainer.hideStack=true
-      - io.portainer.updater=true
-    command: ["portainer", "--image", "portainerci/portainer:2.18", "--env-type", "standalone"]
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock`,
-			expected: `version: "3"
-services:
-  updater:
-    image: portainer/portainer-updater:latest
-    labels:
-      - io.portainer.hideStack=true
-      - io.portainer.updater=true
-    command:
-      - portainer
-      - --image
-      - portainerci/portainer:2.18
-      - --env-type
-      - standalone
-    environment:
-      - TEST_VAR_1=test_value_1
-      - TEST_VAR_2=test_value_2
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-`,
-			wantErr: false,
+			name:      "input without registry server url",
+			imageName: "portainer/agent:latest",
+			expected:  "",
+			err:       nil,
 		},
 		{
-			name: "environment stanza exists",
-			input: `version: "3"
-services:
-  updater:
-    image: portainer/portainer-updater:latest
-    labels:
-      - io.portainer.hideStack=true
-      - io.portainer.updater=true
-    command: ["portainer", "--image", "portainerci/portainer:2.18", "--env-type", "standalone"]
-    environment:
-      - SKIP_PULL=1
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock`,
-			expected: `version: "3"
-services:
-  updater:
-    image: portainer/portainer-updater:latest
-    labels:
-      - io.portainer.hideStack=true
-      - io.portainer.updater=true
-    command:
-      - portainer
-      - --image
-      - portainerci/portainer:2.18
-      - --env-type
-      - standalone
-    environment:
-      - SKIP_PULL=1
-      - TEST_VAR_1=test_value_1
-      - TEST_VAR_2=test_value_2
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-`,
-			wantErr: false,
+			name:      "input with registry server url",
+			imageName: "example.com/portainer/agent:latest",
+			expected:  "example.com",
+			err:       nil,
 		},
 		{
-			name: "valid docker compose file content",
-			input: `version: "3"
-services:
-invalid_service:`,
-			expected: ``,
-			wantErr:  true,
+			name:      "empty image name",
+			imageName: "",
+			expected:  "",
+			err:       errors.New("No image name provided"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			envs := map[string]string{
-				"TEST_VAR_1": "test_value_1",
-				"TEST_VAR_2": "test_value_2",
+			actual, err := extractRegistryServerUrl(tt.imageName)
+
+			if err != nil && tt.err == nil || err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("Test case %s failed: expected error %v, but got error %v", tt.name, tt.err, err)
 			}
-
-			result, err := addEnvsForSpecificService(tt.input, "updater", envs)
-			assert.Equalf(t, tt.wantErr, err != nil, "received %+v", err)
-
-			if !tt.wantErr {
-				assert.Equalf(t, tt.expected, result, "expected result: %s\nactual result: %s", tt.expected, result)
+			if actual != tt.expected {
+				t.Errorf("Test case %s failed: expected %v, but got %v", tt.name, tt.expected, actual)
 			}
 		})
 	}

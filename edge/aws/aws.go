@@ -1,4 +1,4 @@
-package registry
+package aws
 
 import (
 	"context"
@@ -8,10 +8,15 @@ import (
 	iamra "github.com/aws/rolesanywhere-credential-helper/aws_signing_helper"
 	"github.com/awslabs/amazon-ecr-credential-helper/ecr-login/api"
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/os"
 	"github.com/rs/zerolog/log"
 )
 
-func doAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *agent.AWSConfig) (*agent.RegistryCredentials, error) {
+func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *agent.AWSConfig) (*agent.RegistryCredentials, error) {
+	if serverURL == "" || awsConfig == nil {
+		return nil, nil
+	}
+
 	iamraCreds, err := authenticateAgainstIAMRA(awsConfig)
 	if err != nil {
 		return nil, err
@@ -70,4 +75,19 @@ func authenticateAgainstIAMRA(awsConfig *agent.AWSConfig) (*iamra.CredentialProc
 	}
 
 	return &credentialProcessOutput, nil
+}
+
+func ExtractAwsConfig(options *agent.Options) *agent.AWSConfig {
+	if os.IsValidAWSConfig(options) {
+		log.Info().Msg("AWS configuration detected")
+		return &agent.AWSConfig{
+			ClientCertPath: options.AWSClientCert,
+			ClientKeyPath:  options.AWSClientKey,
+			RoleARN:        options.AWSRoleARN,
+			TrustAnchorARN: options.AWSTrustAnchorARN,
+			ProfileARN:     options.AWSProfileARN,
+			Region:         options.AWSRegion,
+		}
+	}
+	return nil
 }

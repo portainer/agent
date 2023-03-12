@@ -85,16 +85,18 @@ type StackManager struct {
 	isEnabled       bool
 	portainerClient client.PortainerClient
 	assetsPath      string
+	awsConfig       *agent.AWSConfig
 	mu              sync.Mutex
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(cli client.PortainerClient, assetsPath string) *StackManager {
+func NewStackManager(cli client.PortainerClient, assetsPath string, config *agent.AWSConfig) *StackManager {
 	return &StackManager{
 		stacks:          map[edgeStackID]*edgeStack{},
 		stopSignal:      nil,
 		portainerClient: cli,
 		assetsPath:      assetsPath,
+		awsConfig:       config,
 	}
 }
 
@@ -163,8 +165,8 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 
 	switch manager.engineType {
 	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
-		if len(stackConfig.RegistryCredentials) > 0 && strings.HasPrefix(stackConfig.Name, "edge-update-schedule") {
-			yml := yaml.NewDockerComposeYAML(fileContent, stackConfig.RegistryCredentials)
+		if (len(stackConfig.RegistryCredentials) > 0 || manager.awsConfig != nil) && strings.HasPrefix(stackConfig.Name, "edge-update-schedule") {
+			yml := yaml.NewDockerComposeYAML(fileContent, stackConfig.RegistryCredentials, manager.awsConfig)
 			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
 		}
 		break
@@ -512,8 +514,8 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 
 	switch manager.engineType {
 	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
-		if len(stackData.RegistryCredentials) > 0 && strings.HasPrefix(stackData.Name, "edge-update-schedule") {
-			yml := yaml.NewDockerComposeYAML(fileContent, stackData.RegistryCredentials)
+		if (len(stackData.RegistryCredentials) > 0 || manager.awsConfig != nil) && strings.HasPrefix(stackData.Name, "edge-update-schedule") {
+			yml := yaml.NewDockerComposeYAML(fileContent, stackData.RegistryCredentials, manager.awsConfig)
 			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
 		}
 		break
