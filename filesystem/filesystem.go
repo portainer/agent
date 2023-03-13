@@ -39,8 +39,10 @@ func FileExists(filePath string) (bool, error) {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
+
 		return false, err
 	}
+
 	return true, nil
 }
 
@@ -151,6 +153,7 @@ func WriteBigFile(folder, filename string, fileheader *multipart.FileHeader, mod
 		if err != nil && err != io.EOF {
 			return err
 		}
+
 		if int64(n) < chunkSize {
 			if n > 0 {
 				_, err = writer.Write(buf[:n])
@@ -158,6 +161,7 @@ func WriteBigFile(folder, filename string, fileheader *multipart.FileHeader, mod
 					return err
 				}
 			}
+
 			break
 		} else {
 			_, err = writer.Write(buf)
@@ -166,7 +170,9 @@ func WriteBigFile(folder, filename string, fileheader *multipart.FileHeader, mod
 			}
 		}
 	}
+
 	writer.Flush()
+
 	return nil
 }
 
@@ -187,11 +193,13 @@ func containsDotDot(v string) bool {
 	if !strings.Contains(v, "..") {
 		return false
 	}
+
 	for _, ent := range strings.FieldsFunc(v, isSlashRune) {
 		if ent == ".." {
 			return true
 		}
 	}
+
 	return false
 }
 
