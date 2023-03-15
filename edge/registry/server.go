@@ -9,6 +9,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge"
+	"github.com/portainer/agent/edge/aws"
 	httperror "github.com/portainer/libhttp/error"
 	"github.com/portainer/libhttp/request"
 	"github.com/portainer/libhttp/response"
@@ -37,7 +38,7 @@ func NewEdgeRegistryHandler(edgeManager *edge.Manager, awsConfig *agent.AWSConfi
 func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	stackManager := handler.EdgeManager.GetStackManager()
 	if stackManager == nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve stack manager", errors.New("Stack manager is not available")}
+		return httperror.InternalServerError("Unable to retrieve stack manager", errors.New("Stack manager is not available"))
 	}
 
 	serverUrl, _ := request.RetrieveQueryParameter(r, "serverurl", false)
@@ -55,9 +56,9 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 	if handler.awsConfig != nil {
 		log.Info().Msg("using local AWS config for credential lookup")
 
-		c, err := doAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, handler.awsConfig)
+		c, err := aws.DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, handler.awsConfig)
 		if err != nil {
-			return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve credentials", err}
+			return httperror.InternalServerError("Unable to retrieve credentials", err)
 		}
 
 		// Only write credentials if credentials are found
@@ -74,7 +75,7 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 		if strings.HasPrefix(serverUrl, "http") {
 			u, err := url.Parse(serverUrl)
 			if err != nil {
-				return &httperror.HandlerError{http.StatusBadRequest, "Invalid server URL", err}
+				return httperror.BadRequest("Invalid server URL", err)
 			}
 
 			if strings.HasSuffix(u.Hostname(), "docker.io") {
