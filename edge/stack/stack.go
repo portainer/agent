@@ -162,7 +162,7 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	fileContent := stackConfig.FileContent
 
 	switch manager.engineType {
-	case EngineTypeDockerStandalone:
+	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
 		if len(stackConfig.RegistryCredentials) > 0 && strings.HasPrefix(stackConfig.Name, "edge-update-schedule") {
 			yml := yaml.NewDockerComposeYAML(fileContent, stackConfig.RegistryCredentials)
 			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
@@ -511,7 +511,7 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	fileContent := stackData.StackFileContent
 
 	switch manager.engineType {
-	case EngineTypeDockerStandalone:
+	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
 		if len(stackData.RegistryCredentials) > 0 && strings.HasPrefix(stackData.Name, "edge-update-schedule") {
 			yml := yaml.NewDockerComposeYAML(fileContent, stackData.RegistryCredentials)
 			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
