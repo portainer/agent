@@ -74,8 +74,9 @@ func (y *DockerComposeYaml) AddCredentialsAsEnvForSpecificService(serviceName st
 		}
 
 		envs["REGISTRY_USED"] = "1"
-		envs["REGISTRY_ECR_CERTIFICATE_ENABLED"] = "1"
-		envs["REGISTRY_USERNAME"] = c.Username
+		// hardcode username for aws ecr registry
+		// @https://docs.aws.amazon.com/cli/latest/reference/ecr/get-login-password.html#examples
+		envs["REGISTRY_USERNAME"] = "AWS"
 		envs["REGISTRY_PASSWORD"] = c.Secret
 
 	} else if len(y.RegistryCredentials) > 0 {
