@@ -51,15 +51,45 @@ func TestExtractRegistryServerUrl(t *testing.T) {
 		err       error
 	}{
 		{
-			name:      "input without registry server url",
-			imageName: "portainer/agent:latest",
+			name:      "custom registry",
+			imageName: "registry.example.com/namespace/my-image:latest",
+			expected:  "registry.example.com",
+			err:       nil,
+		},
+		{
+			name:      "custom registry without namespace",
+			imageName: "registry.example.com/my-image:latest",
+			expected:  "registry.example.com",
+			err:       nil,
+		},
+		{
+			name:      "custom registry with port number",
+			imageName: "registry.example.com:5000/namespace/my-image:latest",
+			expected:  "registry.example.com:5000",
+			err:       nil,
+		},
+		{
+			name:      "custom registry with scheme",
+			imageName: "http://registry.example.com:5000/namespace/my-image:latest",
+			expected:  "http://registry.example.com:5000",
+			err:       nil,
+		},
+		{
+			name:      "custom registry with scheme, but namespace",
+			imageName: "http://registry.example.com:5000/my-image:latest",
+			expected:  "http://registry.example.com:5000",
+			err:       nil,
+		},
+		{
+			name:      "namespace + image",
+			imageName: "namespace/my-image:latest",
 			expected:  "",
 			err:       nil,
 		},
 		{
-			name:      "input with registry server url",
-			imageName: "example.com/portainer/agent:latest",
-			expected:  "example.com",
+			name:      "image name only",
+			imageName: "ubuntu:latest",
+			expected:  "",
 			err:       nil,
 		},
 		{
@@ -67,6 +97,12 @@ func TestExtractRegistryServerUrl(t *testing.T) {
 			imageName: "",
 			expected:  "",
 			err:       errors.New("No image name provided"),
+		},
+		{
+			name:      "invalid image name",
+			imageName: "my-image:latest",
+			expected:  "",
+			err:       errors.New("invalid image name"),
 		},
 	}
 

@@ -78,7 +78,6 @@ func (y *DockerComposeYaml) AddCredentialsAsEnvForSpecificService(serviceName st
 		// @https://docs.aws.amazon.com/cli/latest/reference/ecr/get-login-password.html#examples
 		envs["REGISTRY_USERNAME"] = "AWS"
 		envs["REGISTRY_PASSWORD"] = c.Secret
-		envs["REGISTRY_PASSWORD"] = c.Secret
 
 	} else if len(y.RegistryCredentials) > 0 {
 		log.Info().Msg("using private registry credential")
@@ -148,9 +147,26 @@ func extractRegistryServerUrl(imageName string) (string, error) {
 	if imageName == "" {
 		return "", errors.New("No image name provided")
 	}
-	parts := strings.Split(imageName, "/")
-	if len(parts) >= 2 && strings.Contains(parts[0], ".") {
-		return parts[0], nil
+
+	scheme := ""
+	pos := strings.Index(imageName, "://")
+	if pos != -1 {
+		scheme = imageName[:pos+3]
+		imageName = imageName[pos+3:]
 	}
-	return "", nil
+
+	parts := strings.Split(imageName, "/")
+	registryURL := parts[0]
+	if len(parts) > 2 || (len(parts) == 2 && strings.Contains(imageName, ".")) {
+		if scheme != "" {
+			registryURL = scheme + parts[0]
+		}
+	} else {
+		// possible use cases can be
+		// ubuntu:20.04
+		// portainerci/portainer-ee:latest
+		return "", nil
+	}
+
+	return registryURL, nil
 }
