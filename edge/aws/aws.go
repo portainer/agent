@@ -8,7 +8,6 @@ import (
 	iamra "github.com/aws/rolesanywhere-credential-helper/aws_signing_helper"
 	"github.com/awslabs/amazon-ecr-credential-helper/ecr-login/api"
 	"github.com/portainer/agent"
-	"github.com/portainer/agent/os"
 	"github.com/rs/zerolog/log"
 )
 
@@ -78,7 +77,7 @@ func authenticateAgainstIAMRA(awsConfig *agent.AWSConfig) (*iamra.CredentialProc
 }
 
 func ExtractAwsConfig(options *agent.Options) *agent.AWSConfig {
-	if os.IsValidAWSConfig(options) {
+	if isValidAWSConfig(options) {
 		log.Info().Msg("AWS configuration detected")
 		return &agent.AWSConfig{
 			ClientCertPath: options.AWSClientCert,
@@ -90,4 +89,8 @@ func ExtractAwsConfig(options *agent.Options) *agent.AWSConfig {
 		}
 	}
 	return nil
+}
+
+func isValidAWSConfig(opts *agent.Options) bool {
+	return opts.AWSRoleARN != "" && opts.AWSTrustAnchorARN != "" && opts.AWSProfileARN != "" && opts.AWSRegion != ""
 }
