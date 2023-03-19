@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -165,7 +164,7 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 
 	switch manager.engineType {
 	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
-		if (len(stackConfig.RegistryCredentials) > 0 || manager.awsConfig != nil) && strings.HasPrefix(stackConfig.Name, "edge-update-schedule") {
+		if (len(stackConfig.RegistryCredentials) > 0 || manager.awsConfig != nil) && stackConfig.EdgeUpdateID > 0 {
 			yml := yaml.NewDockerComposeYAML(fileContent, stackConfig.RegistryCredentials, manager.awsConfig)
 			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
 		}
@@ -514,7 +513,7 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 
 	switch manager.engineType {
 	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
-		if (len(stackData.RegistryCredentials) > 0 || manager.awsConfig != nil) && strings.HasPrefix(stackData.Name, "edge-update-schedule") {
+		if (len(stackData.RegistryCredentials) > 0 || manager.awsConfig != nil) && stackData.EdgeUpdateID > 0 {
 			yml := yaml.NewDockerComposeYAML(fileContent, stackData.RegistryCredentials, manager.awsConfig)
 			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
 		}
