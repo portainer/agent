@@ -100,10 +100,6 @@ var (
 	fAWSRegion         = kingpin.Flag("aws-region", "AWS region used when signing against IAM Roles Anyhwere").Envar(EnvKeyAWSRegion).String()
 )
 
-func IsValidAWSConfig(opts *agent.Options) bool {
-	return opts.AWSRoleARN != "" && opts.AWSTrustAnchorARN != "" && opts.AWSProfileARN != "" && opts.AWSRegion != ""
-}
-
 func init() {
 	kingpin.Flag("sslcert", "(DEPRECATED) Path to the mTLS certificate used to identify the agent to Portainer").Envar(EnvKeySSLCert).StringVar(fSSLCert)
 	kingpin.Flag("sslkey", "(DEPRECATED) Path to the mTLS key used to identify the agent to Portainer").Envar(EnvKeySSLKey).StringVar(fSSLKey)

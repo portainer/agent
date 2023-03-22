@@ -131,6 +131,7 @@ type EdgeStackData struct {
 	PrePullImage bool
 	RePullImage  bool
 	RetryDeploy  bool
+	EdgeUpdateID int
 }
 
 type EdgeJobData struct {

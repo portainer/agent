@@ -197,6 +197,7 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 		PrePullImage:        data.PrePullImage,
 		RePullImage:         data.RePullImage,
 		RetryDeploy:         data.RetryDeploy,
+		EdgeUpdateID:        data.EdgeUpdateID,
 	}, nil
 }
 

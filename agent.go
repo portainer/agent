@@ -59,6 +59,7 @@ type (
 		PrePullImage bool
 		RePullImage  bool
 		RetryDeploy  bool
+		EdgeUpdateID int
 	}
 
 	// EdgeJobStatus represents an Edge job status

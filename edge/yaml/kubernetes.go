@@ -20,18 +20,20 @@ import (
 )
 
 type KubernetesYaml struct {
-	yaml
+	FileContent         string
+	RegistryCredentials []agent.RegistryCredentials
 }
 
 func NewKubernetesYAML(fileContent string, credentials []agent.RegistryCredentials) *KubernetesYaml {
 	return &KubernetesYaml{
-		yaml: NewYAML(fileContent, credentials),
+		FileContent:         fileContent,
+		RegistryCredentials: credentials,
 	}
 }
 
 func (y *KubernetesYaml) getRegistryCredentialsByImageURL(imageURL string) []agent.RegistryCredentials {
 	credentials := []agent.RegistryCredentials{}
-	for _, r := range y.registryCredentials {
+	for _, r := range y.RegistryCredentials {
 		domain, err := getRegistryDomain(imageURL)
 		if err != nil {
 			return nil
@@ -82,7 +84,7 @@ func getRegistryDomain(image string) (string, error) {
 }
 
 func (y *KubernetesYaml) AddImagePullSecrets() (string, error) {
-	ymlFiles := strings.Split(y.fileContent, "---\n")
+	ymlFiles := strings.Split(y.FileContent, "---\n")
 	log.Info().Int("length", len(ymlFiles)).Msg("yaml")
 
 	pullSecrets := make([]v1Types.Secret, 0)
