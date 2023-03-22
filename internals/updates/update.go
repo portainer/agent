@@ -19,11 +19,18 @@ func Remove(ctx context.Context, cleaner GhostUpdaterCleaner) error {
 	// container by the updater container, resulting in a container name conflict
 	// during the next remote update.
 
-	err := retry(ctx, 3, 30*time.Second, cleaner.Clean)
+	log.Debug().
+		Msg("start to clean updater")
+
+	err := retry(ctx, 3, 10*time.Second, cleaner.Clean)
 	if err != nil {
 		log.Warn().Int("Update ID", cleaner.UpdateID()).Err(err).Msg("unable to clean up ghost updater stack")
 		return err
 	}
+
+	log.Debug().
+		Msg("finish to clean updater")
+
 	return nil
 }
 

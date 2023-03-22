@@ -30,11 +30,13 @@ func (nu *NomadUpdaterCleaner) Clean(ctx context.Context) error {
 
 	job, _, err := client.Jobs().Info(jobID, nil)
 	if err != nil {
-		log.Info().Err(err).Msg("failed to find nomad job  portainer-update")
-		return nil
+		log.Debug().
+			Err(err).
+			Msg("failed to find nomad job portainer-updater")
+		return errors.Wrap(err, "failed to find nomad job portainer-updater")
 	}
 
-	_, _, err = client.Jobs().Deregister(*job.ID, true, &nomadapi.WriteOptions{
+	evalID, _, err := client.Jobs().Deregister(*job.ID, true, &nomadapi.WriteOptions{
 		Region:    *job.Region,
 		Namespace: *job.Namespace,
 	})
@@ -49,6 +51,9 @@ func (nu *NomadUpdaterCleaner) Clean(ctx context.Context) error {
 		return errors.Wrap(err, "nomad job portainer-updater still exists")
 	}
 
+	log.Debug().
+		Str("Eval id", evalID).
+		Msg("remove nomad job portainer-updater successfully ")
 	return nil
 }
 
