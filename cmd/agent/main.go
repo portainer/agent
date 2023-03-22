@@ -17,6 +17,7 @@ import (
 	"github.com/portainer/agent/crypto"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge"
+	"github.com/portainer/agent/edge/aws"
 	httpEdge "github.com/portainer/agent/edge/http"
 	"github.com/portainer/agent/edge/registry"
 	"github.com/portainer/agent/exec"
@@ -379,19 +380,7 @@ func main() {
 		config.Addr = advertiseAddr
 	}
 
-	var awsConfig *agent.AWSConfig = nil
-	if os.IsValidAWSConfig(options) {
-		log.Info().Msg("AWS configuration detected")
-		awsConfig = &agent.AWSConfig{
-			ClientCertPath: options.AWSClientCert,
-			ClientKeyPath:  options.AWSClientKey,
-			RoleARN:        options.AWSRoleARN,
-			TrustAnchorARN: options.AWSTrustAnchorARN,
-			ProfileARN:     options.AWSProfileARN,
-			Region:         options.AWSRegion,
-		}
-	}
-
+	awsConfig := aws.ExtractAwsConfig(options)
 	err = registry.StartRegistryServer(edgeManager, awsConfig)
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable to start registry server")

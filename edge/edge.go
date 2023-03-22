@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge/aws"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
@@ -105,6 +106,7 @@ func (manager *Manager) Start() error {
 	manager.stackManager = stack.NewStackManager(
 		portainerClient,
 		manager.agentOptions.AssetsPath,
+		aws.ExtractAwsConfig(manager.agentOptions),
 	)
 
 	manager.logsManager = scheduler.NewLogsManager(portainerClient)
