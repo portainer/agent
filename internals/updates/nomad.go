@@ -33,7 +33,7 @@ func (nu *NomadUpdaterCleaner) Clean(ctx context.Context) error {
 		log.Debug().
 			Err(err).
 			Msg("failed to find nomad job portainer-updater")
-		return errors.Wrap(err, "failed to find nomad job portainer-updater")
+		return nil
 	}
 
 	evalID, _, err := client.Jobs().Deregister(*job.ID, true, &nomadapi.WriteOptions{
