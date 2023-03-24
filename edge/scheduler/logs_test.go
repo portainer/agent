@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"net/http"
 	"testing"
 
 	"github.com/portainer/agent"
@@ -18,7 +17,7 @@ func TestDataRace(t *testing.T) {
 		false,
 		agent.PlatformDocker,
 		agent.EdgeMetaFields{},
-		&http.Client{},
+		client.BuildHTTPClient(10, &agent.Options{}),
 	)
 
 	m := NewLogsManager(cli)
