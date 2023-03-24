@@ -2,6 +2,7 @@ package healthcheck
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -92,7 +93,9 @@ func checkPolling(portainerUrl string, options *agent.Options) error {
 	if err != nil {
 		return errors.WithMessage(err, "Failed sending request")
 	}
-	defer resp.Body.Close()
+
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
 
 	return nil
 }
