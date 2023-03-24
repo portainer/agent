@@ -25,6 +25,7 @@ import (
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/healthcheck"
 	"github.com/portainer/agent/http"
+	"github.com/portainer/agent/internals/updates"
 	"github.com/portainer/agent/kubernetes"
 	"github.com/portainer/agent/net"
 	"github.com/portainer/agent/os"
@@ -76,6 +77,7 @@ func main() {
 	var kubeClient *kubernetes.KubeClient
 	var nomadConfig agent.NomadConfig
 
+	var updaterCleaner updates.GhostUpdaterCleaner
 	// !Generic
 
 	// Docker & Podman
@@ -113,17 +115,7 @@ func main() {
 		}
 
 		if containerPlatform == agent.PlatformDocker && options.EdgeMetaFields.UpdateID != 0 {
-			ctx := context.Background()
-			go func(ctx context.Context) {
-				// retry three times to make sure that the updater container exits by itself.
-				// It is because if the updater container is forced to remove, the previous agent
-				// container can be skipped to be removed by updater container, which will cause
-				// the container name conflict for remote update next time.
-				err = docker.Retry(ctx, 3, 30*time.Second, docker.CleanUpGhostUpdaterStack)
-				if err != nil {
-					log.Warn().Int("Update ID", options.EdgeMetaFields.UpdateID).Err(err).Msg("unable to clean up ghost updater stack")
-				}
-			}(ctx)
+			updaterCleaner = updates.NewDockerUpdaterCleaner(options.EdgeMetaFields.UpdateID)
 		}
 
 		if containerPlatform == agent.PlatformDocker && clusterMode {
@@ -291,6 +283,10 @@ func main() {
 
 		nomadConfig.NomadToken = goos.Getenv(agent.NomadTokenEnvVarName)
 
+		if options.EdgeMetaFields.UpdateID != 0 {
+			updaterCleaner = updates.NewNomadUpdaterCleaner(options.EdgeMetaFields.UpdateID)
+		}
+
 		log.Debug().
 			Str("agent_port", options.AgentServerPort).
 			Str("advertise_address", advertiseAddr).
@@ -298,6 +294,14 @@ func main() {
 			Msg("")
 	}
 	// !Nomad
+
+	// Clean the updater
+	if updaterCleaner != nil {
+		ctx := context.Background()
+
+		go updates.Remove(ctx, updaterCleaner)
+	}
+	// !Clean the updater
 
 	// Security
 	signatureService := crypto.NewECDSAService(options.SharedSecret)
