@@ -19,7 +19,7 @@ import (
 
 // PortainerEdgeClient is used to execute HTTP requests against the Portainer API
 type PortainerEdgeClient struct {
-	httpClient      *http.Client
+	httpClient      *edgeHTTPClient
 	serverAddress   string
 	setEndpointIDFn setEndpointIDFn
 	getEndpointIDFn getEndpointIDFn
@@ -34,7 +34,7 @@ type globalKeyResponse struct {
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
-func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *http.Client) *PortainerEdgeClient {
+func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *edgeHTTPClient) *PortainerEdgeClient {
 	c := &PortainerEdgeClient{
 		serverAddress:   serverAddress,
 		setEndpointIDFn: setEIDFn,
@@ -56,7 +56,7 @@ func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getE
 }
 
 func (client *PortainerEdgeClient) SetTimeout(t time.Duration) {
-	client.httpClient.Timeout = t
+	client.httpClient.httpClient.Timeout = t
 }
 
 func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, error) {
