@@ -25,7 +25,7 @@ import (
 
 // PortainerAsyncClient is used to execute HTTP requests using only the /api/entrypoint/async api endpoint
 type PortainerAsyncClient struct {
-	httpClient              *http.Client
+	httpClient              *edgeHTTPClient
 	serverAddress           string
 	setEndpointIDFn         setEndpointIDFn
 	getEndpointIDFn         getEndpointIDFn
@@ -44,7 +44,7 @@ type PortainerAsyncClient struct {
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
-func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *http.Client) *PortainerAsyncClient {
+func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *edgeHTTPClient) *PortainerAsyncClient {
 	initialCommandTimestamp := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	return &PortainerAsyncClient{
 		serverAddress:           serverAddress,
@@ -59,7 +59,7 @@ func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, get
 }
 
 func (client *PortainerAsyncClient) SetTimeout(t time.Duration) {
-	client.httpClient.Timeout = t
+	client.httpClient.httpClient.Timeout = t
 }
 
 type MetaFields struct {

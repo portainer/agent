@@ -1,7 +1,6 @@
 package client
 
 import (
-	"net/http"
 	"time"
 
 	portainer "github.com/portainer/portainer/api"
@@ -49,7 +48,7 @@ type setEndpointIDFn func(portainer.EndpointID)
 type getEndpointIDFn func() portainer.EndpointID
 
 // NewPortainerClient returns a pointer to a new PortainerClient instance
-func NewPortainerClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *http.Client) PortainerClient {
+func NewPortainerClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, edgeAsyncMode bool, agentPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *edgeHTTPClient) PortainerClient {
 	if edgeAsyncMode {
 		return NewPortainerAsyncClient(serverAddress, setEIDFn, getEIDFn, edgeID, agentPlatform, metaFields, httpClient)
 	}
