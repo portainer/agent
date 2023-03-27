@@ -70,13 +70,11 @@ func (y *DockerComposeYaml) AddCredentialsAsEnvForSpecificService(serviceName st
 		// Exchange ECR credential with ECR certificate
 		c, err := aws.DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, y.awsConfig)
 		if err != nil {
+			// It doesn't need to fallback the registry here, so it is unnecessary to check ErrNoCredential error
 			return "", err
 		}
 
-		if c == nil {
-			log.Info().Msg("no credential found while using local AWS config")
-			return "", fmt.Errorf("no credential found from registry url: %s", serverUrl)
-		} else {
+		if c != nil {
 			log.Info().Str("registry server url", serverUrl)
 
 			envs["REGISTRY_USED"] = "1"

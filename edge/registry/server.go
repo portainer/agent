@@ -57,7 +57,7 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 		log.Info().Msg("using local AWS config for credential lookup")
 
 		c, err := aws.DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, handler.awsConfig)
-		if err != nil {
+		if err != nil && err != aws.ErrNoCredentials {
 			return httperror.InternalServerError("Unable to retrieve credentials", err)
 		}
 
