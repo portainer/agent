@@ -249,7 +249,7 @@ we can leverage the internal Docker DNS to automatically join existing agents or
 * EDGE_INSECURE_POLL (*optional*): enable this option if you need the agent to poll a HTTPS Portainer instance with self-signed certificates. Disabled by default, set to `1` to enable it
 
 
-For more information about deployment scenarios, see: https://docs.portainer.io/start/install/agent
+For more information about deployment scenarios, see: https://docs.portainer.io/start/agent
 
 ## Development
 
