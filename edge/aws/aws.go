@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"errors"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -11,13 +12,15 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var ErrNoCredentials = errors.New("No credentials found")
+
 func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *agent.AWSConfig) (*agent.RegistryCredentials, error) {
 	if serverURL == "" || awsConfig == nil {
 		log.Info().
 			Str("server_url", serverURL).
 			Str("aws configuration region", awsConfig.Region).
 			Msg("incomplete information when using local AWS config for credential lookup")
-		return nil, nil
+		return nil, errors.New("invalid ecr configuration")
 	}
 
 	iamraCreds, err := authenticateAgainstIAMRA(awsConfig)
@@ -44,7 +47,7 @@ func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *
 		// This might not be an ECR registry
 		// Therefore we deliberately not return an error here so that the upstream logic can fallback to other credential providers
 		log.Warn().Str("server_url", serverURL).Err(err).Msg("unable to retrieve credentials from server")
-		return nil, nil
+		return nil, ErrNoCredentials
 	}
 
 	return &agent.RegistryCredentials{
