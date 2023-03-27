@@ -39,6 +39,7 @@ func (h *portainerHelper) Get(serverURL string) (string, string, error) {
 		log.Printf("Error getting credentials: %v", err)
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
+	defer resp.Body.Close()
 
 	var c credentials.Credentials
 

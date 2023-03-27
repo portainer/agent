@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -238,7 +239,8 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 		return err
 	}
 
-	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeStackStatus operation failed")
@@ -265,7 +267,8 @@ func (client *PortainerEdgeClient) DeleteEdgeStackStatus(edgeStackID int) error 
 		return err
 	}
 
-	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
 		log.Error().Int("response_code", resp.StatusCode).Msg("DeleteEdgeStackStatus operation failed")
@@ -305,7 +308,8 @@ func (client *PortainerEdgeClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobS
 		return err
 	}
 
-	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeJobStatus operation failed")
