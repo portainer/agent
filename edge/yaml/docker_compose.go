@@ -73,11 +73,18 @@ func (y *DockerComposeYaml) AddCredentialsAsEnvForSpecificService(serviceName st
 			return "", err
 		}
 
-		envs["REGISTRY_USED"] = "1"
-		// hardcode username for aws ecr registry
-		// @https://docs.aws.amazon.com/cli/latest/reference/ecr/get-login-password.html#examples
-		envs["REGISTRY_USERNAME"] = "AWS"
-		envs["REGISTRY_PASSWORD"] = c.Secret
+		if c == nil {
+			log.Info().Msg("no credential found while using local AWS config")
+			return "", fmt.Errorf("no credential found from registry url: %s", serverUrl)
+		} else {
+			log.Info().Str("registry server url", serverUrl)
+
+			envs["REGISTRY_USED"] = "1"
+			// hardcode username for aws ecr registry
+			// @https://docs.aws.amazon.com/cli/latest/reference/ecr/get-login-password.html#examples
+			envs["REGISTRY_USERNAME"] = "AWS"
+			envs["REGISTRY_PASSWORD"] = c.Secret
+		}
 
 	} else if len(y.RegistryCredentials) > 0 {
 		log.Info().Msg("using private registry credential")

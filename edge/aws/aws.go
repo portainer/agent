@@ -13,6 +13,10 @@ import (
 
 func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *agent.AWSConfig) (*agent.RegistryCredentials, error) {
 	if serverURL == "" || awsConfig == nil {
+		log.Info().
+			Str("server_url", serverURL).
+			Str("aws configuration region", awsConfig.Region).
+			Msg("incomplete information when using local AWS config for credential lookup")
 		return nil, nil
 	}
 
