@@ -70,14 +70,19 @@ func (y *DockerComposeYaml) AddCredentialsAsEnvForSpecificService(serviceName st
 		// Exchange ECR credential with ECR certificate
 		c, err := aws.DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, y.awsConfig)
 		if err != nil {
+			// It doesn't need to fallback the registry here, so it is unnecessary to check ErrNoCredential error
 			return "", err
 		}
 
-		envs["REGISTRY_USED"] = "1"
-		// hardcode username for aws ecr registry
-		// @https://docs.aws.amazon.com/cli/latest/reference/ecr/get-login-password.html#examples
-		envs["REGISTRY_USERNAME"] = "AWS"
-		envs["REGISTRY_PASSWORD"] = c.Secret
+		if c != nil {
+			log.Info().Str("registry server url", serverUrl)
+
+			envs["REGISTRY_USED"] = "1"
+			// hardcode username for aws ecr registry
+			// @https://docs.aws.amazon.com/cli/latest/reference/ecr/get-login-password.html#examples
+			envs["REGISTRY_USERNAME"] = "AWS"
+			envs["REGISTRY_PASSWORD"] = c.Secret
+		}
 
 	} else if len(y.RegistryCredentials) > 0 {
 		log.Info().Msg("using private registry credential")

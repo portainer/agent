@@ -166,7 +166,10 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
 		if (len(stackConfig.RegistryCredentials) > 0 || manager.awsConfig != nil) && stackConfig.EdgeUpdateID > 0 {
 			yml := yaml.NewDockerComposeYAML(fileContent, stackConfig.RegistryCredentials, manager.awsConfig)
-			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
+			fileContent, err = yml.AddCredentialsAsEnvForSpecificService("updater")
+			if err != nil {
+				return err
+			}
 		}
 		break
 	case EngineTypeKubernetes:
@@ -507,6 +510,7 @@ func (manager *StackManager) DeleteStack(ctx context.Context, stackData client.E
 }
 
 func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData, deleteStack bool) error {
+	var err error
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackData.ID)
 	fileName := "docker-compose.yml"
 	fileContent := stackData.StackFileContent
@@ -515,7 +519,10 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
 		if (len(stackData.RegistryCredentials) > 0 || manager.awsConfig != nil) && stackData.EdgeUpdateID > 0 {
 			yml := yaml.NewDockerComposeYAML(fileContent, stackData.RegistryCredentials, manager.awsConfig)
-			fileContent, _ = yml.AddCredentialsAsEnvForSpecificService("updater")
+			fileContent, err = yml.AddCredentialsAsEnvForSpecificService("updater")
+			if err != nil {
+				return err
+			}
 		}
 		break
 	case EngineTypeKubernetes:
@@ -533,7 +540,7 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	}
 
 	if !deleteStack {
-		err := filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
+		err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
 		if err != nil {
 			return err
 		}
