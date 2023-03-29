@@ -375,6 +375,9 @@ func (service *PollService) processNormalStackCommand(ctx context.Context, comma
 		fileContent := normalStackCommand.StackFileContent
 		err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
 		if err != nil {
+			log.Error().
+				Err(err).
+				Msg("error with remove stack command operation")
 			break
 		}
 
