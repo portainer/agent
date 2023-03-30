@@ -614,20 +614,14 @@ func (manager *StackManager) GetEdgeRegistryCredentials() []agent.RegistryCreden
 	return nil
 }
 
-func (manager *StackManager) DeleteNormalStack(ctx context.Context, stackName, stackFileLocation string) error {
+func (manager *StackManager) DeleteNormalStack(ctx context.Context, stackName string) error {
 	log.Debug().Str("stack_name", stackName).Msg("removing normal stack")
 
-	err := manager.deployer.Remove(ctx, stackName, []string{stackFileLocation}, agent.RemoveOptions{})
+	err := manager.deployer.Remove(ctx, stackName, []string{}, agent.RemoveOptions{})
 	if err != nil {
 		log.Error().Err(err).Msg("unable to remove normal stack")
 		return err
 	}
 
-	// Remove normal stack file folder
-	err = os.RemoveAll(filepath.Dir(stackFileLocation))
-	if err != nil {
-		log.Error().Err(err).Msg("unable to delete Edge stack file")
-		return err
-	}
 	return nil
 }
