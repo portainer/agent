@@ -552,6 +552,13 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 		if err != nil {
 			return err
 		}
+
+		if stackData.DotEnvFileContent != "" {
+			err = filesystem.WriteFile(folder, ".env", []byte(stackData.DotEnvFileContent), 0644)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	// The stack information will be shared with edge agent registry server (request by docker credential helper)
