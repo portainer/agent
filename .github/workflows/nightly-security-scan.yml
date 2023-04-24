@@ -104,10 +104,10 @@ jobs:
     steps:
       - name: display the results of Go and image scan
         run: |
-          echo ${{ matrix.go.status }}
-          echo ${{ matrix.image.status }}
-          echo ${{ matrix.go.summary }}
-          echo ${{ matrix.image.summary }}
+          echo "${{ matrix.go.status }}"
+          echo "${{ matrix.image.status }}"
+          echo "${{ matrix.go.summary }}"
+          echo "${{ matrix.image.summary }}"
 
       - name: send message to Slack
         if: >- 
