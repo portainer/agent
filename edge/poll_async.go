@@ -207,6 +207,8 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 			err = service.processImageCommand(command)
 		case "volume":
 			err = service.processVolumeCommand(command)
+		case "normalStack":
+			err = service.processNormalStackCommand(ctx, command)
 		default:
 			err = newOperationError(command.Type, "n/a", errors.New("command type not supported"))
 		}
@@ -355,4 +357,19 @@ func (service *PollService) processVolumeCommand(command client.AsyncCommand) er
 	}
 
 	return newOperationError("volume", command.Operation, err)
+}
+
+func (service *PollService) processNormalStackCommand(ctx context.Context, command client.AsyncCommand) error {
+	var normalStackCommand client.NormalStackCommandData
+	err := mapstructure.Decode(command.Value, &normalStackCommand)
+	if err != nil {
+		return newOperationError("normalStack", "n/a", err)
+	}
+
+	switch normalStackCommand.StackOperation {
+	case "remove":
+		err = service.edgeManager.stackManager.DeleteNormalStack(ctx, normalStackCommand.Name)
+	}
+
+	return newOperationError("normalStack", command.Operation, err)
 }

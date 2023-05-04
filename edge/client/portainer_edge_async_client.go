@@ -168,6 +168,12 @@ type VolumeCommandData struct {
 	VolumeOperation string
 }
 
+type NormalStackCommandData struct {
+	Name             string
+	StackFileContent string
+	StackOperation   string
+}
+
 func (client *PortainerAsyncClient) GetEnvironmentID() (portainer.EndpointID, error) {
 	return 0, errors.New("GetEnvironmentID is not available in async mode")
 }
