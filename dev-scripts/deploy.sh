@@ -223,8 +223,6 @@ function deploy_swarm() {
     cmd+=(--mount "type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock")
     cmd+=(--mount "type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes")
     cmd+=(--mount "type=bind,src=//,dst=/host")
-    cmd+=(--publish "target=9001,published=9001")
-    cmd+=(--publish "mode=host,published=80,target=80")
     cmd+=("${IMAGE_NAME}")
     
     "${cmd[@]}"
@@ -293,13 +291,13 @@ function parse_deploy_params() {
 }
 
 function usage_deploy() {
-    cmd="./dev.sh"
+    local cmdPath="./dev.sh"
     cat <<EOF
-Usage: $cmd deploy [-h] [-v|--verbose] [--local] [-s|--swarm]
+Usage: $cmdPath deploy [-h] [-v|--verbose] [--local] [-s|--swarm]
         [-c|--compile] [-b|--build] [-e|--edge] [--edge-id EDGE_ID] [--edge-key EDGE_KEY]
         [--ip SWARM_MANAGER_IP] [--ip SWARM_NODE_IP1] [--ip SWARM_NODE_IP2]
 
-This script is intended to help with deploying of dev enviroment
+This script is intended to help with deploying of dev environment
 
 Available flags:
 -h, --help                              Print this help and exit
