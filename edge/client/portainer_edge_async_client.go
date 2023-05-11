@@ -311,14 +311,15 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		return nil, err
 	}
 
-	if doSnapshot {
-		if asyncResponse.NeedFullSnapshot && !client.snapshotRetried {
-			log.Debug().Msg("retrying with full snapshot")
-			client.snapshotRetried = true
+	if doSnapshot && asyncResponse.NeedFullSnapshot && !client.snapshotRetried {
+		log.Debug().Msg("retrying with full snapshot")
+		client.snapshotRetried = true
 
-			return client.GetEnvironmentStatus("snapshot")
+		_, err = client.GetEnvironmentStatus("snapshot")
+		if err != nil {
+			log.Error().Err(err).Msg("unable to resend the full snapshot")
 		}
-
+	} else if doSnapshot {
 		client.snapshotRetried = false
 
 		client.lastSnapshot.Docker = currentSnapshot.Docker
@@ -409,7 +410,7 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 		Int(agent.HTTPResponseAgentPlatform, (int(client.agentPlatformIdentifier))).
 		Str(agent.HTTPResponseAgentHeaderName, agent.Version).
 		Str(agent.HTTPResponseAgentTimeZone, time.Local.String()).
-		Msg("Sending async request with headers")
+		Msg("sending async request with headers")
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
