@@ -116,12 +116,15 @@ func (clusterProxy *ClusterProxy) pingAgent(request *http.Request, member *agent
 		return err
 	}
 
-	response, err := clusterProxy.pingClient.Do(pingRequest)
+	resp, err := clusterProxy.pingClient.Do(pingRequest)
 	if err != nil {
 		return err
 	}
 
-	if response.StatusCode != http.StatusNoContent {
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
 		return errors.New("agent ping request failed")
 	}
 
