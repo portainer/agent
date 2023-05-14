@@ -142,7 +142,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Debug().Int("response_code", resp.StatusCode).Msg("poll request failure]")
+		log.Debug().Int("response_code", resp.StatusCode).Msg("poll request failure")
 
 		logError(resp)
 
