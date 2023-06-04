@@ -4,6 +4,7 @@ import (
 	"time"
 
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/edge"
 
 	"github.com/portainer/agent"
 )
@@ -11,7 +12,7 @@ import (
 type PortainerClient interface {
 	GetEnvironmentID() (portainer.EndpointID, error)
 	GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error)
-	GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error)
+	GetEdgeStackConfig(edgeStackID int) (*edge.StackPayload, error)
 	SetEdgeStackStatus(edgeStackID int, edgeStackStatus portainer.EdgeStackStatusType, error string) error
 	DeleteEdgeStackStatus(edgeStackID int) error
 	SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error

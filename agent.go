@@ -26,13 +26,6 @@ type (
 		EdgeKeySet bool
 	}
 
-	// RegistryCredentials holds the credentials for a Docker registry.
-	RegistryCredentials struct {
-		ServerURL string
-		Username  string
-		Secret    string
-	}
-
 	// ContainerPlatform represent the platform on which the agent is running (Docker, Kubernetes)
 	ContainerPlatform int
 
@@ -47,20 +40,6 @@ type (
 		EngineStatus DockerEngineStatus
 		Leader       bool
 		NodeRole     DockerNodeRole
-	}
-
-	// EdgeStackConfig represent an Edge stack config
-	EdgeStackConfig struct {
-		Name                string
-		FileContent         string
-		DotEnvFileContent   string
-		RegistryCredentials []RegistryCredentials
-		// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
-		Namespace    string
-		PrePullImage bool
-		RePullImage  bool
-		RetryDeploy  bool
-		EdgeUpdateID int
 	}
 
 	// EdgeJobStatus represents an Edge job status

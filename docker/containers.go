@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
 
@@ -15,13 +16,13 @@ func ContainerStart(name string, opts types.ContainerStartOptions) error {
 
 func ContainerRestart(name string) error {
 	return withCli(func(cli *client.Client) error {
-		return cli.ContainerRestart(context.Background(), name, nil)
+		return cli.ContainerRestart(context.Background(), name, container.StopOptions{})
 	})
 }
 
 func ContainerStop(name string) error {
 	return withCli(func(cli *client.Client) error {
-		return cli.ContainerStop(context.Background(), name, nil)
+		return cli.ContainerStop(context.Background(), name, container.StopOptions{})
 	})
 }
 

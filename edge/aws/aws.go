@@ -9,12 +9,13 @@ import (
 	iamra "github.com/aws/rolesanywhere-credential-helper/aws_signing_helper"
 	"github.com/awslabs/amazon-ecr-credential-helper/ecr-login/api"
 	"github.com/portainer/agent"
+	"github.com/portainer/portainer/api/edge"
 	"github.com/rs/zerolog/log"
 )
 
 var ErrNoCredentials = errors.New("No credentials found")
 
-func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *agent.AWSConfig) (*agent.RegistryCredentials, error) {
+func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *agent.AWSConfig) (*edge.RegistryCredentials, error) {
 	if serverURL == "" || awsConfig == nil {
 		log.Info().
 			Str("server_url", serverURL).
@@ -50,7 +51,7 @@ func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *
 		return nil, ErrNoCredentials
 	}
 
-	return &agent.RegistryCredentials{
+	return &edge.RegistryCredentials{
 		ServerURL: serverURL,
 		Username:  creds.Username,
 		Secret:    creds.Password,

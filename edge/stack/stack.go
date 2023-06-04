@@ -15,6 +15,7 @@ import (
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/nomad"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/edge"
 
 	"github.com/rs/zerolog/log"
 )
@@ -29,7 +30,7 @@ type edgeStack struct {
 	FileName            string
 	Status              edgeStackStatus
 	Action              edgeStackAction
-	RegistryCredentials []agent.RegistryCredentials
+	RegistryCredentials []edge.RegistryCredentials
 	Namespace           string
 	PrePullImage        bool
 	RePullImage         bool
@@ -509,19 +510,19 @@ func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Dep
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)
 }
 
-func (manager *StackManager) DeployStack(ctx context.Context, stackData client.EdgeStackData) error {
+func (manager *StackManager) DeployStack(ctx context.Context, stackData edge.StackPayload) error {
 	return manager.buildDeployerParams(stackData, false)
 }
 
-func (manager *StackManager) DeleteStack(ctx context.Context, stackData client.EdgeStackData) error {
+func (manager *StackManager) DeleteStack(ctx context.Context, stackData edge.StackPayload) error {
 	return manager.buildDeployerParams(stackData, true)
 }
 
-func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData, deleteStack bool) error {
+func (manager *StackManager) buildDeployerParams(stackData edge.StackPayload, deleteStack bool) error {
 	var err error
 	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackData.ID)
 	fileName := "docker-compose.yml"
-	fileContent := stackData.StackFileContent
+	fileContent := stackData.FileContent
 
 	switch manager.engineType {
 	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
@@ -619,7 +620,7 @@ func (manager *StackManager) buildDeployerParams(stackData client.EdgeStackData,
 	return nil
 }
 
-func (manager *StackManager) GetEdgeRegistryCredentials() []agent.RegistryCredentials {
+func (manager *StackManager) GetEdgeRegistryCredentials() []edge.RegistryCredentials {
 	for _, stack := range manager.stacks {
 		if stack.Status == StatusDeploying {
 			return stack.RegistryCredentials

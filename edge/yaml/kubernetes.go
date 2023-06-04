@@ -9,7 +9,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
-	"github.com/portainer/agent"
+	"github.com/portainer/portainer/api/edge"
 	"github.com/rs/zerolog/log"
 	v1 "k8s.io/api/apps/v1"
 	v1Types "k8s.io/api/core/v1"
@@ -21,18 +21,18 @@ import (
 
 type KubernetesYaml struct {
 	FileContent         string
-	RegistryCredentials []agent.RegistryCredentials
+	RegistryCredentials []edge.RegistryCredentials
 }
 
-func NewKubernetesYAML(fileContent string, credentials []agent.RegistryCredentials) *KubernetesYaml {
+func NewKubernetesYAML(fileContent string, credentials []edge.RegistryCredentials) *KubernetesYaml {
 	return &KubernetesYaml{
 		FileContent:         fileContent,
 		RegistryCredentials: credentials,
 	}
 }
 
-func (y *KubernetesYaml) getRegistryCredentialsByImageURL(imageURL string) []agent.RegistryCredentials {
-	credentials := []agent.RegistryCredentials{}
+func (y *KubernetesYaml) getRegistryCredentialsByImageURL(imageURL string) []edge.RegistryCredentials {
+	credentials := []edge.RegistryCredentials{}
 	for _, r := range y.RegistryCredentials {
 		domain, err := getRegistryDomain(imageURL)
 		if err != nil {
@@ -45,7 +45,7 @@ func (y *KubernetesYaml) getRegistryCredentialsByImageURL(imageURL string) []age
 	return credentials
 }
 
-func (y *KubernetesYaml) generateImagePullSecrets(namespace string, secretName string, cred agent.RegistryCredentials) v1Types.Secret {
+func (y *KubernetesYaml) generateImagePullSecrets(namespace string, secretName string, cred edge.RegistryCredentials) v1Types.Secret {
 	credentials := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", cred.Username, cred.Secret)))
 	registryURL := cred.ServerURL
 	if !strings.HasPrefix(cred.ServerURL, "http") {

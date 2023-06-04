@@ -9,6 +9,7 @@ import (
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge/client"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/edge"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
@@ -227,7 +228,7 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 }
 
 func (service *PollService) processStackCommand(ctx context.Context, command client.AsyncCommand) error {
-	var stackData client.EdgeStackData
+	var stackData edge.StackPayload
 	err := mapstructure.Decode(command.Value, &stackData)
 	if err != nil {
 		return newOperationError("stack", "n/a", err)
