@@ -34,6 +34,7 @@ func (service *DockerComposeStackService) Deploy(ctx context.Context, name strin
 		Options: libstack.Options{
 			ProjectName: name,
 			WorkingDir:  options.WorkingDir,
+			Env:         options.Env,
 		},
 	})
 }

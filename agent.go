@@ -202,6 +202,7 @@ type (
 	DeployOptions struct {
 		DeployerBaseOptions
 		Prune bool
+		Env   []string
 	}
 
 	RemoveOptions struct {

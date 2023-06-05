@@ -210,7 +210,7 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	stack.PrePullImage = stackPayload.PrePullImage
 	stack.RePullImage = stackPayload.RePullImage
 	stack.RetryDeploy = stackPayload.RetryDeploy
-
+	stack.EnvVars = stackPayload.EnvVars
 	stack.SupportRelativePath = stackPayload.SupportRelativePath
 	stack.FilesystemPath = stackPayload.FilesystemPath
 	stack.FileName = stackPayload.EntryFileName
@@ -461,12 +461,18 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	if stack.DeployCount <= RetryInterval || stack.DeployCount%RetryInterval == 0 {
 		stack.Status = StatusDeploying
 
+		envVars := make([]string, len(stack.EnvVars))
+		for i, env := range stack.EnvVars {
+			envVars[i] = fmt.Sprintf("%s=%s", env.Name, env.Value)
+		}
+
 		err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
 			agent.DeployOptions{
 				DeployerBaseOptions: agent.DeployerBaseOptions{
 					Namespace:  stack.Namespace,
 					WorkingDir: stack.FileFolder,
 				},
+				Env: envVars,
 			},
 		)
 
