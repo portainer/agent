@@ -21,11 +21,12 @@ require (
 	github.com/jpillora/chisel v1.7.7
 	github.com/koding/websocketproxy v0.0.0-20181220232114-7ed82d81a28c
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/opencontainers/image-spec v1.1.0-rc2
 	github.com/pkg/errors v0.9.1
 	github.com/portainer/docker-compose-wrapper v0.0.0-20230301083819-3dbc6abf1ce7
 	github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a
 	github.com/portainer/libhttp v0.0.0-20230615144939-a999f666d9a9
-	github.com/portainer/portainer/api v0.0.0-20230613062002-79822e1d3bb0
+	github.com/portainer/portainer/api v0.0.0-20230619010815-d5083b045d73
 	github.com/rs/zerolog v1.29.0
 	github.com/wI2L/jsondiff v0.2.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
@@ -66,6 +67,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
+	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/btree v1.0.1 // indirect
@@ -99,7 +101,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/portainer/portainer/pkg/featureflags v0.0.0-20230209201943-d73622ed9cd4 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect

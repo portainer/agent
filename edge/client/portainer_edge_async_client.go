@@ -19,7 +19,6 @@ import (
 	"github.com/portainer/agent/kubernetes"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
-
 	"github.com/rs/zerolog/log"
 	"github.com/wI2L/jsondiff"
 )

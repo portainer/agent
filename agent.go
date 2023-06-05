@@ -369,6 +369,12 @@ const (
 	DefaultAWSClientCertPath = "/certs/aws-client.crt"
 	// DefaultAWSClientKeyPath is the default path to the AWS client key file
 	DefaultAWSClientKeyPath = "/certs/aws-client.key"
+	// DefaultUnpackerImage is the default name of unpacker image
+	DefaultUnpackerImage = "portainer/compose-unpacker:latest"
+	// ComposeUnpackerImageEnvVar is the default environment variable name of the unpacker image
+	ComposeUnpackerImageEnvVar = "COMPOSE_UNPACKER_IMAGE"
+	// ComposePathPrefix is the folder name of compose path in unpacker
+	ComposePathPrefix = "portainer-compose-unpacker"
 )
 
 const (

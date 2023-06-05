@@ -41,7 +41,6 @@ type StackStatus struct {
 	ID               int
 	Version          int
 	Name             string // used in async mode
-	FileContent      string // used in async mode
 	CommandOperation string // used in async mode
 }
 
