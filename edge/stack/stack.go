@@ -23,21 +23,16 @@ import (
 type edgeStackID int
 
 type edgeStack struct {
-	ID                  edgeStackID
-	Name                string
-	Version             int
-	FileFolder          string
-	FileName            string
-	Status              edgeStackStatus
-	Action              edgeStackAction
-	RegistryCredentials []edge.RegistryCredentials
-	Namespace           string
-	PrePullImage        bool
-	RePullImage         bool
-	PullCount           int
-	PullFinished        bool
-	RetryDeploy         bool
-	DeployCount         int
+	edge.StackPayload
+
+	FileFolder string
+	FileName   string
+	Status     edgeStackStatus
+	Action     edgeStackAction
+
+	PullCount    int
+	PullFinished bool
+	DeployCount  int
 }
 
 type edgeStackStatus int
@@ -140,14 +135,16 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 		log.Debug().Int("stack_identifier", stackID).Msg("marking stack for deployment")
 
 		stack = &edgeStack{
-			ID:      edgeStackID(stackID),
-			Action:  actionDeploy,
-			Status:  StatusPending,
-			Version: version,
+			StackPayload: edge.StackPayload{
+				Version: version,
+				ID:      stackID,
+			},
+			Action: actionDeploy,
+			Status: StatusPending,
 		}
 	}
 
-	stackConfig, err := manager.portainerClient.GetEdgeStackConfig(int(stack.ID))
+	stackConfig, err := manager.portainerClient.GetEdgeStackConfig(stackID)
 	if err != nil {
 		return err
 	}
@@ -202,7 +199,7 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	stack.FileFolder = folder
 	stack.FileName = fileName
 
-	manager.stacks[stack.ID] = stack
+	manager.stacks[edgeStackID(stackID)] = stack
 
 	log.Debug().
 		Int("stack_identifier", int(stack.ID)).
@@ -470,7 +467,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	}
 
 	manager.mu.Lock()
-	delete(manager.stacks, stack.ID)
+	delete(manager.stacks, edgeStackID(stack.ID))
 	manager.mu.Unlock()
 }
 
@@ -586,14 +583,18 @@ func (manager *StackManager) buildDeployerParams(stackData edge.StackPayload, de
 			log.Debug().Int("stack_id", stackData.ID).Msg("marking stack for removal")
 
 			stack = &edgeStack{
-				ID:     edgeStackID(stackData.ID),
+				StackPayload: edge.StackPayload{
+					ID: stackData.ID,
+				},
 				Action: actionDelete,
 			}
 		} else {
 			log.Debug().Int("stack_id", stackData.ID).Msg("marking stack for deployment")
 
 			stack = &edgeStack{
-				ID:     edgeStackID(stackData.ID),
+				StackPayload: edge.StackPayload{
+					ID: stackData.ID,
+				},
 				Action: actionDeploy,
 			}
 		}
@@ -615,7 +616,7 @@ func (manager *StackManager) buildDeployerParams(stackData edge.StackPayload, de
 	stack.FileFolder = folder
 	stack.FileName = fileName
 
-	manager.stacks[stack.ID] = stack
+	manager.stacks[edgeStackID(stack.ID)] = stack
 
 	return nil
 }
