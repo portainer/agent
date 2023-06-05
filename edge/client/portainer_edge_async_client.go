@@ -125,6 +125,7 @@ type EdgeStackData struct {
 	Version             int
 	Name                string
 	StackFileContent    string
+	DotEnvFileContent   string
 	RegistryCredentials []agent.RegistryCredentials
 	// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
 	Namespace    string

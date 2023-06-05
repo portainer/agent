@@ -193,6 +193,7 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 	return &agent.EdgeStackConfig{
 		Name:                data.Name,
 		FileContent:         data.StackFileContent,
+		DotEnvFileContent:   data.DotEnvFileContent,
 		RegistryCredentials: data.RegistryCredentials,
 		Namespace:           data.Namespace,
 		PrePullImage:        data.PrePullImage,
