@@ -1,7 +1,6 @@
 package filesystem
 
 import (
-	"bufio"
 	"errors"
 	"io"
 	"mime/multipart"
@@ -122,58 +121,25 @@ func WriteFile(folder, filename string, file []byte, mode uint32) error {
 
 // WriteFile takes a path, filename, a file and the mode that should be associated
 // to the file and writes it to disk
-func WriteBigFile(folder, filename string, fileheader *multipart.FileHeader, mode uint32) error {
-	srcfile, err := fileheader.Open()
+func WriteBigFile(folder, filename string, srcfile multipart.File, mode uint32) error {
+	err := os.MkdirAll(folder, 0755)
 	if err != nil {
 		return err
 	}
-	defer srcfile.Close()
 
-	err = os.MkdirAll(folder, 0755)
-	if err != nil {
-		return err
-	}
 	filePath := path.Join(folder, filename)
 
-	dstfile, err2 := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, os.ModePerm)
-	if err2 != nil {
-		return err2
+	dstfile, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	if err != nil {
+		return err
 	}
 	defer dstfile.Close()
 
 	const chunkSize int64 = 32 << 20 // 32 MB
 	buf := make([]byte, chunkSize)
 
-	reader := bufio.NewReader(srcfile)
-	writer := bufio.NewWriter(dstfile)
-
-	var n int
-	for {
-		n, err = reader.Read(buf)
-		if err != nil && err != io.EOF {
-			return err
-		}
-
-		if int64(n) < chunkSize {
-			if n > 0 {
-				_, err = writer.Write(buf[:n])
-				if err != nil && err != io.EOF {
-					return err
-				}
-			}
-
-			break
-		} else {
-			_, err = writer.Write(buf)
-			if err != nil && err != io.EOF {
-				return err
-			}
-		}
-	}
-
-	writer.Flush()
-
-	return nil
+	_, err = io.CopyBuffer(dstfile, srcfile, buf)
+	return err
 }
 
 // BuildPathToFileInsideVolume will take a volumeID and path, and build a full path on the host
