@@ -7,13 +7,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge/aws"
+	"github.com/portainer/portainer/api/edge"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
 
 type DockerComposeYaml struct {
 	FileContent         string
-	RegistryCredentials []agent.RegistryCredentials
+	RegistryCredentials []edge.RegistryCredentials
 	awsConfig           *agent.AWSConfig
 }
 
@@ -30,7 +31,7 @@ type Service struct {
 	Volumes     []string `yaml:"volumes,omitempty"`
 }
 
-func NewDockerComposeYAML(fileContent string, credentials []agent.RegistryCredentials, config *agent.AWSConfig) *DockerComposeYaml {
+func NewDockerComposeYAML(fileContent string, credentials []edge.RegistryCredentials, config *agent.AWSConfig) *DockerComposeYaml {
 	return &DockerComposeYaml{
 		FileContent:         fileContent,
 		RegistryCredentials: credentials,

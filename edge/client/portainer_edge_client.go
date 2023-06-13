@@ -12,6 +12,7 @@ import (
 
 	"github.com/portainer/agent"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/edge"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
@@ -162,7 +163,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 }
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
-func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
+func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*edge.StackPayload, error) {
 	requestURL := fmt.Sprintf("%s/api/endpoints/%d/edge/stacks/%d", client.serverAddress, client.getEndpointIDFn(), edgeStackID)
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
@@ -184,23 +185,13 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*agent.E
 		return nil, errors.New("GetEdgeStackConfig operation failed")
 	}
 
-	var data EdgeStackData
+	var data edge.StackPayload
 	err = json.NewDecoder(resp.Body).Decode(&data)
 	if err != nil {
 		return nil, err
 	}
 
-	return &agent.EdgeStackConfig{
-		Name:                data.Name,
-		FileContent:         data.StackFileContent,
-		DotEnvFileContent:   data.DotEnvFileContent,
-		RegistryCredentials: data.RegistryCredentials,
-		Namespace:           data.Namespace,
-		PrePullImage:        data.PrePullImage,
-		RePullImage:         data.RePullImage,
-		RetryDeploy:         data.RetryDeploy,
-		EdgeUpdateID:        data.EdgeUpdateID,
-	}, nil
+	return &data, nil
 }
 
 type setEdgeStackStatusPayload struct {

@@ -18,6 +18,7 @@ import (
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/kubernetes"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/edge"
 
 	"github.com/rs/zerolog/log"
 	"github.com/wI2L/jsondiff"
@@ -118,21 +119,6 @@ type AsyncCommand struct {
 	Operation  string               `json:"op"`
 	Path       string               `json:"path"`
 	Value      interface{}          `json:"value"`
-}
-
-type EdgeStackData struct {
-	ID                  int
-	Version             int
-	Name                string
-	StackFileContent    string
-	DotEnvFileContent   string
-	RegistryCredentials []agent.RegistryCredentials
-	// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
-	Namespace    string
-	PrePullImage bool
-	RePullImage  bool
-	RetryDeploy  bool
-	EdgeUpdateID int
 }
 
 type EdgeJobData struct {
@@ -503,7 +489,7 @@ func (client *PortainerAsyncClient) DeleteEdgeStackStatus(edgeStackID int) error
 }
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
-func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*agent.EdgeStackConfig, error) {
+func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*edge.StackPayload, error) {
 	// Async mode MUST NOT make any extra requests to Portainer, all the
 	// information exchange needs to happen via the async polling loop, which
 	// uses /endpoints/edge/async. This is a strict requirement.
