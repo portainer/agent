@@ -273,8 +273,8 @@ github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a h1:B0z3skIMT+O
 github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a/go.mod h1:n54EEIq+MM0NNtqLeCby8ljL+l275VpolXO0ibHegLE=
 github.com/portainer/libhttp v0.0.0-20230206214615-dabd58de9f44 h1:4LYprPd3TsYjHk7CaTmCov1ceG6VKJsL40fJIWiRxpw=
 github.com/portainer/libhttp v0.0.0-20230206214615-dabd58de9f44/go.mod h1:H49JLiywwLt2rrJVroafEWy8fIs0i7mThAThK40sbb8=
-github.com/portainer/portainer/api v0.0.0-20230612105304-29efae5f1f87 h1:b/mhEeSFG/qEUMSlYOBi/2eJu1pqee/a1eGiVgOqWS8=
-github.com/portainer/portainer/api v0.0.0-20230612105304-29efae5f1f87/go.mod h1:EwRloFNr6VoOyt3WlKfze1Lr9Ew939OVHk+ttCWSic4=
+github.com/portainer/portainer/api v0.0.0-20230613062002-79822e1d3bb0 h1:jX1abIKuXaH3LANbJZKbzMG7p+qLo7pj4I6eabeMagM=
+github.com/portainer/portainer/api v0.0.0-20230613062002-79822e1d3bb0/go.mod h1:EwRloFNr6VoOyt3WlKfze1Lr9Ew939OVHk+ttCWSic4=
 github.com/portainer/portainer/pkg/featureflags v0.0.0-20230209201943-d73622ed9cd4 h1:gnXwaF0GnFUIlynRq994WFOtqOULTKZks4aSWuonlhA=
 github.com/portainer/portainer/pkg/featureflags v0.0.0-20230209201943-d73622ed9cd4/go.mod h1:T37rFZMg+PhRhT9n/z9cLSj9khJSdwHj3/Ac5PZQgKI=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
