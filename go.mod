@@ -10,7 +10,7 @@ require (
 	github.com/aws/rolesanywhere-credential-helper v1.0.2
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20221118222346-4177265fa425
 	github.com/docker/distribution v2.8.1+incompatible
-	github.com/docker/docker v20.10.16+incompatible
+	github.com/docker/docker v23.0.3+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/golang-lru v0.5.4
@@ -27,7 +27,6 @@ require (
 	github.com/portainer/libhttp v0.0.0-20230206214615-dabd58de9f44
 	github.com/portainer/portainer/api v0.0.0-20230301163340-bc6a667a6b7d
 	github.com/rs/zerolog v1.29.0
-	github.com/stretchr/testify v1.8.1
 	github.com/wI2L/jsondiff v0.2.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v3 v3.0.1
@@ -101,7 +100,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/portainer/portainer/pkg/featureflags v0.0.0-20230209201943-d73622ed9cd4 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
