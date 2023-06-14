@@ -551,7 +551,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		return
 	}
 
-	err = manager.portainerClient.DeleteEdgeStackStatus(int(stack.ID))
+	err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRemove, "")
 	if err != nil {
 		log.Error().Err(err).Msg("unable to delete Edge stack status")
 

@@ -444,21 +444,7 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStac
 		status = client.lastSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)]
 	}
 
-	details := &status.Details
-	switch edgeStackStatus {
-	case portainer.EdgeStackStatusOk:
-		details.Ok = true
-	case portainer.EdgeStackStatusError:
-		details.Error = true
-	case portainer.EdgeStackStatusAcknowledged:
-		*details = portainer.EdgeStackStatusDetails{
-			Acknowledged: true,
-		}
-	case portainer.EdgeStackStatusRemove:
-		details.Remove = true
-	case portainer.EdgeStackStatusImagesPulled:
-		details.ImagesPulled = true
-	}
+	status.Type = edgeStackStatus
 
 	status.EndpointID = client.getEndpointIDFn()
 	status.Error = err
