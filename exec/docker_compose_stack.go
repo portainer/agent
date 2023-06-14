@@ -40,9 +40,11 @@ func (service *DockerComposeStackService) Deploy(ctx context.Context, name strin
 }
 
 // Pull executes the docker pull command.
-func (service *DockerComposeStackService) Pull(ctx context.Context, name string, filePaths []string) error {
+func (service *DockerComposeStackService) Pull(ctx context.Context, name string, filePaths []string, options agent.PullOptions) error {
 	return service.deployer.Pull(ctx, filePaths, libstack.Options{
 		ProjectName: name,
+		WorkingDir:  options.WorkingDir,
+		Env:         options.Env,
 	})
 }
 
@@ -55,5 +57,8 @@ func (service *DockerComposeStackService) Remove(ctx context.Context, name strin
 
 // Validate executes docker config command to validate file format
 func (service *DockerComposeStackService) Validate(ctx context.Context, name string, filePaths []string, options agent.ValidateOptions) error {
-	return service.deployer.Validate(ctx, filePaths, libstack.Options{})
+	return service.deployer.Validate(ctx, filePaths, libstack.Options{
+		WorkingDir: options.WorkingDir,
+		Env:        options.Env,
+	})
 }

@@ -122,7 +122,7 @@ func (d *Deployer) Deploy(ctx context.Context, name string, filePaths []string, 
 }
 
 // Pull is a dummy method for Nomad
-func (d *Deployer) Pull(ctx context.Context, name string, filePaths []string) error {
+func (d *Deployer) Pull(ctx context.Context, name string, filePaths []string, options agent.PullOptions) error {
 	return nil
 }
 

@@ -65,13 +65,16 @@ func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string,
 }
 
 // Pull is a dummy method for Swarm
-func (service *DockerSwarmStackService) Pull(ctx context.Context, name string, filePaths []string) error {
+func (service *DockerSwarmStackService) Pull(ctx context.Context, name string, filePaths []string, options agent.PullOptions) error {
 	return nil
 }
 
 // Validate uses compose to validate the stack files
 func (service *DockerSwarmStackService) Validate(ctx context.Context, name string, filePaths []string, options agent.ValidateOptions) error {
-	return service.composeDeployer.Validate(ctx, filePaths, libstack.Options{})
+	return service.composeDeployer.Validate(ctx, filePaths, libstack.Options{
+		WorkingDir: options.WorkingDir,
+		Env:        options.Env,
+	})
 }
 
 // Remove executes the docker stack rm command.

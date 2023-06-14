@@ -72,7 +72,7 @@ func (deployer *KubernetesDeployer) Remove(ctx context.Context, name string, fil
 }
 
 // Pull is a dummy method for Kube
-func (deployer *KubernetesDeployer) Pull(ctx context.Context, name string, filePaths []string) error {
+func (deployer *KubernetesDeployer) Pull(ctx context.Context, name string, filePaths []string, options agent.PullOptions) error {
 	return nil
 }
 

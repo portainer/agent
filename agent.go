@@ -189,7 +189,7 @@ type (
 	Deployer interface {
 		Deploy(ctx context.Context, name string, filePaths []string, options DeployOptions) error
 		Remove(ctx context.Context, name string, filePaths []string, options RemoveOptions) error
-		Pull(ctx context.Context, name string, filePaths []string) error
+		Pull(ctx context.Context, name string, filePaths []string, options PullOptions) error
 		Validate(ctx context.Context, name string, filePaths []string, options ValidateOptions) error
 	}
 
@@ -211,6 +211,12 @@ type (
 
 	ValidateOptions struct {
 		DeployerBaseOptions
+		Env []string
+	}
+
+	PullOptions struct {
+		DeployerBaseOptions
+		Env []string
 	}
 
 	// KubernetesInfoService is used to retrieve information from a Kubernetes environment.

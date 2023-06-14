@@ -321,6 +321,7 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 
 	switch stack.Action {
 	case actionDeploy, actionUpdate:
+
 		// validate the stack file and failfast if the stack format is invalid
 		// each deployer has its own Validate function
 		err := manager.validateStackFile(ctx, stack, stackName, stackFileLocation)
@@ -379,11 +380,15 @@ func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeS
 		Str("namespace", stack.Namespace).
 		Msg("validating stack")
 
+	envVars := buildEnvVarsForDeployer(stack.EnvVars)
+
 	err := manager.deployer.Validate(ctx, stackName, []string{stackFileLocation},
 		agent.ValidateOptions{
 			DeployerBaseOptions: agent.DeployerBaseOptions{
-				Namespace: stack.Namespace,
+				Namespace:  stack.Namespace,
+				WorkingDir: stack.FileFolder,
 			},
+			Env: envVars,
 		},
 	)
 	if err != nil {
@@ -412,7 +417,14 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 		if stack.PullCount <= RetryInterval || stack.PullCount%RetryInterval == 0 {
 			stack.Status = StatusDeploying
 
-			err := manager.deployer.Pull(ctx, stackName, []string{stackFileLocation})
+			envVars := buildEnvVarsForDeployer(stack.EnvVars)
+
+			err := manager.deployer.Pull(ctx, stackName, []string{stackFileLocation}, agent.PullOptions{
+				DeployerBaseOptions: agent.DeployerBaseOptions{
+					WorkingDir: stack.FileFolder,
+				},
+				Env: envVars,
+			})
 			if err == nil {
 				stack.PullFinished = true
 
@@ -461,10 +473,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	if stack.DeployCount <= RetryInterval || stack.DeployCount%RetryInterval == 0 {
 		stack.Status = StatusDeploying
 
-		envVars := make([]string, len(stack.EnvVars))
-		for i, env := range stack.EnvVars {
-			envVars[i] = fmt.Sprintf("%s=%s", env.Name, env.Value)
-		}
+		envVars := buildEnvVarsForDeployer(stack.EnvVars)
 
 		err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
 			agent.DeployOptions{
@@ -501,6 +510,14 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 			}
 		}
 	}
+}
+
+func buildEnvVarsForDeployer(envVars []portainer.Pair) []string {
+	arr := make([]string, len(envVars))
+	for i, env := range envVars {
+		arr[i] = fmt.Sprintf("%s=%s", env.Name, env.Value)
+	}
+	return arr
 }
 
 func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
