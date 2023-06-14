@@ -42,7 +42,7 @@ func (handler *Handler) browsePut(rw http.ResponseWriter, r *http.Request) *http
 
 	file, fileheader, err := r.FormFile("file")
 	if err != nil {
-		httperror.BadRequest("Invalid request payload", err)
+		return httperror.BadRequest("Invalid request payload", err)
 	}
 	defer file.Close()
 
