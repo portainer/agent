@@ -475,9 +475,14 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	if stack.DeployCount <= RetryInterval || stack.DeployCount%RetryInterval == 0 {
 		stack.Status = StatusDeploying
 
+		err := manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusDeploymentReceived, "")
+		if err != nil {
+			log.Error().Err(err).Msg("unable to update Edge stack status")
+		}
+
 		envVars := buildEnvVarsForDeployer(stack.EnvVars)
 
-		err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
+		err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
 			agent.DeployOptions{
 				DeployerBaseOptions: agent.DeployerBaseOptions{
 					Namespace:  stack.Namespace,
@@ -493,7 +498,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 			log.Debug().Int("stack_identifier", int(stack.ID)).Int("stack_version", stack.Version).Msg("stack deployed")
 
-			err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusOk, "")
+			err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusDeploying, "")
 			if err != nil {
 				log.Error().Err(err).Msg("unable to update Edge stack status")
 			}
@@ -525,7 +530,14 @@ func buildEnvVarsForDeployer(envVars []portainer.Pair) []string {
 func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
 	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("removing stack")
 
-	err := manager.deployer.Remove(
+	err := manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRemoving, "")
+	if err != nil {
+		log.Error().Err(err).Msg("unable to delete Edge stack status")
+
+		return
+	}
+
+	err = manager.deployer.Remove(
 		ctx,
 		stackName,
 		[]string{stackFileLocation},
@@ -551,7 +563,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		return
 	}
 
-	err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRemove, "")
+	err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRemoved, "")
 	if err != nil {
 		log.Error().Err(err).Msg("unable to delete Edge stack status")
 

@@ -231,35 +231,53 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 	var stackData edge.StackPayload
 	err := mapstructure.Decode(command.Value, &stackData)
 	if err != nil {
-		return newOperationError("stack", "n/a", err)
+		return newOperationError("stack", command.Operation, err)
 	}
 
-	responseStatus := portainer.EdgeStackStatusAcknowledged
-	errorMessage := ""
+	err = service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusAcknowledged, "")
+	if err != nil {
+		return newOperationError("stack", command.Operation, err)
+	}
 
 	switch command.Operation {
 	case "add", "replace":
+		err = service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusDeploymentReceived, "")
+		if err != nil {
+			return newOperationError("stack", command.Operation, err)
+		}
+
 		err = service.edgeStackManager.DeployStack(ctx, stackData)
 
 		if err != nil {
-			responseStatus = portainer.EdgeStackStatusError
-			errorMessage = err.Error()
+			return service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusError, err.Error())
+		}
+
+		err = service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusDeploying, "")
+		if err != nil {
+			return newOperationError("stack", command.Operation, err)
 		}
 
 	case "remove":
-		responseStatus = portainer.EdgeStackStatusRemove
+		err = service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusRemoving, "")
+		if err != nil {
+			return newOperationError("stack", command.Operation, err)
+		}
 
 		err = service.edgeStackManager.DeleteStack(ctx, stackData)
 		if err != nil {
-			responseStatus = portainer.EdgeStackStatusError
-			errorMessage = err.Error()
+			return service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusError, err.Error())
+		}
+
+		err = service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusRemoved, "")
+		if err != nil {
+			return newOperationError("stack", command.Operation, err)
 		}
 
 	default:
 		return newOperationError("schedule", command.Operation, errors.New("operation not supported"))
 	}
 
-	return service.portainerClient.SetEdgeStackStatus(stackData.ID, responseStatus, errorMessage)
+	return nil
 }
 
 func (service *PollService) processScheduleCommand(command client.AsyncCommand) error {
