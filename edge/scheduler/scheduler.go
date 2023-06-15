@@ -51,11 +51,9 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 		return manager.removeCronFile()
 	}
 
-	if len(manager.managedSchedules) != len(schedules) {
-		return manager.flushEntries(schedulesMap)
-	}
-
+	collectLogs := false
 	updateRequired := false
+
 	for _, schedule := range schedules {
 		managedSchedule, exists := manager.managedSchedules[schedule.ID]
 		if exists && managedSchedule.Version != schedule.Version {
@@ -65,7 +63,13 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 				Msg("found schedule with new version")
 
 			updateRequired = true
-			break
+		} else if !exists {
+			log.Debug().
+				Int("schedule_id", schedule.ID).
+				Int("version", schedule.Version).
+				Msg("found a new schedule")
+
+			updateRequired = true
 		}
 
 		if schedule.CollectLogs {
@@ -74,13 +78,18 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 				Int("version", schedule.Version).
 				Msg("found schedule with logs to collect")
 
-			updateRequired = true
-			break
+			collectLogs = true
 		}
 	}
 
 	if updateRequired {
-		return manager.flushEntries(schedulesMap)
+		if err := manager.flushEntries(schedulesMap); err != nil {
+			return err
+		}
+	}
+
+	if collectLogs {
+		manager.ProcessScheduleLogsCollection()
 	}
 
 	return nil
@@ -116,6 +125,7 @@ func (manager *CronManager) flushEntries(schedules map[int]agent.Schedule) error
 
 			return err
 		}
+
 		cronEntries = append(cronEntries, cronEntry)
 	}
 
@@ -130,7 +140,6 @@ func (manager *CronManager) flushEntries(schedules map[int]agent.Schedule) error
 
 	manager.cronFileExists = true
 	manager.managedSchedules = schedules
-	manager.ProcessScheduleLogsCollection()
 
 	return nil
 }
@@ -155,8 +164,8 @@ func createCronEntry(schedule *agent.Schedule) (string, error) {
 
 func (manager *CronManager) ProcessScheduleLogsCollection() {
 	logsToCollect := []int{}
-	schedules := manager.managedSchedules
-	for _, schedule := range schedules {
+
+	for _, schedule := range manager.managedSchedules {
 		if schedule.CollectLogs {
 			logsToCollect = append(logsToCollect, schedule.ID)
 			schedule.CollectLogs = false
@@ -167,19 +176,17 @@ func (manager *CronManager) ProcessScheduleLogsCollection() {
 }
 
 func (manager *CronManager) AddSchedule(schedule agent.Schedule) error {
-	schedulesMap := manager.managedSchedules
-	schedulesMap[schedule.ID] = schedule
+	manager.managedSchedules[schedule.ID] = schedule
 
-	return manager.flushEntries(schedulesMap)
+	return manager.flushEntries(manager.managedSchedules)
 }
 
 func (manager *CronManager) RemoveSchedule(schedule agent.Schedule) error {
-	schedulesMap := manager.managedSchedules
-	delete(schedulesMap, schedule.ID)
+	delete(manager.managedSchedules, schedule.ID)
 
-	if len(schedulesMap) == 0 {
+	if len(manager.managedSchedules) == 0 {
 		return manager.removeCronFile()
 	}
 
-	return manager.flushEntries(schedulesMap)
+	return manager.flushEntries(manager.managedSchedules)
 }
