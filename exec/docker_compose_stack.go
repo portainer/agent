@@ -52,6 +52,8 @@ func (service *DockerComposeStackService) Pull(ctx context.Context, name string,
 func (service *DockerComposeStackService) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
 	return service.deployer.Remove(ctx, name, filePaths, libstack.Options{
 		ProjectName: name,
+		WorkingDir:  options.WorkingDir,
+		Env:         options.Env,
 	})
 }
 

@@ -387,8 +387,8 @@ func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeS
 			DeployerBaseOptions: agent.DeployerBaseOptions{
 				Namespace:  stack.Namespace,
 				WorkingDir: stack.FileFolder,
+				Env:        envVars,
 			},
-			Env: envVars,
 		},
 	)
 	if err != nil {
@@ -422,8 +422,8 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 			err := manager.deployer.Pull(ctx, stackName, []string{stackFileLocation}, agent.PullOptions{
 				DeployerBaseOptions: agent.DeployerBaseOptions{
 					WorkingDir: stack.FileFolder,
+					Env:        envVars,
 				},
-				Env: envVars,
 			})
 			if err == nil {
 				stack.PullFinished = true
@@ -480,8 +480,8 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 				DeployerBaseOptions: agent.DeployerBaseOptions{
 					Namespace:  stack.Namespace,
 					WorkingDir: stack.FileFolder,
+					Env:        envVars,
 				},
-				Env: envVars,
 			},
 		)
 
@@ -531,6 +531,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 			DeployerBaseOptions: agent.DeployerBaseOptions{
 				Namespace:  stack.Namespace,
 				WorkingDir: stack.FileFolder,
+				Env:        buildEnvVarsForDeployer(stack.EnvVars),
 			},
 		},
 	)

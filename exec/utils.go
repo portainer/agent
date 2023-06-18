@@ -3,6 +3,7 @@ package exec
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -10,6 +11,7 @@ import (
 type cmdOpts struct {
 	WorkingDir string
 	Input      string
+	Env        []string
 }
 
 func runCommandAndCaptureStdErr(command string, args []string, opts *cmdOpts) ([]byte, error) {
@@ -21,9 +23,16 @@ func runCommandAndCaptureStdErr(command string, args []string, opts *cmdOpts) ([
 		if opts.Input != "" {
 			cmd.Stdin = strings.NewReader(opts.Input)
 		}
+
 		if opts.WorkingDir != "" {
 			cmd.Dir = opts.WorkingDir
 		}
+
+		if opts.Env != nil {
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env, opts.Env...)
+		}
+
 	}
 
 	output, err := cmd.Output()

@@ -197,12 +197,12 @@ type (
 		// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
 		Namespace  string
 		WorkingDir string
+		Env        []string
 	}
 
 	DeployOptions struct {
 		DeployerBaseOptions
 		Prune bool
-		Env   []string
 	}
 
 	RemoveOptions struct {
@@ -211,12 +211,10 @@ type (
 
 	ValidateOptions struct {
 		DeployerBaseOptions
-		Env []string
 	}
 
 	PullOptions struct {
 		DeployerBaseOptions
-		Env []string
 	}
 
 	// KubernetesInfoService is used to retrieve information from a Kubernetes environment.

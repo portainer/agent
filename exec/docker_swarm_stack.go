@@ -59,8 +59,14 @@ func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string,
 		args = append(args, "stack", "deploy", "--with-registry-auth", "--compose-file", stackFilePath, name)
 	}
 
-	stackFolder := path.Dir(stackFilePath)
-	_, err := runCommandAndCaptureStdErr(service.command, args, &cmdOpts{WorkingDir: stackFolder})
+	stackFolder := options.WorkingDir
+	if stackFolder == "" {
+		stackFolder = path.Dir(stackFilePath)
+	}
+	_, err := runCommandAndCaptureStdErr(service.command, args, &cmdOpts{
+		WorkingDir: stackFolder,
+		Env:        options.Env,
+	})
 	return err
 }
 
@@ -81,6 +87,9 @@ func (service *DockerSwarmStackService) Validate(ctx context.Context, name strin
 func (service *DockerSwarmStackService) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
 	args := []string{"stack", "rm", name}
 
-	_, err := runCommandAndCaptureStdErr(service.command, args, nil)
+	_, err := runCommandAndCaptureStdErr(service.command, args, &cmdOpts{
+		WorkingDir: options.WorkingDir,
+		Env:        options.Env,
+	})
 	return err
 }
