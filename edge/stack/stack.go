@@ -323,8 +323,7 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 
 	switch stack.Action {
 	case actionDeploy, actionUpdate:
-
-		// validate the stack file and failfast if the stack format is invalid
+		// validate the stack file and fail-fast if the stack format is invalid
 		// each deployer has its own Validate function
 		err := manager.validateStackFile(ctx, stack, stackName, stackFileLocation)
 		if err != nil {
