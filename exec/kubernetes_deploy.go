@@ -9,6 +9,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/portainer/agent"
+	libstack "github.com/portainer/portainer/pkg/libstack"
+	"github.com/rs/zerolog/log"
 )
 
 // KubernetesDeployer represents a service to deploy resources inside a Kubernetes environment.
@@ -161,4 +163,11 @@ func buildTokenArgs(token string) ([]string, error) {
 		"--insecure-skip-tls-verify",
 	}, nil
 
+}
+
+// Status returns the status of a stack.
+func (service *KubernetesDeployer) Status(ctx context.Context, name string) (libstack.Status, string, error) {
+	log.Warn().Msg("KubernetesDeployer.Status is not implemented")
+
+	return "", "", nil
 }

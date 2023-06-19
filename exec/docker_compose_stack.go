@@ -64,3 +64,8 @@ func (service *DockerComposeStackService) Validate(ctx context.Context, name str
 		Env:        options.Env,
 	})
 }
+
+// Status returns the status of a stack.
+func (service *DockerComposeStackService) Status(ctx context.Context, name string) (libstack.Status, string, error) {
+	return service.deployer.Status(ctx, name)
+}

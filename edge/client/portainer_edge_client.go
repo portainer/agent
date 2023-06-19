@@ -201,6 +201,7 @@ type setEdgeStackStatusPayload struct {
 	Error      string
 	Status     portainer.EdgeStackStatusType
 	EndpointID portainer.EndpointID
+	Time       int64
 }
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
@@ -213,7 +214,15 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 		Error:      error,
 		Status:     edgeStackStatus,
 		EndpointID: client.getEndpointIDFn(),
+		Time:       time.Now().Unix(),
 	}
+
+	log.Debug().
+		Int("edgeStackID", edgeStackID).
+		Int("edgeStackStatus", int(edgeStackStatus)).
+		Int("time check", int(payload.Time)).
+		Str("test", "testing").
+		Msg("SetEdgeStackStatus")
 
 	data, err := json.Marshal(payload)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/portainer/agent"
 	libstack "github.com/portainer/portainer/pkg/libstack"
 	"github.com/portainer/portainer/pkg/libstack/compose"
+	"github.com/rs/zerolog/log"
 )
 
 // DockerSwarmStackService represents a service for managing stacks by using the Docker binary.
@@ -92,4 +93,11 @@ func (service *DockerSwarmStackService) Remove(ctx context.Context, name string,
 		Env:        options.Env,
 	})
 	return err
+}
+
+// Status returns the status of a stack.
+func (service *DockerSwarmStackService) Status(ctx context.Context, name string) (libstack.Status, string, error) {
+	log.Warn().Msg("DockerSwarmStackService.Status is not implemented")
+
+	return "", "", nil
 }

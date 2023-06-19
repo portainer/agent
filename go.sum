@@ -278,8 +278,8 @@ github.com/portainer/portainer/api v0.0.0-20230704065534-304e4085a32c h1:pJWRvXA
 github.com/portainer/portainer/api v0.0.0-20230704065534-304e4085a32c/go.mod h1:gzA6bHYsi8Zpg1724921r+eFlVT+QGhgWADa+MRUF/0=
 github.com/portainer/portainer/pkg/featureflags v0.0.0-20230209201943-d73622ed9cd4 h1:gnXwaF0GnFUIlynRq994WFOtqOULTKZks4aSWuonlhA=
 github.com/portainer/portainer/pkg/featureflags v0.0.0-20230209201943-d73622ed9cd4/go.mod h1:T37rFZMg+PhRhT9n/z9cLSj9khJSdwHj3/Ac5PZQgKI=
-github.com/portainer/portainer/pkg/libstack v0.0.0-20230626042119-89c1d0e33707 h1:SmwWcOqHpbHj+4tZNR9AV4VfLWmbelkaAcWYuMkQ9G8=
-github.com/portainer/portainer/pkg/libstack v0.0.0-20230626042119-89c1d0e33707/go.mod h1:+zCK2UbsH6A3yEGi0yZ45ec5VFRP7svob5Q2lW6LFgk=
+github.com/portainer/portainer/pkg/libstack v0.0.0-20230704065534-cf52e251194e h1:s+7PJ93tu4q70lsCEisSke74qxC7G1Sr1h8Yr02F6yw=
+github.com/portainer/portainer/pkg/libstack v0.0.0-20230704065534-cf52e251194e/go.mod h1:+zCK2UbsH6A3yEGi0yZ45ec5VFRP7svob5Q2lW6LFgk=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_golang v0.9.2/go.mod h1:OsXs2jCmiKlQ1lTBmv21f2mNfw4xf/QclQDMrYNZzcM=
 github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910/go.mod h1:MbSGuTsp3dbXC40dX6PRTWyKYBIrTGTE9sqQNg2J8bo=

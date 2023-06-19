@@ -3,6 +3,8 @@ package agent
 import (
 	"context"
 	"time"
+
+	"github.com/portainer/portainer/pkg/libstack"
 )
 
 type (
@@ -191,6 +193,7 @@ type (
 		Remove(ctx context.Context, name string, filePaths []string, options RemoveOptions) error
 		Pull(ctx context.Context, name string, filePaths []string, options PullOptions) error
 		Validate(ctx context.Context, name string, filePaths []string, options ValidateOptions) error
+		Status(ctx context.Context, name string) (libstack.Status, string, error)
 	}
 
 	DeployerBaseOptions struct {
