@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/yaml"
 	"github.com/portainer/agent/exec"
@@ -319,7 +320,7 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 
 		if IsRelativePathStack(stack) {
 			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
-			err := exec.CopyToHostViaUnpacker(stack.FileFolder, dst, int(stack.ID), stackName, stack.FilesystemPath, manager.assetsPath)
+			err := docker.CopyToHostViaUnpacker(stack.FileFolder, dst, stack.ID, stackName, stack.FilesystemPath, manager.assetsPath)
 			if err != nil {
 				return
 			}

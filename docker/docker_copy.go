@@ -1,4 +1,4 @@
-package exec
+package docker
 
 import (
 	"fmt"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/portainer/agent/docker"
 	"github.com/rs/zerolog/log"
 )
 
@@ -27,7 +26,7 @@ func CopyToHostViaUnpacker(src, dst string, stackID int, stackName, composeDesti
 		return err
 	}
 
-	err = docker.ContainerDelete(unpackerContainer.ID, types.ContainerRemoveOptions{})
+	err = ContainerDelete(unpackerContainer.ID, types.ContainerRemoveOptions{})
 	return err
 }
 
@@ -46,7 +45,7 @@ func createUnpackerContainer(stackID int, stackName, composeDestination string) 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	containerName := fmt.Sprintf("portainer-unpacker-%d-%s-%d", stackID, stackName, r.Intn(100))
 
-	return docker.ContainerCreate(
+	return ContainerCreate(
 		&container.Config{
 			Image: image,
 		},
