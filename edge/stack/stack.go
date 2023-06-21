@@ -165,9 +165,12 @@ func getStackFileFolder(stack *edgeStack) string {
 }
 
 func (manager *StackManager) processStack(stackID int, version int) error {
-	stack, processedStack := manager.stacks[edgeStackID(stackID)]
+	var stack *edgeStack
+
+	originalStack, processedStack := manager.stacks[edgeStackID(stackID)]
 	if processedStack {
-		clonedStack := *stack
+		// update the cloned stack to keep data consistency
+		clonedStack := *originalStack
 		stack = &clonedStack
 
 		if stack.Version == version {
@@ -564,14 +567,16 @@ func (manager *StackManager) DeleteStack(ctx context.Context, stackData edge.Sta
 
 func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload, deleteStack bool) error {
 	var err error
+	var stack *edgeStack
 
 	// The stack information will be shared with edge agent registry server (request by docker credential helper)
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	stack, processedStack := manager.stacks[edgeStackID(stackPayload.ID)]
+	originalStack, processedStack := manager.stacks[edgeStackID(stackPayload.ID)]
 	if processedStack {
-		clonedStack := *stack
+		// update the cloned stack to keep data consistency
+		clonedStack := *originalStack
 		stack = &clonedStack
 
 		if deleteStack {
