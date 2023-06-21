@@ -26,7 +26,7 @@ require (
 	github.com/portainer/docker-compose-wrapper v0.0.0-20230301083819-3dbc6abf1ce7
 	github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a
 	github.com/portainer/libhttp v0.0.0-20230615144939-a999f666d9a9
-	github.com/portainer/portainer/api v0.0.0-20230619010815-d5083b045d73
+	github.com/portainer/portainer/api v0.0.0-20230621062921-99eb1bbfc9ae
 	github.com/rs/zerolog v1.29.0
 	github.com/wI2L/jsondiff v0.2.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6

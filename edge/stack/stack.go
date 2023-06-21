@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -156,9 +155,9 @@ func (manager *StackManager) addRegistryToEntryFile(stackPayload *edge.StackPayl
 func getStackFileFolder(stack *edgeStack) string {
 	stackIDStr := strconv.Itoa(int(stack.ID))
 
-	folder := path.Join(agent.EdgeStackFilesPath, stackIDStr)
+	folder := filepath.Join(agent.EdgeStackFilesPath, stackIDStr)
 	if IsRelativePathStack(stack) {
-		folder = path.Join(stack.FilesystemPath, agent.ComposePathPrefix, stackIDStr)
+		folder = filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix, stackIDStr)
 	}
 
 	return folder
@@ -167,6 +166,9 @@ func getStackFileFolder(stack *edgeStack) string {
 func (manager *StackManager) processStack(stackID int, version int) error {
 	stack, processedStack := manager.stacks[edgeStackID(stackID)]
 	if processedStack {
+		clonedStack := *stack
+		stack = &clonedStack
+
 		if stack.Version == version {
 			return nil // stack is unchanged
 		}
@@ -316,7 +318,7 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 		}
 
 		if IsRelativePathStack(stack) {
-			dst := path.Join(stack.FilesystemPath, agent.ComposePathPrefix)
+			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
 			err := exec.CopyToHostViaUnpacker(stack.FileFolder, dst, int(stack.ID), stackName, stack.FilesystemPath, manager.assetsPath)
 			if err != nil {
 				return
@@ -568,6 +570,9 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 
 	stack, processedStack := manager.stacks[edgeStackID(stackPayload.ID)]
 	if processedStack {
+		clonedStack := *stack
+		stack = &clonedStack
+
 		if deleteStack {
 			log.Debug().Int("stack_id", stackPayload.ID).Msg("marking stack for removal")
 
