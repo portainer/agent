@@ -17,17 +17,15 @@ func ContainerCreate(
 	platform *specs.Platform,
 	containerName string,
 ) (container.CreateResponse, error) {
-	var cli *client.Client
+	var err error
+	var container container.CreateResponse
 
-	err := withCli(func(cliInner *client.Client) error {
-		cli = cliInner
-		return nil
+	err = withCli(func(cli *client.Client) error {
+		container, err = cli.ContainerCreate(context.Background(), config, hostConfig, networkingConfig, platform, containerName)
+		return err
 	})
-	if err != nil {
-		return container.CreateResponse{}, err
-	}
 
-	return cli.ContainerCreate(context.Background(), config, hostConfig, networkingConfig, platform, containerName)
+	return container, err
 }
 
 func ContainerStart(name string, opts types.ContainerStartOptions) error {
