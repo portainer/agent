@@ -5,8 +5,28 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
+
+func ContainerCreate(
+	config *container.Config,
+	hostConfig *container.HostConfig,
+	networkingConfig *network.NetworkingConfig,
+	platform *specs.Platform,
+	containerName string,
+) (container.CreateResponse, error) {
+	var err error
+	var container container.CreateResponse
+
+	err = withCli(func(cli *client.Client) error {
+		container, err = cli.ContainerCreate(context.Background(), config, hostConfig, networkingConfig, platform, containerName)
+		return err
+	})
+
+	return container, err
+}
 
 func ContainerStart(name string, opts types.ContainerStartOptions) error {
 	return withCli(func(cli *client.Client) error {

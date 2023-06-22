@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/yaml"
 	"github.com/portainer/agent/exec"
-	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/nomad"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
+	"github.com/portainer/portainer/api/filesystem"
 
 	"github.com/rs/zerolog/log"
 )
@@ -115,9 +117,62 @@ func (manager *StackManager) UpdateStacksStatus(pollResponseStacks map[int]int) 
 	return nil
 }
 
+func (manager *StackManager) addRegistryToEntryFile(stackPayload *edge.StackPayload) error {
+	var fileContent *string
+
+	for index, dirEntry := range stackPayload.DirEntries {
+		if dirEntry.IsFile && dirEntry.Name == stackPayload.EntryFileName {
+			fileContent = &stackPayload.DirEntries[index].Content
+			break
+		}
+	}
+
+	if fileContent == nil {
+		return fmt.Errorf("EntryFilenName not found in DirEntries")
+	}
+
+	switch manager.engineType {
+	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
+		if (len(stackPayload.RegistryCredentials) > 0 || manager.awsConfig != nil) && stackPayload.EdgeUpdateID > 0 {
+			var err error
+			yml := yaml.NewDockerComposeYAML(*fileContent, stackPayload.RegistryCredentials, manager.awsConfig)
+			*fileContent, err = yml.AddCredentialsAsEnvForSpecificService("updater")
+			if err != nil {
+				return err
+			}
+		}
+		break
+	case EngineTypeKubernetes:
+		if len(stackPayload.RegistryCredentials) > 0 {
+			yml := yaml.NewKubernetesYAML(*fileContent, stackPayload.RegistryCredentials)
+			*fileContent, _ = yml.AddImagePullSecrets()
+		}
+		break
+	}
+
+	return nil
+}
+
+func getStackFileFolder(stack *edgeStack) string {
+	stackIDStr := strconv.Itoa(int(stack.ID))
+
+	folder := filepath.Join(agent.EdgeStackFilesPath, stackIDStr)
+	if IsRelativePathStack(stack) {
+		folder = filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix, stackIDStr)
+	}
+
+	return folder
+}
+
 func (manager *StackManager) processStack(stackID int, version int) error {
-	stack, processedStack := manager.stacks[edgeStackID(stackID)]
+	var stack *edgeStack
+
+	originalStack, processedStack := manager.stacks[edgeStackID(stackID)]
 	if processedStack {
+		// update the cloned stack to keep data consistency
+		clonedStack := *originalStack
+		stack = &clonedStack
+
 		if stack.Version == version {
 			return nil // stack is unchanged
 		}
@@ -144,60 +199,37 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 		}
 	}
 
-	stackConfig, err := manager.portainerClient.GetEdgeStackConfig(stackID)
+	stackPayload, err := manager.portainerClient.GetEdgeStackConfig(stackID)
 	if err != nil {
 		return err
 	}
 
-	stack.Name = stackConfig.Name
-	stack.RegistryCredentials = stackConfig.RegistryCredentials
-	stack.Namespace = stackConfig.Namespace
-	stack.PrePullImage = stackConfig.PrePullImage
-	stack.RePullImage = stackConfig.RePullImage
-	stack.RetryDeploy = stackConfig.RetryDeploy
+	stack.Name = stackPayload.Name
+	stack.RegistryCredentials = stackPayload.RegistryCredentials
+	stack.Namespace = stackPayload.Namespace
+	stack.PrePullImage = stackPayload.PrePullImage
+	stack.RePullImage = stackPayload.RePullImage
+	stack.RetryDeploy = stackPayload.RetryDeploy
 
-	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackID)
-	fileName := "docker-compose.yml"
-	fileContent := stackConfig.FileContent
+	stack.SupportRelativePath = stackPayload.SupportRelativePath
+	stack.FilesystemPath = stackPayload.FilesystemPath
+	stack.FileName = stackPayload.EntryFileName
+	stack.FileFolder = getStackFileFolder(stack)
 
-	switch manager.engineType {
-	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
-		if (len(stackConfig.RegistryCredentials) > 0 || manager.awsConfig != nil) && stackConfig.EdgeUpdateID > 0 {
-			yml := yaml.NewDockerComposeYAML(fileContent, stackConfig.RegistryCredentials, manager.awsConfig)
-			fileContent, err = yml.AddCredentialsAsEnvForSpecificService("updater")
-			if err != nil {
-				return err
-			}
-		}
-		break
-	case EngineTypeKubernetes:
-		fileName = fmt.Sprintf("%s.yml", stack.Name)
-		if len(stackConfig.RegistryCredentials) > 0 {
-			yml := yaml.NewKubernetesYAML(fileContent, stackConfig.RegistryCredentials)
-			fileContent, _ = yml.AddImagePullSecrets()
-		}
-		break
-	case EngineTypeNomad:
-		fileName = fmt.Sprintf("%s.hcl", stack.Name)
-		break
-	default:
-		return fmt.Errorf("engine type %d not supported", manager.engineType)
-	}
-
-	err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
+	err = filesystem.DecodeDirEntries(stackPayload.DirEntries)
 	if err != nil {
 		return err
 	}
 
-	if stackConfig.DotEnvFileContent != "" {
-		err = filesystem.WriteFile(folder, ".env", []byte(stackConfig.DotEnvFileContent), 0644)
-		if err != nil {
-			return err
-		}
+	err = manager.addRegistryToEntryFile(stackPayload)
+	if err != nil {
+		return err
 	}
 
-	stack.FileFolder = folder
-	stack.FileName = fileName
+	err = filesystem.PersistDir(stack.FileFolder, stackPayload.DirEntries)
+	if err != nil {
+		return err
+	}
 
 	manager.stacks[edgeStackID(stackID)] = stack
 
@@ -287,6 +319,14 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 		err = manager.pullImages(ctx, stack, stackName, stackFileLocation)
 		if err != nil {
 			return
+		}
+
+		if IsRelativePathStack(stack) {
+			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
+			err := docker.CopyToHostViaUnpacker(stack.FileFolder, dst, stack.ID, stackName, stack.FilesystemPath, manager.assetsPath)
+			if err != nil {
+				return
+			}
 		}
 
 		manager.deployStack(ctx, stack, stackName, stackFileLocation)
@@ -444,7 +484,17 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
 	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("removing stack")
 
-	err := manager.deployer.Remove(ctx, stackName, []string{stackFileLocation}, agent.RemoveOptions{})
+	err := manager.deployer.Remove(
+		ctx,
+		stackName,
+		[]string{stackFileLocation},
+		agent.RemoveOptions{
+			DeployerBaseOptions: agent.DeployerBaseOptions{
+				Namespace:  stack.Namespace,
+				WorkingDir: stack.FileFolder,
+			},
+		},
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("unable to remove stack")
 
@@ -515,106 +565,89 @@ func (manager *StackManager) DeleteStack(ctx context.Context, stackData edge.Sta
 	return manager.buildDeployerParams(stackData, true)
 }
 
-func (manager *StackManager) buildDeployerParams(stackData edge.StackPayload, deleteStack bool) error {
+func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload, deleteStack bool) error {
 	var err error
-	folder := fmt.Sprintf("%s/%d", agent.EdgeStackFilesPath, stackData.ID)
-	fileName := "docker-compose.yml"
-	fileContent := stackData.FileContent
-
-	switch manager.engineType {
-	case EngineTypeDockerStandalone, EngineTypeDockerSwarm:
-		if (len(stackData.RegistryCredentials) > 0 || manager.awsConfig != nil) && stackData.EdgeUpdateID > 0 {
-			yml := yaml.NewDockerComposeYAML(fileContent, stackData.RegistryCredentials, manager.awsConfig)
-			fileContent, err = yml.AddCredentialsAsEnvForSpecificService("updater")
-			if err != nil {
-				return err
-			}
-		}
-		break
-	case EngineTypeKubernetes:
-		fileName = fmt.Sprintf("%s.yml", stackData.Name)
-		if len(stackData.RegistryCredentials) > 0 {
-			yml := yaml.NewKubernetesYAML(fileContent, stackData.RegistryCredentials)
-			fileContent, _ = yml.AddImagePullSecrets()
-		}
-		break
-	case EngineTypeNomad:
-		fileName = fmt.Sprintf("%s.hcl", stackData.Name)
-		break
-	default:
-		return fmt.Errorf("engine type %d not supported", manager.engineType)
-	}
-
-	if !deleteStack {
-		err = filesystem.WriteFile(folder, fileName, []byte(fileContent), 0644)
-		if err != nil {
-			return err
-		}
-
-		if stackData.DotEnvFileContent != "" {
-			err = filesystem.WriteFile(folder, ".env", []byte(stackData.DotEnvFileContent), 0644)
-			if err != nil {
-				return err
-			}
-		}
-	}
+	var stack *edgeStack
 
 	// The stack information will be shared with edge agent registry server (request by docker credential helper)
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	stack, processedStack := manager.stacks[edgeStackID(stackData.ID)]
+	originalStack, processedStack := manager.stacks[edgeStackID(stackPayload.ID)]
 	if processedStack {
+		// update the cloned stack to keep data consistency
+		clonedStack := *originalStack
+		stack = &clonedStack
+
 		if deleteStack {
-			log.Debug().Int("stack_id", stackData.ID).Msg("marking stack for removal")
+			log.Debug().Int("stack_id", stackPayload.ID).Msg("marking stack for removal")
 
 			stack.Action = actionDelete
 		} else {
-			if stack.Version == stackData.Version {
+			if stack.Version == stackPayload.Version {
 				return nil
 			}
 
-			log.Debug().Int("stack_id", stackData.ID).Msg("marking stack for update")
+			log.Debug().Int("stack_id", stackPayload.ID).Msg("marking stack for update")
 
 			stack.Action = actionUpdate
 		}
 	} else {
 		if deleteStack {
-			log.Debug().Int("stack_id", stackData.ID).Msg("marking stack for removal")
+			log.Debug().Int("stack_id", stackPayload.ID).Msg("marking stack for removal")
 
 			stack = &edgeStack{
 				StackPayload: edge.StackPayload{
-					ID: stackData.ID,
+					ID: stackPayload.ID,
 				},
 				Action: actionDelete,
 			}
 		} else {
-			log.Debug().Int("stack_id", stackData.ID).Msg("marking stack for deployment")
+			log.Debug().Int("stack_id", stackPayload.ID).Msg("marking stack for deployment")
 
 			stack = &edgeStack{
 				StackPayload: edge.StackPayload{
-					ID: stackData.ID,
+					ID: stackPayload.ID,
 				},
 				Action: actionDeploy,
 			}
 		}
 	}
 
-	stack.Name = stackData.Name
-	stack.RegistryCredentials = stackData.RegistryCredentials
+	stack.Name = stackPayload.Name
+	stack.RegistryCredentials = stackPayload.RegistryCredentials
 
 	stack.Status = StatusPending
-	stack.Version = stackData.Version
+	stack.Version = stackPayload.Version
 
-	stack.PrePullImage = stackData.PrePullImage
-	stack.RePullImage = stackData.RePullImage
-	stack.RetryDeploy = stackData.RetryDeploy
+	stack.PrePullImage = stackPayload.PrePullImage
+	stack.RePullImage = stackPayload.RePullImage
+	stack.RetryDeploy = stackPayload.RetryDeploy
 	stack.PullCount = 0
 	stack.PullFinished = false
 	stack.DeployCount = 0
 
-	stack.FileFolder = folder
-	stack.FileName = fileName
+	stack.SupportRelativePath = stackPayload.SupportRelativePath
+	stack.FilesystemPath = stackPayload.FilesystemPath
+	stack.FileName = stackPayload.EntryFileName
+	stack.FileFolder = getStackFileFolder(stack)
+
+	err = filesystem.DecodeDirEntries(stackPayload.DirEntries)
+	if err != nil {
+		return err
+	}
+
+	err = manager.addRegistryToEntryFile(&stackPayload)
+	if err != nil {
+		return err
+	}
+
+	if !deleteStack {
+		err = filesystem.PersistDir(stack.FileFolder, stackPayload.DirEntries)
+		if err != nil {
+			return err
+		}
+	}
 
 	manager.stacks[edgeStackID(stack.ID)] = stack
 
