@@ -56,7 +56,7 @@ func fileModified(filename string, mtime time.Time) bool {
 }
 
 func (c *edgeHTTPClient) certsNeedsRotation() bool {
-	if c.options.SSLCert == "" || c.options.SSLKey == "" || c.options.SSLCACert == "" {
+	if c.options.EdgeInsecurePoll || c.options.SSLCert == "" || c.options.SSLKey == "" || c.options.SSLCACert == "" {
 		return false
 	}
 
