@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -22,6 +23,7 @@ type edgeHTTPClient struct {
 	certMTime     time.Time
 	keyMTime      time.Time
 	caMTime       time.Time
+	mu            sync.RWMutex
 }
 
 func BuildHTTPClient(timeout float64, options *agent.Options) *edgeHTTPClient {
@@ -35,7 +37,9 @@ func BuildHTTPClient(timeout float64, options *agent.Options) *edgeHTTPClient {
 		revokeService: revokeService,
 	}
 
+	c.mu.Lock()
 	c.httpClient.Transport = c.buildTransport()
+	c.mu.Unlock()
 
 	return c
 }
@@ -43,8 +47,14 @@ func BuildHTTPClient(timeout float64, options *agent.Options) *edgeHTTPClient {
 func (c *edgeHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	if c.certsNeedsRotation() {
 		log.Debug().Msg("reloading certificates")
+
+		c.mu.Lock()
 		c.httpClient.Transport = c.buildTransport()
+		c.mu.Unlock()
 	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	return c.httpClient.Do(req)
 }
