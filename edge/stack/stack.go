@@ -256,6 +256,9 @@ func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]int
 }
 
 func (manager *StackManager) Stop() error {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	if manager.stopSignal != nil {
 		close(manager.stopSignal)
 		manager.stopSignal = nil
@@ -266,6 +269,9 @@ func (manager *StackManager) Stop() error {
 }
 
 func (manager *StackManager) Start() error {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	if manager.stopSignal != nil {
 		return nil
 	}
@@ -280,11 +286,17 @@ func (manager *StackManager) Start() error {
 
 	go func() {
 		for {
+			manager.mu.Lock()
+
 			select {
 			case <-manager.stopSignal:
+				manager.mu.Unlock()
+
 				log.Debug().Msg("shutting down Edge stack manager")
 				return
 			default:
+				manager.mu.Unlock()
+
 				manager.performActionOnStack(queueSleepInterval)
 			}
 		}
