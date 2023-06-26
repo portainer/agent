@@ -14,9 +14,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// CopyToHostViaUnpacker copies src folder to composeDestination folder in the host
-func CopyToHostViaUnpacker(src, dst string, stackID int, stackName, composeDestination, assetPath string) error {
-	unpackerContainer, err := createUnpackerContainer(stackID, stackName, composeDestination)
+// CopyToHostViaUnpacker copies src folder of agent container into the dst folder of the host
+func CopyToHostViaUnpacker(src, dst string, stackID int, stackName, assetPath string) error {
+	unpackerContainer, err := createUnpackerContainer(stackID, stackName, dst)
 	if err != nil {
 		return err
 	}

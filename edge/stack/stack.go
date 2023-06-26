@@ -335,7 +335,7 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 
 		if IsRelativePathStack(stack) {
 			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
-			err := docker.CopyToHostViaUnpacker(stack.FileFolder, dst, stack.ID, stackName, stack.FilesystemPath, manager.assetsPath)
+			err := docker.CopyToHostViaUnpacker(stack.FileFolder, dst, stack.ID, stackName, manager.assetsPath)
 			if err != nil {
 				return
 			}
