@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"io"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -9,6 +10,21 @@ import (
 	"github.com/docker/docker/client"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
+
+func ImagePull(
+	refStr string,
+	options types.ImagePullOptions,
+) (io.ReadCloser, error) {
+	var err error
+	var reader io.ReadCloser
+
+	err = withCli(func(cli *client.Client) error {
+		reader, err = cli.ImagePull(context.Background(), refStr, options)
+		return err
+	})
+
+	return reader, err
+}
 
 func ContainerCreate(
 	config *container.Config,
@@ -18,14 +34,14 @@ func ContainerCreate(
 	containerName string,
 ) (container.CreateResponse, error) {
 	var err error
-	var container container.CreateResponse
+	var createResponse container.CreateResponse
 
 	err = withCli(func(cli *client.Client) error {
-		container, err = cli.ContainerCreate(context.Background(), config, hostConfig, networkingConfig, platform, containerName)
+		createResponse, err = cli.ContainerCreate(context.Background(), config, hostConfig, networkingConfig, platform, containerName)
 		return err
 	})
 
-	return container, err
+	return createResponse, err
 }
 
 func ContainerStart(name string, opts types.ContainerStartOptions) error {

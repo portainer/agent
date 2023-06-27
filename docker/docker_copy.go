@@ -2,7 +2,7 @@ package docker
 
 import (
 	"fmt"
-	"github.com/portainer/agent"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -11,11 +11,18 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/pkg/errors"
+	"github.com/portainer/agent"
 	"github.com/rs/zerolog/log"
 )
 
 // CopyToHostViaUnpacker copies src folder of agent container into the dst folder of the host
 func CopyToHostViaUnpacker(src, dst string, stackID int, stackName, assetPath string) error {
+	err := pullUnpackerImage()
+	if err != nil {
+		return err
+	}
+
 	unpackerContainer, err := createUnpackerContainer(stackID, stackName, dst)
 	if err != nil {
 		return err
@@ -37,6 +44,20 @@ func getUnpackerImage() string {
 	}
 
 	return image
+}
+
+func pullUnpackerImage() error {
+	image := getUnpackerImage()
+
+	reader, err := ImagePull(image, types.ImagePullOptions{})
+	if err != nil {
+		return errors.Wrap(err, "unable to pull unpacker image")
+	}
+
+	defer reader.Close()
+	_, _ = io.Copy(io.Discard, reader)
+
+	return nil
 }
 
 func createUnpackerContainer(stackID int, stackName, composeDestination string) (container.CreateResponse, error) {
