@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -16,24 +17,58 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// CopyToHostViaUnpacker copies src folder of agent container into the dst folder of the host
-func CopyToHostViaUnpacker(src, dst string, stackID int, stackName, assetPath string) error {
+// CopyGitStackToHost copies src folder to the dst folder on the host
+func CopyGitStackToHost(src, dst string, stackID int, stackName, assetPath string) error {
+	return removeAndCopy(src, dst, stackID, stackName, assetPath, true)
+}
+
+// RemoveGitStackFromHost removes the copy of src folder on the host
+func RemoveGitStackFromHost(src, dst string, stackID int, stackName string) error {
+	return removeAndCopy(src, dst, stackID, stackName, "", false)
+}
+
+func buildRemoveDirCmd(src, dst string) []string {
+	gitStackPath := filepath.Join(dst, filepath.Base(src))
+
+	return []string{
+		"remove-dir",
+		gitStackPath,
+	}
+}
+
+// removeAndCopy removes the copy of src folder on the host,
+// then copies src folder to the dst folder on the host
+func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, needCopy bool) error {
 	err := pullUnpackerImage()
 	if err != nil {
 		return err
 	}
 
-	unpackerContainer, err := createUnpackerContainer(stackID, stackName, dst)
+	removeDirCmd := buildRemoveDirCmd(src, dst)
+
+	unpackerContainer, err := createUnpackerContainer(stackID, stackName, dst, removeDirCmd)
 	if err != nil {
 		return err
 	}
 
-	err = copyToContainer(assetPath, src, unpackerContainer.ID, dst)
-	if err != nil {
-		return err
+	defer removeUnpackerContainer(unpackerContainer)
+
+	if needCopy {
+		err = copyToContainer(assetPath, src, unpackerContainer.ID, dst)
 	}
 
-	err = ContainerDelete(unpackerContainer.ID, types.ContainerRemoveOptions{})
+	return err
+}
+
+func removeUnpackerContainer(unpackerContainer container.CreateResponse) error {
+	err := ContainerDelete(unpackerContainer.ID, types.ContainerRemoveOptions{})
+
+	if err != nil {
+		log.Error().
+			Str("ContainerID", unpackerContainer.ID).
+			Msg("Failed to remove unpacker container")
+	}
+
 	return err
 }
 
@@ -60,7 +95,7 @@ func pullUnpackerImage() error {
 	return nil
 }
 
-func createUnpackerContainer(stackID int, stackName, composeDestination string) (container.CreateResponse, error) {
+func createUnpackerContainer(stackID int, stackName, composeDestination string, cmd []string) (container.CreateResponse, error) {
 	image := getUnpackerImage()
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -69,6 +104,7 @@ func createUnpackerContainer(stackID int, stackName, composeDestination string) 
 	return ContainerCreate(
 		&container.Config{
 			Image: image,
+			Cmd:   cmd,
 		},
 		&container.HostConfig{
 			Binds: []string{
