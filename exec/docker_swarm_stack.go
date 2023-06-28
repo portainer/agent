@@ -7,8 +7,8 @@ import (
 	"runtime"
 
 	"github.com/portainer/agent"
-	libstack "github.com/portainer/docker-compose-wrapper"
-	"github.com/portainer/docker-compose-wrapper/compose"
+	libstack "github.com/portainer/portainer/pkg/libstack"
+	"github.com/portainer/portainer/pkg/libstack/compose"
 )
 
 // DockerSwarmStackService represents a service for managing stacks by using the Docker binary.
