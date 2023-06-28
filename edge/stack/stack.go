@@ -128,7 +128,7 @@ func (manager *StackManager) addRegistryToEntryFile(stackPayload *edge.StackPayl
 	}
 
 	if fileContent == nil {
-		return fmt.Errorf("EntryFilenName not found in DirEntries")
+		return fmt.Errorf("EntryFileName not found in DirEntries")
 	}
 
 	switch manager.engineType {
@@ -335,7 +335,7 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 
 		if IsRelativePathStack(stack) {
 			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
-			err := docker.CopyToHostViaUnpacker(stack.FileFolder, dst, stack.ID, stackName, stack.FilesystemPath, manager.assetsPath)
+			err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName, manager.assetsPath)
 			if err != nil {
 				return
 			}
@@ -344,6 +344,10 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 		manager.deployStack(ctx, stack, stackName, stackFileLocation)
 	case actionDelete:
 		manager.deleteStack(ctx, stack, stackName, stackFileLocation)
+		if IsRelativePathStack(stack) {
+			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
+			_ = docker.RemoveGitStackFromHost(stack.FileFolder, dst, stack.ID, stackName)
+		}
 	}
 }
 
