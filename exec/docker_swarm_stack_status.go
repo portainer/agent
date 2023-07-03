@@ -102,5 +102,5 @@ func aggregateStatus(statuses []libstack.Status) libstack.Status {
 	}
 
 	// If all services are running, return "running"
-	return "running"
+	return libstack.StatusRunning
 }
