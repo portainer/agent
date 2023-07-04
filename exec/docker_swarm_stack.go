@@ -93,7 +93,3 @@ func (service *DockerSwarmStackService) Remove(ctx context.Context, name string,
 	})
 	return err
 }
-
-func (service *DockerSwarmStackService) Status(ctx context.Context, name string) (libstack.Status, string, error) {
-	return GetStackStatus(ctx, name)
-}

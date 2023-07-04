@@ -65,7 +65,6 @@ func (service *DockerComposeStackService) Validate(ctx context.Context, name str
 	})
 }
 
-// Status returns the status of a stack.
-func (service *DockerComposeStackService) Status(ctx context.Context, name string) (libstack.Status, string, error) {
-	return service.deployer.Status(ctx, name)
+func (service *DockerComposeStackService) WaitForStatus(ctx context.Context, name string, status libstack.Status) (<-chan string, <-chan error) {
+	return service.deployer.WaitForStatus(ctx, name, status)
 }

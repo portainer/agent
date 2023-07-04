@@ -2,6 +2,7 @@ package stack
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 	"github.com/portainer/portainer/api/edge"
 	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/pkg/libstack"
+	libstackerrors "github.com/portainer/portainer/pkg/libstack/errors"
 
 	"github.com/rs/zerolog/log"
 )
@@ -147,6 +149,7 @@ func (manager *StackManager) addRegistryToEntryFile(stackPayload *edge.StackPayl
 				return err
 			}
 		}
+
 	case EngineTypeKubernetes:
 		if len(stackPayload.RegistryCredentials) > 0 {
 			yml := yaml.NewKubernetesYAML(*fileContent, stackPayload.RegistryCredentials)
@@ -401,7 +404,15 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 		Str("stack_name", stackName).
 		Msg("checking stack status")
 
-	status, statusMessage, err := manager.deployer.Status(ctx, stackName)
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	requiredStatus := libstack.StatusRemoved
+	if stack.Status == StatusAwaitingDeployedStatus {
+		requiredStatus = libstack.StatusRunning
+	}
+
+	status, statusMessage, err := manager.waitForStatus(ctx, stackName, requiredStatus)
 	if err != nil {
 		return err
 	}
@@ -414,25 +425,41 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 		Int("old_status", int(stack.Status)).
 		Msg("stack status")
 
-	manager.mu.Lock()
-	defer manager.mu.Unlock()
-
 	if status == libstack.StatusError {
 		stack.Status = StatusError
 		return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusError, statusMessage)
 	}
 
-	if status == libstack.StatusRunning && stack.Status == StatusAwaitingDeployedStatus {
+	if status == libstack.StatusRunning {
 		stack.Status = StatusDeployed
 		return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRunning, "")
 	}
 
-	if status == libstack.StatusRemoved && stack.Status == StatusAwaitingRemovedStatus {
+	if status == libstack.StatusRemoved {
 		delete(manager.stacks, edgeStackID(stack.ID))
 		return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRemoved, "")
 	}
 
 	return nil
+}
+
+func (manager *StackManager) waitForStatus(ctx context.Context, stackName string, requiredStatus libstack.Status) (libstack.Status, string, error) {
+	statusCh, errCh := manager.deployer.WaitForStatus(ctx, stackName, requiredStatus)
+	select {
+	case result := <-statusCh:
+		if result == "" {
+			return libstack.StatusRunning, "", nil
+		}
+
+		return libstack.StatusError, result, nil
+
+	case err := <-errCh:
+		if errors.Is(err, libstackerrors.ErrNotImplemented) {
+			log.Warn().Msg("stack status check not implemented for this deployer")
+			return "", "", nil
+		}
+		return "", "", err
+	}
 }
 
 func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) error {
