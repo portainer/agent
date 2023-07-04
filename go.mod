@@ -25,7 +25,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/portainer/libcrypto v0.0.0-20220506221303-1f4fb3b30f9a
 	github.com/portainer/libhttp v0.0.0-20230615144939-a999f666d9a9
-	github.com/portainer/portainer/api v0.0.0-20230622214150-7cb6e3f66a7b
+	github.com/portainer/portainer/api v0.0.0-20230704041435-f5e09618f028
 	github.com/portainer/portainer/pkg/libstack v0.0.0-20230626042119-89c1d0e33707
 	github.com/rs/zerolog v1.29.0
 	github.com/wI2L/jsondiff v0.2.0

@@ -189,7 +189,7 @@ type (
 	Deployer interface {
 		Deploy(ctx context.Context, name string, filePaths []string, options DeployOptions) error
 		Remove(ctx context.Context, name string, filePaths []string, options RemoveOptions) error
-		Pull(ctx context.Context, name string, filePaths []string) error
+		Pull(ctx context.Context, name string, filePaths []string, options PullOptions) error
 		Validate(ctx context.Context, name string, filePaths []string, options ValidateOptions) error
 	}
 
@@ -197,6 +197,7 @@ type (
 		// Namespace to use for kubernetes stack. Keep empty to use the manifest namespace.
 		Namespace  string
 		WorkingDir string
+		Env        []string
 	}
 
 	DeployOptions struct {
@@ -209,6 +210,10 @@ type (
 	}
 
 	ValidateOptions struct {
+		DeployerBaseOptions
+	}
+
+	PullOptions struct {
 		DeployerBaseOptions
 	}
 
