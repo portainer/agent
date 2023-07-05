@@ -6,10 +6,17 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/portainer/agent"
 	libstack "github.com/portainer/portainer/pkg/libstack"
 )
+
+func ensureIntegrationTest(t *testing.T) {
+	if _, ok := os.LookupEnv("INTEGRATION_TEST"); !ok {
+		t.Skip("skip an integration test")
+	}
+}
 
 /*
 
@@ -125,8 +132,11 @@ func TestComposeProjectStatus(t *testing.T) {
 	}
 }
 
-func waitForStatus(deployer agent.Deployer, ctx context.Context, stackName string, requiredStatus libstack.Status) (libstack.Status, string, error) {
-	statusCh, errCh := deployer.WaitForStatus(ctx, stackName, requiredStatus)
+func waitForStatus(deployer *DockerSwarmStackService, ctx context.Context, stackName string, requiredStatus libstack.Status) (libstack.Status, string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+
+	statusCh := deployer.WaitForStatus(ctx, stackName, requiredStatus)
 	select {
 	case result := <-statusCh:
 		if result == "" {
@@ -134,8 +144,7 @@ func waitForStatus(deployer agent.Deployer, ctx context.Context, stackName strin
 		}
 
 		return libstack.StatusError, result, nil
-
-	case err := <-errCh:
-		return "", "", err
+	case <-ctx.Done():
+		return libstack.StatusError, "", ctx.Err()
 	}
 }

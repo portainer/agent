@@ -2,7 +2,6 @@ package stack
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,7 +19,6 @@ import (
 	"github.com/portainer/portainer/api/edge"
 	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/pkg/libstack"
-	libstackerrors "github.com/portainer/portainer/pkg/libstack/errors"
 
 	"github.com/rs/zerolog/log"
 )
@@ -444,22 +442,17 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 }
 
 func (manager *StackManager) waitForStatus(ctx context.Context, stackName string, requiredStatus libstack.Status) (libstack.Status, string, error) {
-	statusCh, errCh := manager.deployer.WaitForStatus(ctx, stackName, requiredStatus)
-	select {
-	case result := <-statusCh:
-		if result == "" {
-			return libstack.StatusRunning, "", nil
-		}
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
 
-		return libstack.StatusError, result, nil
-
-	case err := <-errCh:
-		if errors.Is(err, libstackerrors.ErrNotImplemented) {
-			log.Warn().Msg("stack status check not implemented for this deployer")
-			return "", "", nil
-		}
-		return "", "", err
+	statusCh := manager.deployer.WaitForStatus(ctx, stackName, requiredStatus)
+	result := <-statusCh
+	if result == "" {
+		return libstack.StatusRunning, "", nil
 	}
+
+	return libstack.StatusError, result, nil
+
 }
 
 func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) error {

@@ -3,24 +3,19 @@ package exec
 import (
 	"context"
 
-	libstackerrors "github.com/portainer/portainer/pkg/libstack/errors"
-
 	libstack "github.com/portainer/portainer/pkg/libstack"
 )
 
-func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name string, status libstack.Status) (<-chan string, <-chan error) {
+func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan string {
 	result := make(chan string)
-	err := make(chan error)
 
 	go func() {
 
-		err <- libstackerrors.ErrNotImplemented
-
+		result <- ""
 		close(result)
-		close(err)
 	}()
 
-	return result, err
+	return result
 }
 
 // func GetStackStatus(ctx context.Context, stackName string) (libstack.Status, string, error) {
