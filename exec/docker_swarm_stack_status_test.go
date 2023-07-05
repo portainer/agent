@@ -49,16 +49,14 @@ func TestComposeProjectStatus(t *testing.T) {
 		// 	ComposeFile:           "status_test_files/starting.yml",
 		// 	ExpectedStatus:        libstack.StatusStarting,
 		// },
-		// 		{
-		// 			TestName: "running",
-		// 			FileContent: `
-		// version: '3'
-		// services:
-		//   web:
-		//     image: nginx:latest
-		// `,
-		// 			ExpectedStatus: libstack.StatusRunning,
-		// 		},
+		{
+			TestName: "running",
+			FileContent: `version: '3'
+services:
+  web:
+    image: nginx:latest`,
+			ExpectedStatus: libstack.StatusRunning,
+		},
 		// {
 		// 	TestName:              "removing",
 		// 	ComposeFile:           "status_test_files/removing.yml",
