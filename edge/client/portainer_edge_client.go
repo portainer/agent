@@ -221,7 +221,6 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 		Int("edgeStackID", edgeStackID).
 		Int("edgeStackStatus", int(edgeStackStatus)).
 		Int("time check", int(payload.Time)).
-		Str("test", "testing").
 		Msg("SetEdgeStackStatus")
 
 	data, err := json.Marshal(payload)
