@@ -18,13 +18,10 @@ func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name 
 	errorMessageCh := make(chan string)
 
 	go func() {
-		timeout := time.After(5 * time.Minute)
 		for {
 			select {
-			case <-timeout:
-				return
 			case <-ctx.Done():
-				return
+				errorMessageCh <- fmt.Sprintf("failed to wait for status: %s", ctx.Err().Error())
 			default:
 			}
 

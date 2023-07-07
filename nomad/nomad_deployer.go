@@ -260,10 +260,7 @@ func isUpdateJob(job *nomadapi.Job) bool {
 func (service *Deployer) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan string {
 	resultCh := make(chan string)
 
-	go func() {
-		resultCh <- ""
-		close(resultCh)
-	}()
+	close(resultCh)
 
 	return resultCh
 }

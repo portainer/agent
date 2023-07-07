@@ -448,7 +448,7 @@ func (manager *StackManager) waitForStatus(ctx context.Context, stackName string
 	statusCh := manager.deployer.WaitForStatus(ctx, stackName, requiredStatus)
 	result := <-statusCh
 	if result == "" {
-		return libstack.StatusRunning, "", nil
+		return requiredStatus, "", nil
 	}
 
 	return libstack.StatusError, result, nil

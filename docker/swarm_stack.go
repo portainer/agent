@@ -7,8 +7,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/client"
-	"github.com/portainer/agent"
 )
 
 const (
@@ -17,7 +15,7 @@ const (
 
 // GetStackServices retrieves all the services associated to a stack.
 func GetStackServices(ctx context.Context, stackName string) ([]swarm.Service, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	cli, err := NewClient()
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +35,7 @@ func GetStackServices(ctx context.Context, stackName string) ([]swarm.Service, e
 
 // GetServiceTasks retrieves all the tasks associated to a service.
 func GetServiceTasks(ctx context.Context, serviceID string) ([]swarm.Task, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	cli, err := NewClient()
 	if err != nil {
 		return nil, err
 	}

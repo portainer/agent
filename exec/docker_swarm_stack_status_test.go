@@ -38,17 +38,14 @@ func setupSwarmStackDeployer(t *testing.T) *DockerSwarmStackService {
 }
 
 func TestComposeProjectStatus(t *testing.T) {
+	ensureIntegrationTest(t)
+
 	testCases := []struct {
 		TestName              string
 		FileContent           string
 		ExpectedStatus        libstack.Status
 		ExpectedStatusMessage bool
 	}{
-		// {
-		// 	TestName:              "starting",
-		// 	ComposeFile:           "status_test_files/starting.yml",
-		// 	ExpectedStatus:        libstack.StatusStarting,
-		// },
 		{
 			TestName: "running",
 			FileContent: `version: '3'
@@ -57,22 +54,6 @@ services:
     image: nginx:latest`,
 			ExpectedStatus: libstack.StatusRunning,
 		},
-		// {
-		// 	TestName:              "removing",
-		// 	ComposeFile:           "status_test_files/removing.yml",
-		// 	ExpectedStatus:        libstack.StatusRemoving,
-		// },
-		// {
-		// 	TestName:              "failed",
-		// 	ComposeFile:           "status_test_files/failed.yml",
-		// 	ExpectedStatus:        libstack.StatusError,
-		// 	ExpectedStatusMessage: true,
-		// },
-		// {
-		// 	TestName:              "removed",
-		// 	ComposeFile:           "status_test_files/removed.yml",
-		// 	ExpectedStatus:        libstack.StatusRemoved,
-		// },
 	}
 
 	w := setupSwarmStackDeployer(t)
@@ -135,14 +116,10 @@ func waitForStatus(deployer *DockerSwarmStackService, ctx context.Context, stack
 	defer cancel()
 
 	statusCh := deployer.WaitForStatus(ctx, stackName, requiredStatus)
-	select {
-	case result := <-statusCh:
-		if result == "" {
-			return requiredStatus, "", nil
-		}
-
-		return libstack.StatusError, result, nil
-	case <-ctx.Done():
-		return libstack.StatusError, "", ctx.Err()
+	result := <-statusCh
+	if result == "" {
+		return requiredStatus, "", nil
 	}
+
+	return libstack.StatusError, result, nil
 }
