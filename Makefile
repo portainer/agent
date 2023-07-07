@@ -38,6 +38,10 @@ download-binaries: ## Download dependant binaries
 tidy: ## Tidy up the go.mod file
 	@go mod tidy
 
+updatelibs: ## Update the go.mod file with the latest version of the portainer libraries
+	go get github.com/portainer/portainer/pkg/libstack@$(version) 
+	go get github.com/portainer/portainer/api@$(version) 
+	go mod tidy
 
 ##@ Testing
 .PHONY: test test-client test-server
