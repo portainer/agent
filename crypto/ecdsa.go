@@ -98,7 +98,7 @@ func (service *ECDSAService) decodeAndVerifySignature(signature string, publicKe
 	digest.Write([]byte(validSignature))
 	hash := digest.Sum(nil)
 
-	valid := ecdsa.Verify(publicKey, []byte(hash), r, s)
+	valid := ecdsa.Verify(publicKey, hash, r, s)
 
 	return valid, nil
 }

@@ -30,7 +30,7 @@ func (handler *Handler) websocketExec(w http.ResponseWriter, r *http.Request) *h
 
 	targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
 	if targetMember == nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
+		return httperror.InternalServerError("The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent"))
 	}
 
 	proxy.WebsocketRequest(w, r, targetMember)
@@ -40,22 +40,22 @@ func (handler *Handler) websocketExec(w http.ResponseWriter, r *http.Request) *h
 func (handler *Handler) handleExecRequest(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	execID, err := request.RetrieveQueryParameter(r, "id", false)
 	if execID == "" {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: id", err}
+		return httperror.BadRequest("Invalid query parameter: id", err)
 	}
 
 	if !govalidator.IsHexadecimal(execID) {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: id (must be hexadecimal identifier)", err}
+		return httperror.BadRequest("Invalid query parameter: id (must be hexadecimal identifier)", err)
 	}
 
 	websocketConn, err := handler.connectionUpgrader.Upgrade(rw, r, nil)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "An error occurred during websocket exec operation: unable to upgrade connection", err}
+		return httperror.InternalServerError("An error occurred during websocket exec operation: unable to upgrade connection", err)
 	}
 	defer websocketConn.Close()
 
 	err = hijackExecStartOperation(websocketConn, execID)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "An error occurred during websocket exec hijack operation", err}
+		return httperror.InternalServerError("An error occurred during websocket exec hijack operation", err)
 	}
 
 	return nil

@@ -48,7 +48,7 @@ func (p *AgentProxy) Redirect(next http.Handler) http.Handler {
 				Str("request", r.URL.String()).
 				Msg("unable to redirect request to specified node: agent not found in cluster")
 
-			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
+			return httperror.InternalServerError("The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent"))
 		}
 
 		AgentHTTPRequest(rw, r, targetMember, p.useTLS)

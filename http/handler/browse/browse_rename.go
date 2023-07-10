@@ -32,23 +32,23 @@ func (handler *Handler) browseRename(rw http.ResponseWriter, r *http.Request) *h
 	var payload browseRenamePayload
 	err := request.DecodeAndValidateJSONPayload(r, &payload)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
+		return httperror.BadRequest("Invalid request payload", err)
 	}
 
 	if volumeID != "" {
 		payload.CurrentFilePath, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.CurrentFilePath)
 		if err != nil {
-			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+			return httperror.BadRequest("Invalid volume", err)
 		}
 		payload.NewFilePath, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.NewFilePath)
 		if err != nil {
-			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+			return httperror.BadRequest("Invalid volume", err)
 		}
 	}
 
 	err = filesystem.RenameFile(payload.CurrentFilePath, payload.NewFilePath)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to rename file", err}
+		return httperror.InternalServerError("Unable to rename file", err)
 	}
 
 	return response.Empty(rw)
@@ -58,27 +58,27 @@ func (handler *Handler) browseRename(rw http.ResponseWriter, r *http.Request) *h
 func (handler *Handler) browseRenameV1(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
+		return httperror.BadRequest("Invalid volume identifier route variable", err)
 	}
 
 	var payload browseRenamePayload
 	err = request.DecodeAndValidateJSONPayload(r, &payload)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
+		return httperror.BadRequest("Invalid request payload", err)
 	}
 
 	payload.CurrentFilePath, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.CurrentFilePath)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+		return httperror.BadRequest("Invalid volume", err)
 	}
 	payload.NewFilePath, err = filesystem.BuildPathToFileInsideVolume(volumeID, payload.NewFilePath)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+		return httperror.BadRequest("Invalid volume", err)
 	}
 
 	err = filesystem.RenameFile(payload.CurrentFilePath, payload.NewFilePath)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to rename file", err}
+		return httperror.InternalServerError("Unable to rename file", err)
 	}
 
 	return response.Empty(rw)

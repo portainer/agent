@@ -14,19 +14,19 @@ func (handler *Handler) browseDelete(rw http.ResponseWriter, r *http.Request) *h
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	path, err := request.RetrieveQueryParameter(r, "path", false)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
+		return httperror.BadRequest("Invalid query parameter: path", err)
 	}
 
 	if volumeID != "" {
 		path, err = filesystem.BuildPathToFileInsideVolume(volumeID, path)
 		if err != nil {
-			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+			return httperror.BadRequest("Invalid volume", err)
 		}
 	}
 
 	err = filesystem.RemoveFile(path)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to remove file", err}
+		return httperror.InternalServerError("Unable to remove file", err)
 	}
 
 	return response.Empty(rw)
@@ -36,18 +36,18 @@ func (handler *Handler) browseDelete(rw http.ResponseWriter, r *http.Request) *h
 func (handler *Handler) browseDeleteV1(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
+		return httperror.BadRequest("Invalid volume identifier route variable", err)
 	}
 
 	path, err := request.RetrieveQueryParameter(r, "path", false)
 	fullPath, err := filesystem.BuildPathToFileInsideVolume(volumeID, path)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
+		return httperror.BadRequest("Invalid query parameter: path", err)
 	}
 
 	err = filesystem.RemoveFile(fullPath)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to remove file", err}
+		return httperror.InternalServerError("Unable to remove file", err)
 	}
 
 	return response.Empty(rw)

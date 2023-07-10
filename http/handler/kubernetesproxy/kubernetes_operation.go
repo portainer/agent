@@ -14,7 +14,7 @@ func (handler *Handler) kubernetesOperation(rw http.ResponseWriter, request *htt
 	if token == "" {
 		adminToken, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
 		if err != nil {
-			return &httperror.HandlerError{http.StatusInternalServerError, "Unable to read service account token file", err}
+			return httperror.InternalServerError("Unable to read service account token file", err)
 		}
 
 		token = string(adminToken)

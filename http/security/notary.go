@@ -27,14 +27,14 @@ func (service *NotaryService) DigitalSignatureVerification(next http.Handler) ht
 			signatureHeaderValue := r.Header.Get(agent.HTTPSignatureHeaderName)
 
 			if publicKeyHeaderValue == "" || signatureHeaderValue == "" {
-				return &httperror.HandlerError{http.StatusForbidden, "Missing request signature headers", errors.New("Unauthorized")}
+				return httperror.Forbidden("Missing request signature headers", errors.New("Unauthorized"))
 			}
 
 			valid, err := service.signatureService.VerifySignature(signatureHeaderValue, publicKeyHeaderValue)
 			if err != nil {
-				return &httperror.HandlerError{http.StatusForbidden, "Invalid request signature", err}
+				return httperror.Forbidden("Invalid request signature", err)
 			} else if !valid {
-				return &httperror.HandlerError{http.StatusForbidden, "Invalid request signature", errors.New("Unauthorized")}
+				return httperror.Forbidden("Invalid request signature", errors.New("Unauthorized"))
 			}
 		}
 

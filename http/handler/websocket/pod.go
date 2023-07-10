@@ -16,22 +16,22 @@ import (
 func (handler *Handler) websocketPodExec(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	namespace, err := request.RetrieveQueryParameter(r, "namespace", false)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: namespace", err}
+		return httperror.BadRequest("Invalid query parameter: namespace", err)
 	}
 
 	podName, err := request.RetrieveQueryParameter(r, "podName", false)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: podName", err}
+		return httperror.BadRequest("Invalid query parameter: podName", err)
 	}
 
 	containerName, err := request.RetrieveQueryParameter(r, "containerName", false)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: containerName", err}
+		return httperror.BadRequest("Invalid query parameter: containerName", err)
 	}
 
 	command, err := request.RetrieveQueryParameter(r, "command", false)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: command", err}
+		return httperror.BadRequest("Invalid query parameter: command", err)
 	}
 
 	token := r.Header.Get(agent.HTTPKubernetesSATokenHeaderName)
@@ -40,7 +40,7 @@ func (handler *Handler) websocketPodExec(w http.ResponseWriter, r *http.Request)
 
 	websocketConn, err := handler.connectionUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to upgrade the connection", err}
+		return httperror.InternalServerError("Unable to upgrade the connection", err)
 	}
 	defer websocketConn.Close()
 
@@ -55,7 +55,7 @@ func (handler *Handler) websocketPodExec(w http.ResponseWriter, r *http.Request)
 
 	err = handler.kubeClient.StartExecProcess(token, namespace, podName, containerName, commandArray, stdinReader, stdoutWriter)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to start exec process inside container", err}
+		return httperror.InternalServerError("Unable to start exec process inside container", err)
 	}
 
 	err = <-errorChan

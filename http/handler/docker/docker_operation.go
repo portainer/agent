@@ -69,7 +69,7 @@ func (handler *Handler) executeOperationOnManagerNode(rw http.ResponseWriter, re
 				Stringer("request", request.URL).
 				Msg("unable to redirect request to a manager node: no manager node found")
 
-			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent located on a manager node", errors.New("Unable to find an agent on any manager node")}
+			return httperror.InternalServerError("The agent was unable to contact any other agent located on a manager node", errors.New("Unable to find an agent on any manager node"))
 		}
 		proxy.AgentHTTPRequest(rw, request, targetMember, handler.useTLS)
 	}
@@ -89,7 +89,7 @@ func (handler *Handler) executeOperationOnNode(rw http.ResponseWriter, request *
 				Stringer("request", request.URL).
 				Msg("unable to redirect request to specified node: agent not found in cluster")
 
-			return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
+			return httperror.InternalServerError("The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent"))
 		}
 
 		proxy.AgentHTTPRequest(rw, request, targetMember, handler.useTLS)
@@ -109,7 +109,7 @@ func (handler *Handler) executeOperationOnCluster(rw http.ResponseWriter, reques
 
 	data, err := handler.clusterProxy.ClusterOperation(request, clusterMembers)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to execute cluster operation", err}
+		return httperror.InternalServerError("Unable to execute cluster operation", err)
 	}
 
 	return response.JSON(rw, data)

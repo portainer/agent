@@ -21,6 +21,7 @@ func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *
 			Str("server_url", serverURL).
 			Str("aws configuration region", awsConfig.Region).
 			Msg("incomplete information when using local AWS config for credential lookup")
+
 		return nil, errors.New("invalid ecr configuration")
 	}
 
@@ -38,6 +39,7 @@ func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *
 	)
 	if err != nil {
 		log.Err(err).Msg("unable to build AWS client config")
+
 		return nil, err
 	}
 
@@ -48,6 +50,7 @@ func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *
 		// This might not be an ECR registry
 		// Therefore we deliberately not return an error here so that the upstream logic can fallback to other credential providers
 		log.Warn().Str("server_url", serverURL).Err(err).Msg("unable to retrieve credentials from server")
+
 		return nil, ErrNoCredentials
 	}
 
@@ -96,6 +99,7 @@ func ExtractAwsConfig(options *agent.Options) *agent.AWSConfig {
 			Region:         options.AWSRegion,
 		}
 	}
+
 	return nil
 }
 

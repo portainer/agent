@@ -5,9 +5,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/portainer/agent"
+
 	"github.com/hashicorp/logutils"
 	"github.com/hashicorp/serf/serf"
-	"github.com/portainer/agent"
 	"github.com/rs/zerolog/log"
 )
 

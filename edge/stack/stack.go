@@ -141,20 +141,18 @@ func (manager *StackManager) addRegistryToEntryFile(stackPayload *edge.StackPayl
 				return err
 			}
 		}
-		break
 	case EngineTypeKubernetes:
 		if len(stackPayload.RegistryCredentials) > 0 {
 			yml := yaml.NewKubernetesYAML(*fileContent, stackPayload.RegistryCredentials)
 			*fileContent, _ = yml.AddImagePullSecrets()
 		}
-		break
 	}
 
 	return nil
 }
 
 func getStackFileFolder(stack *edgeStack) string {
-	stackIDStr := strconv.Itoa(int(stack.ID))
+	stackIDStr := strconv.Itoa(stack.ID)
 
 	folder := filepath.Join(agent.EdgeStackFilesPath, stackIDStr)
 	if IsRelativePathStack(stack) {

@@ -130,23 +130,13 @@ func updateServiceWithEnv(compose Compose, serviceName string, envs map[string]s
 }
 
 func validateComposeFile(compose *Compose, serviceName string) bool {
-	if compose == nil {
-		return false
-	}
-
-	if compose.Version == "" {
-		return false
-	}
-
-	if len(compose.Services) == 0 {
+	if compose == nil || compose.Version == "" || len(compose.Services) == 0 {
 		return false
 	}
 
 	_, ok := compose.Services[serviceName]
-	if !ok {
-		return false
-	}
-	return true
+
+	return ok
 }
 
 func extractRegistryServerUrl(imageName string) (string, error) {
