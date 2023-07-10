@@ -46,7 +46,7 @@ func (handler *Handler) dockerhubStatus(w http.ResponseWriter, r *http.Request) 
 	var payload dockerhubStatusPayload
 	err := request.DecodeAndValidateJSONPayload(r, &payload)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
+		return httperror.BadRequest("Invalid request payload", err)
 	}
 
 	httpClient := &http.Client{
@@ -54,12 +54,12 @@ func (handler *Handler) dockerhubStatus(w http.ResponseWriter, r *http.Request) 
 	}
 	token, err := getDockerHubToken(httpClient, &payload)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve DockerHub token from DockerHub", err}
+		return httperror.InternalServerError("Unable to retrieve DockerHub token from DockerHub", err)
 	}
 
 	resp, err := getDockerHubLimits(httpClient, token)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to retrieve DockerHub rate limits from DockerHub", err}
+		return httperror.InternalServerError("Unable to retrieve DockerHub rate limits from DockerHub", err)
 	}
 
 	return response.JSON(w, resp)

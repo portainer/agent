@@ -73,6 +73,7 @@ func CreateSnapshot() (*portainer.DockerSnapshot, error) {
 	}
 
 	snapshot.Time = time.Now().Unix()
+
 	return snapshot, nil
 }
 
@@ -87,6 +88,7 @@ func snapshotInfo(snapshot *portainer.DockerSnapshot, cli *client.Client) error 
 	snapshot.TotalCPU = info.NCPU
 	snapshot.TotalMemory = info.MemTotal
 	snapshot.SnapshotRaw.Info = info
+
 	return nil
 }
 
@@ -104,6 +106,7 @@ func snapshotNodes(snapshot *portainer.DockerSnapshot, cli *client.Client) error
 	snapshot.TotalCPU = int(nanoCpus / 1e9)
 	snapshot.TotalMemory = totalMem
 	snapshot.NodeCount = len(nodes)
+
 	return nil
 }
 
@@ -125,6 +128,7 @@ func snapshotSwarmServices(snapshot *portainer.DockerSnapshot, cli *client.Clien
 
 	snapshot.ServiceCount = len(services)
 	snapshot.StackCount += len(stacks)
+
 	return nil
 }
 
@@ -147,8 +151,10 @@ func snapshotContainers(snapshot *portainer.DockerSnapshot, cli *client.Client) 
 		if err != nil {
 			log.Warn().Err(err).Msg("failed to retrieve env for container " + container.ID + ". Skipping.")
 			containers = append(containers, portainer.DockerContainerSnapshot{Container: container})
+
 			continue
 		}
+
 		containers = append(containers, portainer.DockerContainerSnapshot{
 			Container: container,
 			Env:       response.Config.Env,
@@ -181,6 +187,7 @@ func snapshotContainers(snapshot *portainer.DockerSnapshot, cli *client.Client) 
 	snapshot.UnhealthyContainerCount = unhealthyContainers
 	snapshot.StackCount += len(stacks)
 	snapshot.SnapshotRaw.Containers = containers
+
 	return nil
 }
 
@@ -192,6 +199,7 @@ func snapshotImages(snapshot *portainer.DockerSnapshot, cli *client.Client) erro
 
 	snapshot.ImageCount = len(images)
 	snapshot.SnapshotRaw.Images = images
+
 	return nil
 }
 
@@ -203,6 +211,7 @@ func snapshotVolumes(snapshot *portainer.DockerSnapshot, cli *client.Client) err
 
 	snapshot.VolumeCount = len(volumes.Volumes)
 	snapshot.SnapshotRaw.Volumes = volumes
+
 	return nil
 }
 
@@ -211,7 +220,9 @@ func snapshotNetworks(snapshot *portainer.DockerSnapshot, cli *client.Client) er
 	if err != nil {
 		return err
 	}
+
 	snapshot.SnapshotRaw.Networks = networks
+
 	return nil
 }
 
@@ -220,6 +231,8 @@ func snapshotVersion(snapshot *portainer.DockerSnapshot, cli *client.Client) err
 	if err != nil {
 		return err
 	}
+
 	snapshot.SnapshotRaw.Version = version
+
 	return nil
 }

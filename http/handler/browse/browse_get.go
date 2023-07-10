@@ -13,19 +13,19 @@ func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *http
 	volumeID, _ := request.RetrieveQueryParameter(r, "volumeID", true)
 	path, err := request.RetrieveQueryParameter(r, "path", false)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
+		return httperror.BadRequest("Invalid query parameter: path", err)
 	}
 
 	if volumeID != "" {
 		path, err = filesystem.BuildPathToFileInsideVolume(volumeID, path)
 		if err != nil {
-			return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume", err}
+			return httperror.BadRequest("Invalid volume", err)
 		}
 	}
 
 	fileDetails, err := filesystem.OpenFile(path)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to open file", err}
+		return httperror.InternalServerError("Unable to open file", err)
 	}
 	defer fileDetails.File.Close()
 
@@ -37,19 +37,19 @@ func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *http
 func (handler *Handler) browseGetV1(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	volumeID, err := request.RetrieveRouteVariableValue(r, "id")
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid volume identifier route variable", err}
+		return httperror.BadRequest("Invalid volume identifier route variable", err)
 	}
 
 	path, err := request.RetrieveQueryParameter(r, "path", false)
 	path, err = filesystem.BuildPathToFileInsideVolume(volumeID, path)
 
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: path", err}
+		return httperror.BadRequest("Invalid query parameter: path", err)
 	}
 
 	fileDetails, err := filesystem.OpenFile(path)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Unable to open file", err}
+		return httperror.InternalServerError("Unable to open file", err)
 	}
 	defer fileDetails.File.Close()
 

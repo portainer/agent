@@ -34,14 +34,14 @@ func (handler *Handler) kubernetesDeploy(rw http.ResponseWriter, r *http.Request
 	var payload deployPayload
 	err := request.DecodeAndValidateJSONPayload(r, &payload)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid request payload", err}
+		return httperror.BadRequest("Invalid request payload", err)
 	}
 
 	token := r.Header.Get(agent.HTTPKubernetesSATokenHeaderName)
 
 	output, err := handler.kubernetesDeployer.DeployRawConfig(token, payload.StackConfig, payload.Namespace)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "Failed deploying", err}
+		return httperror.InternalServerError("Failed deploying", err)
 	}
 
 	return response.JSON(rw, &deployResponse{Output: string(output)})

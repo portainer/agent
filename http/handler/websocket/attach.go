@@ -29,7 +29,7 @@ func (handler *Handler) websocketAttach(w http.ResponseWriter, r *http.Request) 
 
 	targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
 	if targetMember == nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent")}
+		return httperror.InternalServerError("The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent"))
 	}
 
 	proxy.WebsocketRequest(w, r, targetMember)
@@ -39,24 +39,24 @@ func (handler *Handler) websocketAttach(w http.ResponseWriter, r *http.Request) 
 func (handler *Handler) handleAttachRequest(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	attachID, err := request.RetrieveQueryParameter(r, "id", false)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: id", err}
+		return httperror.BadRequest("Invalid query parameter: id", err)
 	}
 	if !govalidator.IsHexadecimal(attachID) {
-		return &httperror.HandlerError{http.StatusBadRequest, "Invalid query parameter: id (must be hexadecimal identifier)", err}
+		return httperror.BadRequest("Invalid query parameter: id (must be hexadecimal identifier)", err)
 	}
 
 	r.Header.Del("Origin")
 
 	websocketConn, err := handler.connectionUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "An error occurred during websocket attach operation: unable to upgrade connection", err}
+		return httperror.InternalServerError("An error occurred during websocket attach operation: unable to upgrade connection", err)
 
 	}
 	defer websocketConn.Close()
 
 	err = hijackAttachStartOperation(websocketConn, attachID)
 	if err != nil {
-		return &httperror.HandlerError{http.StatusInternalServerError, "An error occurred during websocket attach operation", err}
+		return httperror.InternalServerError("An error occurred during websocket attach operation", err)
 	}
 
 	return nil

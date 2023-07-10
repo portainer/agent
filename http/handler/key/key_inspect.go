@@ -14,11 +14,11 @@ type keyInspectResponse struct {
 
 func (handler *Handler) keyInspect(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	if handler.edgeManager == nil {
-		return &httperror.HandlerError{http.StatusServiceUnavailable, "Edge key management is disabled on non Edge agent", errors.New("Edge key management is disabled")}
+		return &httperror.HandlerError{StatusCode: http.StatusServiceUnavailable, Message: "Edge key management is disabled on non Edge agent", Err: errors.New("Edge key management is disabled")}
 	}
 
 	if !handler.edgeManager.IsKeySet() {
-		return &httperror.HandlerError{http.StatusNotFound, "No key associated to this agent", errors.New("Edge key unavailable")}
+		return httperror.NotFound("No key associated to this agent", errors.New("Edge key unavailable"))
 	}
 
 	edgeKey := handler.edgeManager.GetKey()

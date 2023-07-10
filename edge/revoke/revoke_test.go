@@ -123,7 +123,7 @@ func mustParse(pemData string) *x509.Certificate {
 		panic("Invalid PEM type.")
 	}
 
-	cert, err := x509.ParseCertificate([]byte(block.Bytes))
+	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		panic(err.Error())
 	}
