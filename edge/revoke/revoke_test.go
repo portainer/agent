@@ -49,7 +49,9 @@ sESPRwHkcMUNdAp37FLweUw=
 -----END CERTIFICATE-----`)
 
 // 2014/05/22 14:18:31 Serial number match: intermediate is revoked.
+//
 //	2014/05/22 14:18:31 certificate is revoked via CRL
+//
 // 2014/05/22 14:18:31 Revoked certificate: misc/intermediate_ca/MobileArmorEnterpriseCA.crt
 var revokedCert = mustParse(`-----BEGIN CERTIFICATE-----
 MIIEEzCCAvugAwIBAgILBAAAAAABGMGjftYwDQYJKoZIhvcNAQEFBQAwcTEoMCYG
@@ -137,7 +139,7 @@ func setup() *Service {
 func TestRevoked(t *testing.T) {
 	service := setup()
 	if revoked, err := service.VerifyCertificate(revokedCert); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: soft fail checking revocation")
+		fmt.Fprintf(os.Stderr, "Warning: soft fail checking revocation\n")
 	} else if !revoked {
 		t.Fatalf("revoked certificate should have been marked as revoked")
 	}
@@ -146,7 +148,7 @@ func TestRevoked(t *testing.T) {
 func TestExpired(t *testing.T) {
 	service := setup()
 	if revoked, err := service.VerifyCertificate(expiredCert); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: soft fail checking revocation")
+		fmt.Fprintf(os.Stderr, "Warning: soft fail checking revocation\n")
 	} else if !revoked {
 		t.Fatalf("expired certificate should have been marked as revoked")
 	}
@@ -155,7 +157,7 @@ func TestExpired(t *testing.T) {
 func TestGood(t *testing.T) {
 	service := setup()
 	if revoked, err := service.VerifyCertificate(goodCert); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: soft fail checking revocation")
+		fmt.Fprintf(os.Stderr, "Warning: soft fail checking revocation\n")
 	} else if revoked {
 		t.Fatalf("good certificate should not have been marked as revoked")
 	}
