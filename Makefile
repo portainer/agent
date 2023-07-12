@@ -4,6 +4,8 @@
 PLATFORM=$(shell go env GOOS)
 ARCH=$(shell go env GOARCH)
 
+GOTESTSUM=go run gotest.tools/gotestsum@v1.10.0
+
 ifeq ("$(PLATFORM)", "windows")
 agent=agent.exe
 credential-helper=docker-credential-portainer.exe
@@ -35,6 +37,13 @@ download-binaries: ## Download dependant binaries
 
 tidy: ## Tidy up the go.mod file
 	@go mod tidy
+
+
+##@ Testing
+.PHONY: test test-client test-server
+
+test:	## Run server tests
+	$(GOTESTSUM) --format pkgname-and-test-fails --format-hide-empty-pkg --hide-summary skipped -- -cover  ./...
 
 ##@ Cleanup
 
