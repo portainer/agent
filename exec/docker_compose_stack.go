@@ -64,3 +64,7 @@ func (service *DockerComposeStackService) Validate(ctx context.Context, name str
 		Env:        options.Env,
 	})
 }
+
+func (service *DockerComposeStackService) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan string {
+	return service.deployer.WaitForStatus(ctx, name, status)
+}

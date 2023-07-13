@@ -18,6 +18,7 @@ import (
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
 	"github.com/portainer/portainer/api/filesystem"
+	"github.com/portainer/portainer/pkg/libstack"
 
 	"github.com/rs/zerolog/log"
 )
@@ -42,10 +43,13 @@ type edgeStackStatus int
 const (
 	_ edgeStackStatus = iota
 	StatusPending
-	StatusDone
+	StatusDeployed
 	StatusError
 	StatusDeploying
 	StatusRetry
+	StatusRemoving
+	StatusAwaitingDeployedStatus
+	StatusAwaitingRemovedStatus
 )
 
 type edgeStackAction int
@@ -143,6 +147,7 @@ func (manager *StackManager) addRegistryToEntryFile(stackPayload *edge.StackPayl
 				return err
 			}
 		}
+
 	case EngineTypeKubernetes:
 		if len(stackPayload.RegistryCredentials) > 0 {
 			yml := yaml.NewKubernetesYAML(*fileContent, stackPayload.RegistryCredentials)
@@ -314,17 +319,25 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 
 		return
 	}
-	ctx := context.TODO()
 
+	ctx := context.TODO()
 	manager.mu.Lock()
 	stackName := fmt.Sprintf("edge_%s", stack.Name)
 	stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
 	manager.mu.Unlock()
 
+	if stack.Status == StatusAwaitingDeployedStatus || stack.Status == StatusAwaitingRemovedStatus {
+		err := manager.checkStackStatus(ctx, stackName, stack)
+		if err != nil {
+			log.Error().Err(err).Msg("unable to check Edge stack status")
+		}
+
+		return
+	}
+
 	switch stack.Action {
 	case actionDeploy, actionUpdate:
-
-		// validate the stack file and failfast if the stack format is invalid
+		// validate the stack file and fail-fast if the stack format is invalid
 		// each deployer has its own Validate function
 		err := manager.validateStackFile(ctx, stack, stackName, stackFileLocation)
 		if err != nil {
@@ -358,8 +371,18 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
+	// find the first pending stack,
+	// if not found look for a stack waiting for status check
+	// if not found, look for the first retry stack and set it to pending
+
 	for _, stack := range manager.stacks {
 		if stack.Status == StatusPending {
+			return stack
+		}
+	}
+
+	for _, stack := range manager.stacks {
+		if stack.Status == StatusAwaitingDeployedStatus || stack.Status == StatusAwaitingRemovedStatus {
 			return stack
 		}
 	}
@@ -371,6 +394,65 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 	}
 
 	return nil
+}
+
+func (manager *StackManager) checkStackStatus(ctx context.Context, stackName string, stack *edgeStack) error {
+	log.Debug().
+		Int("stack_identifier", int(stack.ID)).
+		Str("stack_name", stackName).
+		Msg("checking stack status")
+
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	requiredStatus := libstack.StatusRemoved
+	if stack.Status == StatusAwaitingDeployedStatus {
+		requiredStatus = libstack.StatusRunning
+	}
+
+	status, statusMessage, err := manager.waitForStatus(ctx, stackName, requiredStatus)
+	if err != nil {
+		return err
+	}
+
+	log.Debug().
+		Int("stack_identifier", int(stack.ID)).
+		Str("stack_name", stackName).
+		Str("status", string(status)).
+		Str("status_message", statusMessage).
+		Int("old_status", int(stack.Status)).
+		Msg("stack status")
+
+	if status == libstack.StatusError {
+		stack.Status = StatusError
+		return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusError, statusMessage)
+	}
+
+	if status == libstack.StatusRunning {
+		stack.Status = StatusDeployed
+		return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRunning, "")
+	}
+
+	if status == libstack.StatusRemoved {
+		delete(manager.stacks, edgeStackID(stack.ID))
+		return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRemoved, "")
+	}
+
+	return nil
+}
+
+func (manager *StackManager) waitForStatus(ctx context.Context, stackName string, requiredStatus libstack.Status) (libstack.Status, string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+
+	statusCh := manager.deployer.WaitForStatus(ctx, stackName, requiredStatus)
+	result := <-statusCh
+	if result == "" {
+		return requiredStatus, "", nil
+	}
+
+	return libstack.StatusError, result, nil
+
 }
 
 func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) error {
@@ -465,6 +547,13 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 	stack.DeployCount += 1
 
+	err := manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusDeploying, "")
+	if err != nil {
+		log.Error().Err(err).Msg("unable to update Edge stack status")
+	}
+
+	stack.Status = StatusDeploying
+
 	log.Debug().Int("stack_identifier", int(stack.ID)).
 		Bool("RetryDeploy", stack.RetryDeploy).
 		Int("DeployCount", stack.DeployCount).
@@ -473,11 +562,10 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 		Msg("stack deployment")
 
 	if stack.DeployCount <= RetryInterval || stack.DeployCount%RetryInterval == 0 {
-		stack.Status = StatusDeploying
 
 		envVars := buildEnvVarsForDeployer(stack.EnvVars)
 
-		err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
+		err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
 			agent.DeployOptions{
 				DeployerBaseOptions: agent.DeployerBaseOptions{
 					Namespace:  stack.Namespace,
@@ -489,14 +577,16 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 		if err == nil {
 			stack.Action = actionIdle
-			stack.Status = StatusDone
 
 			log.Debug().Int("stack_identifier", int(stack.ID)).Int("stack_version", stack.Version).Msg("stack deployed")
 
-			err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusOk, "")
+			err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusDeploymentReceived, "")
 			if err != nil {
 				log.Error().Err(err).Msg("unable to update Edge stack status")
 			}
+
+			stack.Status = StatusAwaitingDeployedStatus
+
 		} else {
 			log.Error().Err(err).Int("DeployCount", stack.DeployCount).Msg("stack deployment failed")
 
@@ -505,7 +595,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 			} else {
 				stack.Status = StatusError
 
-				err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusError, err.Error())
+				err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusError, "failed to redeploy stack")
 				if err != nil {
 					log.Error().Err(err).Msg("unable to update Edge stack status")
 				}
@@ -523,6 +613,10 @@ func buildEnvVarsForDeployer(envVars []portainer.Pair) []string {
 }
 
 func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	stack.Status = StatusRemoving
 	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("removing stack")
 
 	err := manager.deployer.Remove(
@@ -543,6 +637,15 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		return
 	}
 
+	err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRemoving, "")
+	if err != nil {
+		log.Error().Err(err).Msg("unable to delete Edge stack status")
+
+		return
+	}
+
+	stack.Status = StatusAwaitingRemovedStatus
+
 	// Remove stack file folder
 	err = os.RemoveAll(filepath.Dir(stackFileLocation))
 	if err != nil {
@@ -551,16 +654,6 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		return
 	}
 
-	err = manager.portainerClient.DeleteEdgeStackStatus(int(stack.ID))
-	if err != nil {
-		log.Error().Err(err).Msg("unable to delete Edge stack status")
-
-		return
-	}
-
-	manager.mu.Lock()
-	delete(manager.stacks, edgeStackID(stack.ID))
-	manager.mu.Unlock()
 }
 
 func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {

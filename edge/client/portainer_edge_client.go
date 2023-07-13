@@ -201,6 +201,7 @@ type setEdgeStackStatusPayload struct {
 	Error      string
 	Status     portainer.EdgeStackStatusType
 	EndpointID portainer.EndpointID
+	Time       int64
 }
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
@@ -213,7 +214,14 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 		Error:      error,
 		Status:     edgeStackStatus,
 		EndpointID: client.getEndpointIDFn(),
+		Time:       time.Now().Unix(),
 	}
+
+	log.Debug().
+		Int("edgeStackID", edgeStackID).
+		Int("edgeStackStatus", int(edgeStackStatus)).
+		Int("time check", int(payload.Time)).
+		Msg("SetEdgeStackStatus")
 
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -241,34 +249,6 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeStackStatus operation failed")
 
 		return errors.New("SetEdgeStackStatus operation failed")
-	}
-
-	return nil
-}
-
-// DeleteEdgeStackStatus deletes the status of an Edge stack on the Portainer server
-func (client *PortainerEdgeClient) DeleteEdgeStackStatus(edgeStackID int) error {
-	requestURL := fmt.Sprintf("%s/api/edge_stacks/%d/status/%d", client.serverAddress, edgeStackID, client.getEndpointIDFn())
-
-	req, err := http.NewRequest(http.MethodDelete, requestURL, nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
-
-	resp, err := client.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
-		log.Error().Int("response_code", resp.StatusCode).Msg("DeleteEdgeStackStatus operation failed")
-
-		return errors.New("DeleteEdgeStackStatus operation failed")
 	}
 
 	return nil

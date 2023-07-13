@@ -13,6 +13,7 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
 	agentos "github.com/portainer/agent/os"
+	"github.com/portainer/portainer/pkg/libstack"
 	"github.com/rs/zerolog/log"
 )
 
@@ -254,4 +255,12 @@ func isUpdateJob(job *nomadapi.Job) bool {
 		*job.TaskGroups[0].Name == targetJobName &&
 		len(job.TaskGroups[0].Tasks) > 0 &&
 		job.TaskGroups[0].Tasks[0].Name == targetJobName
+}
+
+func (service *Deployer) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan string {
+	resultCh := make(chan string)
+
+	close(resultCh)
+
+	return resultCh
 }
