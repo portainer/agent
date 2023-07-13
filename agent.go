@@ -380,6 +380,8 @@ const (
 	ComposeUnpackerImageEnvVar = "COMPOSE_UNPACKER_IMAGE"
 	// ComposePathPrefix is the folder name of compose path in unpacker
 	ComposePathPrefix = "portainer-compose-unpacker"
+	// EdgeIdEnvVarName is the environment variable name of the edge ID for per device edge stack configurations
+	EdgeIdEnvVarName = "PORTAINER_EDGE_ID"
 )
 
 const (

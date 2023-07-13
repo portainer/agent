@@ -107,6 +107,7 @@ func (manager *Manager) Start() error {
 		portainerClient,
 		manager.agentOptions.AssetsPath,
 		aws.ExtractAwsConfig(manager.agentOptions),
+		manager.agentOptions.EdgeID,
 	)
 
 	manager.logsManager = scheduler.NewLogsManager(portainerClient)

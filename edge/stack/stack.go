@@ -76,6 +76,7 @@ const (
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
 	engineType      engineType
+	edgeID          string
 	stacks          map[edgeStackID]*edgeStack
 	stopSignal      chan struct{}
 	deployer        agent.Deployer
@@ -87,13 +88,14 @@ type StackManager struct {
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(cli client.PortainerClient, assetsPath string, config *agent.AWSConfig) *StackManager {
+func NewStackManager(cli client.PortainerClient, assetsPath string, config *agent.AWSConfig, edgeID string) *StackManager {
 	return &StackManager{
 		stacks:          map[edgeStackID]*edgeStack{},
 		stopSignal:      nil,
 		portainerClient: cli,
 		assetsPath:      assetsPath,
 		awsConfig:       config,
+		edgeID:          edgeID,
 	}
 }
 
@@ -202,13 +204,15 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 		return err
 	}
 
+	edgeIdPair := portainer.Pair{Name: agent.EdgeIdEnvVarName, Value: manager.edgeID}
+
 	stack.Name = stackPayload.Name
 	stack.RegistryCredentials = stackPayload.RegistryCredentials
 	stack.Namespace = stackPayload.Namespace
 	stack.PrePullImage = stackPayload.PrePullImage
 	stack.RePullImage = stackPayload.RePullImage
 	stack.RetryDeploy = stackPayload.RetryDeploy
-	stack.EnvVars = stackPayload.EnvVars
+	stack.EnvVars = append(stackPayload.EnvVars, edgeIdPair)
 	stack.SupportRelativePath = stackPayload.SupportRelativePath
 	stack.FilesystemPath = stackPayload.FilesystemPath
 	stack.FileName = stackPayload.EntryFileName
