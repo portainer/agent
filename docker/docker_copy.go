@@ -53,6 +53,19 @@ func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, ne
 
 	defer removeUnpackerContainer(unpackerContainer)
 
+	if err = ContainerStart(unpackerContainer.ID, types.ContainerStartOptions{}); err != nil {
+		return err
+	}
+
+	statusCh, errCh := ContainerWait(unpackerContainer.ID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return err
+		}
+	case <-statusCh:
+	}
+
 	if needCopy {
 		err = copyToContainer(assetPath, src, unpackerContainer.ID, dst)
 	}

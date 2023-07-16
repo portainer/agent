@@ -73,3 +73,15 @@ func ContainerDelete(name string, opts types.ContainerRemoveOptions) error {
 		return cli.ContainerRemove(context.Background(), name, opts)
 	})
 }
+
+func ContainerWait(name string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error) {
+	var statusCh <-chan container.WaitResponse
+	var errCh <-chan error
+
+	withCli(func(cli *client.Client) error {
+		statusCh, errCh = cli.ContainerWait(context.Background(), name, condition)
+		return nil
+	})
+
+	return statusCh, errCh
+}
