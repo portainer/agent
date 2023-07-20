@@ -12,6 +12,7 @@ import (
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/filesystem"
 
 	"github.com/rs/zerolog/log"
 )
@@ -277,4 +278,17 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 	manager.pollService.Stop()
 
 	return manager.stackManager.Stop()
+}
+
+func (manager *Manager) CreateEdgeConfig(config *client.EdgeConfig) error {
+	err := filesystem.DecodeDirEntries(config.DirEntries)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range config.DirEntries {
+		log.Debug().Str("base", config.BaseDir).Str("path", file.Name).Msg("creating file")
+	}
+
+	return filesystem.PersistDir(config.BaseDir, config.DirEntries)
 }

@@ -16,9 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	tunnelActivityCheckInterval = 30 * time.Second
-)
+const tunnelActivityCheckInterval = 30 * time.Second
 
 // PollService is used to poll a Portainer instance to retrieve the status associated to the Edge endpoint.
 // It is responsible for managing the state of the reverse tunnel (open and closing after inactivity).
@@ -243,6 +241,8 @@ func (service *PollService) poll() error {
 		service.pollTicker.Reset(time.Duration(service.pollIntervalInSeconds) * time.Second)
 	}
 
+	service.processEdgeConfigs(environmentStatus.EdgeConfigurations)
+
 	return service.processStacks(environmentStatus.Stacks)
 }
 
@@ -329,4 +329,36 @@ func (service *PollService) processStacks(pollResponseStacks []client.StackStatu
 	}
 
 	return nil
+}
+
+func (service *PollService) processEdgeConfigs(edgeConfigs map[client.EdgeConfigID]client.EdgeConfigStateType) {
+	for id, state := range edgeConfigs {
+		log.Debug().Int("edge_config_id", int(id)).Stringer("state", state).Msg("processing edge config")
+
+		switch state {
+
+		case client.EdgeConfigSavingState:
+			edgeConfig, err := service.portainerClient.GetEdgeConfig(id)
+			if err != nil {
+				log.Error().Err(err).Msg("an error occurred while retrieving an edge configuration")
+
+				continue
+			}
+
+			if err := service.edgeManager.CreateEdgeConfig(edgeConfig); err != nil {
+				log.Error().Err(err).Msg("an error occurred while creating an edge configuration")
+
+				if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigFailureState); err != nil {
+					log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
+				}
+
+				continue
+			}
+
+			if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigIdleState); err != nil {
+				log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
+			}
+		}
+	}
+
 }

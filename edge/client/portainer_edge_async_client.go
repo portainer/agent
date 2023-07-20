@@ -95,9 +95,10 @@ type snapshot struct {
 	KubernetesPatch jsondiff.Patch                `json:"kubernetesPatch,omitempty"`
 	KubernetesHash  *uint32                       `json:"kubernetesHash,omitempty"`
 
-	StackLogs   []EdgeStackLog                                                  `json:"stackLogs,omitempty"`
-	StackStatus map[portainer.EdgeStackID][]portainer.EdgeStackDeploymentStatus `json:"stackStatus,omitempty"`
-	JobsStatus  map[portainer.EdgeJobID]agent.EdgeJobStatus                     `json:"jobsStatus:,omitempty"`
+	StackLogs        []EdgeStackLog                                                  `json:"stackLogs,omitempty"`
+	StackStatus      map[portainer.EdgeStackID][]portainer.EdgeStackDeploymentStatus `json:"stackStatus,omitempty"`
+	JobsStatus       map[portainer.EdgeJobID]agent.EdgeJobStatus                     `json:"jobsStatus,omitempty"`
+	EdgeConfigStates map[EdgeConfigID]EdgeConfigStateType                            `json:"edgeConfigStates,omitempty"`
 }
 
 type AsyncResponse struct {
@@ -283,6 +284,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		client.nextSnapshotMutex.Lock()
 		payload.Snapshot.StackStatus = client.nextSnapshot.StackStatus
 		payload.Snapshot.JobsStatus = client.nextSnapshot.JobsStatus
+		payload.Snapshot.EdgeConfigStates = client.nextSnapshot.EdgeConfigStates
 		client.nextSnapshotMutex.Unlock()
 	}
 
@@ -320,13 +322,15 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		if client.lastSnapshot.StackStatus == nil {
 			client.lastSnapshot.StackStatus = make(map[portainer.EdgeStackID][]portainer.EdgeStackDeploymentStatus)
 		}
+
 		for k, v := range client.nextSnapshot.StackStatus {
 			client.lastSnapshot.StackStatus[k] = v
 		}
+
+
 		client.nextSnapshot.StackStatus = nil
-
 		client.nextSnapshot.JobsStatus = nil
-
+		client.nextSnapshot.EdgeConfigStates = nil
 		client.stackLogCollectionQueue = nil
 	}
 
@@ -483,6 +487,23 @@ func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*edge.S
 	// information exchange needs to happen via the async polling loop, which
 	// uses /endpoints/edge/async. This is a strict requirement.
 	return nil, nil // unused in async mode
+}
+
+func (client *PortainerAsyncClient) GetEdgeConfig(id EdgeConfigID) (*EdgeConfig, error) {
+	return nil, nil // unused in async mode
+}
+
+func (client *PortainerAsyncClient) SetEdgeConfigState(id EdgeConfigID, state EdgeConfigStateType) error {
+	client.nextSnapshotMutex.Lock()
+	defer client.nextSnapshotMutex.Unlock()
+
+	if client.nextSnapshot.EdgeConfigStates == nil {
+		client.nextSnapshot.EdgeConfigStates = make(map[EdgeConfigID]EdgeConfigStateType)
+	}
+
+	client.nextSnapshot.EdgeConfigStates[id] = state
+
+	return nil
 }
 
 func (client *PortainerAsyncClient) EnqueueLogCollectionForStack(logCmd LogCommandData) error {
