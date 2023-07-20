@@ -431,7 +431,7 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 }
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
-func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStackStatus portainer.EdgeStackStatusType, err string) error {
+func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStackStatus portainer.EdgeStackStatusType, rollbackTo int, err string) error {
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
 
@@ -447,7 +447,8 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStac
 	status = append(status, portainer.EdgeStackDeploymentStatus{
 		Type:  edgeStackStatus,
 		Error: err,
-		Time:  time.Now().Unix(),
+		// todo: should add rollbackTo for async agent?
+		Time: time.Now().Unix(),
 	})
 
 	client.nextSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = status
@@ -478,7 +479,7 @@ func (client *PortainerAsyncClient) DeleteEdgeStackStatus(edgeStackID int) error
 }
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
-func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int) (*edge.StackPayload, error) {
+func (client *PortainerAsyncClient) GetEdgeStackConfig(edgeStackID int, version *int) (*edge.StackPayload, error) {
 	// Async mode MUST NOT make any extra requests to Portainer, all the
 	// information exchange needs to happen via the async polling loop, which
 	// uses /endpoints/edge/async. This is a strict requirement.

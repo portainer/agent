@@ -166,8 +166,12 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 }
 
 // GetEdgeStackConfig retrieves the configuration associated to an Edge stack
-func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int) (*edge.StackPayload, error) {
+func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int, version *int) (*edge.StackPayload, error) {
 	requestURL := fmt.Sprintf("%s/api/endpoints/%d/edge/stacks/%d", client.serverAddress, client.getEndpointIDFn(), edgeStackID)
+
+	if version != nil {
+		requestURL += fmt.Sprintf("?version=%d", *version)
+	}
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -201,6 +205,7 @@ type setEdgeStackStatusPayload struct {
 	Error      string
 	Status     portainer.EdgeStackStatusType
 	EndpointID portainer.EndpointID
+	RollbackTo int `json:",omitempty"`
 	Time       int64
 }
 
@@ -208,12 +213,14 @@ type setEdgeStackStatusPayload struct {
 func (client *PortainerEdgeClient) SetEdgeStackStatus(
 	edgeStackID int,
 	edgeStackStatus portainer.EdgeStackStatusType,
+	rollbackTo int,
 	error string,
 ) error {
 	payload := setEdgeStackStatusPayload{
 		Error:      error,
 		Status:     edgeStackStatus,
 		EndpointID: client.getEndpointIDFn(),
+		RollbackTo: rollbackTo,
 		Time:       time.Now().Unix(),
 	}
 
