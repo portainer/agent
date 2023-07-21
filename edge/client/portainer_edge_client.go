@@ -307,7 +307,7 @@ func (client *PortainerEdgeClient) GetEdgeConfig(id EdgeConfigID) (*EdgeConfig, 
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeJobStatus operation failed")
+		log.Error().Int("response_code", resp.StatusCode).Msg("GetEdgeConfig operation failed")
 
 		return nil, errors.New("GetEdgeConfig operation failed")
 	}
@@ -324,7 +324,7 @@ func (client *PortainerEdgeClient) GetEdgeConfig(id EdgeConfigID) (*EdgeConfig, 
 func (client *PortainerEdgeClient) SetEdgeConfigState(id EdgeConfigID, state EdgeConfigStateType) error {
 	requestURL := fmt.Sprintf("%s/api/edge_configurations/%d/%d", client.serverAddress, id, state)
 
-	req, err := http.NewRequest(http.MethodPost, requestURL, nil)
+	req, err := http.NewRequest(http.MethodPut, requestURL, nil)
 	if err != nil {
 		return err
 	}

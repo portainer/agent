@@ -3,6 +3,7 @@ package edge
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -291,4 +292,19 @@ func (manager *Manager) CreateEdgeConfig(config *client.EdgeConfig) error {
 	}
 
 	return filesystem.PersistDir(config.BaseDir, config.DirEntries)
+}
+func (manager *Manager) DeleteEdgeConfig(config *client.EdgeConfig) error {
+	for _, dirEntry := range config.DirEntries {
+		path := filesystem.JoinPaths(config.BaseDir, dirEntry.Name)
+
+		if !dirEntry.IsFile {
+			continue
+		}
+
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

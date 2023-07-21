@@ -14,6 +14,7 @@ const (
 	EdgeConfigIdleState EdgeConfigStateType = iota
 	EdgeConfigFailureState
 	EdgeConfigSavingState
+	EdgeConfigDeletingState
 )
 
 type PortainerClient interface {
@@ -40,6 +41,8 @@ func (e EdgeConfigStateType) String() string {
 		return "Failure"
 	case EdgeConfigSavingState:
 		return "Saving"
+	case EdgeConfigDeletingState:
+		return "Deleting"
 	}
 
 	return "N/A"
