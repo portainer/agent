@@ -431,7 +431,7 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 }
 
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
-func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStackStatus portainer.EdgeStackStatusType, rollbackTo int, err string) error {
+func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStackStatus portainer.EdgeStackStatusType, rollbackTo *int, err string) error {
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
 
@@ -445,10 +445,10 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStac
 	}
 
 	status = append(status, portainer.EdgeStackDeploymentStatus{
-		Type:  edgeStackStatus,
-		Error: err,
-		// todo: should add rollbackTo for async agent?
-		Time: time.Now().Unix(),
+		Type:       edgeStackStatus,
+		Error:      err,
+		RollbackTo: rollbackTo,
+		Time:       time.Now().Unix(),
 	})
 
 	client.nextSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = status

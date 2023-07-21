@@ -205,7 +205,7 @@ type setEdgeStackStatusPayload struct {
 	Error      string
 	Status     portainer.EdgeStackStatusType
 	EndpointID portainer.EndpointID
-	RollbackTo int `json:",omitempty"`
+	RollbackTo *int `json:",omitempty"`
 	Time       int64
 }
 
@@ -213,7 +213,7 @@ type setEdgeStackStatusPayload struct {
 func (client *PortainerEdgeClient) SetEdgeStackStatus(
 	edgeStackID int,
 	edgeStackStatus portainer.EdgeStackStatusType,
-	rollbackTo int,
+	rollbackTo *int,
 	error string,
 ) error {
 	payload := setEdgeStackStatusPayload{
