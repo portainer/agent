@@ -422,6 +422,8 @@ func (service *PollService) processEdgeConfigCommand(cmd client.AsyncCommand) er
 	switch EdgeAsyncCommandOperation(cmd.Operation) {
 	case EdgeAsyncCommandOpAdd:
 		err = service.edgeManager.CreateEdgeConfig(&configData)
+	case EdgeAsyncCommandOpReplace:
+		err = service.edgeManager.UpdateEdgeConfig(&configData)
 	case EdgeAsyncCommandOpRemove:
 		err = service.edgeManager.DeleteEdgeConfig(&configData)
 	}

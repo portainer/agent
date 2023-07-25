@@ -384,6 +384,32 @@ func (service *PollService) processEdgeConfigs(edgeConfigs map[client.EdgeConfig
 			if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigIdleState); err != nil {
 				log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
 			}
+
+		case client.EdgeConfigUpdatingState:
+			edgeConfig, err := service.portainerClient.GetEdgeConfig(id)
+			if err != nil {
+				log.Error().Err(err).Msg("an error occurred while retrieving an edge configuration")
+
+				if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigFailureState); err != nil {
+					log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
+				}
+
+				continue
+			}
+
+			if err := service.edgeManager.UpdateEdgeConfig(edgeConfig); err != nil {
+				log.Error().Err(err).Msg("an error occurred while retrieving an edge configuration")
+
+				if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigFailureState); err != nil {
+					log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
+				}
+
+				continue
+			}
+
+			if err := service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigIdleState); err != nil {
+				log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
+			}
 		}
 	}
 

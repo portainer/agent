@@ -15,6 +15,7 @@ const (
 	EdgeConfigFailureState
 	EdgeConfigSavingState
 	EdgeConfigDeletingState
+	EdgeConfigUpdatingState
 )
 
 type PortainerClient interface {
@@ -43,6 +44,8 @@ func (e EdgeConfigStateType) String() string {
 		return "Saving"
 	case EdgeConfigDeletingState:
 		return "Deleting"
+	case EdgeConfigUpdatingState:
+		return "Updating"
 	}
 
 	return "N/A"
@@ -53,6 +56,7 @@ type EdgeConfig struct {
 	Name       string
 	BaseDir    string
 	DirEntries []filesystem.DirEntry
+	Prev       *EdgeConfig
 }
 
 type PollStatusResponse struct {

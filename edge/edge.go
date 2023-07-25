@@ -308,3 +308,11 @@ func (manager *Manager) DeleteEdgeConfig(config *client.EdgeConfig) error {
 
 	return nil
 }
+
+func (manager *Manager) UpdateEdgeConfig(config *client.EdgeConfig) error {
+	if err := manager.DeleteEdgeConfig(config.Prev); err != nil {
+		return err
+	}
+
+	return manager.CreateEdgeConfig(config)
+}
