@@ -150,7 +150,7 @@ func getSwarmConfiguration(config *agent.RuntimeConfiguration, dockerInfo types.
 }
 
 func NewClient() (*client.Client, error) {
-	return client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	return client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 }
 
 func withCli(callback func(cli *client.Client) error) error {
