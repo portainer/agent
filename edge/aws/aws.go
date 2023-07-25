@@ -2,18 +2,20 @@ package aws
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	iamra "github.com/aws/rolesanywhere-credential-helper/aws_signing_helper"
-	"github.com/awslabs/amazon-ecr-credential-helper/ecr-login/api"
 	"github.com/portainer/agent"
 	"github.com/portainer/portainer/api/edge"
 	"github.com/rs/zerolog/log"
 )
 
-var ErrNoCredentials = errors.New("No credentials found")
+var ErrNoCredentials = errors.New("no credentials found")
 
 func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *agent.AWSConfig) (*edge.RegistryCredentials, error) {
 	if serverURL == "" || awsConfig == nil {
@@ -30,8 +32,6 @@ func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *
 		return nil, err
 	}
 
-	factory := api.DefaultClientFactory{}
-
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithRegion(awsConfig.Region),
@@ -39,25 +39,38 @@ func DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverURL string, awsConfig *
 	)
 	if err != nil {
 		log.Err(err).Msg("unable to build AWS client config")
-
 		return nil, err
 	}
 
-	client := factory.NewClient(cfg)
+	client := ecr.NewFromConfig(cfg)
 
-	creds, err := client.GetCredentials(serverURL)
+	output, err := client.GetAuthorizationToken(context.TODO(), &ecr.GetAuthorizationTokenInput{})
 	if err != nil {
-		// This might not be an ECR registry
-		// Therefore we deliberately not return an error here so that the upstream logic can fallback to other credential providers
-		log.Warn().Str("server_url", serverURL).Err(err).Msg("unable to retrieve credentials from server")
-
-		return nil, ErrNoCredentials
+		log.Err(err).Msg("unable to get ECR authorization token")
+		return nil, err
 	}
+
+	if len(output.AuthorizationData) == 0 {
+		log.Err(err).Msg("unable to find ECR authorization token associated with the AWS account")
+		return nil, errors.New("no ECR authorization token associated with AWS account")
+	}
+
+	data := output.AuthorizationData[0]
+
+	token, err := base64.StdEncoding.DecodeString(*data.AuthorizationToken)
+	if err != nil {
+		log.Err(err).Msg("unable to decode ECR authorization token")
+		return nil, err
+	}
+
+	tokenParts := strings.Split(string(token), ":")
+	username := tokenParts[0]
+	password := tokenParts[1]
 
 	return &edge.RegistryCredentials{
 		ServerURL: serverURL,
-		Username:  creds.Username,
-		Secret:    creds.Password,
+		Username:  username,
+		Secret:    password,
 	}, nil
 }
 
