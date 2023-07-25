@@ -35,6 +35,18 @@ type globalKeyResponse struct {
 	EndpointID portainer.EndpointID `json:"endpointID"`
 }
 
+type setEdgeStackStatusPayload struct {
+	Error      string
+	Status     portainer.EdgeStackStatusType
+	EndpointID portainer.EndpointID
+	RollbackTo *int `json:",omitempty"`
+	Time       int64
+}
+
+type logFilePayload struct {
+	FileContent string
+}
+
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
 func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *edgeHTTPClient) *PortainerEdgeClient {
 	c := &PortainerEdgeClient{
@@ -201,14 +213,6 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int, version *
 	return &data, nil
 }
 
-type setEdgeStackStatusPayload struct {
-	Error      string
-	Status     portainer.EdgeStackStatusType
-	EndpointID portainer.EndpointID
-	RollbackTo *int `json:",omitempty"`
-	Time       int64
-}
-
 // SetEdgeStackStatus updates the status of an Edge stack on the Portainer server
 func (client *PortainerEdgeClient) SetEdgeStackStatus(
 	edgeStackID int,
@@ -261,10 +265,6 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 	return nil
 }
 
-type logFilePayload struct {
-	FileContent string
-}
-
 // SetEdgeJobStatus sends the jobID log to the Portainer server
 func (client *PortainerEdgeClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error {
 	payload := logFilePayload{
@@ -297,6 +297,63 @@ func (client *PortainerEdgeClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobS
 		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeJobStatus operation failed")
 
 		return errors.New("SetEdgeJobStatus operation failed")
+	}
+
+	return nil
+}
+
+func (client *PortainerEdgeClient) GetEdgeConfig(id EdgeConfigID) (*EdgeConfig, error) {
+	requestURL := fmt.Sprintf("%s/api/edge_configurations/%d/files", client.serverAddress, id)
+
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		log.Error().Int("response_code", resp.StatusCode).Msg("GetEdgeConfig operation failed")
+
+		return nil, errors.New("GetEdgeConfig operation failed")
+	}
+
+	var data EdgeConfig
+	err = json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &data, nil
+}
+
+func (client *PortainerEdgeClient) SetEdgeConfigState(id EdgeConfigID, state EdgeConfigStateType) error {
+	requestURL := fmt.Sprintf("%s/api/edge_configurations/%d/%d", client.serverAddress, id, state)
+
+	req, err := http.NewRequest(http.MethodPut, requestURL, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Error().Int("edge_config_id", int(id)).Stringer("state", state).Int("response_code", resp.StatusCode).Msg("SetEdgeConfigState operation failed")
+
+		return errors.New("SetEdgeConfigState operation failed")
 	}
 
 	return nil

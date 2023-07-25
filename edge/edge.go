@@ -3,6 +3,7 @@ package edge
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/filesystem"
 
 	"github.com/rs/zerolog/log"
 )
@@ -277,4 +279,45 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 	manager.pollService.Stop()
 
 	return manager.stackManager.Stop()
+}
+
+func (manager *Manager) CreateEdgeConfig(config *client.EdgeConfig) error {
+	baseDir := filesystem.JoinPaths(agent.HostRoot, config.BaseDir)
+
+	err := filesystem.DecodeDirEntries(config.DirEntries)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range config.DirEntries {
+		log.Debug().Str("base", baseDir).Str("path", file.Name).Msg("creating file")
+	}
+
+	return filesystem.PersistDir(baseDir, config.DirEntries)
+}
+
+func (manager *Manager) DeleteEdgeConfig(config *client.EdgeConfig) error {
+	baseDir := filesystem.JoinPaths(agent.HostRoot, config.BaseDir)
+
+	for _, dirEntry := range config.DirEntries {
+		path := filesystem.JoinPaths(baseDir, dirEntry.Name)
+
+		if !dirEntry.IsFile {
+			continue
+		}
+
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (manager *Manager) UpdateEdgeConfig(config *client.EdgeConfig) error {
+	if err := manager.DeleteEdgeConfig(config.Prev); err != nil {
+		return err
+	}
+
+	return manager.CreateEdgeConfig(config)
 }

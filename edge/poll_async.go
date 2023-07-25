@@ -19,6 +19,24 @@ const (
 	zeroDuration       = time.Duration(0)
 	coalescingInterval = 100 * time.Millisecond
 	failSafeInterval   = time.Minute
+
+	EdgeAsyncCommandTypeConfig      EdgeAsyncCommandType = "edgeConfig"
+	EdgeAsyncCommandTypeStack       EdgeAsyncCommandType = "edgeStack"
+	EdgeAsyncCommandTypeJob         EdgeAsyncCommandType = "edgeJob"
+	EdgeAsyncCommandTypeLog         EdgeAsyncCommandType = "edgeLog"
+	EdgeAsyncCommandTypeContainer   EdgeAsyncCommandType = "container"
+	EdgeAsyncCommandTypeImage       EdgeAsyncCommandType = "image"
+	EdgeAsyncCommandTypeVolume      EdgeAsyncCommandType = "volume"
+	EdgeAsyncCommandTypeNormalStack EdgeAsyncCommandType = "normalStack"
+
+	EdgeAsyncCommandOpAdd     EdgeAsyncCommandOperation = "add"
+	EdgeAsyncCommandOpRemove  EdgeAsyncCommandOperation = "remove"
+	EdgeAsyncCommandOpReplace EdgeAsyncCommandOperation = "replace"
+)
+
+type (
+	EdgeAsyncCommandType      string
+	EdgeAsyncCommandOperation string
 )
 
 type operationError struct {
@@ -210,6 +228,8 @@ func (service *PollService) processAsyncCommands(commands []client.AsyncCommand)
 			err = service.processVolumeCommand(command)
 		case "normalStack":
 			err = service.processNormalStackCommand(ctx, command)
+		case "edgeConfig":
+			err = service.processEdgeConfigCommand(command)
 		default:
 			err = newOperationError(command.Type, "n/a", errors.New("command type not supported"))
 		}
@@ -391,4 +411,22 @@ func (service *PollService) processNormalStackCommand(ctx context.Context, comma
 	}
 
 	return newOperationError("normalStack", command.Operation, err)
+}
+func (service *PollService) processEdgeConfigCommand(cmd client.AsyncCommand) error {
+	var configData client.EdgeConfig
+	err := mapstructure.Decode(cmd.Value, &configData)
+	if err != nil {
+		return newOperationError("edgeConfig", cmd.Operation, err)
+	}
+
+	switch EdgeAsyncCommandOperation(cmd.Operation) {
+	case EdgeAsyncCommandOpAdd:
+		err = service.edgeManager.CreateEdgeConfig(&configData)
+	case EdgeAsyncCommandOpReplace:
+		err = service.edgeManager.UpdateEdgeConfig(&configData)
+	case EdgeAsyncCommandOpRemove:
+		err = service.edgeManager.DeleteEdgeConfig(&configData)
+	}
+
+	return newOperationError("edgeConfig", cmd.Operation, err)
 }

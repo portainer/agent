@@ -5,8 +5,17 @@ import (
 
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
+	"github.com/portainer/portainer/api/filesystem"
 
 	"github.com/portainer/agent"
+)
+
+const (
+	EdgeConfigIdleState EdgeConfigStateType = iota
+	EdgeConfigFailureState
+	EdgeConfigSavingState
+	EdgeConfigDeletingState
+	EdgeConfigUpdatingState
 )
 
 type PortainerClient interface {
@@ -15,18 +24,49 @@ type PortainerClient interface {
 	GetEdgeStackConfig(edgeStackID int, version *int) (*edge.StackPayload, error)
 	SetEdgeStackStatus(edgeStackID int, edgeStackStatus portainer.EdgeStackStatusType, rollbackTo *int, error string) error
 	SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error
+	GetEdgeConfig(id EdgeConfigID) (*EdgeConfig, error)
+	SetEdgeConfigState(id EdgeConfigID, state EdgeConfigStateType) error
 	SetTimeout(t time.Duration)
 	SetLastCommandTimestamp(timestamp time.Time)
 	EnqueueLogCollectionForStack(logCmd LogCommandData) error
 }
 
+type EdgeConfigID int
+type EdgeConfigStateType int
+
+func (e EdgeConfigStateType) String() string {
+	switch e {
+	case EdgeConfigIdleState:
+		return "Idle"
+	case EdgeConfigFailureState:
+		return "Failure"
+	case EdgeConfigSavingState:
+		return "Saving"
+	case EdgeConfigDeletingState:
+		return "Deleting"
+	case EdgeConfigUpdatingState:
+		return "Updating"
+	}
+
+	return "N/A"
+}
+
+type EdgeConfig struct {
+	ID         EdgeConfigID
+	Name       string
+	BaseDir    string
+	DirEntries []filesystem.DirEntry
+	Prev       *EdgeConfig
+}
+
 type PollStatusResponse struct {
-	Status          string           `json:"status"`
-	Port            int              `json:"port"`
-	Schedules       []agent.Schedule `json:"schedules"`
-	CheckinInterval float64          `json:"checkin"`
-	Credentials     string           `json:"credentials"`
-	Stacks          []StackStatus    `json:"stacks"`
+	Status             string                               `json:"status"`
+	Port               int                                  `json:"port"`
+	Schedules          []agent.Schedule                     `json:"schedules"`
+	CheckinInterval    float64                              `json:"checkin"`
+	Credentials        string                               `json:"credentials"`
+	Stacks             []StackStatus                        `json:"stacks"`
+	EdgeConfigurations map[EdgeConfigID]EdgeConfigStateType `json:"edge_configurations"`
 
 	// Async mode only
 	EndpointID       int            `json:"endpointID"`
