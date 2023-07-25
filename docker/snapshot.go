@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/portainer/agent"
 	portainer "github.com/portainer/portainer/api"
 
 	"github.com/docker/docker/api/types"
@@ -15,7 +14,7 @@ import (
 )
 
 func CreateSnapshot() (*portainer.DockerSnapshot, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
