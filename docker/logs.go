@@ -8,11 +8,10 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/portainer/agent"
 )
 
 func GetContainersWithLabel(value string) ([]types.Container, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +27,7 @@ func GetContainersWithLabel(value string) ([]types.Container, error) {
 }
 
 func GetContainerLogs(containerName string, tail string) ([]byte, []byte, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion(agent.SupportedDockerAPIVersion))
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, nil, err
 	}

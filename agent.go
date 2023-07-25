@@ -283,8 +283,6 @@ const (
 	DefaultEdgeSleepInterval = "5m"
 	// DefaultConfigCheckInterval is the default interval used to check if node config changed
 	DefaultConfigCheckInterval = "5s"
-	// SupportedDockerAPIVersion is the minimum Docker API version supported by the agent.
-	SupportedDockerAPIVersion = "1.24"
 	// DefaultClusterProbeTimeout is the default member list ping probe timeout.
 	DefaultClusterProbeTimeout = "500ms"
 	// DefaultClusterProbeInterval is the interval for repeating failed node checks.
