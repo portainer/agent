@@ -282,20 +282,25 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 }
 
 func (manager *Manager) CreateEdgeConfig(config *client.EdgeConfig) error {
+	baseDir := filesystem.JoinPaths(agent.HostRoot, config.BaseDir)
+
 	err := filesystem.DecodeDirEntries(config.DirEntries)
 	if err != nil {
 		return err
 	}
 
 	for _, file := range config.DirEntries {
-		log.Debug().Str("base", config.BaseDir).Str("path", file.Name).Msg("creating file")
+		log.Debug().Str("base", baseDir).Str("path", file.Name).Msg("creating file")
 	}
 
-	return filesystem.PersistDir(config.BaseDir, config.DirEntries)
+	return filesystem.PersistDir(baseDir, config.DirEntries)
 }
+
 func (manager *Manager) DeleteEdgeConfig(config *client.EdgeConfig) error {
+	baseDir := filesystem.JoinPaths(agent.HostRoot, config.BaseDir)
+
 	for _, dirEntry := range config.DirEntries {
-		path := filesystem.JoinPaths(config.BaseDir, dirEntry.Name)
+		path := filesystem.JoinPaths(baseDir, dirEntry.Name)
 
 		if !dirEntry.IsFile {
 			continue
