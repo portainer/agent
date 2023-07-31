@@ -5,12 +5,17 @@ IFS=$'\n\t'
 PLATFORM=${1:-"linux"}
 ARCH=${2:-"amd64"}
 
-DOCKER_VERSION="v20.10.21"
-DOCKER_COMPOSE_VERSION="v2.17.2"
-KUBECTL_VERSION="v1.26.3"
+
+BINARY_VERSION_FILE="./binary-version.json"
+
+dockerVersion=$(jq -r '.docker' < "${BINARY_VERSION_FILE}")
+dockerComposeVersion=$(jq -r '.dockerCompose' < "${BINARY_VERSION_FILE}")
+kubectlVersion=$(jq -r '.kubectl' < "${BINARY_VERSION_FILE}")
+
+echo "Downloading binaries for docker ${dockerVersion}, docker-compose ${dockerComposeVersion}, kubectl ${kubectlVersion}"
 
 mkdir -p dist/
 
-/usr/bin/env bash ./build/download_docker_binary.sh "$PLATFORM" "$ARCH" "$DOCKER_VERSION"
-/usr/bin/env bash ./build/download_docker_compose_binary.sh "$PLATFORM" "$ARCH" "$DOCKER_COMPOSE_VERSION"
-/usr/bin/env bash ./build/download_kubectl_binary.sh "$PLATFORM" "$ARCH" "$KUBECTL_VERSION"
+/usr/bin/env bash ./build/download_docker_binary.sh "$PLATFORM" "$ARCH" "$dockerVersion"
+/usr/bin/env bash ./build/download_docker_compose_binary.sh "$PLATFORM" "$ARCH" "$dockerComposeVersion"
+/usr/bin/env bash ./build/download_kubectl_binary.sh "$PLATFORM" "$ARCH" "$kubectlVersion"
