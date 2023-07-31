@@ -360,6 +360,7 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 
 		manager.deployStack(ctx, stack, stackName, stackFileLocation)
 	case actionDelete:
+		stackFileLocation = fmt.Sprintf("%s/%s", SuccessStackFileFolder(stack.FileFolder), stack.FileName)
 		manager.deleteStack(ctx, stack, stackName, stackFileLocation)
 		if IsRelativePathStack(stack) {
 			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
@@ -586,6 +587,11 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 				log.Error().Err(err).Msg("unable to update Edge stack status")
 			}
 
+			err = backupSuccessStack(stack)
+			if err != nil {
+				log.Error().Err(err).Msg("unable to backup successful Edge stack")
+			}
+
 			stack.Status = StatusAwaitingDeployedStatus
 
 		} else {
@@ -620,6 +626,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	stack.Status = StatusRemoving
 	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("removing stack")
 
+	successFileFolder := SuccessStackFileFolder(stack.FileFolder)
 	err := manager.deployer.Remove(
 		ctx,
 		stackName,
@@ -627,7 +634,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		agent.RemoveOptions{
 			DeployerBaseOptions: agent.DeployerBaseOptions{
 				Namespace:  stack.Namespace,
-				WorkingDir: stack.FileFolder,
+				WorkingDir: successFileFolder,
 				Env:        buildEnvVarsForDeployer(stack.EnvVars),
 			},
 		},
@@ -648,13 +655,16 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	stack.Status = StatusAwaitingRemovedStatus
 
 	// Remove stack file folder
-	err = os.RemoveAll(filepath.Dir(stackFileLocation))
+	err = os.RemoveAll(stack.FileFolder)
 	if err != nil {
-		log.Error().Err(err).Msg("unable to delete Edge stack file")
-
-		return
+		log.Error().Err(err).Msgf("unable to delete Edge stack folder %s", stack.FileFolder)
 	}
 
+	// Remove success stack file folder
+	err = os.RemoveAll(successFileFolder)
+	if err != nil {
+		log.Error().Err(err).Msgf("unable to delete Edge stack folder %s", successFileFolder)
+	}
 }
 
 func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
