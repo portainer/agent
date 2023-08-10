@@ -327,7 +327,6 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 			client.lastSnapshot.StackStatus[k] = v
 		}
 
-
 		client.nextSnapshot.StackStatus = nil
 		client.nextSnapshot.JobsStatus = nil
 		client.nextSnapshot.EdgeConfigStates = nil
@@ -448,12 +447,16 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStac
 		status = client.lastSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)]
 	}
 
-	status = append(status, portainer.EdgeStackDeploymentStatus{
-		Type:       edgeStackStatus,
-		Error:      err,
-		RollbackTo: rollbackTo,
-		Time:       time.Now().Unix(),
-	})
+	if edgeStackStatus == portainer.EdgeStackStatusRemoved {
+		status = []portainer.EdgeStackDeploymentStatus{}
+	} else {
+		status = append(status, portainer.EdgeStackDeploymentStatus{
+			Type:       edgeStackStatus,
+			Error:      err,
+			RollbackTo: rollbackTo,
+			Time:       time.Now().Unix(),
+		})
+	}
 
 	client.nextSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = status
 
