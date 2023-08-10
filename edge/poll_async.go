@@ -428,5 +428,11 @@ func (service *PollService) processEdgeConfigCommand(cmd client.AsyncCommand) er
 		err = service.edgeManager.DeleteEdgeConfig(&configData)
 	}
 
+	if err == nil {
+		service.portainerClient.SetEdgeConfigState(configData.ID, client.EdgeConfigIdleState)
+	} else {
+		service.portainerClient.SetEdgeConfigState(configData.ID, client.EdgeConfigFailureState)
+	}
+
 	return newOperationError("edgeConfig", cmd.Operation, err)
 }
