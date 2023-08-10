@@ -80,6 +80,11 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 
 			collectLogs = true
 		}
+
+		if exists {
+			managedSchedule.CollectLogs = schedule.CollectLogs
+			manager.managedSchedules[schedule.ID] = managedSchedule
+		}
 	}
 
 	if updateRequired {
