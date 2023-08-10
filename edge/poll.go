@@ -331,6 +331,27 @@ func (service *PollService) processStacks(pollResponseStacks []client.StackStatu
 	return nil
 }
 
+func (service *PollService) processEdgeConfig(fn func(*client.EdgeConfig) error, edgeConfigID client.EdgeConfigID) {
+	edgeConfig, err := service.portainerClient.GetEdgeConfig(edgeConfigID)
+	if err != nil {
+		log.Error().Err(err).Msg("an error occurred while retrieving an edge configuration")
+
+		return
+	}
+
+	newState := client.EdgeConfigIdleState
+
+	if err := fn(edgeConfig); err != nil {
+		log.Error().Err(err).Msg("an error occurred while creating an edge configuration")
+
+		newState = client.EdgeConfigFailureState
+	}
+
+	if err := service.portainerClient.SetEdgeConfigState(edgeConfigID, newState); err != nil {
+		log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
+	}
+}
+
 func (service *PollService) processEdgeConfigs(edgeConfigs map[client.EdgeConfigID]client.EdgeConfigStateType) {
 	for id, state := range edgeConfigs {
 		log.Debug().Int("edge_config_id", int(id)).Stringer("state", state).Msg("processing edge config")
@@ -338,79 +359,13 @@ func (service *PollService) processEdgeConfigs(edgeConfigs map[client.EdgeConfig
 		switch state {
 
 		case client.EdgeConfigSavingState:
-			edgeConfig, err := service.portainerClient.GetEdgeConfig(id)
-			if err != nil {
-				log.Error().Err(err).Msg("an error occurred while retrieving an edge configuration")
-
-				continue
-			}
-
-			if err := service.edgeManager.CreateEdgeConfig(edgeConfig); err != nil {
-				log.Error().Err(err).Msg("an error occurred while creating an edge configuration")
-
-				if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigFailureState); err != nil {
-					log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
-				}
-
-				continue
-			}
-
-			if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigIdleState); err != nil {
-				log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
-			}
+			service.processEdgeConfig(service.edgeManager.CreateEdgeConfig, id)
 
 		case client.EdgeConfigDeletingState:
-			edgeConfig, err := service.portainerClient.GetEdgeConfig(id)
-			if err != nil {
-				log.Error().Err(err).Msg("an error occurred while retrieving an edge configuration")
-
-				if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigFailureState); err != nil {
-					log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
-				}
-
-				continue
-			}
-
-			if err := service.edgeManager.DeleteEdgeConfig(edgeConfig); err != nil {
-				log.Error().Err(err).Msg("an error occurred while retrieving an edge configuration")
-
-				if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigFailureState); err != nil {
-					log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
-				}
-
-				continue
-			}
-
-			if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigIdleState); err != nil {
-				log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
-			}
+			service.processEdgeConfig(service.edgeManager.DeleteEdgeConfig, id)
 
 		case client.EdgeConfigUpdatingState:
-			edgeConfig, err := service.portainerClient.GetEdgeConfig(id)
-			if err != nil {
-				log.Error().Err(err).Msg("an error occurred while retrieving an edge configuration")
-
-				if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigFailureState); err != nil {
-					log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
-				}
-
-				continue
-			}
-
-			if err := service.edgeManager.UpdateEdgeConfig(edgeConfig); err != nil {
-				log.Error().Err(err).Msg("an error occurred while retrieving an edge configuration")
-
-				if err = service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigFailureState); err != nil {
-					log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
-				}
-
-				continue
-			}
-
-			if err := service.portainerClient.SetEdgeConfigState(id, client.EdgeConfigIdleState); err != nil {
-				log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
-			}
+			service.processEdgeConfig(service.edgeManager.UpdateEdgeConfig, id)
 		}
 	}
-
 }
