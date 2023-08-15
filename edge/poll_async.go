@@ -261,11 +261,6 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 
 	switch command.Operation {
 	case "add", "replace":
-		err = service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusDeploymentReceived, stackData.RollbackTo, "")
-		if err != nil {
-			return newOperationError("stack", command.Operation, err)
-		}
-
 		err = service.edgeStackManager.DeployStack(ctx, stackData)
 
 		if err != nil {
