@@ -19,6 +19,13 @@ env_vars=()
 
 LOG_LEVEL=DEBUG
 
+DOCKER_PORT=2376
+CERTS_PATH="/home/baron_l/.docker/machine/certs"
+function docker(){
+  command docker --tls=true --tlscacert=$CERTS_PATH/ca.pem --tlscert=$CERTS_PATH/cert.pem --tlskey=$CERTS_PATH/key.pem "$@"
+}
+
+
 function deploy_command() {
     parse_deploy_params "${@:1}"
     
@@ -53,7 +60,7 @@ function deploy() {
     
     url=""
     if [ ${#ips[@]} -ne 0 ]; then
-        url="${ips[0]}:2375"
+        url="${ips[0]}:$DOCKER_PORT"
     fi
     
     if [ -z "$mode" ] || [ "$mode" == "standalone" ]; then
@@ -182,8 +189,7 @@ function deploy_swarm() {
     
     docker -H "$url" service rm portainer-agent-dev || true
     docker -H "$url" network rm portainer-agent-dev-net || true
-    
-    load_image "$IMAGE_NAME" "$url" "${node_ips[@]}"
+    # load_image "$IMAGE_NAME" "$url" "${node_ips[@]}"
     
     sleep 2
     
@@ -225,9 +231,12 @@ function deploy_swarm() {
     cmd+=(--mount "type=bind,src=//,dst=/host")
     cmd+=("${IMAGE_NAME}")
     
-    "${cmd[@]}"
+    echo ">>>>"
+    echo "${cmd[@]}"
 
-    docker -H "$url" service logs -f portainer-agent-dev
+    # "${cmd[@]}"
+
+    # docker -H "$url" service logs -f portainer-agent-dev
 }
 
 function parse_deploy_params() {
