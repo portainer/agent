@@ -306,7 +306,11 @@ func (manager *Manager) DeleteEdgeConfig(config *client.EdgeConfig) error {
 			continue
 		}
 
-		if err := os.Remove(path); err != nil {
+		log.Debug().Str("base", baseDir).Str("path", dirEntry.Name).Msg("removing file")
+
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			log.Error().Err(err).Str("base", baseDir).Str("path", dirEntry.Name).Msg("failed to remove file")
+
 			return err
 		}
 	}
