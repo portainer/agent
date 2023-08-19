@@ -444,7 +444,7 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStac
 
 	status, ok := client.nextSnapshot.StackStatusArray[portainer.EdgeStackID(edgeStackID)]
 	if !ok {
-		status = client.lastSnapshot.StackStatusArray[portainer.EdgeStackID(edgeStackID)]
+		status = []portainer.EdgeStackDeploymentStatus{}
 	}
 
 	if edgeStackStatus == portainer.EdgeStackStatusRemoved {
