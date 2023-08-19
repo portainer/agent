@@ -96,7 +96,7 @@ type snapshot struct {
 	KubernetesHash  *uint32                       `json:"kubernetesHash,omitempty"`
 
 	StackLogs        []EdgeStackLog                                                  `json:"stackLogs,omitempty"`
-	StackStatus      map[portainer.EdgeStackID][]portainer.EdgeStackDeploymentStatus `json:"stackStatus,omitempty"`
+	StackStatusArray map[portainer.EdgeStackID][]portainer.EdgeStackDeploymentStatus `json:"stackStatusArray,omitempty"`
 	JobsStatus       map[portainer.EdgeJobID]agent.EdgeJobStatus                     `json:"jobsStatus,omitempty"`
 	EdgeConfigStates map[EdgeConfigID]EdgeConfigStateType                            `json:"edgeConfigStates,omitempty"`
 }
@@ -282,7 +282,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		}
 
 		client.nextSnapshotMutex.Lock()
-		payload.Snapshot.StackStatus = client.nextSnapshot.StackStatus
+		payload.Snapshot.StackStatusArray = client.nextSnapshot.StackStatusArray
 		payload.Snapshot.JobsStatus = client.nextSnapshot.JobsStatus
 		payload.Snapshot.EdgeConfigStates = client.nextSnapshot.EdgeConfigStates
 		client.nextSnapshotMutex.Unlock()
@@ -319,15 +319,15 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		client.lastSnapshot.Docker = currentSnapshot.Docker
 		client.lastSnapshot.Kubernetes = currentSnapshot.Kubernetes
 
-		if client.lastSnapshot.StackStatus == nil {
-			client.lastSnapshot.StackStatus = make(map[portainer.EdgeStackID][]portainer.EdgeStackDeploymentStatus)
+		if client.lastSnapshot.StackStatusArray == nil {
+			client.lastSnapshot.StackStatusArray = make(map[portainer.EdgeStackID][]portainer.EdgeStackDeploymentStatus)
 		}
 
-		for k, v := range client.nextSnapshot.StackStatus {
-			client.lastSnapshot.StackStatus[k] = v
+		for k, v := range client.nextSnapshot.StackStatusArray {
+			client.lastSnapshot.StackStatusArray[k] = v
 		}
 
-		client.nextSnapshot.StackStatus = nil
+		client.nextSnapshot.StackStatusArray = nil
 		client.nextSnapshot.JobsStatus = nil
 		client.nextSnapshot.EdgeConfigStates = nil
 		client.stackLogCollectionQueue = nil
@@ -438,13 +438,13 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStac
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
 
-	if client.nextSnapshot.StackStatus == nil {
-		client.nextSnapshot.StackStatus = make(map[portainer.EdgeStackID][]portainer.EdgeStackDeploymentStatus)
+	if client.nextSnapshot.StackStatusArray == nil {
+		client.nextSnapshot.StackStatusArray = make(map[portainer.EdgeStackID][]portainer.EdgeStackDeploymentStatus)
 	}
 
-	status, ok := client.nextSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)]
+	status, ok := client.nextSnapshot.StackStatusArray[portainer.EdgeStackID(edgeStackID)]
 	if !ok {
-		status = client.lastSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)]
+		status = client.lastSnapshot.StackStatusArray[portainer.EdgeStackID(edgeStackID)]
 	}
 
 	if edgeStackStatus == portainer.EdgeStackStatusRemoved {
@@ -458,7 +458,7 @@ func (client *PortainerAsyncClient) SetEdgeStackStatus(edgeStackID int, edgeStac
 		})
 	}
 
-	client.nextSnapshot.StackStatus[portainer.EdgeStackID(edgeStackID)] = status
+	client.nextSnapshot.StackStatusArray[portainer.EdgeStackID(edgeStackID)] = status
 
 	return nil
 }
