@@ -146,6 +146,20 @@ func getServiceStatus(ctx context.Context, cli *client.Client, service swarm.Ser
 		return "", "", fmt.Errorf("failed to list tasks for service %s: %v", service.Spec.Name, err)
 	}
 
+	replicated := service.Spec.Mode.Replicated
+	if replicated != nil {
+		runningTaskCount := 0
+		for _, task := range tasks {
+			if task.Status.State == swarm.TaskStateRunning {
+				runningTaskCount++
+			}
+		}
+
+		if uint64(runningTaskCount) == *replicated.Replicas {
+			return libstack.StatusRunning, "", nil
+		}
+	}
+
 	// Check the status of each task and append it to the serviceStatuses slice
 	for _, task := range tasks {
 		switch task.Status.State {
