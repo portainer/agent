@@ -7,12 +7,12 @@ import (
 	"github.com/docker/docker/client"
 )
 
-func ImageDelete(name string, opts types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, err
-	}
-	defer cli.Close()
+func ImageDelete(name string, opts types.ImageRemoveOptions) (r []types.ImageDeleteResponseItem, err error) {
+	err = withCli(func(cli *client.Client) error {
+		r, err = cli.ImageRemove(context.Background(), name, opts)
 
-	return cli.ImageRemove(context.Background(), name, opts)
+		return err
+	})
+
+	return r, err
 }

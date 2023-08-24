@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -11,14 +12,15 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func ImagePull(
-	refStr string,
-	options types.ImagePullOptions,
-) (io.ReadCloser, error) {
+const largeClientTimeout = 1 * time.Hour
+
+func ImagePull(refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
 	var err error
 	var reader io.ReadCloser
 
 	err = withCli(func(cli *client.Client) error {
+		cli.HTTPClient().Timeout = largeClientTimeout
+
 		reader, err = cli.ImagePull(context.Background(), refStr, options)
 		return err
 	})
@@ -37,6 +39,8 @@ func ContainerCreate(
 	var createResponse container.CreateResponse
 
 	err = withCli(func(cli *client.Client) error {
+		cli.HTTPClient().Timeout = largeClientTimeout
+
 		createResponse, err = cli.ContainerCreate(context.Background(), config, hostConfig, networkingConfig, platform, containerName)
 		return err
 	})
@@ -79,6 +83,8 @@ func ContainerWait(name string, condition container.WaitCondition) (<-chan conta
 	var errCh <-chan error
 
 	withCli(func(cli *client.Client) error {
+		cli.HTTPClient().Timeout = largeClientTimeout
+
 		statusCh, errCh = cli.ContainerWait(context.Background(), name, condition)
 		return nil
 	})

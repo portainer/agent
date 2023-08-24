@@ -14,7 +14,7 @@ import (
 )
 
 func CreateSnapshot() (*portainer.DockerSnapshot, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := NewClient()
 	if err != nil {
 		return nil, err
 	}
