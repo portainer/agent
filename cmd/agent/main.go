@@ -433,7 +433,6 @@ func setLoggingMode(mode string) {
 	case "PRETTY":
 		log.Logger = log.Output(zerolog.ConsoleWriter{
 			Out:           goos.Stderr,
-			NoColor:       true,
 			TimeFormat:    "2006/01/02 03:04PM",
 			FormatMessage: formatMessage})
 	case "JSON":
@@ -445,6 +444,7 @@ func formatMessage(i interface{}) string {
 	if i == nil {
 		return ""
 	}
+
 	return fmt.Sprintf("%s |", i)
 }
 
