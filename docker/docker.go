@@ -160,7 +160,7 @@ func NewClient() (*client.Client, error) {
 }
 
 func withCli(callback func(cli *client.Client) error) error {
-	cli, err := client.NewClientWithOpts(client.WithAPIVersionNegotiation(), client.WithTimeout(clientTimeout))
+	cli, err := NewClient()
 	if err != nil {
 		return err
 	}
