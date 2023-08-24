@@ -7,7 +7,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
+	"github.com/portainer/agent/docker"
 )
 
 type DockerUpdaterCleaner struct {
@@ -21,7 +21,7 @@ func NewDockerUpdaterCleaner(updateID int) *DockerUpdaterCleaner {
 }
 
 func (du *DockerUpdaterCleaner) Clean(ctx context.Context) error {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := docker.NewClient()
 	if err != nil {
 		return err
 	}

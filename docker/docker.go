@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/portainer/agent"
 
@@ -13,6 +14,7 @@ import (
 
 const (
 	serviceNameLabel = "com.docker.swarm.service.name"
+	clientTimeout    = 1 * time.Minute
 )
 
 // DockerInfoService is a service used to retrieve information from a Docker environment
@@ -150,11 +152,15 @@ func getSwarmConfiguration(config *agent.RuntimeConfiguration, dockerInfo types.
 }
 
 func NewClient() (*client.Client, error) {
-	return client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	return client.NewClientWithOpts(
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
+		client.WithTimeout(clientTimeout),
+	)
 }
 
 func withCli(callback func(cli *client.Client) error) error {
-	cli, err := NewClient()
+	cli, err := client.NewClientWithOpts(client.WithAPIVersionNegotiation(), client.WithTimeout(clientTimeout))
 	if err != nil {
 		return err
 	}
