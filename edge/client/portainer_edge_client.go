@@ -47,6 +47,18 @@ type logFilePayload struct {
 	FileContent string
 }
 
+type NonOkResponseError struct {
+	msg string
+}
+
+func newNonOkResponseError(msg string) *NonOkResponseError {
+	return &NonOkResponseError{msg: msg}
+}
+
+func (e *NonOkResponseError) Error() string {
+	return e.msg
+}
+
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
 func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *edgeHTTPClient) *PortainerEdgeClient {
 	c := &PortainerEdgeClient{
@@ -160,10 +172,10 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 		logError(resp, errorData)
 
 		if errorData != nil {
-			return nil, errors.New(errorData.Message + ": " + errorData.Details)
+			return nil, newNonOkResponseError(errorData.Message + ": " + errorData.Details)
 		}
 
-		return nil, errors.New("short poll request failed")
+		return nil, newNonOkResponseError("short poll request failed")
 	}
 
 	var responseData PollStatusResponse

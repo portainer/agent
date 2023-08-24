@@ -2,6 +2,7 @@ package edge
 
 import (
 	"encoding/base64"
+	"errors"
 	"math/rand"
 	"strconv"
 	"time"
@@ -211,7 +212,10 @@ func (service *PollService) poll() error {
 
 	environmentStatus, err := service.portainerClient.GetEnvironmentStatus()
 	if err != nil {
-		service.edgeManager.SetEndpointID(0)
+		var nonOkError *client.NonOkResponseError
+		if errors.As(err, &nonOkError) {
+			service.edgeManager.SetEndpointID(0)
+		}
 
 		return err
 	}
