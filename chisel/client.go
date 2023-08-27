@@ -36,11 +36,32 @@ func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 		Str("server_fingerprint", tunnelConfig.ServerFingerprint).
 		Msg("creating reverse tunnel client")
 
+	options := tunnelConfig.AgentOptions
+	tls := chclient.TLSConfig{
+		SkipVerify: options.EdgeInsecurePoll,
+	}
+
+	if options.SSLCACert != "" && options.SSLCert != "" && options.SSLKey != "" {
+		tls = chclient.TLSConfig{
+			SkipVerify: false,
+			CA:         options.SSLCACert,
+			Cert:       options.SSLCert,
+			Key:        options.SSLKey,
+		}
+
+		log.Info().
+			Str("SSLCACert", options.SSLCACert).
+			Str("SSLCert", options.SSLCert).
+			Str("SSLCert", options.SSLCert).
+			Msg("using TLS for chisel client")
+	}
+
 	config := &chclient.Config{
 		Server:      tunnelConfig.ServerAddr,
 		Remotes:     []string{remote},
 		Fingerprint: tunnelConfig.ServerFingerprint,
 		Auth:        tunnelConfig.Credentials,
+		TLS:         tls,
 	}
 
 	chiselClient, err := chclient.NewClient(config)

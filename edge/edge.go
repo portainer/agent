@@ -73,6 +73,7 @@ func (manager *Manager) Start() error {
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
 		TunnelCapability:        manager.agentOptions.EdgeTunnel,
 		PortainerURL:            manager.key.PortainerInstanceURL,
+		AgentOptions:            manager.agentOptions,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
 		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
 		ContainerPlatform:       manager.containerPlatform,
