@@ -3,8 +3,6 @@ on: push
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      GOPRIVATE: "github.com/portainer"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
