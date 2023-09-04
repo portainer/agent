@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/http/security"
-	httperror "github.com/portainer/libhttp/error"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 )
 
 // Handler is the HTTP handler used to handle Edge key operations.

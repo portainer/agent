@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/portainer/agent/filesystem"
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/request"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
 )
 
 // GET request on /browse/get?volumeID=:id&path=:path

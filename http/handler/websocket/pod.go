@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/portainer/agent"
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/request"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
 
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"

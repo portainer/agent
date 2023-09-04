@@ -7,8 +7,8 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/proxy"
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/response"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/response"
 
 	"github.com/rs/zerolog/log"
 )

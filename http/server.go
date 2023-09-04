@@ -12,7 +12,7 @@ import (
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/http/handler"
 	"github.com/portainer/agent/kubernetes"
-	httpError "github.com/portainer/libhttp/error"
+	httpError "github.com/portainer/portainer/pkg/libhttp/error"
 
 	"github.com/rs/zerolog/log"
 )
