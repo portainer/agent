@@ -8,7 +8,7 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
-	httperror "github.com/portainer/libhttp/error"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 )
 
 // Handler represents an HTTP API Handler for host specific actions

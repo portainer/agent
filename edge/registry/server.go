@@ -10,9 +10,9 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/edge/aws"
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/request"
-	"github.com/portainer/libhttp/response"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
+	"github.com/portainer/portainer/pkg/libhttp/response"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"

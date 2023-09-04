@@ -4,7 +4,7 @@ import (
 	"io"
 	"net/http"
 
-	httperror "github.com/portainer/libhttp/error"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 )
 
 // LocalProxy is a service used to proxy requests to a Unix socket (Linux) or named pipe (Windows).

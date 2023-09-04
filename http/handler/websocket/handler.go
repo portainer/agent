@@ -1,12 +1,13 @@
 package websocket
 
 import (
-	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/security"
 	"github.com/portainer/agent/kubernetes"
-	httperror "github.com/portainer/libhttp/error"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 )
 
 type (

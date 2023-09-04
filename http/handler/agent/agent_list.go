@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/response"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/response"
 )
 
 func (handler *Handler) agentList(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {

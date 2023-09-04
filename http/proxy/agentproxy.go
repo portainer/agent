@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/portainer/agent"
-	httperror "github.com/portainer/libhttp/error"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 
 	"github.com/rs/zerolog/log"
 )

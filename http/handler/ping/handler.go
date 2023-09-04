@@ -3,8 +3,9 @@ package ping
 import (
 	"net/http"
 
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+
 	"github.com/gorilla/mux"
-	httperror "github.com/portainer/libhttp/error"
 )
 
 // Handler represents an HTTP API Handler executing a ping operation
