@@ -11,7 +11,7 @@ import (
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
-	"github.com/portainer/libcrypto"
+	"github.com/portainer/portainer/pkg/libcrypto"
 
 	"github.com/rs/zerolog/log"
 )
