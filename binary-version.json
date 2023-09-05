@@ -1,5 +1,5 @@
 {
   "docker": "v24.0.5",
   "dockerCompose": "v2.20.3",
-  "kubectl": "v1.28.0"
+  "kubectl": "v1.28.1"
 }
