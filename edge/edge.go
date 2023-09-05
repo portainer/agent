@@ -139,7 +139,7 @@ func (manager *Manager) ResetActivityTimer() {
 // SetEndpointID set the endpointID of the agent
 func (manager *Manager) SetEndpointID(endpointID portainer.EndpointID) {
 	manager.mu.Lock()
-	if manager.key.EndpointID != endpointID {
+	if manager.key.EndpointID != endpointID && manager.key.Global {
 		log.Info().Int("endpoint_id", int(endpointID)).Msg("setting endpoint ID")
 
 		manager.key.EndpointID = endpointID

@@ -21,6 +21,7 @@ type edgeKey struct {
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
 	EndpointID              portainer.EndpointID
+	Global                  bool
 }
 
 // SetKey parses and associates an Edge key to the agent.
@@ -130,6 +131,7 @@ func ParseEdgeKey(key string) (*edgeKey, error) {
 		TunnelServerAddr:        keyInfo[1],
 		TunnelServerFingerprint: keyInfo[2],
 		EndpointID:              portainer.EndpointID(endpointID),
+		Global:                  endpointID == 0,
 	}
 
 	return edgeKey, nil
