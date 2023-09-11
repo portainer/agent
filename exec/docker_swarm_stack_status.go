@@ -103,13 +103,6 @@ func aggregateStatus(statuses []libstack.Status) libstack.Status {
 		}
 	}
 
-	// If any service is pending, return "pending"
-	for _, status := range statuses {
-		if status == libstack.StatusStarting {
-			return libstack.StatusStarting
-		}
-	}
-
 	// If any service is removing, return "removing"
 	for _, status := range statuses {
 		if status == libstack.StatusRemoving {
