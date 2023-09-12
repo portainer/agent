@@ -23,6 +23,7 @@ import (
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
 	kubecli "github.com/portainer/agent/kubernetes"
+	"github.com/rs/zerolog/log"
 )
 
 // Handler is the main handler of the application.
@@ -99,6 +100,8 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		agentPlatformIdentifier = agent.PlatformDocker
 	}
 	rw.Header().Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
+
+	log.Debug().Msgf("Handling request: %s %s", request.Method, request.URL.Path)
 
 	switch {
 	case strings.HasPrefix(request.URL.Path, "/v1"):
