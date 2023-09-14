@@ -23,6 +23,7 @@ require (
 	github.com/koding/websocketproxy v0.0.0-20181220232114-7ed82d81a28c
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/opencontainers/image-spec v1.1.0-rc2.0.20221005185240-3a7f492d3f1b
+	github.com/perimeterx/marshmallow v1.1.5
 	github.com/pkg/errors v0.9.1
 	github.com/portainer/portainer v0.6.1-0.20230901222702-8cc5e0796c4a
 	github.com/rs/zerolog v1.29.0

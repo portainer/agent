@@ -43,7 +43,7 @@ import (
 // 	}
 // )
 
-func (handler *Handler) kubernetesGetNamespaces(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+func (handler *Handler) kubernetesGetConfigMaps(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	log.Debug().Msgf("GetNamespaces Handler: Request: %s %s", r.Method, r.URL.Path)
 
 	config, err := rest.InClusterConfig()
@@ -81,10 +81,10 @@ func (handler *Handler) kubernetesGetNamespaces(rw http.ResponseWriter, r *http.
 		panic(err)
 	}
 
-	return filteredNamespaces(rw, resp)
+	return filteredConfigMaps(rw, resp)
 }
 
-func filteredNamespaces(rw http.ResponseWriter, data []byte) *httperror.HandlerError {
+func filteredConfigMaps(rw http.ResponseWriter, data []byte) *httperror.HandlerError {
 	// var namespacesResponse []FilteredNamespaceResponse
 	// err := json.Unmarshal([]byte(data), &namespacesResponse)
 	// if err != nil {
