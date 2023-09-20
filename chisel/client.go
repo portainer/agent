@@ -3,6 +3,7 @@ package chisel
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/portainer/agent"
@@ -41,6 +42,7 @@ func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 		Remotes:     []string{remote},
 		Fingerprint: tunnelConfig.ServerFingerprint,
 		Auth:        tunnelConfig.Credentials,
+		Proxy:       os.Getenv("HTTP_PROXY"),
 	}
 
 	chiselClient, err := chclient.NewClient(config)
