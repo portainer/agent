@@ -24,11 +24,11 @@ func (payload *keyCreatePayload) Validate(r *http.Request) error {
 
 func (handler *Handler) keyCreate(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	if handler.edgeManager == nil {
-		return &httperror.HandlerError{StatusCode: http.StatusServiceUnavailable, Message: "Edge key management is disabled on non Edge agent", Err: errors.New("Edge key management is disabled")}
+		return httperror.NewError(http.StatusServiceUnavailable, "Edge key management is disabled on non Edge agent", errors.New("Edge key management is disabled"))
 	}
 
 	if handler.edgeManager.IsKeySet() {
-		return &httperror.HandlerError{StatusCode: http.StatusConflict, Message: "An Edge key is already associated to this agent", Err: errors.New("Edge key already associated")}
+		return httperror.Conflict("An Edge key is already associated to this agent", errors.New("Edge key already associated"))
 	}
 
 	log.Info().Msg("received Edge key association request")
