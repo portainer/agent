@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/portainer/agent"
@@ -339,6 +340,12 @@ func (service *PollService) processEdgeConfig(fn func(*client.EdgeConfig) error,
 	edgeConfig, err := service.portainerClient.GetEdgeConfig(edgeConfigID)
 	if err != nil {
 		log.Error().Err(err).Msg("an error occurred while retrieving an edge configuration")
+
+		if strings.Contains(err.Error(), "forbidden") {
+			if err := service.portainerClient.SetEdgeConfigState(edgeConfigID, client.EdgeConfigFailureState); err != nil {
+				log.Error().Err(err).Msg("an error occurred while updating the edge configuration state")
+			}
+		}
 
 		return
 	}
