@@ -57,6 +57,7 @@ type EdgeConfig struct {
 	BaseDir    string
 	DirEntries []filesystem.DirEntry
 	Prev       *EdgeConfig
+	Invalid    bool
 }
 
 type PollStatusResponse struct {

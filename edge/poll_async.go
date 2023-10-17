@@ -414,6 +414,12 @@ func (service *PollService) processEdgeConfigCommand(cmd client.AsyncCommand) er
 		return newOperationError("edgeConfig", cmd.Operation, err)
 	}
 
+	if configData.Invalid {
+		service.portainerClient.SetEdgeConfigState(configData.ID, client.EdgeConfigFailureState)
+		err = errors.New("edge secret is not allowed to transmit over HTTP")
+		return newOperationError("edgeConfig", cmd.Operation, err)
+	}
+
 	switch EdgeAsyncCommandOperation(cmd.Operation) {
 	case EdgeAsyncCommandOpAdd:
 		err = service.edgeManager.CreateEdgeConfig(&configData)
