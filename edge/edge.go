@@ -75,6 +75,8 @@ func (manager *Manager) Start() error {
 		PortainerURL:            manager.key.PortainerInstanceURL,
 		TunnelServerAddr:        manager.key.TunnelServerAddr,
 		TunnelServerFingerprint: manager.key.TunnelServerFingerprint,
+		TunnelHTTPProxy:         manager.agentOptions.EdgeTunnelHTTPProxy,
+		TunnelHTTPSProxy:        manager.agentOptions.EdgeTunnelHTTPSProxy,
 		ContainerPlatform:       manager.containerPlatform,
 	}
 
