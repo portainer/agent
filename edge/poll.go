@@ -41,8 +41,7 @@ type PollService struct {
 	portainerURL             string
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
-	tunnelHTTPProxy          string
-	tunnelHTTPSProxy         string
+	tunnelProxy              string
 
 	// Async mode only
 	pingInterval     time.Duration
@@ -62,8 +61,7 @@ type pollServiceConfig struct {
 	PortainerURL            string
 	TunnelServerAddr        string
 	TunnelServerFingerprint string
-	TunnelHTTPProxy         string
-	TunnelHTTPSProxy        string
+	TunnelProxy             string
 	ContainerPlatform       agent.ContainerPlatform
 }
 
@@ -98,8 +96,7 @@ func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, 
 		portainerURL:             config.PortainerURL,
 		tunnelServerAddr:         config.TunnelServerAddr,
 		tunnelServerFingerprint:  config.TunnelServerFingerprint,
-		tunnelHTTPProxy:          config.TunnelHTTPProxy,
-		tunnelHTTPSProxy:         config.TunnelHTTPSProxy,
+		tunnelProxy:              config.TunnelProxy,
 		portainerClient:          portainerClient,
 	}
 
@@ -302,8 +299,7 @@ func (service *PollService) createTunnel(encodedCredentials string, remotePort i
 		LocalAddr:         service.apiServerAddr,
 		ServerAddr:        service.tunnelServerAddr,
 		ServerFingerprint: service.tunnelServerFingerprint,
-		HTTPProxy:         service.tunnelHTTPProxy,
-		HTTPSProxy:        service.tunnelHTTPSProxy,
+		Proxy:             service.tunnelProxy,
 		Credentials:       string(credentials),
 		RemotePort:        strconv.Itoa(remotePort),
 	}

@@ -97,8 +97,7 @@ type (
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
 		EdgeTunnel            bool
-		EdgeTunnelHTTPProxy   string
-		EdgeTunnelHTTPSProxy  string
+		EdgeTunnelProxy       string
 		EdgeMetaFields        EdgeMetaFields
 		LogLevel              string
 		LogMode               string
@@ -163,10 +162,8 @@ type (
 		RemotePort        string
 		LocalAddr         string
 		Credentials       string
-		// HTTPProxy is the http proxy URL to use for the tunnel connection
-		HTTPProxy string
-		// HTTPSProxy is the https proxy URL to use for the tunnel connection
-		HTTPSProxy string
+		// Proxy is the proxy URL to use for the tunnel connection
+		Proxy string
 	}
 
 	// ClusterService is used to manage a cluster of agents.
