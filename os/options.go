@@ -122,6 +122,12 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		return nil, errors.WithMessage(err, "failed parsing tag ids")
 	}
 
+	// If the user has specified a HTTPS proxy, we use it for both HTTP and HTTPS requests
+	httpProxy := *fEdgeTunnelHttpsProxy
+	if httpProxy == "" {
+		httpProxy = *fEdgeTunnelHttpProxy
+	}
+
 	return &agent.Options{
 		AssetsPath:            *fAssetsPath,
 		AgentServerAddr:       fAgentServerAddr.String(),
@@ -140,8 +146,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeInactivityTimeout: *fEdgeInactivityTimeout,
 		EdgeInsecurePoll:      *fEdgeInsecurePoll,
 		EdgeTunnel:            *fEdgeTunnel,
-		EdgeTunnelHTTPProxy:   *fEdgeTunnelHttpProxy,
-		EdgeTunnelHTTPSProxy:  *fEdgeTunnelHttpsProxy,
+		EdgeTunnelProxy:       httpProxy,
 		HealthCheck:           *fHealthCheck,
 		LogLevel:              *fLogLevel,
 		LogMode:               *fLogMode,
