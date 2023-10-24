@@ -6,12 +6,15 @@ on:
       - submitted
       - edited
     paths:
-      - 'go.mod'
-      - 'build/linux/Dockerfile'
-      - 'build/linux/alpine.Dockerfile'
-      - 'build/windows/Dockerfile'
-      - '.github/workflows/pr-security.yml'
-    
+      - "go.mod"
+      - "build/linux/Dockerfile"
+      - "build/linux/alpine.Dockerfile"
+      - "build/windows/Dockerfile"
+      - ".github/workflows/pr-security.yml"
+
+env:
+  GO_VERSION: 1.21.3
+
 jobs:
   server-dependencies:
     name: Server Dependency Check
@@ -28,7 +31,7 @@ jobs:
       - name: install Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.21.0'
+          go-version: ${{ env.GO_VERSION }}
 
       - name: download Go modules
         run: go get -t -v -d ./...
@@ -87,10 +90,10 @@ jobs:
       - name: checkout code
         uses: actions/checkout@master
 
-      - name: install Go 1.21.0
+      - name: install Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.21.0'
+          go-version: ${{ env.GO_VERSION }}
 
       - name: download 3rd-party binaries
         run: ./setup.sh
@@ -115,9 +118,9 @@ jobs:
 
       - name: scan vulnerabilities by Trivy
         uses: docker://docker.io/aquasec/trivy:latest
-        continue-on-error: true 
+        continue-on-error: true
         with:
-          args: image --ignore-unfixed=true --vuln-type="os,library" --exit-code=1 --format="json" --output="image-trivy.json" --no-progress portainer-agent:${{ github.sha }}  
+          args: image --ignore-unfixed=true --vuln-type="os,library" --exit-code=1 --format="json" --output="image-trivy.json" --no-progress portainer-agent:${{ github.sha }}
 
       - name: upload image security scan result as artifact
         uses: actions/upload-artifact@v3
@@ -161,14 +164,14 @@ jobs:
       github.event.pull_request &&
       github.event.review.body == '/scan'
     strategy:
-      matrix: 
+      matrix:
         godiff: ${{fromJson(needs.server-dependencies.outputs.godiff)}}
         imagediff: ${{fromJson(needs.image-vulnerability.outputs.imagediff)}}
     steps:
       - name: check job status of diff result
         if: >-
           matrix.godiff.status == 'failure' ||
-          matrix.imagediff.status == 'failure' 
+          matrix.imagediff.status == 'failure'
         run: |
           echo "${{ matrix.godiff.status }}"
           echo "${{ matrix.imagediff.status }}"
