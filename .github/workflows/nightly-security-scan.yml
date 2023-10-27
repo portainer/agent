@@ -1,26 +1,29 @@
 name: Nightly Code Security Scan
 
-on: 
+on:
   schedule:
-    - cron: '0 20 * * *'
+    - cron: "0 20 * * *"
   workflow_dispatch:
-    
+
+env:
+  GO_VERSION: 1.21.3
+
 jobs:
   server-dependencies:
     name: Server Dependency Check
     runs-on: ubuntu-latest
     if: >- # only run for develop branch
-      github.ref == 'refs/heads/develop' 
+      github.ref == 'refs/heads/develop'
     outputs:
       go: ${{ steps.set-matrix.outputs.go_result }}
     steps:
       - name: checkout repository
         uses: actions/checkout@master
 
-      - name: install Go 
+      - name: install Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.21.0'
+          go-version: ${{ env.GO_VERSION }}
 
       - name: download Go modules
         run: go get -t -v -d ./...
@@ -33,7 +36,7 @@ jobs:
           yarn global add snyk
           snyk test --file=./go.mod --json-file-output=snyk.json 2>/dev/null || :
 
-      - name: upload scan result as develop artifact 
+      - name: upload scan result as develop artifact
         uses: actions/upload-artifact@v3
         with:
           name: go-security-scan-develop-result
@@ -63,9 +66,9 @@ jobs:
     outputs:
       image: ${{ steps.set-matrix.outputs.image_result }}
     steps:
-      - name: scan vulnerabilities by Trivy 
+      - name: scan vulnerabilities by Trivy
         uses: docker://docker.io/aquasec/trivy:latest
-        continue-on-error: true 
+        continue-on-error: true
         with:
           args: image --ignore-unfixed=true --vuln-type="os,library" --exit-code=1 --format="json" --output="image-trivy.json" --no-progress portainerci/agent:develop
 
@@ -98,7 +101,7 @@ jobs:
     if: >-
       github.ref == 'refs/heads/develop'
     strategy:
-      matrix: 
+      matrix:
         go: ${{fromJson(needs.server-dependencies.outputs.go)}}
         image: ${{fromJson(needs.image-vulnerability.outputs.image)}}
     steps:
@@ -110,7 +113,7 @@ jobs:
           echo "${{ matrix.image.summary }}"
 
       - name: send message to Slack
-        if: >- 
+        if: >-
           matrix.go.status == 'failure' || 
           matrix.image.status == 'failure'
         uses: slackapi/slack-github-action@v1.23.0
