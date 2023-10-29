@@ -41,6 +41,7 @@ func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 		Remotes:     []string{remote},
 		Fingerprint: tunnelConfig.ServerFingerprint,
 		Auth:        tunnelConfig.Credentials,
+		Proxy:       tunnelConfig.Proxy,
 	}
 
 	chiselClient, err := chclient.NewClient(config)
