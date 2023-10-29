@@ -29,6 +29,8 @@ const (
 	EnvKeyEdgeInactivityTimeout = "EDGE_INACTIVITY_TIMEOUT"
 	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
 	EnvKeyEdgeTunnel            = "EDGE_TUNNEL"
+	EnvKeyEdgeTunnelHttpProxy   = "HTTP_PROXY"
+	EnvKeyEdgeTunnelHttpsProxy  = "HTTPS_PROXY"
 	EnvKeyHealthCheck           = "HEALTH_CHECK"
 	EnvKeyLogLevel              = "LOG_LEVEL"
 	EnvKeyLogMode               = "LOG_MODE"
@@ -80,6 +82,8 @@ var (
 	fEdgeInactivityTimeout = kingpin.Flag("edge-inactivity", EnvKeyEdgeInactivityTimeout+" timeout used by the agent to close the reverse tunnel after inactivity (default to 5m)").Envar(EnvKeyEdgeInactivityTimeout).Default(agent.DefaultEdgeSleepInterval).String()
 	fEdgeInsecurePoll      = kingpin.Flag("edge-insecurepoll", EnvKeyEdgeInsecurePoll+" enable this option if you need the agent to poll a HTTPS Portainer instance with self-signed certificates. Disabled by default, set to 1 to enable it").Envar(EnvKeyEdgeInsecurePoll).Bool()
 	fEdgeTunnel            = kingpin.Flag("edge-tunnel", EnvKeyEdgeTunnel+" disable this option if you wish to prevent the agent from opening tunnels over websockets").Envar(EnvKeyEdgeTunnel).Default("true").Bool()
+	fEdgeTunnelHttpProxy   = kingpin.Flag("edge-tunnel-http-proxy", EnvKeyEdgeTunnelHttpProxy+" enable this option if you wish to use a proxy to open tunnels over websockets").Envar(EnvKeyEdgeTunnelHttpProxy).String()
+	fEdgeTunnelHttpsProxy  = kingpin.Flag("edge-tunnel-https-proxy", EnvKeyEdgeTunnelHttpsProxy+" enable this option if you wish to use a https proxy to open tunnels over websockets").Envar(EnvKeyEdgeTunnelHttpsProxy).String()
 	fEdgeGroupsIDs         = kingpin.Flag("edge-groups", EnvKeyEdgeGroups+" a colon-separated list of Edge groups identifiers. Used for AEEC, the created environment will be added to these edge groups").Envar(EnvKeyEdgeGroups).String()
 	fEnvironmentGroupID    = kingpin.Flag("environment-group", EnvKeyEnvironmentGroup+" an Environment group identifier. Used for AEEC, the created environment will be associated to this group").Envar(EnvKeyEnvironmentGroup).Int()
 	fTagsIDs               = kingpin.Flag("tags", EnvKeyTags+" a colon-separated list of tags to associate to the environment. Used for AEEC.").Envar(EnvKeyTags).String()
@@ -118,6 +122,12 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		return nil, errors.WithMessage(err, "failed parsing tag ids")
 	}
 
+	// If the user has specified a HTTPS proxy, we use it for both HTTP and HTTPS requests
+	httpProxy := *fEdgeTunnelHttpsProxy
+	if httpProxy == "" {
+		httpProxy = *fEdgeTunnelHttpProxy
+	}
+
 	return &agent.Options{
 		AssetsPath:            *fAssetsPath,
 		AgentServerAddr:       fAgentServerAddr.String(),
@@ -136,6 +146,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeInactivityTimeout: *fEdgeInactivityTimeout,
 		EdgeInsecurePoll:      *fEdgeInsecurePoll,
 		EdgeTunnel:            *fEdgeTunnel,
+		EdgeTunnelProxy:       httpProxy,
 		HealthCheck:           *fHealthCheck,
 		LogLevel:              *fLogLevel,
 		LogMode:               *fLogMode,
