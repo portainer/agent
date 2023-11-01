@@ -64,8 +64,8 @@ jobs:
     if: >-
       github.ref == 'refs/heads/develop'
     outputs:
-      imagediff-trivy: ${{ steps.set-diff-trivy-matrix.outputs.image_diff_trivy_result }}
-      imagediff-docker-scout: ${{ steps.set-diff-docker-scout-matrix.outputs.image_diff_docker_scout_result }}
+      image-trivy: ${{ steps.set-trivy-matrix.outputs.image_trivy_result }}
+      image-docker-scout: ${{ steps.set-docker-scout-matrix.outputs.image_docker_scout_result }}
     steps:
       - name: scan vulnerabilities by Trivy
         uses: docker://docker.io/aquasec/trivy:latest
