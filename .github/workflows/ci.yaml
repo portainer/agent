@@ -69,7 +69,7 @@ jobs:
       - name: "[preparation] set the container image tag"
         run: |
           if [ "${GITHUB_EVENT_NAME}" == "pull_request" ]; then
-            CONTAINER_IMAGE_TAG="2.20.0-beta"
+            CONTAINER_IMAGE_TAG="2.20.0-beta.1"
           else
             CONTAINER_IMAGE_TAG=$(echo $GITHUB_REF_NAME | sed 's/\//-/g')
           fi
@@ -115,7 +115,7 @@ jobs:
       - name: "[execution] build and push manifests"
         run: |
           if [ "${GITHUB_EVENT_NAME}" == "pull_request" ]; then
-            CONTAINER_IMAGE_TAG="2.20.0-beta"
+            CONTAINER_IMAGE_TAG="2.20.0-beta.1"
           else
             CONTAINER_IMAGE_TAG=$(echo $GITHUB_REF_NAME | sed 's/\//-/g')
           fi
