@@ -70,8 +70,8 @@ Help()
    echo "    X.Y.Z-beta.0 (Major.Minor.Patch-beta.Revision)"
    echo
    echo "The order of bumping is:"
-   echo "x.x.x -> x.x+1.0-beta.0 -> x.x+1.0-beta.1 -> x.x+1.0"
-   echo "(2.19.0 -> 2.19.1 -> 2.20.0-beta.0 -> 2.20.0-beta.1 -> 2.20.0)"
+   echo "x.x.x -> x.x+1.0-beta.1 -> x.x+1.0-beta.1 -> x.x+1.0"
+   echo "(2.19.0 -> 2.19.1 -> 2.20.0-beta.1 -> 2.20.0-beta.2 -> 2.20.0)"
    echo
    echo "The current version is defined in multiple files."
    echo "This script will update the version in the following files:"
