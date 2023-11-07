@@ -14,6 +14,17 @@ fi
 CURRENT_VERSION=$(grep -i "^\s*Version\s*=" agent.go | sed 's/^.* \(".*"$\)/\1/' | xargs)
 PROMPT=true
 
+function IsReleaseBranch() {
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+    # Check if the branch is prefixed with "release"
+    if [[ $current_branch == release* ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
 # Parse the major, minor and patch versions
 # out.
 # You use it like this:
@@ -28,14 +39,25 @@ function ParseSemVer() {
     local major=0
     local minor=0
     local patch=0
+    local pre_release=""
 
-    if [[ "$token" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+    betaRegex="([0-9]+)\.([0-9]+)\.([0-9]+)-([a-zA-Z0-9.-]+)"
+    if [[ "$token" =~ $betaRegex ]]; then
         major=${BASH_REMATCH[1]}
         minor=${BASH_REMATCH[2]}
         patch=${BASH_REMATCH[3]}
-    fi
+        pre_release=${BASH_REMATCH[4]}
 
-    echo "$major $minor $patch"
+        echo "$major $minor $patch $pre_release"
+
+    elif [[ "$token" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+                
+        major=${BASH_REMATCH[1]}
+        minor=${BASH_REMATCH[2]}
+        patch=${BASH_REMATCH[3]}
+
+        echo "$major $minor $patch"
+    fi
 }
 
 Help()
@@ -44,6 +66,12 @@ Help()
    echo
    echo "The Portainer Agent version is in the semantic version format:"
    echo "    X.Y.Z (Major.Minor.Patch)"
+   echo "A beta version is indicated by a pre-release tag:"
+   echo "    X.Y.Z-beta.0 (Major.Minor.Patch-beta.Revision)"
+   echo
+   echo "The order of bumping is:"
+   echo "x.x.x -> x.x+1.0-beta.0 -> x.x+1.0-beta.1 -> x.x+1.0"
+   echo "(2.19.0 -> 2.19.1 -> 2.20.0-beta.0 -> 2.20.0-beta.1 -> 2.20.0)"
    echo
    echo "The current version is defined in multiple files."
    echo "This script will update the version in the following files:"
@@ -77,8 +105,17 @@ major=${a[0]}
 minor=${a[1]}
 patch=${a[2]}
 
-minor=$(($minor+1))
-NEW_VERSION="${major}.${minor}.${patch}"
+len=${#a[@]}
+if [[ $len > 3 ]]; then
+    NEW_VERSION="${major}.${minor}.${patch}"
+else
+    if IsReleaseBranch; then 
+        NEW_VERSION="${major}.${minor}.${patch}-beta.1"
+    else 
+        minor=$((minor+1))
+        NEW_VERSION="${major}.${minor}.${patch}"
+    fi
+fi
 
 [ $PROMPT == true ] && { 
     echo -n "New Portainer Agent version: [${NEW_VERSION}]: "
