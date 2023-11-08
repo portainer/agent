@@ -25,5 +25,13 @@ func NewHandler(notaryService *security.NotaryService, kubernetesDeployer *exec.
 	h.Handle("/kubernetes/stack",
 		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.kubernetesDeploy))).Methods(http.MethodPost)
 
+	h.Handle("/kubernetes/namespaces",
+		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.kubernetesGetNamespaces))).Methods(http.MethodGet)
+	h.Handle("/kubernetes/namespaces/{namespace}",
+		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.kubernetesGetNamespaces))).Methods(http.MethodGet)
+
+	h.Handle("/kubernetes/namespaces/{namespace}/{configmaps|secrets}",
+		notaryService.DigitalSignatureVerification(httperror.LoggerHandler(h.kubernetesGetConfigMaps))).Methods(http.MethodGet)
+
 	return h
 }
