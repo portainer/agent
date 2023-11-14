@@ -8,7 +8,7 @@ import (
 	portainer "github.com/portainer/portainer/api"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/rs/zerolog/log"
 )
@@ -203,7 +203,7 @@ func snapshotImages(snapshot *portainer.DockerSnapshot, cli *client.Client) erro
 }
 
 func snapshotVolumes(snapshot *portainer.DockerSnapshot, cli *client.Client) error {
-	volumes, err := cli.VolumeList(context.Background(), filters.Args{})
+	volumes, err := cli.VolumeList(context.Background(), volume.ListOptions{})
 	if err != nil {
 		return err
 	}
