@@ -1,12 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 
 	credentials "github.com/docker/docker-credential-helpers/credentials"
+	"github.com/segmentio/encoding/json"
 )
 
 type portainerHelper struct {

@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -20,6 +19,7 @@ import (
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
 	"github.com/rs/zerolog/log"
+	"github.com/segmentio/encoding/json"
 	"github.com/wI2L/jsondiff"
 )
 

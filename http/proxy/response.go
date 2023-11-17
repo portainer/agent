@@ -1,13 +1,13 @@
 package proxy
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"github.com/segmentio/encoding/json"
 )
 
 func reproduceDockerAPIResponse(data []interface{}, requestPath string) interface{} {

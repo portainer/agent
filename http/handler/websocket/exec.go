@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/websocket"
+	"github.com/segmentio/encoding/json"
 )
 
 func (handler *Handler) websocketExec(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
