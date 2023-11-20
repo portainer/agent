@@ -24,7 +24,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/opencontainers/image-spec v1.1.0-rc4
 	github.com/pkg/errors v0.9.1
-	github.com/portainer/portainer v0.6.1-0.20231120003007-fdaaf7d0bb61
+	github.com/portainer/portainer v0.6.1-0.20231120095428-57ed6ae6a68d
 	github.com/rs/zerolog v1.29.0
 	github.com/wI2L/jsondiff v0.2.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
