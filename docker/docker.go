@@ -8,6 +8,7 @@ import (
 	"github.com/portainer/agent"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/client"
 	"github.com/rs/zerolog/log"
@@ -76,35 +77,37 @@ func (service *InfoService) GetContainerIpFromDockerEngine(containerName string,
 		return "", err
 	}
 
-	if len(containerInspect.NetworkSettings.Networks) > 1 {
-		log.Warn().
-			Int("network_count", len(containerInspect.NetworkSettings.Networks)).
-			Msg("agent container running in more than a single Docker network. This might cause communication issues")
+	networks, err := fetchNetworkInfo(cli, containerInspect.NetworkSettings.Networks)
+	if err != nil {
+		return "", err
 	}
 
-	for networkName, network := range containerInspect.NetworkSettings.Networks {
-		networkInspect, err := cli.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
-		if err != nil {
-			return "", err
-		}
+	overlayCount := countOverlays(networks)
 
-		if networkInspect.Ingress || (ignoreNonSwarmNetworks && networkInspect.Scope != "swarm") {
+	if overlayCount > 1 {
+		log.Warn().
+			Int("network_count", len(containerInspect.NetworkSettings.Networks)).
+			Msg("Agent container running in more than one overlay network. This might cause communication issues")
+	}
+
+	for _, network := range networks {
+		if network.resource.Ingress || (ignoreNonSwarmNetworks && network.resource.Scope != "swarm") {
 			log.Debug().
-				Str("network_name", networkInspect.Name).
-				Str("scope", networkInspect.Scope).
-				Bool("ingress", networkInspect.Ingress).
+				Str("network_name", network.resource.Name).
+				Str("scope", network.resource.Scope).
+				Bool("ingress", network.resource.Ingress).
 				Msg("skipping invalid container network")
 
 			continue
 		}
 
-		if network.IPAddress != "" {
+		if network.settings.IPAddress != "" {
 			log.Debug().
-				Str("ip_address", network.IPAddress).
-				Str("network_name", networkName).
+				Str("ip_address", network.settings.IPAddress).
+				Str("network_name", network.name).
 				Msg("retrieving IP address from container network")
 
-			return network.IPAddress, nil
+			return network.settings.IPAddress, nil
 		}
 	}
 
@@ -168,4 +171,46 @@ func withCli(callback func(cli *client.Client) error) error {
 	defer cli.Close()
 
 	return callback(cli)
+}
+
+type networkInfo struct {
+	resource types.NetworkResource
+	settings *network.EndpointSettings
+	name     string
+}
+
+func fetchNetworkInfo(cli *client.Client, networkSettings map[string]*network.EndpointSettings) ([]networkInfo, error) {
+	networks := []networkInfo{}
+
+	for networkName, network := range networkSettings {
+		networkInspect, err := cli.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		networks = append(networks, networkInfo{
+			resource: networkInspect,
+			settings: network,
+			name:     networkName,
+		})
+
+	}
+
+	return networks, nil
+}
+
+func countOverlays(networks []networkInfo) int {
+	overlayCount := 0
+
+	for _, network := range networks {
+		if network.resource.Driver == "overlay" && !network.resource.Ingress {
+			log.Debug().
+				Str("network_name", network.name).
+				Msg("found overlay network")
+
+			overlayCount++
+		}
+	}
+
+	return overlayCount
 }
