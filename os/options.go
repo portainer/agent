@@ -128,6 +128,12 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		httpProxy = *fEdgeTunnelHttpProxy
 	}
 
+	// When using socks5 proxy (which is the format Docker expects)
+	// we convert to socks:// (which is the format that chisel expects)
+	if strings.HasPrefix(httpProxy, "socks5://") {
+		httpProxy = strings.ReplaceAll(httpProxy, "socks5://", "socks://")
+	}
+
 	return &agent.Options{
 		AssetsPath:            *fAssetsPath,
 		AgentServerAddr:       fAgentServerAddr.String(),
