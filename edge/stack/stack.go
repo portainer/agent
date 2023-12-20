@@ -496,8 +496,7 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	// log.Debug().Int("stack_identifier", int(stack.ID)).Msg("stack pulling images")
-	log.Debug().Int("stack_identifier", int(stack.ID)).Bool("PrePullImage", stack.PrePullImage).Bool("RePullImage", stack.RePullImage).Int("PullCount", stack.PullCount).Int("RetryInterval", RetryInterval).Bool("PullFinished", stack.PullFinished).Msg("stack pulling images")
+	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("stack pulling images")
 
 	if !stack.PullFinished && (stack.PrePullImage || stack.RePullImage) {
 		stack.PullCount += 1
