@@ -149,10 +149,9 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 
 	timeZone := time.Local.String()
 	req.Header.Set(agent.HTTPResponseAgentTimeZone, timeZone)
-	log.Debug().Str("timeZone", timeZone).Msg("sending timeZone header")
 
 	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
-	log.Debug().Int("header", int(client.agentPlatform)).Msg("sending agent platform header")
+	log.Debug().Int("agent_platform", int(client.agentPlatform)).Str("time_zone", timeZone).Msg("sending headers")
 
 	req.Header.Set(agent.HTTPResponseUpdateIDHeaderName, strconv.Itoa(client.metaFields.UpdateID))
 
