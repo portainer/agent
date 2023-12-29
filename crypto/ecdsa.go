@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"math/big"
+	"sync"
 
 	"github.com/portainer/agent"
 )
@@ -16,6 +17,7 @@ import (
 type ECDSAService struct {
 	publicKey *ecdsa.PublicKey
 	secret    string
+	mu        sync.Mutex
 }
 
 // NewECDSAService returns a pointer to a ECDSAService.
@@ -29,6 +31,9 @@ func NewECDSAService(secret string) *ECDSAService {
 // IsAssociated tells if the service is associated with a public key
 // or if it's secured behind  a secret
 func (service *ECDSAService) IsAssociated() bool {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+
 	return service.publicKey != nil || service.secret != ""
 }
 
@@ -53,6 +58,9 @@ func (service *ECDSAService) VerifySignature(signature, key string) (bool, error
 }
 
 func (service *ECDSAService) decodeAndParsePublicKey(key string) (*ecdsa.PublicKey, error) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+
 	if service.publicKey != nil {
 		return service.publicKey, nil
 	}
