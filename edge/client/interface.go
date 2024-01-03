@@ -82,6 +82,7 @@ type StackStatus struct {
 	Version          int
 	Name             string // used in async mode
 	CommandOperation string // used in async mode
+	ReadyRePullImage bool
 }
 
 type setEndpointIDFn func(portainer.EndpointID)

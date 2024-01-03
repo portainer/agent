@@ -325,9 +325,9 @@ func (service *PollService) processStacks(pollResponseStacks []client.StackStatu
 		return nil
 	}
 
-	stacks := map[int]int{}
+	stacks := map[int]client.StackStatus{}
 	for _, s := range pollResponseStacks {
-		stacks[s.ID] = s.Version
+		stacks[s.ID] = s
 	}
 
 	err := service.edgeStackManager.UpdateStacksStatus(stacks)
