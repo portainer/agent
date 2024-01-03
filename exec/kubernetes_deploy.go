@@ -91,7 +91,7 @@ func (deployer *KubernetesDeployer) Validate(ctx context.Context, name string, f
 		return err
 	}
 
-	args = append(args, "apply", "-f", stackFilePath, "--dry-run=server")
+	args = append(args, "apply", "-f", stackFilePath, "--dry-run=client")
 
 	_, err = runCommandAndCaptureStdErr(deployer.command, args, nil)
 	return err
