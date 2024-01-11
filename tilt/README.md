@@ -14,14 +14,14 @@ Edit .env as desired.
 e.g.  To run the agent in edge mode with insecure poll, something like the following environment variables would work.
 Adjust your edge_key and edge_id accordingly
 
------ .env contents ----
-LOG_LEVEL=DEBUG
-TZ=Pacific/Auckland
-EDGE=1
-EDGE_ID=<your edge id>
-EDGE_KEY=<your edge key>
-EDGE_INSECURE_POLL=1
------ end of .env contents ----
+    ----- .env contents ----
+    LOG_LEVEL=DEBUG
+    TZ=Pacific/Auckland
+    EDGE=1
+    EDGE_ID=<your edge id>
+    EDGE_KEY=<your edge key>
+    EDGE_INSECURE_POLL=1
+    ----- end of .env contents ----
 
 Note: The docker-compose file I have maps the timezone database.  So if you need it to test scheduling then set the TZ variable.
 It should match one of the directories below "/usr/share/zoneinfo".   This may or may not be the correct path for OSX but is on Ubuntu.
