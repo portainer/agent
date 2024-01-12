@@ -730,7 +730,7 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 
 			stack.Action = actionDelete
 		} else {
-			if stack.Version == stackPayload.Version {
+			if stack.Version == stackPayload.Version && !stackPayload.ReadyRePullImage {
 				return nil
 			}
 
