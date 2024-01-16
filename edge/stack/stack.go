@@ -103,7 +103,7 @@ func NewStackManager(cli client.PortainerClient, assetsPath string, config *agen
 	}
 }
 
-func (manager *StackManager) UpdateStacksStatus(pollResponseStacks map[int]int) error {
+func (manager *StackManager) UpdateStacksStatus(pollResponseStacks map[int]client.StackStatus) error {
 	if !manager.isEnabled {
 		return nil
 	}
@@ -111,8 +111,8 @@ func (manager *StackManager) UpdateStacksStatus(pollResponseStacks map[int]int) 
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	for stackID, version := range pollResponseStacks {
-		err := manager.processStack(stackID, version)
+	for stackID, status := range pollResponseStacks {
+		err := manager.processStack(stackID, status)
 		if err != nil {
 			return err
 		}
@@ -169,7 +169,7 @@ func getStackFileFolder(stack *edgeStack) string {
 	return folder
 }
 
-func (manager *StackManager) processStack(stackID int, version int) error {
+func (manager *StackManager) processStack(stackID int, stackStatus client.StackStatus) error {
 	var stack *edgeStack
 
 	originalStack, processedStack := manager.stacks[edgeStackID(stackID)]
@@ -178,14 +178,14 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 		clonedStack := *originalStack
 		stack = &clonedStack
 
-		if stack.Version == version {
+		if stack.Version == stackStatus.Version && !stackStatus.ReadyRePullImage {
 			return nil // stack is unchanged
 		}
 
 		log.Debug().Int("stack_identifier", stackID).Msg("marking stack for update")
 
 		stack.Action = actionUpdate
-		stack.Version = version
+		stack.Version = stackStatus.Version
 		stack.Status = StatusPending
 
 		stack.PullFinished = false
@@ -196,7 +196,7 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 
 		stack = &edgeStack{
 			StackPayload: edge.StackPayload{
-				Version: version,
+				Version: stackStatus.Version,
 				ID:      stackID,
 			},
 			Action: actionDeploy,
@@ -204,7 +204,7 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 		}
 	}
 
-	stackPayload, err := manager.portainerClient.GetEdgeStackConfig(stackID, &version)
+	stackPayload, err := manager.portainerClient.GetEdgeStackConfig(stackID, &stackStatus.Version)
 	if err != nil {
 		return err
 	}
@@ -250,7 +250,7 @@ func (manager *StackManager) processStack(stackID int, version int) error {
 	return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusAcknowledged, stack.RollbackTo, "")
 }
 
-func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]int) {
+func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]client.StackStatus) {
 	for stackID, stack := range manager.stacks {
 		if _, ok := pollResponseStacks[int(stackID)]; !ok {
 			log.Debug().Int("stack_identifier", int(stackID)).Msg("marking stack for deletion")
@@ -730,7 +730,7 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 
 			stack.Action = actionDelete
 		} else {
-			if stack.Version == stackPayload.Version {
+			if stack.Version == stackPayload.Version && !stackPayload.ReadyRePullImage {
 				return nil
 			}
 
