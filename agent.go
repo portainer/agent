@@ -211,6 +211,9 @@ type (
 	DeployOptions struct {
 		DeployerBaseOptions
 		Prune bool
+		// Task is the name of the short lived task to deploy, if non empty will run the service as a task
+		// (docker compose will be run with `run --rm` instead of `up`)
+		Task string
 	}
 
 	RemoveOptions struct {

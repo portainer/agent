@@ -358,14 +358,6 @@ func (manager *StackManager) performActionOnStack(queueSleepInterval time.Durati
 			}
 		}
 
-		agentUpgrade := stack.EdgeUpdateID != 0
-		if agentUpgrade {
-			stack.EnvVars = append(stack.EnvVars, portainer.Pair{
-				Name:  "_agentUpgrade",
-				Value: "true",
-			})
-		}
-
 		manager.deployStack(ctx, stack, stackName, stackFileLocation)
 	case actionDelete:
 		stackFileLocation = fmt.Sprintf("%s/%s", SuccessStackFileFolder(stack.FileFolder), stack.FileName)
@@ -575,6 +567,11 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 		envVars := buildEnvVarsForDeployer(stack.EnvVars)
 
+		task := ""
+		if stack.EdgeUpdateID != 0 {
+			task = "updater"
+		}
+
 		err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
 			agent.DeployOptions{
 				DeployerBaseOptions: agent.DeployerBaseOptions{
@@ -582,6 +579,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 					WorkingDir: stack.FileFolder,
 					Env:        envVars,
 				},
+				Task: task,
 			},
 		)
 

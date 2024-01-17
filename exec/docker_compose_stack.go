@@ -2,7 +2,6 @@ package exec
 
 import (
 	"context"
-	"slices"
 
 	"github.com/portainer/agent"
 	libstack "github.com/portainer/portainer/pkg/libstack"
@@ -33,16 +32,18 @@ func NewDockerComposeStackService(binaryPath string) (*DockerComposeStackService
 // Deploy executes the docker stack deploy command.
 func (service *DockerComposeStackService) Deploy(ctx context.Context, name string, filePaths []string, options agent.DeployOptions) error {
 
-	// TODO: this should probably be implemented as an edge job in future.
-	agentUpgrade := slices.Contains(options.Env, "_agentUpgrade")
-	if agentUpgrade {
-		log.Debug().Msgf("Detected portainer agent upgrade")
-		return service.deployer.Run(ctx, filePaths, "updater", libstack.RunOptions{
+	if options.Task != "" {
+		log.Debug().
+			Str("task name", options.Task).
+			Msg("Detected short lived task run")
+
+		return service.deployer.Run(ctx, filePaths, options.Task, libstack.RunOptions{
 			Options: libstack.Options{
 				ProjectName: name,
 				WorkingDir:  options.WorkingDir,
 				Env:         options.Env,
 			},
+			Remove: true,
 		})
 	}
 
