@@ -391,6 +391,10 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 
 	for _, stack := range manager.stacks {
 		if stack.Status == StatusRetry {
+			log.Debug().
+				Int("stack_identifier", int(stack.ID)).
+				Msg("retrying stack")
+
 			stack.Status = StatusPending
 		}
 	}
@@ -496,51 +500,68 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("stack pulling images")
-
-	if !stack.PullFinished && (stack.PrePullImage || stack.RePullImage) {
-		stack.PullCount += 1
-		if stack.PullCount <= RetryInterval || stack.PullCount%RetryInterval == 0 {
-			stack.Status = StatusDeploying
-
-			envVars := buildEnvVarsForDeployer(stack.EnvVars)
-
-			err := manager.deployer.Pull(ctx, stackName, []string{stackFileLocation}, agent.PullOptions{
-				DeployerBaseOptions: agent.DeployerBaseOptions{
-					WorkingDir: stack.FileFolder,
-					Env:        envVars,
-				},
-			})
-			if err == nil {
-				stack.PullFinished = true
-
-				log.Debug().Int("stack_identifier", int(stack.ID)).Int("stack_version", stack.Version).Msg("stack images pulled")
-
-				statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusImagesPulled, stack.RollbackTo, "")
-				if statusUpdateErr != nil {
-					log.Error().Err(statusUpdateErr).Msg("unable to update Edge stack status")
-				}
-			} else {
-				log.Error().Err(err).Int("PullCount", stack.PullCount).Msg("stack images pull failed")
-				if stack.PullCount < MaxRetries {
-					stack.Status = StatusRetry
-				} else {
-					stack.Status = StatusError
-
-					statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusError, stack.RollbackTo, err.Error())
-					if statusUpdateErr != nil {
-						log.Error().Err(statusUpdateErr).Msg("unable to update Edge stack status")
-					}
-				}
-			}
-
-			return err
-		} else {
-			return fmt.Errorf("skip pulling")
-		}
+	if stack.PullFinished || (!stack.PrePullImage && !stack.RePullImage) {
+		return nil
 	}
 
-	return nil
+	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("pulling images")
+
+	stack.PullCount += 1
+	if stack.PullCount > RetryInterval && stack.PullCount%RetryInterval != 0 {
+		return fmt.Errorf("skip pulling")
+	}
+
+	stack.Status = StatusDeploying
+
+	envVars := buildEnvVarsForDeployer(stack.EnvVars)
+
+	err := manager.deployer.Pull(ctx, stackName, []string{stackFileLocation}, agent.PullOptions{
+		DeployerBaseOptions: agent.DeployerBaseOptions{
+			WorkingDir: stack.FileFolder,
+			Env:        envVars,
+		},
+	})
+	if err != nil {
+		log.Error().Err(err).
+			Int("stack_identifier", int(stack.ID)).
+			Int("PullCount", stack.PullCount).
+			Msg("images pull failed")
+
+		if stack.PullCount < MaxRetries {
+			stack.Status = StatusRetry
+
+			return err
+		}
+
+		stack.Status = StatusError
+
+		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusError, stack.RollbackTo, err.Error())
+		if statusUpdateErr != nil {
+			log.Error().
+				Err(statusUpdateErr).
+				Int("stack_identifier", int(stack.ID)).
+				Msg("unable to update Edge stack status")
+		}
+
+		return err
+	}
+
+	stack.PullFinished = true
+
+	log.Debug().
+		Int("stack_identifier", int(stack.ID)).
+		Int("stack_version", stack.Version).
+		Msg("images pulled")
+
+	statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusImagesPulled, stack.RollbackTo, "")
+	if statusUpdateErr != nil {
+		log.Error().
+			Err(statusUpdateErr).
+			Int("stack_identifier", int(stack.ID)).
+			Msg("unable to update Edge stack status")
+	}
+
+	return err
 }
 
 func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
@@ -556,59 +577,66 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 	stack.Status = StatusDeploying
 
-	log.Debug().Int("stack_identifier", int(stack.ID)).
+	log.Debug().
+		Int("stack_identifier", int(stack.ID)).
 		Bool("RetryDeploy", stack.RetryDeploy).
 		Int("DeployCount", stack.DeployCount).
 		Str("stack_name", stackName).
 		Str("namespace", stack.Namespace).
 		Msg("stack deployment")
 
-	if stack.DeployCount <= RetryInterval || stack.DeployCount%RetryInterval == 0 {
-
-		envVars := buildEnvVarsForDeployer(stack.EnvVars)
-
-		err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
-			agent.DeployOptions{
-				DeployerBaseOptions: agent.DeployerBaseOptions{
-					Namespace:  stack.Namespace,
-					WorkingDir: stack.FileFolder,
-					Env:        envVars,
-				},
-			},
-		)
-
-		if err == nil {
-			stack.Action = actionIdle
-
-			log.Debug().Int("stack_identifier", int(stack.ID)).Int("stack_version", stack.Version).Msg("stack deployed")
-
-			err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusDeploymentReceived, stack.RollbackTo, "")
-			if err != nil {
-				log.Error().Err(err).Msg("unable to update Edge stack status")
-			}
-
-			err = backupSuccessStack(stack)
-			if err != nil {
-				log.Error().Err(err).Msg("unable to backup successful Edge stack")
-			}
-
-			stack.Status = StatusAwaitingDeployedStatus
-
-		} else {
-			log.Error().Err(err).Int("DeployCount", stack.DeployCount).Msg("stack deployment failed")
-
-			if stack.RetryDeploy && stack.DeployCount < MaxRetries {
-				stack.Status = StatusRetry
-			} else {
-				stack.Status = StatusError
-
-				err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusError, stack.RollbackTo, "failed to redeploy stack")
-				if err != nil {
-					log.Error().Err(err).Msg("unable to update Edge stack status")
-				}
-			}
-		}
+	if stack.DeployCount > RetryInterval && stack.DeployCount%RetryInterval != 0 {
+		return
 	}
+
+	envVars := buildEnvVarsForDeployer(stack.EnvVars)
+
+	err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
+		agent.DeployOptions{
+			DeployerBaseOptions: agent.DeployerBaseOptions{
+				Namespace:  stack.Namespace,
+				WorkingDir: stack.FileFolder,
+				Env:        envVars,
+			},
+		},
+	)
+
+	if err != nil {
+		log.Error().Err(err).Int("DeployCount", stack.DeployCount).Msg("stack deployment failed")
+
+		if stack.RetryDeploy && stack.DeployCount < MaxRetries {
+			stack.Status = StatusRetry
+			return
+		}
+
+		stack.Status = StatusError
+
+		err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusError, stack.RollbackTo, "failed to redeploy stack")
+		if err != nil {
+			log.Error().Err(err).Msg("unable to update Edge stack status")
+		}
+
+		return
+	}
+
+	stack.Action = actionIdle
+
+	log.Debug().
+		Int("stack_identifier", int(stack.ID)).
+		Int("stack_version", stack.Version).Msg("stack deployed")
+
+	err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusDeploymentReceived, stack.RollbackTo, "")
+	if err != nil {
+		log.Error().Err(err).Msg("unable to update Edge stack status")
+	}
+
+	err = backupSuccessStack(stack)
+	if err != nil {
+		log.Error().Err(err).Msg("unable to backup successful Edge stack")
+	}
+
+	stack.Status = StatusAwaitingDeployedStatus
+
 }
 
 func buildEnvVarsForDeployer(envVars []portainer.Pair) []string {
