@@ -567,6 +567,11 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 		envVars := buildEnvVarsForDeployer(stack.EnvVars)
 
+		task := ""
+		if stack.EdgeUpdateID != 0 {
+			task = "updater"
+		}
+
 		err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
 			agent.DeployOptions{
 				DeployerBaseOptions: agent.DeployerBaseOptions{
@@ -574,6 +579,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 					WorkingDir: stack.FileFolder,
 					Env:        envVars,
 				},
+				Task: task,
 			},
 		)
 
