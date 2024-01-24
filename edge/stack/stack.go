@@ -62,8 +62,9 @@ const (
 	actionIdle
 )
 
-const RetryInterval = 3600 / 5
-const MaxRetries = RetryInterval * 24 * 7
+const queueSleepInterval = agent.EdgeStackQueueSleepIntervalSeconds * time.Second
+const perHourRetries = 3600 / 5
+const maxRetries = perHourRetries * 24 * 7 // retry for maximum 1 week
 
 type engineType int
 
@@ -287,11 +288,6 @@ func (manager *StackManager) Start() error {
 	manager.isEnabled = true
 	manager.stopSignal = make(chan struct{})
 
-	queueSleepInterval, err := time.ParseDuration(agent.EdgeStackQueueSleepInterval)
-	if err != nil {
-		return err
-	}
-
 	go func() {
 		for {
 			manager.mu.Lock()
@@ -305,7 +301,7 @@ func (manager *StackManager) Start() error {
 			default:
 				manager.mu.Unlock()
 
-				manager.performActionOnStack(queueSleepInterval)
+				manager.performActionOnStack()
 			}
 		}
 	}()
@@ -313,7 +309,7 @@ func (manager *StackManager) Start() error {
 	return nil
 }
 
-func (manager *StackManager) performActionOnStack(queueSleepInterval time.Duration) {
+func (manager *StackManager) performActionOnStack() {
 	stack := manager.nextPendingStack()
 	if stack == nil {
 		time.Sleep(queueSleepInterval)
@@ -507,7 +503,7 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 	log.Debug().Int("stack_identifier", int(stack.ID)).Msg("pulling images")
 
 	stack.PullCount += 1
-	if stack.PullCount > RetryInterval && stack.PullCount%RetryInterval != 0 {
+	if stack.PullCount > perHourRetries && stack.PullCount%perHourRetries != 0 {
 		return fmt.Errorf("skip pulling")
 	}
 
@@ -527,7 +523,7 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 			Int("PullCount", stack.PullCount).
 			Msg("images pull failed")
 
-		if stack.PullCount < MaxRetries {
+		if stack.PullCount < maxRetries {
 			stack.Status = StatusRetry
 
 			return err
@@ -585,7 +581,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 		Str("namespace", stack.Namespace).
 		Msg("stack deployment")
 
-	if stack.DeployCount > RetryInterval && stack.DeployCount%RetryInterval != 0 {
+	if stack.DeployCount > perHourRetries && stack.DeployCount%perHourRetries != 0 {
 		return
 	}
 
@@ -604,7 +600,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	if err != nil {
 		log.Error().Err(err).Int("DeployCount", stack.DeployCount).Msg("stack deployment failed")
 
-		if stack.RetryDeploy && stack.DeployCount < MaxRetries {
+		if stack.RetryDeploy && stack.DeployCount < maxRetries {
 			stack.Status = StatusRetry
 			return
 		}
