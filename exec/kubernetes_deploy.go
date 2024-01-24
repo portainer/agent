@@ -76,25 +76,10 @@ func (deployer *KubernetesDeployer) Pull(ctx context.Context, name string, fileP
 	return nil
 }
 
-// Validate runs a dry-run of manifest apply to validate the manifest format
+// Validate is a dummy method for Kubernetes manifest validation
+// https://portainer.atlassian.net/browse/EE-6292?focusedCommentId=29674
 func (deployer *KubernetesDeployer) Validate(ctx context.Context, name string, filePaths []string, options agent.ValidateOptions) error {
-	if len(filePaths) == 0 {
-		return errors.New("missing file paths")
-	}
-
-	stackFilePath := filePaths[0]
-
-	args, err := buildArgs(&argOptions{
-		Namespace: options.Namespace,
-	})
-	if err != nil {
-		return err
-	}
-
-	args = append(args, "apply", "-f", stackFilePath, "--dry-run=server")
-
-	_, err = runCommandAndCaptureStdErr(deployer.command, args, nil)
-	return err
+	return nil
 }
 
 // DeployRawConfig will deploy a Kubernetes manifest inside a specific namespace
