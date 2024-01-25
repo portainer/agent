@@ -22,7 +22,7 @@ type PortainerClient interface {
 	GetEnvironmentID() (portainer.EndpointID, error)
 	GetEnvironmentStatus(flags ...string) (*PollStatusResponse, error)
 	GetEdgeStackConfig(edgeStackID int, version *int) (*edge.StackPayload, error)
-	SetEdgeStackStatus(edgeStackID int, edgeStackStatus portainer.EdgeStackStatusType, rollbackTo *int, error string) error
+	SetEdgeStackStatus(edgeStackID int, edgeStackStatus portainer.EdgeStackStatusType, rollbackTo *int, errMessage string) error
 	SetEdgeJobStatus(edgeJobStatus agent.EdgeJobStatus) error
 	GetEdgeConfig(id EdgeConfigID) (*EdgeConfig, error)
 	SetEdgeConfigState(id EdgeConfigID, state EdgeConfigStateType) error
