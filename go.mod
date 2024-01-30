@@ -2,6 +2,8 @@ module github.com/portainer/agent
 
 go 1.21
 
+toolchain go1.21.6
+
 require (
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
