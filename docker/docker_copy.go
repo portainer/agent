@@ -12,7 +12,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/pkg/errors"
 	"github.com/portainer/agent"
 	"github.com/rs/zerolog/log"
 )
@@ -97,18 +96,13 @@ func getUnpackerImage() string {
 func pullUnpackerImage() error {
 	image := getUnpackerImage()
 
-	// Attempt to pull the unpacker image
-	reader, pullErr := ImagePull(image, types.ImagePullOptions{})
-	if pullErr == nil {
+	reader, err := ImagePull(image, types.ImagePullOptions{})
+	if err != nil {
+		// Avoid returning an error so the operation can succeed if the image is already present
+		log.Debug().Err(err).Msg("unable to pull unpacker image")
+	} else {
 		defer reader.Close()
 		_, _ = io.Copy(io.Discard, reader)
-
-		return nil
-	}
-
-	// If the image already exists then ignore the error and continue
-	if _, err := ImageInspect(image); err != nil {
-		return errors.Wrap(pullErr, "unable to pull unpacker image")
 	}
 
 	return nil
