@@ -28,7 +28,7 @@ func NewInfoService() *InfoService {
 
 // GetRuntimeConfigurationFromDockerEngine retrieves information from a Docker environment
 // and returns a map of labels.
-func (service *InfoService) GetRuntimeConfigurationFromDockerEngine() (*agent.RuntimeConfiguration, error) {
+func (service *InfoService) GetRuntimeConfigurationFromDockerEngine() (*agent.RuntimeConfig, error) {
 	cli, err := NewClient()
 	if err != nil {
 		return nil, err
@@ -40,23 +40,23 @@ func (service *InfoService) GetRuntimeConfigurationFromDockerEngine() (*agent.Ru
 		return nil, err
 	}
 
-	runtimeConfiguration := &agent.RuntimeConfiguration{
-		NodeName:            dockerInfo.Name,
-		DockerConfiguration: agent.DockerRuntimeConfiguration{},
+	runtimeConfig := &agent.RuntimeConfig{
+		NodeName:     dockerInfo.Name,
+		DockerConfig: agent.DockerRuntimeConfig{},
 	}
 
 	if dockerInfo.Swarm.NodeID == "" {
-		getStandaloneConfiguration(runtimeConfiguration)
+		getStandaloneConfig(runtimeConfig)
 	} else {
 
-		err := getSwarmConfiguration(runtimeConfiguration, dockerInfo, cli)
+		err := getSwarmConfig(runtimeConfig, dockerInfo, cli)
 		if err != nil {
 			return nil, err
 		}
 
 	}
 
-	return runtimeConfiguration, nil
+	return runtimeConfig, nil
 }
 
 // GetContainerIpFromDockerEngine is used to retrieve the IP address of the container through Docker.
@@ -127,16 +127,16 @@ func (service *InfoService) GetServiceNameFromDockerEngine(containerName string)
 	return containerInspect.Config.Labels[serviceNameLabel], nil
 }
 
-func getStandaloneConfiguration(config *agent.RuntimeConfiguration) {
-	config.DockerConfiguration.EngineStatus = agent.EngineStatusStandalone
+func getStandaloneConfig(config *agent.RuntimeConfig) {
+	config.DockerConfig.EngineType = agent.EngineTypeStandalone
 }
 
-func getSwarmConfiguration(config *agent.RuntimeConfiguration, dockerInfo types.Info, cli *client.Client) error {
-	config.DockerConfiguration.EngineStatus = agent.EngineStatusSwarm
-	config.DockerConfiguration.NodeRole = agent.NodeRoleWorker
+func getSwarmConfig(config *agent.RuntimeConfig, dockerInfo types.Info, cli *client.Client) error {
+	config.DockerConfig.EngineType = agent.EngineTypeSwarm
+	config.DockerConfig.NodeRole = agent.NodeRoleWorker
 
 	if dockerInfo.Swarm.ControlAvailable {
-		config.DockerConfiguration.NodeRole = agent.NodeRoleManager
+		config.DockerConfig.NodeRole = agent.NodeRoleManager
 
 		node, _, err := cli.NodeInspectWithRaw(context.Background(), dockerInfo.Swarm.NodeID)
 		if err != nil {
@@ -144,7 +144,7 @@ func getSwarmConfiguration(config *agent.RuntimeConfiguration, dockerInfo types.
 		}
 
 		if node.ManagerStatus.Leader {
-			config.DockerConfiguration.Leader = true
+			config.DockerConfig.Leader = true
 		}
 	}
 

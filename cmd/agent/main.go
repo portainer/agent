@@ -67,7 +67,7 @@ func main() {
 
 	systemService := ghw.NewSystemService(agent.HostRoot)
 	containerPlatform := os.DetermineContainerPlatform()
-	runtimeConfiguration := &agent.RuntimeConfiguration{
+	runtimeConfiguration := &agent.RuntimeConfig{
 		AgentPort: options.AgentServerPort,
 	}
 
@@ -96,7 +96,7 @@ func main() {
 		log.Debug().Str("member_tags", fmt.Sprintf("%+v", runtimeConfiguration)).Msg("")
 
 		clusterMode := false
-		if runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm {
+		if runtimeConfiguration.DockerConfig.EngineType == agent.EngineTypeSwarm {
 			clusterMode = true
 			log.Info().Msg("agent running on a Swarm cluster node. Running in cluster mode")
 		}

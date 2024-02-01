@@ -31,17 +31,17 @@ type (
 	// ContainerPlatform represent the platform on which the agent is running (Docker, Kubernetes)
 	ContainerPlatform int
 
-	// DockerEngineStatus represent the status of a Docker runtime (standalone or swarm)
-	DockerEngineStatus int
+	// DockerEngineType represent the type of a Docker runtime (standalone or swarm)
+	DockerEngineType int
 
 	// DockerNodeRole represent the role of a Docker swarm node
 	DockerNodeRole int
 
-	// DockerRuntimeConfiguration represents the runtime configuration of an agent running on the Docker platform
-	DockerRuntimeConfiguration struct {
-		EngineStatus DockerEngineStatus
-		Leader       bool
-		NodeRole     DockerNodeRole
+	// DockerRuntimeConfig represents the runtime configuration of an agent running on the Docker platform
+	DockerRuntimeConfig struct {
+		EngineType DockerEngineType
+		Leader     bool
+		NodeRole   DockerNodeRole
 	}
 
 	// EdgeJobStatus represents an Edge job status
@@ -56,8 +56,8 @@ type (
 		PhysicalDisks []PhysicalDisk
 	}
 
-	// KubernetesRuntimeConfiguration represents the runtime configuration of an agent running on the Kubernetes platform
-	KubernetesRuntimeConfiguration struct{}
+	// KubernetesRuntimeConfig represents the runtime configuration of an agent running on the Kubernetes platform
+	KubernetesRuntimeConfig struct{}
 
 	// AgentMetadata is the representation of the metadata object used to decorate
 	// all the objects in the response of a Docker aggregated resource request.
@@ -136,13 +136,13 @@ type (
 		Size   uint64
 	}
 
-	// RuntimeConfiguration represent the configuration of an agent during runtime
-	RuntimeConfiguration struct {
-		AgentPort               string
-		EdgeKeySet              bool
-		NodeName                string
-		DockerConfiguration     DockerRuntimeConfiguration
-		KubernetesConfiguration KubernetesRuntimeConfiguration
+	// RuntimeConfig represent the configuration of an agent during runtime
+	RuntimeConfig struct {
+		AgentPort        string
+		EdgeKeySet       bool
+		NodeName         string
+		DockerConfig     DockerRuntimeConfig
+		KubernetesConfig KubernetesRuntimeConfig
 	}
 
 	// Schedule represents a script that can be scheduled on the underlying host
@@ -174,8 +174,8 @@ type (
 		GetMemberByRole(role DockerNodeRole) *ClusterMember
 		GetMemberByNodeName(nodeName string) *ClusterMember
 		GetMemberWithEdgeKeySet() *ClusterMember
-		GetRuntimeConfiguration() *RuntimeConfiguration
-		UpdateRuntimeConfiguration(runtimeConfiguration *RuntimeConfiguration) error
+		GetRuntimeConfiguration() *RuntimeConfig
+		UpdateRuntimeConfiguration(runtimeConfiguration *RuntimeConfig) error
 	}
 
 	// DigitalSignatureService is used to validate digital signatures.
@@ -186,7 +186,7 @@ type (
 
 	// DockerInfoService is used to retrieve information from a Docker environment.
 	DockerInfoService interface {
-		GetRuntimeConfigurationFromDockerEngine() (*RuntimeConfiguration, error)
+		GetRuntimeConfigurationFromDockerEngine() (*RuntimeConfig, error)
 		GetContainerIpFromDockerEngine(containerName string, ignoreNonSwarmNetworks bool) (string, error)
 		GetServiceNameFromDockerEngine(containerName string) (string, error)
 	}
@@ -227,7 +227,7 @@ type (
 
 	// KubernetesInfoService is used to retrieve information from a Kubernetes environment.
 	KubernetesInfoService interface {
-		GetInformationFromKubernetesCluster() (*RuntimeConfiguration, error)
+		GetInformationFromKubernetesCluster() (*RuntimeConfig, error)
 	}
 
 	// OptionParser is used to parse options.
@@ -405,11 +405,11 @@ const (
 )
 
 const (
-	_ DockerEngineStatus = iota
-	// EngineStatusStandalone represent a standalone Docker environment
-	EngineStatusStandalone
-	// EngineStatusSwarm represent a Docker swarm environment
-	EngineStatusSwarm
+	_ DockerEngineType = iota
+	// EngineTypeStandalone represent a standalone Docker environment
+	EngineTypeStandalone
+	// EngineTypeSwarm represent a Docker swarm environment
+	EngineTypeSwarm
 )
 
 const (

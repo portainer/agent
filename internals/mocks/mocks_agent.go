@@ -99,10 +99,10 @@ func (mr *MockClusterServiceMockRecorder) GetMemberWithEdgeKeySet() *gomock.Call
 }
 
 // GetRuntimeConfiguration mocks base method.
-func (m *MockClusterService) GetRuntimeConfiguration() *agent.RuntimeConfiguration {
+func (m *MockClusterService) GetRuntimeConfiguration() *agent.RuntimeConfig {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRuntimeConfiguration")
-	ret0, _ := ret[0].(*agent.RuntimeConfiguration)
+	ret0, _ := ret[0].(*agent.RuntimeConfig)
 	return ret0
 }
 
@@ -139,7 +139,7 @@ func (mr *MockClusterServiceMockRecorder) Members() *gomock.Call {
 }
 
 // UpdateRuntimeConfiguration mocks base method.
-func (m *MockClusterService) UpdateRuntimeConfiguration(runtimeConfiguration *agent.RuntimeConfiguration) error {
+func (m *MockClusterService) UpdateRuntimeConfiguration(runtimeConfiguration *agent.RuntimeConfig) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateRuntimeConfiguration", runtimeConfiguration)
 	ret0, _ := ret[0].(error)
@@ -243,10 +243,10 @@ func (mr *MockDockerInfoServiceMockRecorder) GetContainerIpFromDockerEngine(cont
 }
 
 // GetRuntimeConfigurationFromDockerEngine mocks base method.
-func (m *MockDockerInfoService) GetRuntimeConfigurationFromDockerEngine() (*agent.RuntimeConfiguration, error) {
+func (m *MockDockerInfoService) GetRuntimeConfigurationFromDockerEngine() (*agent.RuntimeConfig, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRuntimeConfigurationFromDockerEngine")
-	ret0, _ := ret[0].(*agent.RuntimeConfiguration)
+	ret0, _ := ret[0].(*agent.RuntimeConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -389,10 +389,10 @@ func (m *MockKubernetesInfoService) EXPECT() *MockKubernetesInfoServiceMockRecor
 }
 
 // GetInformationFromKubernetesCluster mocks base method.
-func (m *MockKubernetesInfoService) GetInformationFromKubernetesCluster() (*agent.RuntimeConfiguration, error) {
+func (m *MockKubernetesInfoService) GetInformationFromKubernetesCluster() (*agent.RuntimeConfig, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetInformationFromKubernetesCluster")
-	ret0, _ := ret[0].(*agent.RuntimeConfiguration)
+	ret0, _ := ret[0].(*agent.RuntimeConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

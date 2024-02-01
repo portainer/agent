@@ -52,7 +52,7 @@ type Config struct {
 	KubeClient           *kubecli.KubeClient
 	KubernetesDeployer   *exec.KubernetesDeployer
 	EdgeManager          *edge.Manager
-	RuntimeConfiguration *agent.RuntimeConfiguration
+	RuntimeConfiguration *agent.RuntimeConfig
 	NomadConfig          agent.NomadConfig
 	UseTLS               bool
 	ContainerPlatform    agent.ContainerPlatform
