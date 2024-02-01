@@ -183,7 +183,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 		for range ticker.C {
 			manager.pollService.Start()
 
-			err := manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
+			err := manager.stackManager.SetEngineType(stack.EngineTypeKubernetes)
 			if err != nil {
 				log.Error().Err(err).Msg("unable to set engine status")
 
@@ -210,7 +210,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnNomad(runtimeCheckFrequency 
 		for range ticker.C {
 			manager.pollService.Start()
 
-			err := manager.stackManager.SetEngineStatus(stack.EngineTypeNomad)
+			err := manager.stackManager.SetEngineType(stack.EngineTypeNomad)
 			if err != nil {
 				log.Error().Err(err).Msg("unable to set engine status")
 
@@ -269,7 +269,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 
 		manager.pollService.Start()
 
-		err = manager.stackManager.SetEngineStatus(engineStatus)
+		err = manager.stackManager.SetEngineType(engineStatus)
 		if err != nil {
 			return err
 		}
@@ -278,8 +278,9 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 	}
 
 	manager.pollService.Stop()
+	manager.stackManager.Stop()
 
-	return manager.stackManager.Stop()
+	return nil
 }
 
 func (manager *Manager) CreateEdgeConfig(config *client.EdgeConfig) error {
