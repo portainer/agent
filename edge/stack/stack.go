@@ -350,6 +350,19 @@ func (manager *StackManager) performActionOnStack() {
 			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
 			err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName, manager.assetsPath)
 			if err != nil {
+				log.Error().Err(err).Msg("unable to copy the stack to host")
+
+				stack.Status = StatusError
+
+				err := manager.portainerClient.SetEdgeStackStatus(
+					int(stack.ID),
+					portainer.EdgeStackStatusError,
+					stack.RollbackTo,
+					err.Error())
+				if err != nil {
+					log.Error().Err(err).Msg("unable to update Edge stack status")
+				}
+
 				return
 			}
 		}
