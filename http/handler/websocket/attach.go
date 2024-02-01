@@ -16,14 +16,18 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (handler *Handler) websocketAttach(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+func (handler *Handler) websocketOperation(
+	w http.ResponseWriter,
+	r *http.Request,
+	operation func(http.ResponseWriter, *http.Request) *httperror.HandlerError,
+) *httperror.HandlerError {
 	if handler.clusterService == nil {
-		return handler.handleAttachRequest(w, r)
+		return operation(w, r)
 	}
 
 	agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
 	if agentTargetHeader == handler.runtimeConfiguration.NodeName {
-		return handler.handleAttachRequest(w, r)
+		return operation(w, r)
 	}
 
 	targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
@@ -33,6 +37,10 @@ func (handler *Handler) websocketAttach(w http.ResponseWriter, r *http.Request) 
 
 	proxy.WebsocketRequest(w, r, targetMember)
 	return nil
+}
+
+func (handler *Handler) websocketAttach(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
+	return handler.websocketOperation(w, r, handler.handleAttachRequest)
 }
 
 func (handler *Handler) handleAttachRequest(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {

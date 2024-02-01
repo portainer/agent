@@ -3,14 +3,11 @@ package websocket
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"time"
 
-	"github.com/portainer/agent"
-	"github.com/portainer/agent/http/proxy"
 	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 	"github.com/portainer/portainer/pkg/libhttp/request"
 
@@ -19,23 +16,7 @@ import (
 )
 
 func (handler *Handler) websocketExec(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-	if handler.clusterService == nil {
-		return handler.handleExecRequest(w, r)
-	}
-
-	agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
-
-	if agentTargetHeader == handler.runtimeConfiguration.NodeName {
-		return handler.handleExecRequest(w, r)
-	}
-
-	targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
-	if targetMember == nil {
-		return httperror.InternalServerError("The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent"))
-	}
-
-	proxy.WebsocketRequest(w, r, targetMember)
-	return nil
+	return handler.websocketOperation(w, r, handler.handleExecRequest)
 }
 
 func (handler *Handler) handleExecRequest(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
