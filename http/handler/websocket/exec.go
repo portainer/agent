@@ -3,10 +3,7 @@ package websocket
 import (
 	"bytes"
 	"encoding/json"
-	"net"
 	"net/http"
-	"net/http/httputil"
-	"time"
 
 	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 	"github.com/portainer/portainer/pkg/libhttp/request"
@@ -44,30 +41,7 @@ func (handler *Handler) handleExecRequest(rw http.ResponseWriter, r *http.Reques
 }
 
 func hijackExecStartOperation(websocketConn *websocket.Conn, execID string) error {
-	dial, err := createDial()
-	if err != nil {
-		return err
-	}
-
-	// When we set up a TCP connection for hijack, there could be long periods
-	// of inactivity (a long running command with no output) that in certain
-	// network setups may cause ECONNTIMEOUT, leaving the client in an unknown
-	// state. Setting TCP KeepAlive on the socket connection will prohibit
-	// ECONNTIMEOUT unless the socket connection truly is broken
-	if tcpConn, ok := dial.(*net.TCPConn); ok {
-		tcpConn.SetKeepAlive(true)
-		tcpConn.SetKeepAlivePeriod(30 * time.Second)
-	}
-
-	httpConn := httputil.NewClientConn(dial, nil)
-	defer httpConn.Close()
-
-	execStartRequest, err := createExecStartRequest(execID)
-	if err != nil {
-		return err
-	}
-
-	return hijackRequest(websocketConn, httpConn, execStartRequest)
+	return hijackStartOperation(websocketConn, execID, createExecStartRequest)
 }
 
 func createExecStartRequest(execID string) (*http.Request, error) {

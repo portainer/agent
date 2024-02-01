@@ -69,7 +69,11 @@ func (handler *Handler) handleAttachRequest(w http.ResponseWriter, r *http.Reque
 	return nil
 }
 
-func hijackAttachStartOperation(websocketConn *websocket.Conn, attachID string) error {
+func hijackStartOperation(
+	websocketConn *websocket.Conn,
+	opID string,
+	operation func(string) (*http.Request, error),
+) error {
 	dial, err := createDial()
 	if err != nil {
 		return err
@@ -88,12 +92,16 @@ func hijackAttachStartOperation(websocketConn *websocket.Conn, attachID string) 
 	httpConn := httputil.NewClientConn(dial, nil)
 	defer httpConn.Close()
 
-	attachStartRequest, err := createAttachStartRequest(attachID)
+	startRequest, err := operation(opID)
 	if err != nil {
 		return err
 	}
 
-	return hijackRequest(websocketConn, httpConn, attachStartRequest)
+	return hijackRequest(websocketConn, httpConn, startRequest)
+}
+
+func hijackAttachStartOperation(websocketConn *websocket.Conn, attachID string) error {
+	return hijackStartOperation(websocketConn, attachID, createAttachStartRequest)
 }
 
 func createAttachStartRequest(attachID string) (*http.Request, error) {
