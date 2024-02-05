@@ -89,8 +89,6 @@ jobs:
             # for instance, feature/1.0.0 -> feature-1.0.0
             CONTAINER_IMAGE_TAG=$(echo $GITHUB_REF_NAME | sed 's/\//-/g')
           fi
-
-          CONTAINER_IMAGE_TAG=2.20
           
           echo "CONTAINER_IMAGE_TAG=${CONTAINER_IMAGE_TAG}-${{ matrix.config.platform }}${{ matrix.config.version }}-${{ matrix.config.arch }}" >> $GITHUB_ENV
       - name: "[execution] build linux & windows agent binaries"
