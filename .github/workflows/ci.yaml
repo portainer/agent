@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - "develop"
-      - "!release/*"
+      - "release/*"
   pull_request:
     branches:
       - "develop"
@@ -34,7 +34,7 @@ jobs:
           - { platform: linux, arch: ppc64le, version: "" }
           - { platform: windows, arch: amd64, version: 1809 }
           - { platform: windows, arch: amd64, version: ltsc2022 }
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
       - name: "[preparation] checkout the current branch"
@@ -76,10 +76,10 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
       - name: "[preparation] set the container image tag"
         run: |
-          if [[ "${GITHUB_BASE_REF}" =~ ^release/.*$ ]]; then
+          if [[ "${GITHUB_REF_NAME}" =~ ^release/.*$ ]]; then
             # use the release branch name as the tag for release branches
             # for instance, release/2.19 becomes 2.19
-            CONTAINER_IMAGE_TAG=$(echo $GITHUB_BASE_REF | cut -d "/" -f 2)
+            CONTAINER_IMAGE_TAG=$(echo $GITHUB_REF_NAME | cut -d "/" -f 2)
           elif [ "${GITHUB_EVENT_NAME}" == "pull_request" ]; then
             # use pr${{ github.event.number }} as the tag for pull requests
             # for instance, pr123
@@ -108,7 +108,7 @@ jobs:
         env:
           CONTAINER_IMAGE_TAG: ${{ env.CONTAINER_IMAGE_TAG }}
   build_manifests:
-    runs-on: arc-runner-set
+    runs-on: ubuntu-latest
     needs: [build_images]
     if: github.event.pull_request.draft == false
     steps:
@@ -125,10 +125,10 @@ jobs:
           endpoint: builders
       - name: "[execution] build and push manifests"
         run: |
-          if [[ "${GITHUB_BASE_REF}" =~ ^release/.*$ ]]; then
+          if [[ "${GITHUB_REF_NAME}" =~ ^release/.*$ ]]; then
             # use the release branch name as the tag for release branches
             # for instance, release/2.19 becomes 2.19
-            CONTAINER_IMAGE_TAG=$(echo $GITHUB_BASE_REF | cut -d "/" -f 2)
+            CONTAINER_IMAGE_TAG=$(echo $GITHUB_REF_NAME | cut -d "/" -f 2)
           elif [ "${GITHUB_EVENT_NAME}" == "pull_request" ]; then
             # use pr${{ github.event.number }} as the tag for pull requests
             # for instance, pr123
