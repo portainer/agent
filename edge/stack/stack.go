@@ -582,6 +582,8 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 		Msg("stack deployment")
 
 	if stack.DeployCount > perHourRetries && stack.DeployCount%perHourRetries != 0 {
+		stack.Status = StatusRetry
+
 		return
 	}
 
