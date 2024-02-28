@@ -804,6 +804,7 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 	stack.FileName = stackPayload.EntryFileName
 	stack.FileFolder = getStackFileFolder(stack)
 	stack.EnvVars = stackPayload.EnvVars
+	stack.Namespace = stackPayload.Namespace
 
 	err = filesystem.DecodeDirEntries(stackPayload.DirEntries)
 	if err != nil {
