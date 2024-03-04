@@ -279,6 +279,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/portainer/portainer v0.6.1-0.20240222220641-77d5d1b7ffcc h1:tySz0LS6JwEO8xSAOHqaMNbyeAibDaQWi4GVrXUUQVI=
 github.com/portainer/portainer v0.6.1-0.20240222220641-77d5d1b7ffcc/go.mod h1:130gjTm+4I04otMJHKJoK8dmU7ipbHKI1D89x2N7ejI=
+github.com/portainer/portainer v0.6.1-0.20240229225020-385fd95779d8 h1:sn23XJjLg9TeNzvn9ghllr2nDmUVfqVmpicaLpq0JPY=
+github.com/portainer/portainer v0.6.1-0.20240229225020-385fd95779d8/go.mod h1:1jlOtvJ6hOkuA0Ou59ytCEsp9T4KzVjrxBfjrs+ozxQ=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_golang v0.9.2/go.mod h1:OsXs2jCmiKlQ1lTBmv21f2mNfw4xf/QclQDMrYNZzcM=
 github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910/go.mod h1:MbSGuTsp3dbXC40dX6PRTWyKYBIrTGTE9sqQNg2J8bo=
