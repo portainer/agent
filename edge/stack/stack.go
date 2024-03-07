@@ -257,8 +257,9 @@ func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]cli
 			log.Debug().Int("stack_identifier", int(stackID)).Msg("marking stack for deletion")
 
 			stack.Action = actionDelete
-			stack.Status = StatusPending
-
+			if stack.Status != StatusAwaitingRemovedStatus {
+				stack.Status = StatusPending
+			}
 			manager.stacks[stackID] = stack
 		}
 	}
