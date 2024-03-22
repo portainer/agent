@@ -3,14 +3,8 @@ package websocket
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
-	"net"
 	"net/http"
-	"net/http/httputil"
-	"time"
 
-	"github.com/portainer/agent"
-	"github.com/portainer/agent/http/proxy"
 	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 	"github.com/portainer/portainer/pkg/libhttp/request"
 
@@ -19,23 +13,7 @@ import (
 )
 
 func (handler *Handler) websocketExec(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-	if handler.clusterService == nil {
-		return handler.handleExecRequest(w, r)
-	}
-
-	agentTargetHeader := r.Header.Get(agent.HTTPTargetHeaderName)
-
-	if agentTargetHeader == handler.runtimeConfiguration.NodeName {
-		return handler.handleExecRequest(w, r)
-	}
-
-	targetMember := handler.clusterService.GetMemberByNodeName(agentTargetHeader)
-	if targetMember == nil {
-		return httperror.InternalServerError("The agent was unable to contact any other agent", errors.New("Unable to find the targeted agent"))
-	}
-
-	proxy.WebsocketRequest(w, r, targetMember)
-	return nil
+	return handler.websocketOperation(w, r, handler.handleExecRequest)
 }
 
 func (handler *Handler) handleExecRequest(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
@@ -63,30 +41,7 @@ func (handler *Handler) handleExecRequest(rw http.ResponseWriter, r *http.Reques
 }
 
 func hijackExecStartOperation(websocketConn *websocket.Conn, execID string) error {
-	dial, err := createDial()
-	if err != nil {
-		return err
-	}
-
-	// When we set up a TCP connection for hijack, there could be long periods
-	// of inactivity (a long running command with no output) that in certain
-	// network setups may cause ECONNTIMEOUT, leaving the client in an unknown
-	// state. Setting TCP KeepAlive on the socket connection will prohibit
-	// ECONNTIMEOUT unless the socket connection truly is broken
-	if tcpConn, ok := dial.(*net.TCPConn); ok {
-		tcpConn.SetKeepAlive(true)
-		tcpConn.SetKeepAlivePeriod(30 * time.Second)
-	}
-
-	httpConn := httputil.NewClientConn(dial, nil)
-	defer httpConn.Close()
-
-	execStartRequest, err := createExecStartRequest(execID)
-	if err != nil {
-		return err
-	}
-
-	return hijackRequest(websocketConn, httpConn, execStartRequest)
+	return hijackStartOperation(websocketConn, execID, createExecStartRequest)
 }
 
 func createExecStartRequest(execID string) (*http.Request, error) {
