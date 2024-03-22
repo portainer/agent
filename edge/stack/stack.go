@@ -265,7 +265,7 @@ func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]cli
 	}
 }
 
-func (manager *StackManager) Stop() error {
+func (manager *StackManager) Stop() {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
@@ -274,8 +274,6 @@ func (manager *StackManager) Stop() error {
 		manager.stopSignal = nil
 		manager.isEnabled = false
 	}
-
-	return nil
 }
 
 func (manager *StackManager) Start() error {
@@ -694,22 +692,19 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	}
 }
 
-func (manager *StackManager) SetEngineStatus(engineStatus engineType) error {
-	if engineStatus == manager.engineType {
+func (manager *StackManager) SetEngineType(engineTyp engineType) error {
+	if engineTyp == manager.engineType {
 		return nil
 	}
 
-	manager.engineType = engineStatus
+	manager.Stop()
 
-	err := manager.Stop()
+	deployer, err := buildDeployerService(manager.assetsPath, engineTyp)
 	if err != nil {
 		return err
 	}
 
-	deployer, err := buildDeployerService(manager.assetsPath, engineStatus)
-	if err != nil {
-		return err
-	}
+	manager.engineType = engineTyp
 	manager.deployer = deployer
 
 	return nil

@@ -183,7 +183,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequ
 		for range ticker.C {
 			manager.pollService.Start()
 
-			err := manager.stackManager.SetEngineStatus(stack.EngineTypeKubernetes)
+			err := manager.stackManager.SetEngineType(stack.EngineTypeKubernetes)
 			if err != nil {
 				log.Error().Err(err).Msg("unable to set engine status")
 
@@ -210,7 +210,7 @@ func (manager *Manager) startEdgeBackgroundProcessOnNomad(runtimeCheckFrequency 
 		for range ticker.C {
 			manager.pollService.Start()
 
-			err := manager.stackManager.SetEngineStatus(stack.EngineTypeNomad)
+			err := manager.stackManager.SetEngineType(stack.EngineTypeNomad)
 			if err != nil {
 				log.Error().Err(err).Msg("unable to set engine status")
 
@@ -248,28 +248,28 @@ func (manager *Manager) startEdgeBackgroundProcess() error {
 }
 
 func (manager *Manager) checkDockerRuntimeConfig() error {
-	runtimeConfiguration, err := manager.dockerInfoService.GetRuntimeConfigurationFromDockerEngine()
+	runtimeConfig, err := manager.dockerInfoService.GetRuntimeConfigurationFromDockerEngine()
 	if err != nil {
 		return err
 	}
 
-	agentRunsOnLeaderNode := runtimeConfiguration.DockerConfiguration.Leader
-	agentRunsOnSwarm := runtimeConfiguration.DockerConfiguration.EngineStatus == agent.EngineStatusSwarm
+	agentRunsOnLeaderNode := runtimeConfig.DockerConfig.Leader
+	agentRunsOnSwarm := runtimeConfig.DockerConfig.EngineType == agent.EngineTypeSwarm
 
 	log.Debug().
-		Str("engine_status", fmt.Sprintf("%+v", runtimeConfiguration.DockerConfiguration.EngineStatus)).
+		Str("engine_type", fmt.Sprintf("%+v", runtimeConfig.DockerConfig.EngineType)).
 		Bool("leader_node", agentRunsOnLeaderNode).
 		Msg("Docker runtime configuration check")
 
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
-		engineStatus := stack.EngineTypeDockerStandalone
+		engineType := stack.EngineTypeDockerStandalone
 		if agentRunsOnSwarm {
-			engineStatus = stack.EngineTypeDockerSwarm
+			engineType = stack.EngineTypeDockerSwarm
 		}
 
 		manager.pollService.Start()
 
-		err = manager.stackManager.SetEngineStatus(engineStatus)
+		err = manager.stackManager.SetEngineType(engineType)
 		if err != nil {
 			return err
 		}
@@ -278,8 +278,9 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 	}
 
 	manager.pollService.Stop()
+	manager.stackManager.Stop()
 
-	return manager.stackManager.Stop()
+	return nil
 }
 
 func (manager *Manager) CreateEdgeConfig(config *client.EdgeConfig) error {
