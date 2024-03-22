@@ -28,10 +28,7 @@ func NewKubernetesDeployer(binaryPath string) *KubernetesDeployer {
 	}
 }
 
-// Deploy will deploy a Kubernetes manifest inside the default namespace
-// it will use kubectl to deploy the manifest.
-// kubectl uses in-cluster config.
-func (deployer *KubernetesDeployer) Deploy(ctx context.Context, name string, filePaths []string, options agent.DeployOptions) error {
+func (deployer *KubernetesDeployer) operation(ctx context.Context, name string, filePaths []string, operation, namespace string) error {
 	if len(filePaths) == 0 {
 		return errors.New("missing file paths")
 	}
@@ -39,36 +36,27 @@ func (deployer *KubernetesDeployer) Deploy(ctx context.Context, name string, fil
 	stackFilePath := filePaths[0]
 
 	args, err := buildArgs(&argOptions{
-		Namespace: options.Namespace,
+		Namespace: namespace,
 	})
 	if err != nil {
 		return err
 	}
 
-	args = append(args, "apply", "-f", stackFilePath)
+	args = append(args, operation, "-f", stackFilePath)
 
 	_, err = runCommandAndCaptureStdErr(deployer.command, args, nil)
 	return err
 }
 
+// Deploy will deploy a Kubernetes manifest inside the default namespace
+// it will use kubectl to deploy the manifest.
+// kubectl uses in-cluster config.
+func (deployer *KubernetesDeployer) Deploy(ctx context.Context, name string, filePaths []string, options agent.DeployOptions) error {
+	return deployer.operation(ctx, name, filePaths, "apply", options.Namespace)
+}
+
 func (deployer *KubernetesDeployer) Remove(ctx context.Context, name string, filePaths []string, options agent.RemoveOptions) error {
-	if len(filePaths) == 0 {
-		return errors.New("missing file paths")
-	}
-
-	stackFilePath := filePaths[0]
-
-	args, err := buildArgs(&argOptions{
-		Namespace: options.Namespace,
-	})
-	if err != nil {
-		return err
-	}
-
-	args = append(args, "delete", "-f", stackFilePath)
-
-	_, err = runCommandAndCaptureStdErr(deployer.command, args, nil)
-	return err
+	return deployer.operation(ctx, name, filePaths, "delete", options.Namespace)
 }
 
 // Pull is a dummy method for Kube
