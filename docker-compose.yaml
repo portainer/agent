@@ -1,0 +1,20 @@
+# To customize this, add environment options in .env
+# see .env.example for example
+
+version: "3.9"
+services:
+  agent:
+    image: portainer-agent
+    container_name: portainer_edge_agent_dev
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+      - /usr/share/zoneinfo:/usr/share/zoneinfo
+      - /:/host
+      - portainer_agent_data:/data
+    restart: always
+    env_file:
+      - .env
+
+volumes:
+  portainer_agent_data:
