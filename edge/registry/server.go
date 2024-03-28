@@ -2,6 +2,7 @@ package registry
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -100,10 +101,14 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 func StartRegistryServer(edgeManager *edge.Manager, awsConfig *agent.AWSConfig) (err error) {
 	log.Info().Msg("starting registry credential server")
 
+	l, err := net.Listen("tcp", "127.0.0.1:9005")
+	if err != nil {
+		return err
+	}
+
 	h := NewEdgeRegistryHandler(edgeManager, awsConfig)
 
 	server := &http.Server{
-		Addr:         "127.0.0.1:9005",
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
@@ -111,9 +116,7 @@ func StartRegistryServer(edgeManager *edge.Manager, awsConfig *agent.AWSConfig) 
 	}
 
 	// run in a goroutine so it doesn't block
-	go func() {
-		err = server.ListenAndServe()
-	}()
+	go server.Serve(l)
 
-	return err
+	return nil
 }
