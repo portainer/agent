@@ -5,3 +5,5 @@ dist
 .idea
 .DS_Store
 go.work.sum
+
+.env
