@@ -258,7 +258,7 @@ type (
 	}
 )
 
-var (
+const (
 	// Version represents the version of the agent.
 	Version = "2.21.0"
 )
@@ -383,7 +383,7 @@ const (
 	// DefaultAWSClientKeyPath is the default path to the AWS client key file
 	DefaultAWSClientKeyPath = "/certs/aws-client.key"
 	// DefaultUnpackerImage is the default name of unpacker image
-	DefaultUnpackerImage = "portainer/compose-unpacker:latest"
+	DefaultUnpackerImage = "portainer/compose-unpacker:" + Version
 	// ComposeUnpackerImageEnvVar is the default environment variable name of the unpacker image
 	ComposeUnpackerImageEnvVar = "COMPOSE_UNPACKER_IMAGE"
 	// ComposePathPrefix is the folder name of compose path in unpacker
