@@ -2,9 +2,12 @@ package stack
 
 import (
 	"fmt"
-	"github.com/portainer/agent"
+
 	"github.com/portainer/portainer/api/filesystem"
 )
+
+// successFolderSuffix is suffix for the path where the last successfully deployed edge stack files are saved
+const successFolderSuffix = ".success"
 
 // IsRelativePathStack checks if the edge stack enables relative path or not
 func IsRelativePathStack(stack *edgeStack) bool {
@@ -12,7 +15,7 @@ func IsRelativePathStack(stack *edgeStack) bool {
 }
 
 func SuccessStackFileFolder(fileFolder string) string {
-	return fmt.Sprintf("%s%s", fileFolder, agent.EdgeStackSuccessFilesFolderSuffix)
+	return fmt.Sprintf("%s%s", fileFolder, successFolderSuffix)
 }
 
 func backupSuccessStack(stack *edgeStack) error {
