@@ -53,7 +53,7 @@ func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, ne
 
 	defer removeUnpackerContainer(unpackerContainer)
 
-	if err = ContainerStart(unpackerContainer.ID, types.ContainerStartOptions{}); err != nil {
+	if err = ContainerStart(unpackerContainer.ID, container.StartOptions{}); err != nil {
 		return err
 	}
 
@@ -74,7 +74,7 @@ func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, ne
 }
 
 func removeUnpackerContainer(unpackerContainer container.CreateResponse) error {
-	err := ContainerDelete(unpackerContainer.ID, types.ContainerRemoveOptions{})
+	err := ContainerDelete(unpackerContainer.ID, container.RemoveOptions{})
 
 	if err != nil {
 		log.Error().
