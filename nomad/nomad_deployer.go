@@ -257,8 +257,8 @@ func isUpdateJob(job *nomadapi.Job) bool {
 		job.TaskGroups[0].Tasks[0].Name == targetJobName
 }
 
-func (service *Deployer) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan string {
-	resultCh := make(chan string)
+func (service *Deployer) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan libstack.WaitResult {
+	resultCh := make(chan libstack.WaitResult)
 
 	close(resultCh)
 

@@ -117,9 +117,9 @@ func waitForStatus(deployer *DockerSwarmStackService, ctx context.Context, stack
 
 	statusCh := deployer.WaitForStatus(ctx, stackName, requiredStatus)
 	result := <-statusCh
-	if result == "" {
+	if result.ErrorMsg == "" {
 		return requiredStatus, "", nil
 	}
 
-	return libstack.StatusError, result, nil
+	return libstack.StatusError, result.ErrorMsg, nil
 }
