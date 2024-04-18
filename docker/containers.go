@@ -48,7 +48,7 @@ func ContainerCreate(
 	return createResponse, err
 }
 
-func ContainerStart(name string, opts types.ContainerStartOptions) error {
+func ContainerStart(name string, opts container.StartOptions) error {
 	return withCli(func(cli *client.Client) error {
 		return cli.ContainerStart(context.Background(), name, opts)
 	})
@@ -72,7 +72,7 @@ func ContainerKill(name string) error {
 	})
 }
 
-func ContainerDelete(name string, opts types.ContainerRemoveOptions) error {
+func ContainerDelete(name string, opts container.RemoveOptions) error {
 	return withCli(func(cli *client.Client) error {
 		return cli.ContainerRemove(context.Background(), name, opts)
 	})

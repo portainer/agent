@@ -8,6 +8,7 @@ import (
 	portainer "github.com/portainer/portainer/api"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/rs/zerolog/log"
@@ -132,7 +133,7 @@ func snapshotSwarmServices(snapshot *portainer.DockerSnapshot, cli *client.Clien
 }
 
 func snapshotContainers(snapshot *portainer.DockerSnapshot, cli *client.Client) error {
-	rawContainers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+	rawContainers, err := cli.ContainerList(context.Background(), container.ListOptions{All: true})
 	if err != nil {
 		return err
 	}
