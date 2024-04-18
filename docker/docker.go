@@ -8,6 +8,7 @@ import (
 	"github.com/portainer/agent"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/client"
 	"github.com/rs/zerolog/log"
 )
@@ -131,7 +132,7 @@ func getStandaloneConfiguration(config *agent.RuntimeConfiguration) {
 	config.DockerConfiguration.EngineStatus = agent.EngineStatusStandalone
 }
 
-func getSwarmConfiguration(config *agent.RuntimeConfiguration, dockerInfo types.Info, cli *client.Client) error {
+func getSwarmConfiguration(config *agent.RuntimeConfiguration, dockerInfo system.Info, cli *client.Client) error {
 	config.DockerConfiguration.EngineStatus = agent.EngineStatusSwarm
 	config.DockerConfiguration.NodeRole = agent.NodeRoleWorker
 
