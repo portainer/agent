@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -12,7 +13,7 @@ import (
 
 func GetContainersWithLabel(value string) (r []types.Container, err error) {
 	err = withCli(func(cli *client.Client) error {
-		r, err = cli.ContainerList(context.Background(), types.ContainerListOptions{
+		r, err = cli.ContainerList(context.Background(), container.ListOptions{
 			All: true,
 			Filters: filters.NewArgs(filters.KeyValuePair{
 				Key:   "label",
@@ -33,7 +34,7 @@ func GetContainerLogs(containerName string, tail string) ([]byte, []byte, error)
 	}
 	defer cli.Close()
 
-	rd, err := cli.ContainerLogs(context.Background(), containerName, types.ContainerLogsOptions{
+	rd, err := cli.ContainerLogs(context.Background(), containerName, container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Tail:       tail,
