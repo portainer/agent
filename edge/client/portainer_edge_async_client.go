@@ -13,7 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	"github.com/portainer/agent/kubernetes"
@@ -138,14 +139,14 @@ type LogCommandData struct {
 
 type ContainerCommandData struct {
 	ContainerName          string
-	ContainerStartOptions  types.ContainerStartOptions
-	ContainerRemoveOptions types.ContainerRemoveOptions
+	ContainerStartOptions  container.StartOptions
+	ContainerRemoveOptions container.RemoveOptions
 	ContainerOperation     string
 }
 
 type ImageCommandData struct {
 	ImageName          string
-	ImageRemoveOptions types.ImageRemoveOptions
+	ImageRemoveOptions image.RemoveOptions
 	ImageOperation     string
 }
 
