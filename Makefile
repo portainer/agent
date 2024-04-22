@@ -38,14 +38,16 @@ download-binaries: ## Download dependant binaries
 tidy: ## Tidy up the go.mod file
 	@go mod tidy
 
-
 ##@ Testing
 .PHONY: test test-client test-server
 
 test:	## Run server tests
 	$(GOTESTSUM) --format pkgname-and-test-fails --format-hide-empty-pkg --hide-summary skipped -- -cover  ./...
 
-##@ Cleanup
+##@ Miscellaneous
+
+lint:   ## Run linter
+	golangci-lint run -c .golangci.yaml
 
 clean: ## Remove all build and download artifacts
 	@echo "Clearing the dist directory..."
