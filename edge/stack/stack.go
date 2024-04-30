@@ -432,6 +432,7 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 	log.Debug().
 		Int("stack_identifier", int(stack.ID)).
 		Str("stack_name", stackName).
+		Str("requiredStatus", string(requiredStatus)).
 		Str("status", string(status)).
 		Str("status_message", statusMessage).
 		Int("old_status", int(stack.Status)).
@@ -445,6 +446,11 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 	if status == libstack.StatusRunning {
 		stack.Status = StatusDeployed
 		return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRunning, stack.RollbackTo, "")
+	}
+
+	if status == libstack.StatusCompleted {
+		stack.Status = StatusDeployed
+		return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusCompleted, stack.RollbackTo, "")
 	}
 
 	if status == libstack.StatusRemoved {
@@ -461,12 +467,11 @@ func (manager *StackManager) waitForStatus(ctx context.Context, stackName string
 
 	statusCh := manager.deployer.WaitForStatus(ctx, stackName, requiredStatus)
 	result := <-statusCh
-	if result == "" {
-		return requiredStatus, "", nil
+	if result.ErrorMsg == "" {
+		return result.Status, "", nil
 	}
 
-	return libstack.StatusError, result, nil
-
+	return libstack.StatusError, result.ErrorMsg, nil
 }
 
 func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) error {
