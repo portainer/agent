@@ -352,10 +352,10 @@ func (mr *MockDeployerMockRecorder) Validate(ctx, name, filePaths, options any) 
 }
 
 // WaitForStatus mocks base method.
-func (m *MockDeployer) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan string {
+func (m *MockDeployer) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan libstack.WaitResult {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WaitForStatus", ctx, name, status)
-	ret0, _ := ret[0].(<-chan string)
+	ret0, _ := ret[0].(<-chan libstack.WaitResult)
 	return ret0
 }
 

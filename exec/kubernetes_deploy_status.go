@@ -6,8 +6,8 @@ import (
 	libstack "github.com/portainer/portainer/pkg/libstack"
 )
 
-func (service *KubernetesDeployer) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan string {
-	resultCh := make(chan string)
+func (service *KubernetesDeployer) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan libstack.WaitResult {
+	resultCh := make(chan libstack.WaitResult)
 
 	close(resultCh)
 
