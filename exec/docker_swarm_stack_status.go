@@ -14,14 +14,18 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan string {
-	errorMessageCh := make(chan string)
+func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name string, status libstack.Status) <-chan libstack.WaitResult {
+	waitResultCh := make(chan libstack.WaitResult)
+	waitResult := libstack.WaitResult{
+		Status: status,
+	}
 
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
-				errorMessageCh <- fmt.Sprintf("failed to wait for status: %s", ctx.Err().Error())
+				waitResult.ErrorMsg = fmt.Sprintf("failed to wait for status: %s", ctx.Err().Error())
+				waitResultCh <- waitResult
 			default:
 			}
 
@@ -49,7 +53,7 @@ func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name 
 			}
 
 			if len(services) == 0 && status == libstack.StatusRemoved {
-				errorMessageCh <- ""
+				waitResultCh <- waitResult
 				return
 			}
 			var serviceStatuses []libstack.Status
@@ -64,7 +68,8 @@ func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name 
 				}
 
 				if statusMessage != "" {
-					errorMessageCh <- statusMessage
+					waitResult.ErrorMsg = statusMessage
+					waitResultCh <- waitResult
 					return
 				}
 
@@ -75,7 +80,7 @@ func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name 
 			aggregateStatus := aggregateStatus(serviceStatuses)
 
 			if aggregateStatus == status {
-				errorMessageCh <- ""
+				waitResultCh <- waitResult
 				return
 			}
 
@@ -83,11 +88,10 @@ func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name 
 				Str("project_name", name).
 				Str("status", string(aggregateStatus)).
 				Msg("waiting for status")
-
 		}
 	}()
 
-	return errorMessageCh
+	return waitResultCh
 }
 
 func aggregateStatus(statuses []libstack.Status) libstack.Status {
