@@ -1,14 +1,24 @@
 name: Test
+
 on: push
+
+env:
+  GO_VERSION: 1.21.9
+
 jobs:
   test:
+    strategy:
+      matrix:
+        config:
+          - { platform: linux, arch: amd64 }
+          - { platform: linux, arch: arm64 }
+          - { platform: windows, arch: amd64, version: 1809 }
+          - { platform: windows, arch: amd64, version: ltsc2022 }
     runs-on: ubuntu-latest
-    env:
-      GOPRIVATE: "github.com/portainer"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.19.5
+          go-version: ${{ env.GO_VERSION }}
       - name: Run tests
         run: make test
