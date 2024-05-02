@@ -51,6 +51,14 @@ clean: ## Remove all build and download artifacts
 	@echo "Clearing the dist directory..."
 	@rm -f dist/*
 
+
+##@ Lint
+.PHONY: lint lint-server
+lint: lint-server ## Lint all code
+
+lint-server: ## Lint server code
+	golangci-lint run --timeout=10m -c .golangci.yaml
+
 ##@ Helpers
 
 help:  ## Display this help
