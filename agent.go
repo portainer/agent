@@ -370,8 +370,6 @@ const (
 	DefaultAssetsPath = "/app"
 	// EdgeStackFilesPath is the path where edge stack files are saved
 	EdgeStackFilesPath = "/tmp/edge_stacks"
-	// EdgeStackSuccessFilesFolderSuffix is suffix for the path where the last successfully deployed edge stack files are saved
-	EdgeStackSuccessFilesFolderSuffix = ".success"
 	// EdgeStackQueueSleepIntervalSeconds is the interval in seconds used to check if there's an Edge stack to deploy
 	EdgeStackQueueSleepIntervalSeconds = 5
 	// KubernetesServiceHost is the environment variable name of the kubernetes API server host
