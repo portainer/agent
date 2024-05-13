@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"time"
 
 	"github.com/portainer/agent"
@@ -89,15 +88,12 @@ func hijackStartOperation(
 		tcpConn.SetKeepAlivePeriod(30 * time.Second)
 	}
 
-	httpConn := httputil.NewClientConn(dial, nil)
-	defer httpConn.Close()
-
 	startRequest, err := operation(opID)
 	if err != nil {
 		return err
 	}
 
-	return hijackRequest(websocketConn, httpConn, startRequest)
+	return hijackRequest(websocketConn, dial, startRequest)
 }
 
 func hijackAttachStartOperation(websocketConn *websocket.Conn, attachID string) error {
