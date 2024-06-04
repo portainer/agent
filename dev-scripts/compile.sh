@@ -21,7 +21,7 @@ function compile_agent() {
 
     cd cmd/agent || exit 1
 
-    local cmd=(go build -trimpath --installsuffix cgo)
+    local cmd=(go build -race -trimpath --installsuffix cgo)
 
     ldflags="-s"
     if [[ -n "$AGENT_VERSION" ]]; then

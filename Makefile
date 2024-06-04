@@ -23,7 +23,7 @@ all: agent credential-helper download-binaries ## Build everything
 
 agent: ## Build the agent
 	@echo "Building Portainer agent..."
-	@CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -trimpath --installsuffix cgo --ldflags "-s" -o dist/$(agent) cmd/agent/main.go
+	@CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -race -trimpath --installsuffix cgo --ldflags "-s" -o dist/$(agent) cmd/agent/main.go
 
 credential-helper: ## Build the credential helper (used by edge private registries)
 	@echo "Building Portainer credential-helper..."
