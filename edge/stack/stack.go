@@ -192,6 +192,7 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 		stack.PullFinished = false
 		stack.PullCount = 0
 		stack.DeployCount = 0
+		stack.ReadyRePullImage = stackStatus.ReadyRePullImage
 	} else {
 		log.Debug().Int("stack_identifier", stackID).Msg("marking stack for deployment")
 
@@ -502,7 +503,7 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	if stack.PullFinished || (!stack.PrePullImage && !stack.RePullImage) {
+	if stack.PullFinished || (!stack.PrePullImage && !stack.RePullImage && !stack.ReadyRePullImage) {
 		return nil
 	}
 
@@ -783,6 +784,7 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 			log.Debug().Int("stack_id", stackPayload.ID).Msg("marking stack for update")
 
 			stack.Action = actionUpdate
+			stack.ReadyRePullImage = stackPayload.ReadyRePullImage
 		}
 	} else {
 		if deleteStack {
