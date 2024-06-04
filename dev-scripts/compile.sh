@@ -28,7 +28,7 @@ function compile_agent() {
         ldflags="$ldflags -X 'github.com/portainer/agent.Version=${AGENT_VERSION}'"
     fi
 
-    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 "${cmd[@]}" --ldflags "$ldflags"
+    GOOS="linux" GOARCH="$(go env GOARCH)" "${cmd[@]}" --ldflags "$ldflags"
 
     rc=$?
     if [[ $rc != 0 ]]; then exit $rc; fi
