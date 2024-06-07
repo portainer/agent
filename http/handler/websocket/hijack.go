@@ -122,7 +122,7 @@ func writeTCPToWebSocket(websocketConn *websocket.Conn, tcpConn net.Conn, errorC
 			}
 
 			processedOutput := validString(string(out[:n]))
-			input <- string(processedOutput)
+			input <- processedOutput
 		}
 	}()
 
