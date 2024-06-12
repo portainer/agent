@@ -1,3 +1,6 @@
+load('ext://restart_process', 'docker_build_with_restart')
+
+# For some reason, tiltfile doesn't support a pattern like /**/*.go for deps. It does for ignore though!? 
 local_resource(
   'build_agent',
   cmd="make agent",
@@ -32,14 +35,17 @@ local_resource(
   ],
 )
 
-docker_build('portainer-agent', 
+# can be a local registry or this temporary one.  Change yourname and randomstring to suit your needs
+default_registry('ttl.sh/yourname-randomstring')
+
+docker_build_with_restart('portainer_agent', 
   '.',
-  only = ['dist', 'build', 'static', 'config'],
+  entrypoint='./agent',
   dockerfile='build/linux/alpine.Dockerfile',
+  only = ['dist', 'build', 'static', 'config'],  
   live_update = [
     sync('./dist', '/app'),
     sync('./static', '/app/static'),
-    restart_container()
   ])
 
-k8s_yaml('portainer-agent-edge-k8s.yaml')
+k8s_yaml('portainer-agent-k8s-lb.yaml')
