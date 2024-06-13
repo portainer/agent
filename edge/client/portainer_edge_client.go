@@ -13,6 +13,7 @@ import (
 	"github.com/portainer/agent"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
@@ -208,7 +209,14 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int, version *
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error().Int("response_code", resp.StatusCode).Msg("GetEdgeStackConfig operation failed")
+		var respErr httperror.HandlerError
+		if err := json.NewDecoder(resp.Body).Decode(&respErr); err != nil {
+			log.Error().Err(err).Int("response_code", resp.StatusCode).Msg("failed to parse response error")
+		}
+		log.Error().Err(respErr.Err).
+			Str("response message", respErr.Message).
+			Int("status code", respErr.StatusCode).
+			Msg("GetEdgeStackConfig operation failed")
 
 		return nil, errors.New("GetEdgeStackConfig operation failed")
 	}
