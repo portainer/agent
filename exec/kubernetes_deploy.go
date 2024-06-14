@@ -133,5 +133,4 @@ func buildTokenArgs(token string) ([]string, error) {
 		"--server", server,
 		"--insecure-skip-tls-verify",
 	}, nil
-
 }

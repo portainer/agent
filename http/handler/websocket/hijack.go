@@ -45,10 +45,12 @@ func hijackRequest(
 	err = <-errorChan
 	if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 		log.Debug().Msgf("Unexpected close error: %v\n", err)
+
 		return err
 	}
 
 	log.Debug().Msgf("session ended")
+
 	return nil
 }
 
@@ -76,14 +78,15 @@ func readWebSocketToTCP(websocketConn *websocket.Conn, tcpConn net.Conn, errorCh
 				log.Debug().Msgf("Unexpected close error: %v\n", err)
 			}
 			errorChan <- err
+
 			return
 		}
 
 		if messageType == websocket.TextMessage || messageType == websocket.BinaryMessage {
-			_, err := tcpConn.Write(p)
-			if err != nil {
+			if _, err := tcpConn.Write(p); err != nil {
 				log.Debug().Msgf("Error writing to TCP connection: %v\n", err)
 				errorChan <- err
+
 				return
 			}
 		}
@@ -105,6 +108,7 @@ func writeTCPToWebSocket(websocketConn *websocket.Conn, tcpConn net.Conn, errorC
 
 	websocketConn.SetPingHandler(func(data string) error {
 		websocketConn.SetWriteDeadline(time.Now().Add(writeWait))
+
 		return websocketConn.WriteMessage(websocket.PongMessage, []byte(data))
 	})
 
@@ -115,9 +119,11 @@ func writeTCPToWebSocket(websocketConn *websocket.Conn, tcpConn net.Conn, errorC
 			n, err := reader.Read(out)
 			if err != nil {
 				errorChan <- err
+
 				if !errors.Is(err, io.EOF) {
 					log.Debug().Msgf("error reading from server: %v", err)
 				}
+
 				return
 			}
 
@@ -133,12 +139,14 @@ func writeTCPToWebSocket(websocketConn *websocket.Conn, tcpConn net.Conn, errorC
 			if err != nil {
 				log.Debug().Msgf("error writing to websocket: %v", err)
 				errorChan <- err
+
 				return
 			}
 		case <-pingTicker.C:
 			if err := wsping(websocketConn, &mu); err != nil {
 				log.Debug().Msgf("error writing to websocket during pong response: %v", err)
 				errorChan <- err
+
 				return
 			}
 		}
@@ -150,6 +158,7 @@ func wswrite(websocketConn *websocket.Conn, mu *sync.Mutex, msg string) error {
 	defer mu.Unlock()
 
 	websocketConn.SetWriteDeadline(time.Now().Add(writeWait))
+
 	return websocketConn.WriteMessage(websocket.TextMessage, []byte(msg))
 }
 
@@ -158,5 +167,6 @@ func wsping(websocketConn *websocket.Conn, mu *sync.Mutex) error {
 	defer mu.Unlock()
 
 	websocketConn.SetWriteDeadline(time.Now().Add(writeWait))
+
 	return websocketConn.WriteMessage(websocket.PingMessage, nil)
 }

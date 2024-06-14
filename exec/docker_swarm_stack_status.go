@@ -24,7 +24,7 @@ func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name 
 		for {
 			select {
 			case <-ctx.Done():
-				waitResult.ErrorMsg = fmt.Sprintf("failed to wait for status: %s", ctx.Err().Error())
+				waitResult.ErrorMsg = "failed to wait for status: " + ctx.Err().Error()
 				waitResultCh <- waitResult
 			default:
 			}
@@ -34,12 +34,13 @@ func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name 
 			cli, err := docker.NewClient()
 			if err != nil {
 				log.Warn().Err(err).Msg("failed to create Docker client")
+
 				continue
 			}
 
 			// Create a filter to match the services belonging to the stack
 			stackFilter := filters.NewArgs()
-			stackFilter.Add("label", fmt.Sprintf("com.docker.stack.namespace=%s", name))
+			stackFilter.Add("label", "com.docker.stack.namespace="+name)
 
 			// Retrieve the services of the stack
 			services, err := cli.ServiceList(ctx, types.ServiceListOptions{
@@ -54,9 +55,12 @@ func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name 
 
 			if len(services) == 0 && status == libstack.StatusRemoved {
 				waitResultCh <- waitResult
+
 				return
 			}
+
 			var serviceStatuses []libstack.Status
+
 			for _, service := range services {
 				serviceStatus, statusMessage, err := getServiceStatus(ctx, cli, service)
 				if err != nil {
@@ -64,12 +68,14 @@ func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name 
 						Str("project_name", name).
 						Err(err).
 						Msg("failed to get service status")
+
 					continue
 				}
 
 				if statusMessage != "" {
 					waitResult.ErrorMsg = statusMessage
 					waitResultCh <- waitResult
+
 					return
 				}
 
@@ -81,6 +87,7 @@ func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name 
 
 			if aggregateStatus == status {
 				waitResultCh <- waitResult
+
 				return
 			}
 
@@ -159,6 +166,7 @@ func getServiceStatus(ctx context.Context, cli *client.Client, service swarm.Ser
 
 	if expectedRunningTaskCount != 0 {
 		runningTaskCount := 0
+
 		for _, task := range tasks {
 			if task.Status.State == swarm.TaskStateRunning {
 				runningTaskCount++

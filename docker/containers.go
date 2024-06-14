@@ -22,6 +22,7 @@ func ImagePull(refStr string, options types.ImagePullOptions) (io.ReadCloser, er
 		cli.HTTPClient().Timeout = largeClientTimeout
 
 		reader, err = cli.ImagePull(context.Background(), refStr, options)
+
 		return err
 	})
 
@@ -42,6 +43,7 @@ func ContainerCreate(
 		cli.HTTPClient().Timeout = largeClientTimeout
 
 		createResponse, err = cli.ContainerCreate(context.Background(), config, hostConfig, networkingConfig, platform, containerName)
+
 		return err
 	})
 
@@ -86,6 +88,7 @@ func ContainerWait(name string, condition container.WaitCondition) (<-chan conta
 		cli.HTTPClient().Timeout = largeClientTimeout
 
 		statusCh, errCh = cli.ContainerWait(context.Background(), name, condition)
+
 		return nil
 	})
 

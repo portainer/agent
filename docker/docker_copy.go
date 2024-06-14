@@ -39,8 +39,7 @@ func buildRemoveDirCmd(src, dst string) []string {
 // removeAndCopy removes the copy of src folder on the host,
 // then copies src folder to the dst folder on the host
 func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, needCopy bool) error {
-	err := pullUnpackerImage()
-	if err != nil {
+	if err := pullUnpackerImage(); err != nil {
 		return err
 	}
 
@@ -53,7 +52,7 @@ func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, ne
 
 	defer removeUnpackerContainer(unpackerContainer)
 
-	if err = ContainerStart(unpackerContainer.ID, container.StartOptions{}); err != nil {
+	if err := ContainerStart(unpackerContainer.ID, container.StartOptions{}); err != nil {
 		return err
 	}
 
@@ -75,7 +74,6 @@ func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, ne
 
 func removeUnpackerContainer(unpackerContainer container.CreateResponse) error {
 	err := ContainerDelete(unpackerContainer.ID, container.RemoveOptions{})
-
 	if err != nil {
 		log.Error().
 			Str("ContainerID", unpackerContainer.ID).
@@ -132,12 +130,15 @@ func createUnpackerContainer(stackID int, stackName, composeDestination string, 
 
 func copyToContainer(assetPath, src, containerID, dst string) error {
 	dockerBinaryPath := path.Join(assetPath, "docker")
-	fullDst := fmt.Sprintf("%s:%s", containerID, dst)
+	fullDst := containerID + ":" + dst
 	cmd := exec.Command(dockerBinaryPath, "cp", src, fullDst)
+
 	output, err := cmd.Output()
 	if err != nil {
 		return err
 	}
+
 	log.Debug().Str("output", string(output)).Msg("Copy stack to host filesystem")
+
 	return nil
 }

@@ -339,8 +339,7 @@ func (client *PortainerEdgeClient) GetEdgeConfig(id EdgeConfigID) (*EdgeConfig, 
 	}
 
 	var data EdgeConfig
-	err = json.NewDecoder(resp.Body).Decode(&data)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, err
 	}
 

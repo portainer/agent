@@ -49,7 +49,6 @@ func FileExists(filePath string) (bool, error) {
 // with information about this file.
 // The returned FileDetails contains a pointer to the File that must be closed manually
 func OpenFile(filePath string) (*FileDetails, error) {
-
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -82,6 +81,7 @@ func ListFilesInsideDirectory(directoryPath string) ([]FileInfo, error) {
 	}
 
 	fileList := make([]FileInfo, 0)
+
 	for _, f := range files {
 		fi, err := f.Info()
 		if err != nil {
@@ -109,8 +109,7 @@ func RenameFile(oldPath, newPath string) error {
 // WriteFile takes a path, filename, a file and the mode that should be associated
 // to the file and writes it to disk
 func WriteFile(folder, filename string, file []byte, mode uint32) error {
-	err := os.MkdirAll(folder, 0755)
-	if err != nil {
+	if err := os.MkdirAll(folder, 0755); err != nil {
 		return err
 	}
 
@@ -122,8 +121,7 @@ func WriteFile(folder, filename string, file []byte, mode uint32) error {
 // WriteFile takes a path, filename, a file and the mode that should be associated
 // to the file and writes it to disk
 func WriteBigFile(folder, filename string, srcfile multipart.File, mode uint32) error {
-	err := os.MkdirAll(folder, 0755)
-	if err != nil {
+	if err := os.MkdirAll(folder, 0755); err != nil {
 		return err
 	}
 
@@ -139,6 +137,7 @@ func WriteBigFile(folder, filename string, srcfile multipart.File, mode uint32) 
 	buf := make([]byte, chunkSize)
 
 	_, err = io.CopyBuffer(dstfile, srcfile, buf)
+
 	return err
 }
 

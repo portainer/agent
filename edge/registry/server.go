@@ -70,27 +70,29 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 	}
 
 	credentials := stackManager.GetEdgeRegistryCredentials()
-	if len(credentials) > 0 {
-		var key string
-		if strings.HasPrefix(serverUrl, "http") {
-			u, err := url.Parse(serverUrl)
-			if err != nil {
-				return httperror.BadRequest("Invalid server URL", err)
-			}
 
-			if strings.HasSuffix(u.Hostname(), "docker.io") {
-				key = "docker.io"
-			} else {
-				key = u.Hostname()
-			}
-		} else {
-			key = serverUrl
+	if len(credentials) == 0 {
+		return response.Empty(rw)
+	}
+
+	key := serverUrl
+
+	if strings.HasPrefix(serverUrl, "http") {
+		u, err := url.Parse(serverUrl)
+		if err != nil {
+			return httperror.BadRequest("Invalid server URL", err)
 		}
 
-		for _, c := range credentials {
-			if key == c.ServerURL {
-				return response.JSON(rw, c)
-			}
+		if strings.HasSuffix(u.Hostname(), "docker.io") {
+			key = "docker.io"
+		} else {
+			key = u.Hostname()
+		}
+	}
+
+	for _, c := range credentials {
+		if key == c.ServerURL {
+			return response.JSON(rw, c)
 		}
 	}
 
@@ -104,9 +106,9 @@ func StartRegistryServer(edgeManager *edge.Manager, awsConfig *agent.AWSConfig) 
 
 	server := &http.Server{
 		Addr:         "127.0.0.1:9005",
-		WriteTimeout: time.Second * 15,
-		ReadTimeout:  time.Second * 15,
-		IdleTimeout:  time.Second * 60,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 		Handler:      h,
 	}
 
