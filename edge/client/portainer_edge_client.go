@@ -13,7 +13,6 @@ import (
 	"github.com/portainer/agent"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
-	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
@@ -122,9 +121,7 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Debug().Int("response_code", resp.StatusCode).Msg("global key request failure")
-
-		return 0, errors.New("global key request failed")
+		return 0, logPollingError(resp, "global key request failed")
 	}
 
 	var responseData globalKeyResponse
@@ -167,14 +164,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		errorData := parseError(resp)
-		logError(resp, errorData)
-
-		if errorData != nil {
-			return nil, newNonOkResponseError(errorData.Message + ": " + errorData.Details)
-		}
-
-		return nil, newNonOkResponseError("short poll request failed")
+		return nil, logPollingError(resp, "short poll request failed")
 	}
 
 	var responseData PollStatusResponse
@@ -209,16 +199,7 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int, version *
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		var respErr httperror.HandlerError
-		if err := json.NewDecoder(resp.Body).Decode(&respErr); err != nil {
-			log.Error().Err(err).Int("response_code", resp.StatusCode).Msg("failed to parse response error")
-		}
-		log.Error().Err(respErr.Err).
-			Str("response message", respErr.Message).
-			Int("status code", respErr.StatusCode).
-			Msg("GetEdgeStackConfig operation failed")
-
-		return nil, errors.New("GetEdgeStackConfig operation failed")
+		return nil, logPollingError(resp, "GetEdgeStackConfig operation failed")
 	}
 
 	var data edge.StackPayload
@@ -273,9 +254,7 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeStackStatus operation failed")
-
-		return errors.New("SetEdgeStackStatus operation failed")
+		return logPollingError(resp, "SetEdgeStackStatus operation failed")
 	}
 
 	return nil
@@ -310,9 +289,7 @@ func (client *PortainerEdgeClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobS
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeJobStatus operation failed")
-
-		return errors.New("SetEdgeJobStatus operation failed")
+		return logPollingError(resp, "SetEdgeJobStatus operation failed")
 	}
 
 	return nil
@@ -334,13 +311,11 @@ func (client *PortainerEdgeClient) GetEdgeConfig(id EdgeConfigID) (*EdgeConfig, 
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error().Int("response_code", resp.StatusCode).Msg("GetEdgeConfig operation failed")
-
 		if resp.StatusCode == http.StatusForbidden {
-			return nil, errors.New("GetEdgeConfig operation forbidden")
+			return nil, logPollingError(resp, "GetEdgeConfig operation forbidden")
 		}
 
-		return nil, errors.New("GetEdgeConfig operation failed")
+		return nil, logPollingError(resp, "GetEdgeConfig operation failed")
 	}
 
 	var data EdgeConfig
@@ -370,9 +345,7 @@ func (client *PortainerEdgeClient) SetEdgeConfigState(id EdgeConfigID, state Edg
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error().Int("edge_config_id", int(id)).Stringer("state", state).Int("response_code", resp.StatusCode).Msg("SetEdgeConfigState operation failed")
-
-		return errors.New("SetEdgeConfigState operation failed")
+		return logPollingError(resp, fmt.Sprintf("edge_config_id: %d, state: %s, error: %s", id, state, "SetEdgeConfigState operation failed"))
 	}
 
 	return nil
