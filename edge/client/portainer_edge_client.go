@@ -51,10 +51,6 @@ type NonOkResponseError struct {
 	msg string
 }
 
-func newNonOkResponseError(msg string) *NonOkResponseError {
-	return &NonOkResponseError{msg: msg}
-}
-
 func (e *NonOkResponseError) Error() string {
 	return e.msg
 }
