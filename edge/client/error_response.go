@@ -2,9 +2,9 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
-	"github.com/pkg/errors"
 	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 	"github.com/rs/zerolog/log"
 )
