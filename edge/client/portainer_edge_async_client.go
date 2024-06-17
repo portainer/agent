@@ -415,14 +415,7 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		errorData := parseError(resp)
-		logError(resp, errorData)
-
-		if errorData != nil {
-			return nil, errors.New(errorData.Message + ": " + errorData.Details)
-		}
-
-		return nil, errors.New("short poll request failed")
+		return nil, logPollingError(resp, "short async poll request failed")
 	}
 
 	var asyncResponse AsyncResponse
