@@ -30,6 +30,7 @@ func (handler *Handler) browseGet(rw http.ResponseWriter, r *http.Request) *http
 	defer fileDetails.File.Close()
 
 	http.ServeContent(rw, r, fileDetails.BasePath, fileDetails.ModTime, fileDetails.File)
+
 	return nil
 }
 
@@ -54,5 +55,6 @@ func (handler *Handler) browseGetV1(rw http.ResponseWriter, r *http.Request) *ht
 	defer fileDetails.File.Close()
 
 	http.ServeContent(rw, r, fileDetails.BasePath, fileDetails.ModTime, fileDetails.File)
+
 	return nil
 }

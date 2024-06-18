@@ -5,22 +5,22 @@ import (
 	"net"
 )
 
+var ErrNoLocalIP = errors.New("unable to retrieve the local IP address")
+
 // GetLocalIP is used to retrieve the first non loop-back local IP address.
-func GetLocalIP() (ip string, err error) {
+func GetLocalIP() (string, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return
+		return "", err
 	}
 
 	for _, address := range addrs {
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
-				ip = ipnet.IP.String()
-				return
+				return ipnet.IP.String(), nil
 			}
 		}
 	}
 
-	err = errors.New("unable to retrieve the local IP")
-	return
+	return "", ErrNoLocalIP
 }

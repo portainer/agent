@@ -63,10 +63,12 @@ func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string,
 	if stackFolder == "" {
 		stackFolder = path.Dir(stackFilePath)
 	}
+
 	_, err := runCommandAndCaptureStdErr(service.command, args, &cmdOpts{
 		WorkingDir: stackFolder,
 		Env:        options.Env,
 	})
+
 	return err
 }
 
@@ -91,5 +93,6 @@ func (service *DockerSwarmStackService) Remove(ctx context.Context, name string,
 		WorkingDir: options.WorkingDir,
 		Env:        options.Env,
 	})
+
 	return err
 }

@@ -42,8 +42,7 @@ func (manager *Manager) SetKey(key string) error {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	err = filesystem.WriteFile(manager.agentOptions.DataPath, agent.EdgeKeyFile, []byte(key), 0644)
-	if err != nil {
+	if err := filesystem.WriteFile(manager.agentOptions.DataPath, agent.EdgeKeyFile, []byte(key), 0644); err != nil {
 		return err
 	}
 
@@ -91,7 +90,6 @@ func (manager *Manager) PropagateKeyInCluster() error {
 
 	members := manager.clusterService.Members()
 	for _, member := range members {
-
 		if member.NodeName == currentNodeName || member.EdgeKeySet {
 			continue
 		}
@@ -140,6 +138,7 @@ func ParseEdgeKey(key string) (*edgeKey, error) {
 func encodeKey(edgeKey *edgeKey) string {
 	keyInfo := fmt.Sprintf("%s|%s|%s|%d", edgeKey.PortainerInstanceURL, edgeKey.TunnelServerAddr, edgeKey.TunnelServerFingerprint, edgeKey.EndpointID)
 	encodedKey := base64.RawStdEncoding.EncodeToString([]byte(keyInfo))
+
 	return encodedKey
 }
 

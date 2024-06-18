@@ -10,10 +10,11 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/portainer/agent"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
-	"github.com/portainer/agent"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,17 +31,13 @@ func RemoveGitStackFromHost(src, dst string, stackID int, stackName string) erro
 func buildRemoveDirCmd(src, dst string) []string {
 	gitStackPath := filepath.Join(dst, filepath.Base(src))
 
-	return []string{
-		"remove-dir",
-		gitStackPath,
-	}
+	return []string{"remove-dir", gitStackPath}
 }
 
 // removeAndCopy removes the copy of src folder on the host,
 // then copies src folder to the dst folder on the host
 func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, needCopy bool) error {
-	err := pullUnpackerImage()
-	if err != nil {
+	if err := pullUnpackerImage(); err != nil {
 		return err
 	}
 
@@ -53,7 +50,7 @@ func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, ne
 
 	defer removeUnpackerContainer(unpackerContainer)
 
-	if err = ContainerStart(unpackerContainer.ID, container.StartOptions{}); err != nil {
+	if err := ContainerStart(unpackerContainer.ID, container.StartOptions{}); err != nil {
 		return err
 	}
 
@@ -67,31 +64,30 @@ func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, ne
 	}
 
 	if needCopy {
-		err = copyToContainer(assetPath, src, unpackerContainer.ID, dst)
+		return copyToContainer(assetPath, src, unpackerContainer.ID, dst)
 	}
 
-	return err
+	return nil
 }
 
 func removeUnpackerContainer(unpackerContainer container.CreateResponse) error {
-	err := ContainerDelete(unpackerContainer.ID, container.RemoveOptions{})
-
-	if err != nil {
+	if err := ContainerDelete(unpackerContainer.ID, container.RemoveOptions{}); err != nil {
 		log.Error().
 			Str("ContainerID", unpackerContainer.ID).
 			Msg("Failed to remove unpacker container")
+
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func getUnpackerImage() string {
-	image := os.Getenv(agent.ComposeUnpackerImageEnvVar)
-	if image == "" {
-		image = agent.DefaultUnpackerImage
+	if image := os.Getenv(agent.ComposeUnpackerImageEnvVar); image != "" {
+		return image
 	}
 
-	return image
+	return agent.DefaultUnpackerImage
 }
 
 func pullUnpackerImage() error {
@@ -132,12 +128,15 @@ func createUnpackerContainer(stackID int, stackName, composeDestination string, 
 
 func copyToContainer(assetPath, src, containerID, dst string) error {
 	dockerBinaryPath := path.Join(assetPath, "docker")
-	fullDst := fmt.Sprintf("%s:%s", containerID, dst)
+	fullDst := containerID + ":" + dst
 	cmd := exec.Command(dockerBinaryPath, "cp", src, fullDst)
+
 	output, err := cmd.Output()
 	if err != nil {
 		return err
 	}
+
 	log.Debug().Str("output", string(output)).Msg("Copy stack to host filesystem")
+
 	return nil
 }

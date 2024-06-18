@@ -130,6 +130,7 @@ func (manager *StackManager) addRegistryToEntryFile(stackPayload *edge.StackPayl
 	for index, dirEntry := range stackPayload.DirEntries {
 		if dirEntry.IsFile && dirEntry.Name == stackPayload.EntryFileName {
 			fileContent = &stackPayload.DirEntries[index].Content
+
 			break
 		}
 	}
@@ -143,6 +144,7 @@ func (manager *StackManager) addRegistryToEntryFile(stackPayload *edge.StackPayl
 		if (len(stackPayload.RegistryCredentials) > 0 || manager.awsConfig != nil) && stackPayload.EdgeUpdateID > 0 {
 			var err error
 			yml := yaml.NewDockerComposeYAML(*fileContent, stackPayload.RegistryCredentials, manager.awsConfig)
+
 			*fileContent, err = yml.AddCredentialsAsEnvForSpecificService("updater")
 			if err != nil {
 				return err
@@ -226,18 +228,15 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 	stack.FileFolder = getStackFileFolder(stack)
 	stack.RollbackTo = stackPayload.RollbackTo
 
-	err = filesystem.DecodeDirEntries(stackPayload.DirEntries)
-	if err != nil {
+	if err := filesystem.DecodeDirEntries(stackPayload.DirEntries); err != nil {
 		return err
 	}
 
-	err = manager.addRegistryToEntryFile(stackPayload)
-	if err != nil {
+	if err := manager.addRegistryToEntryFile(stackPayload); err != nil {
 		return err
 	}
 
-	err = filesystem.PersistDir(stack.FileFolder, stackPayload.DirEntries)
-	if err != nil {
+	if err := filesystem.PersistDir(stack.FileFolder, stackPayload.DirEntries); err != nil {
 		return err
 	}
 
@@ -261,6 +260,7 @@ func (manager *StackManager) processRemovedStacks(pollResponseStacks map[int]cli
 			if stack.Status != StatusAwaitingRemovedStatus {
 				stack.Status = StatusPending
 			}
+
 			manager.stacks[stackID] = stack
 		}
 	}
@@ -297,6 +297,7 @@ func (manager *StackManager) Start() error {
 				manager.mu.Unlock()
 
 				log.Debug().Msg("shutting down Edge stack manager")
+
 				return
 			default:
 				manager.mu.Unlock()
@@ -318,6 +319,7 @@ func (manager *StackManager) performActionOnStack() {
 	}
 
 	ctx := context.TODO()
+
 	manager.mu.Lock()
 	stackName := fmt.Sprintf("edge_%s", stack.Name)
 	stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
@@ -336,20 +338,18 @@ func (manager *StackManager) performActionOnStack() {
 	case actionDeploy, actionUpdate:
 		// validate the stack file and fail-fast if the stack format is invalid
 		// each deployer has its own Validate function
-		err := manager.validateStackFile(ctx, stack, stackName, stackFileLocation)
-		if err != nil {
+		if err := manager.validateStackFile(ctx, stack, stackName, stackFileLocation); err != nil {
 			return
 		}
 
-		err = manager.pullImages(ctx, stack, stackName, stackFileLocation)
-		if err != nil {
+		if err := manager.pullImages(ctx, stack, stackName, stackFileLocation); err != nil {
 			return
 		}
 
 		if IsRelativePathStack(stack) {
 			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
-			err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName, manager.assetsPath)
-			if err != nil {
+
+			if err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName, manager.assetsPath); err != nil {
 				log.Error().Err(err).Msg("unable to copy the stack to host")
 
 				stack.Status = StatusError
@@ -371,6 +371,7 @@ func (manager *StackManager) performActionOnStack() {
 	case actionDelete:
 		stackFileLocation = fmt.Sprintf("%s/%s", SuccessStackFileFolder(stack.FileFolder), stack.FileName)
 		manager.deleteStack(ctx, stack, stackName, stackFileLocation)
+
 		if IsRelativePathStack(stack) {
 			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
 			_ = docker.RemoveGitStackFromHost(stack.FileFolder, dst, stack.ID, stackName)
@@ -441,21 +442,25 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 
 	if status == libstack.StatusError {
 		stack.Status = StatusError
+
 		return manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, statusMessage)
 	}
 
 	if status == libstack.StatusRunning {
 		stack.Status = StatusDeployed
+
 		return manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusRunning, stack.RollbackTo, "")
 	}
 
 	if status == libstack.StatusCompleted {
 		stack.Status = StatusDeployed
+
 		return manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusCompleted, stack.RollbackTo, "")
 	}
 
 	if status == libstack.StatusRemoved {
 		delete(manager.stacks, edgeStackID(stack.ID))
+
 		return manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusRemoved, stack.RollbackTo, "")
 	}
 
@@ -467,6 +472,7 @@ func (manager *StackManager) waitForStatus(ctx context.Context, stackName string
 	defer cancel()
 
 	statusCh := manager.deployer.WaitForStatus(ctx, stackName, requiredStatus)
+
 	result := <-statusCh
 	if result.ErrorMsg == "" {
 		return result.Status, "", nil
@@ -520,7 +526,7 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 
 	log.Debug().Int("stack_identifier", stack.ID).Msg("pulling images")
 
-	stack.PullCount += 1
+	stack.PullCount++
 	if stack.PullCount > perHourRetries && stack.PullCount%perHourRetries != 0 {
 		return fmt.Errorf("skip pulling")
 	}
@@ -582,10 +588,9 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	stack.DeployCount += 1
+	stack.DeployCount++
 
-	err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusDeploying, stack.RollbackTo, "")
-	if err != nil {
+	if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusDeploying, stack.RollbackTo, ""); err != nil {
 		log.Error().Err(err).Msg("unable to update Edge stack status")
 	}
 
@@ -607,7 +612,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 	envVars := buildEnvVarsForDeployer(stack.EnvVars)
 
-	err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
+	if err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
 		agent.DeployOptions{
 			DeployerBaseOptions: agent.DeployerBaseOptions{
 				Namespace:  stack.Namespace,
@@ -615,20 +620,18 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 				Env:        envVars,
 			},
 		},
-	)
-
-	if err != nil {
+	); err != nil {
 		log.Error().Err(err).Int("DeployCount", stack.DeployCount).Msg("stack deployment failed")
 
 		if stack.RetryDeploy && stack.DeployCount < maxRetries {
 			stack.Status = StatusRetry
+
 			return
 		}
 
 		stack.Status = StatusError
 
-		err = manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, "failed to redeploy stack")
-		if err != nil {
+		if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, "failed to redeploy stack"); err != nil {
 			log.Error().Err(err).Msg("unable to update Edge stack status")
 		}
 
@@ -641,18 +644,15 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 		Int("stack_identifier", stack.ID).
 		Int("stack_version", stack.Version).Msg("stack deployed")
 
-	err = manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusDeploymentReceived, stack.RollbackTo, "")
-	if err != nil {
+	if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusDeploymentReceived, stack.RollbackTo, ""); err != nil {
 		log.Error().Err(err).Msg("unable to update Edge stack status")
 	}
 
-	err = backupSuccessStack(stack)
-	if err != nil {
+	if err := backupSuccessStack(stack); err != nil {
 		log.Error().Err(err).Msg("unable to backup successful Edge stack")
 	}
 
 	stack.Status = StatusAwaitingDeployedStatus
-
 }
 
 func buildEnvVarsForDeployer(envVars []portainer.Pair) []string {
@@ -660,6 +660,7 @@ func buildEnvVarsForDeployer(envVars []portainer.Pair) []string {
 	for i, env := range envVars {
 		arr[i] = fmt.Sprintf("%s=%s", env.Name, env.Value)
 	}
+
 	return arr
 }
 
@@ -677,16 +678,17 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		log.Error().Err(err).
 			Str("stack_file_location", stackFileLocation).
 			Msg("unable to check stack file existence")
+
 		return
-	}
-	if !exist {
+	} else if !exist {
 		log.Debug().
 			Str("stack_file_location", stackFileLocation).
 			Msg("stack file not found, skipping removal")
+
 		return
 	}
 
-	err = manager.deployer.Remove(
+	if err := manager.deployer.Remove(
 		ctx,
 		stackName,
 		[]string{stackFileLocation},
@@ -697,14 +699,13 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 				Env:        buildEnvVarsForDeployer(stack.EnvVars),
 			},
 		},
-	)
-	if err != nil {
+	); err != nil {
 		log.Error().Err(err).Msg("unable to remove stack")
+
 		return
 	}
 
-	err = manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusRemoving, stack.RollbackTo, "")
-	if err != nil {
+	if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusRemoving, stack.RollbackTo, ""); err != nil {
 		log.Error().Err(err).Msg("unable to delete Edge stack status")
 
 		return
@@ -713,14 +714,12 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	stack.Status = StatusAwaitingRemovedStatus
 
 	// Remove stack file folder
-	err = os.RemoveAll(stack.FileFolder)
-	if err != nil {
+	if err := os.RemoveAll(stack.FileFolder); err != nil {
 		log.Error().Err(err).Msgf("unable to delete Edge stack folder %s", stack.FileFolder)
 	}
 
 	// Remove success stack file folder
-	err = os.RemoveAll(successFileFolder)
-	if err != nil {
+	if err := os.RemoveAll(successFileFolder); err != nil {
 		log.Error().Err(err).Msgf("unable to delete Edge stack folder %s", successFileFolder)
 	}
 }

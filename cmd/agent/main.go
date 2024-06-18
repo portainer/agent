@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	gohttp "net/http"
 	goos "os"
 	"os/signal"
@@ -46,8 +45,6 @@ func init() {
 
 func main() {
 	// Generic
-
-	rand.Seed(time.Now().UnixNano())
 
 	options, err := parseOptions()
 	if err != nil {

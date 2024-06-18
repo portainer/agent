@@ -99,9 +99,9 @@ var (
 	fAWSClientKey      = kingpin.Flag("aws-key", "Path to the private key used to authenticate against IAM Roles Anywhere").Envar(EnvKeyAWSClientKey).Default(agent.DefaultAWSClientKeyPath).String()
 	fAWSClientBundle   = kingpin.Flag("aws-bundle", "Path to the x509 intermediate certificate bundle used to authenticate against IAM Roles Anywhere").Envar(EnvKeyAWSClientBundle).String()
 	fAWSRoleARN        = kingpin.Flag("aws-role-arn", "AWS IAM target role to assume (IAM Roles Anywhere authentication)").Envar(EnvKeyAWSRoleARN).String()
-	fAWSTrustAnchorARN = kingpin.Flag("aws-trust-anchor-arn", "AWS IAM Trust anchor used for authentication against IAM Roles Anyhwere").Envar(EnvKeyAWSTrustAnchorARN).String()
+	fAWSTrustAnchorARN = kingpin.Flag("aws-trust-anchor-arn", "AWS IAM Trust anchor used for authentication against IAM Roles Anywhere").Envar(EnvKeyAWSTrustAnchorARN).String()
 	fAWSProfileARN     = kingpin.Flag("aws-profile-arn", "AWS profile ARN used to pull policies from (IAM Roles Anywhere authentication)").Envar(EnvKeyAWSProfileARN).String()
-	fAWSRegion         = kingpin.Flag("aws-region", "AWS region used when signing against IAM Roles Anyhwere").Envar(EnvKeyAWSRegion).String()
+	fAWSRegion         = kingpin.Flag("aws-region", "AWS region used when signing against IAM Roles Anywhere").Envar(EnvKeyAWSRegion).String()
 )
 
 func init() {
@@ -112,6 +112,7 @@ func init() {
 
 func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 	kingpin.Parse()
+
 	edgeGroupsIDs, err := parseListValue(fEdgeGroupsIDs)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed parsing edge group ids")
@@ -179,11 +180,13 @@ func parseListValue(flagValue *string) ([]int, error) {
 	}
 
 	var arr []int
+
 	for _, strValue := range strings.Split(*flagValue, listSeparator) {
 		intValue, err := strconv.Atoi(strValue)
 		if err != nil {
 			return nil, err
 		}
+
 		arr = append(arr, intValue)
 	}
 

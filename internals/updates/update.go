@@ -22,9 +22,9 @@ func Remove(ctx context.Context, cleaner GhostUpdaterCleaner) error {
 	log.Debug().
 		Msg("start to clean updater")
 
-	err := retry(ctx, 3, 10*time.Second, cleaner.Clean)
-	if err != nil {
+	if err := retry(ctx, 3, 10*time.Second, cleaner.Clean); err != nil {
 		log.Warn().Int("Update ID", cleaner.UpdateID()).Err(err).Msg("unable to clean up ghost updater stack")
+
 		return err
 	}
 
@@ -37,12 +37,15 @@ func Remove(ctx context.Context, cleaner GhostUpdaterCleaner) error {
 // retry executes the given function f up to maxRetries times with a delay of delayBetweenRetries
 func retry(ctx context.Context, maxRetries int, delayBetweenRetries time.Duration, f func(ctx context.Context) error) error {
 	var err error
+
 	for i := 0; i < maxRetries; i++ {
 		err = f(ctx)
 		if err == nil {
 			return nil
 		}
+
 		time.Sleep(delayBetweenRetries)
 	}
+
 	return err
 }

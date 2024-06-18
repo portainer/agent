@@ -76,7 +76,7 @@ func (y *DockerComposeYaml) AddCredentialsAsEnvForSpecificService(serviceName st
 		}
 
 		if c != nil {
-			log.Info().Str("registry server url", serverUrl)
+			log.Info().Str("registry_server_url", serverUrl).Msg("")
 
 			envs["REGISTRY_USED"] = "1"
 			// hardcode username for aws ecr registry
@@ -84,17 +84,17 @@ func (y *DockerComposeYaml) AddCredentialsAsEnvForSpecificService(serviceName st
 			envs["REGISTRY_USERNAME"] = "AWS"
 			envs["REGISTRY_PASSWORD"] = c.Secret
 		}
-
 	} else if len(y.RegistryCredentials) > 0 {
 		log.Info().Msg("using private registry credential")
 
 		for _, cred := range y.RegistryCredentials {
 			if serverUrl == cred.ServerURL {
-				log.Info().Str("registry server url", cred.ServerURL)
+				log.Info().Str("registry_server_url", cred.ServerURL).Msg("")
 
 				envs["REGISTRY_USED"] = "1"
 				envs["REGISTRY_USERNAME"] = cred.Username
 				envs["REGISTRY_PASSWORD"] = cred.Secret
+
 				break
 			}
 		}
@@ -105,6 +105,7 @@ func (y *DockerComposeYaml) AddCredentialsAsEnvForSpecificService(serviceName st
 
 func updateServiceWithEnv(compose Compose, serviceName string, envs map[string]string) (string, error) {
 	log.Info().Int("number", len(envs)).Msg("environment variable")
+
 	service, ok := compose.Services[serviceName]
 	if !ok {
 		return "", fmt.Errorf("failed to find the service: %s", serviceName)
@@ -124,8 +125,10 @@ func updateServiceWithEnv(compose Compose, serviceName string, envs map[string]s
 	yamlBytes, err := yaml.Marshal(compose)
 	if err != nil {
 		log.Error().Msg("failed to encode compose to yaml file")
+
 		return "", errors.Wrap(err, "failed to encode compose to yaml file")
 	}
+
 	return string(yamlBytes), nil
 }
 
@@ -145,6 +148,7 @@ func extractRegistryServerUrl(imageName string) (string, error) {
 	}
 
 	scheme := ""
+
 	pos := strings.Index(imageName, "://")
 	if pos != -1 {
 		scheme = imageName[:pos+3]
@@ -153,6 +157,7 @@ func extractRegistryServerUrl(imageName string) (string, error) {
 
 	parts := strings.Split(imageName, "/")
 	registryURL := parts[0]
+
 	if len(parts) > 2 || (len(parts) == 2 && strings.Contains(imageName, ".")) {
 		if scheme != "" {
 			registryURL = scheme + parts[0]
