@@ -22,7 +22,6 @@ import (
 	"github.com/portainer/agent/exec"
 	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
-	"github.com/portainer/agent/healthcheck"
 	"github.com/portainer/agent/http"
 	"github.com/portainer/agent/internals/updates"
 	"github.com/portainer/agent/kubernetes"
@@ -313,14 +312,6 @@ func main() {
 	}
 
 	// !Security
-
-	if options.HealthCheck {
-		err := healthcheck.Run(options, clusterService)
-		if err != nil {
-			log.Fatal().Err(err).Msg("failed healthcheck")
-		}
-		goos.Exit(0)
-	}
 
 	// Edge
 	var edgeManager *edge.Manager

@@ -101,7 +101,6 @@ type (
 		EdgeMetaFields        EdgeMetaFields
 		LogLevel              string
 		LogMode               string
-		HealthCheck           bool
 		SSLCert               string
 		SSLKey                string
 		SSLCACert             string
