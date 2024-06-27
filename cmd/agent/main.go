@@ -7,8 +7,6 @@ import (
 	gohttp "net/http"
 	goos "os"
 	"os/signal"
-	"path"
-	"strings"
 	"syscall"
 	"time"
 
@@ -20,7 +18,6 @@ import (
 	httpEdge "github.com/portainer/agent/edge/http"
 	"github.com/portainer/agent/edge/registry"
 	"github.com/portainer/agent/exec"
-	"github.com/portainer/agent/filesystem"
 	"github.com/portainer/agent/ghw"
 	"github.com/portainer/agent/healthcheck"
 	"github.com/portainer/agent/http"
@@ -72,7 +69,6 @@ func main() {
 	var dockerInfoService agent.DockerInfoService
 	var advertiseAddr string
 	var kubeClient *kubernetes.KubeClient
-	var nomadConfig agent.NomadConfig
 
 	var updaterCleaner updates.GhostUpdaterCleaner
 	// !Generic
@@ -208,90 +204,6 @@ func main() {
 	}
 	// !Kubernetes
 
-	// Nomad
-	if containerPlatform == agent.PlatformNomad {
-		advertiseAddr, err = net.GetLocalIP()
-		if err != nil {
-			log.Fatal().Err(err).Msg("unable to retrieve local IP associated to the agent")
-		}
-
-		nomadConfig.NomadAddr = goos.Getenv(agent.NomadAddrEnvVarName)
-		if nomadConfig.NomadAddr == "" {
-			log.Fatal().Msg("unable to retrieve environment variable NOMAD_ADDR")
-		}
-
-		if strings.HasPrefix(nomadConfig.NomadAddr, "https") {
-			nomadConfig.NomadTLSEnabled = true
-
-			// Write the TLS certificate into files and update the paths to nomadConfig for Reversy Tunnel API use
-			nomadCACertContent := goos.Getenv(agent.NomadCACertContentEnvVarName)
-			if len(nomadCACertContent) == 0 {
-				log.Fatal().Err(err).Msg("nomad CA Certificate is not exported")
-			}
-
-			err = filesystem.WriteFile(options.DataPath, agent.NomadTLSCACertPath, []byte(nomadCACertContent), 0600)
-			if err != nil {
-				log.Fatal().Err(err).Msg("fail to write the Nomad CA Certificate")
-			}
-
-			nomadConfig.NomadCACert = path.Join(options.DataPath, agent.NomadTLSCACertPath)
-
-			nomadClientCertContent := goos.Getenv(agent.NomadClientCertContentEnvVarName)
-			if len(nomadClientCertContent) == 0 {
-				log.Fatal().Err(err).Msg("Nomad Client Certificate is not exported")
-			}
-
-			err = filesystem.WriteFile(options.DataPath, agent.NomadTLSCertPath, []byte(nomadClientCertContent), 0600)
-			if err != nil {
-				log.Fatal().Err(err).Msg("fail to write the Nomad Client Certificate")
-			}
-
-			nomadConfig.NomadClientCert = path.Join(options.DataPath, agent.NomadTLSCertPath)
-
-			nomadClientKeyContent := goos.Getenv(agent.NomadClientKeyContentEnvVarName)
-			if len(nomadClientKeyContent) == 0 {
-				log.Fatal().Err(err).Msg("Nomad Client Key is not exported")
-			}
-
-			err = filesystem.WriteFile(options.DataPath, agent.NomadTLSKeyPath, []byte(nomadClientKeyContent), 0600)
-			if err != nil {
-				log.Fatal().Err(err).Msg("fail to write the Nomad Client Key")
-			}
-
-			nomadConfig.NomadClientKey = path.Join(options.DataPath, agent.NomadTLSKeyPath)
-
-			if _, err := goos.Stat(nomadConfig.NomadCACert); errors.Is(err, goos.ErrNotExist) {
-				log.Fatal().Err(err).Msg("unable to locate the Nomad CA Certificate")
-			}
-
-			if _, err := goos.Stat(nomadConfig.NomadClientCert); errors.Is(err, goos.ErrNotExist) {
-				log.Fatal().Err(err).Msg("unable to locate the Nomad Client Certificate]")
-			}
-
-			if _, err := goos.Stat(nomadConfig.NomadClientKey); errors.Is(err, goos.ErrNotExist) {
-				log.Fatal().Err(err).Msg("unable to locate the Nomad Client Key")
-			}
-
-			// Export the TLS certificates path for Nomad Edge Deployer
-			goos.Setenv(agent.NomadCACertEnvVarName, nomadConfig.NomadCACert)
-			goos.Setenv(agent.NomadClientCertEnvVarName, nomadConfig.NomadClientCert)
-			goos.Setenv(agent.NomadClientKeyEnvVarName, nomadConfig.NomadClientKey)
-		}
-
-		nomadConfig.NomadToken = goos.Getenv(agent.NomadTokenEnvVarName)
-
-		if options.EdgeMetaFields.UpdateID != 0 {
-			updaterCleaner = updates.NewNomadUpdaterCleaner(options.EdgeMetaFields.UpdateID)
-		}
-
-		log.Debug().
-			Str("agent_port", options.AgentServerPort).
-			Str("advertise_address", advertiseAddr).
-			Str("NomadAddr", nomadConfig.NomadAddr).
-			Msg("")
-	}
-	// !Nomad
-
 	// Clean the updater
 	if updaterCleaner != nil {
 		ctx := context.Background()
@@ -374,7 +286,6 @@ func main() {
 		KubeClient:           kubeClient,
 		KubernetesDeployer:   kubernetesDeployer,
 		ContainerPlatform:    containerPlatform,
-		NomadConfig:          nomadConfig,
 	}
 
 	if options.EdgeMode {
