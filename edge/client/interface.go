@@ -28,7 +28,7 @@ type PortainerClient interface {
 	SetEdgeConfigState(id EdgeConfigID, state EdgeConfigStateType) error
 	SetTimeout(t time.Duration)
 	SetLastCommandTimestamp(timestamp time.Time)
-	EnqueueLogCollectionForStack(logCmd LogCommandData) error
+	EnqueueLogCollectionForStack(logCmd LogCommandData)
 }
 
 type EdgeConfigID int

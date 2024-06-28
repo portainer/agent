@@ -84,13 +84,18 @@ func ContainerWait(name string, condition container.WaitCondition) (<-chan conta
 	var statusCh <-chan container.WaitResponse
 	var errCh <-chan error
 
-	withCli(func(cli *client.Client) error {
+	if err := withCli(func(cli *client.Client) error {
 		cli.HTTPClient().Timeout = largeClientTimeout
 
 		statusCh, errCh = cli.ContainerWait(context.Background(), name, condition)
 
 		return nil
-	})
+	}); err != nil {
+		ch := make(chan error)
+		errCh = ch
+
+		go func() { ch <- err }()
+	}
 
 	return statusCh, errCh
 }

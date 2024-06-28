@@ -327,8 +327,7 @@ func (service *PollService) processScheduleCommand(command client.AsyncCommand) 
 func (service *PollService) processLogCommand(command client.AsyncCommand) error {
 	var logCmd client.LogCommandData
 
-	err := mapstructure.Decode(command.Value, &logCmd)
-	if err != nil {
+	if err := mapstructure.Decode(command.Value, &logCmd); err != nil {
 		return newOperationError("log", "n/a", err)
 	}
 

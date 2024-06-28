@@ -44,11 +44,9 @@ func (m *MockPortainerClient) EXPECT() *MockPortainerClientMockRecorder {
 }
 
 // EnqueueLogCollectionForStack mocks base method.
-func (m *MockPortainerClient) EnqueueLogCollectionForStack(logCmd client.LogCommandData) error {
+func (m *MockPortainerClient) EnqueueLogCollectionForStack(logCmd client.LogCommandData) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnqueueLogCollectionForStack", logCmd)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "EnqueueLogCollectionForStack", logCmd)
 }
 
 // EnqueueLogCollectionForStack indicates an expected call of EnqueueLogCollectionForStack.

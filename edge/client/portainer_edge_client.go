@@ -127,8 +127,7 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 	}
 
 	var responseData globalKeyResponse
-	err = json.NewDecoder(resp.Body).Decode(&responseData)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
 		return 0, err
 	}
 
@@ -178,8 +177,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 	}
 
 	var responseData PollStatusResponse
-	err = json.NewDecoder(resp.Body).Decode(&responseData)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
 		return nil, err
 	}
 
@@ -216,8 +214,7 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int, version *
 	}
 
 	var data edge.StackPayload
-	err = json.NewDecoder(resp.Body).Decode(&data)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, err
 	}
 
@@ -379,9 +376,7 @@ func (client *PortainerEdgeClient) ProcessAsyncCommands() error {
 
 func (client *PortainerEdgeClient) SetLastCommandTimestamp(timestamp time.Time) {} // edge mode only
 
-func (client *PortainerEdgeClient) EnqueueLogCollectionForStack(logCmd LogCommandData) error {
-	return nil
-}
+func (client *PortainerEdgeClient) EnqueueLogCollectionForStack(logCmd LogCommandData) {}
 
 func (client *PortainerEdgeClient) cacheHeaders() string {
 	if client.reqCache == nil {
