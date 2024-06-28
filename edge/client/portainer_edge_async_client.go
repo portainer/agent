@@ -119,7 +119,7 @@ type AsyncCommand struct {
 	Timestamp  time.Time            `json:"timestamp"`
 	Operation  string               `json:"op"`
 	Path       string               `json:"path"`
-	Value      interface{}          `json:"value"`
+	Value      any                  `json:"value"`
 }
 
 type EdgeJobData struct {
