@@ -15,7 +15,7 @@ COPY dist/docker-compose.exe /app/
 COPY dist/docker-credential-portainer.exe /app/
 COPY dist/kubectl.exe /app/
 
-COPY static /app/
+COPY static /app/static
 COPY config /Users/ContainerAdministrator/.docker/
 
 # HEALTHCHECK --interval=10s --timeout=10s --start-period=5s --retries=1 CMD [ "C:/app/agent", "--health-check" ]
