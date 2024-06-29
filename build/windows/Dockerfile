@@ -1,5 +1,5 @@
 ARG OSVERSION
-FROM --platform=linux/amd64 gcr.io/k8s-staging-e2e-test-images/windows-servercore-cache:1.0-linux-amd64-${OSVERSION} as core
+FROM --platform=linux/amd64 gcr.io/k8s-staging-e2e-test-images/windows-servercore-cache:1.0-linux-amd64-${OSVERSION} AS core
 
 FROM mcr.microsoft.com/windows/nanoserver:${OSVERSION}
 ENV PATH "C:\mingit\cmd;C:\app;C:\Windows\system32;C:\Windows;"
