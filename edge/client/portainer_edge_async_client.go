@@ -511,13 +511,11 @@ func (client *PortainerAsyncClient) SetEdgeConfigState(id EdgeConfigID, state Ed
 	return nil
 }
 
-func (client *PortainerAsyncClient) EnqueueLogCollectionForStack(logCmd LogCommandData) error {
+func (client *PortainerAsyncClient) EnqueueLogCollectionForStack(logCmd LogCommandData) {
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
 
 	client.stackLogCollectionQueue = append(client.stackLogCollectionQueue, logCmd)
-
-	return nil
 }
 
 func snapshotHash(snapshot any) (uint32, bool) {
