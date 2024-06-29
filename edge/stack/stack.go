@@ -14,7 +14,6 @@ import (
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/yaml"
 	"github.com/portainer/agent/exec"
-	"github.com/portainer/agent/nomad"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
 	"github.com/portainer/portainer/api/filesystem"
@@ -75,6 +74,7 @@ const (
 	EngineTypeDockerStandalone
 	EngineTypeDockerSwarm
 	EngineTypeKubernetes
+	// Deprecated
 	EngineTypeNomad
 )
 
@@ -750,8 +750,6 @@ func buildDeployerService(assetsPath string, engineStatus engineType) (agent.Dep
 		return exec.NewDockerSwarmStackService(assetsPath)
 	case EngineTypeKubernetes:
 		return exec.NewKubernetesDeployer(assetsPath), nil
-	case EngineTypeNomad:
-		return nomad.NewDeployer()
 	}
 
 	return nil, fmt.Errorf("engine status %d not supported", engineStatus)

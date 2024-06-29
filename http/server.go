@@ -30,7 +30,6 @@ type APIServer struct {
 	kubeClient         *kubernetes.KubeClient
 	kubernetesDeployer *exec.KubernetesDeployer
 	containerPlatform  agent.ContainerPlatform
-	nomadConfig        agent.NomadConfig
 }
 
 // APIServerConfig represents a server configuration
@@ -47,7 +46,6 @@ type APIServerConfig struct {
 	RuntimeConfiguration *agent.RuntimeConfig
 	AgentOptions         *agent.Options
 	ContainerPlatform    agent.ContainerPlatform
-	NomadConfig          agent.NomadConfig
 }
 
 // NewAPIServer returns a pointer to a APIServer.
@@ -64,7 +62,6 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 		kubeClient:         config.KubeClient,
 		kubernetesDeployer: config.KubernetesDeployer,
 		containerPlatform:  config.ContainerPlatform,
-		nomadConfig:        config.NomadConfig,
 	}
 }
 
@@ -80,7 +77,6 @@ func (server *APIServer) Start(edgeMode bool) error {
 		KubernetesDeployer:   server.kubernetesDeployer,
 		UseTLS:               !edgeMode,
 		ContainerPlatform:    server.containerPlatform,
-		NomadConfig:          server.nomadConfig,
 	}
 
 	httpHandler := handler.NewHandler(config)
