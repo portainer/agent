@@ -50,14 +50,14 @@ func NewClusterProxy(useTLS bool) *ClusterProxy {
 }
 
 type agentRequestResult struct {
-	responseContent []interface{}
+	responseContent []any
 	err             error
 	nodeName        string
 }
 
 // ClusterOperation will copy and execute the specified request on a set of agents.
 // It aggregates the data of each request's response in a single response object.
-func (clusterProxy *ClusterProxy) ClusterOperation(request *http.Request, clusterMembers []agent.ClusterMember) (interface{}, error) {
+func (clusterProxy *ClusterProxy) ClusterOperation(request *http.Request, clusterMembers []agent.ClusterMember) (any, error) {
 
 	memberCount := len(clusterMembers)
 
@@ -67,7 +67,7 @@ func (clusterProxy *ClusterProxy) ClusterOperation(request *http.Request, cluste
 
 	close(dataChannel)
 
-	aggregatedData := make([]interface{}, 0, memberCount)
+	aggregatedData := make([]any, 0, memberCount)
 
 	for result := range dataChannel {
 		if result.err != nil {
@@ -196,11 +196,11 @@ func cloneHeader(h http.Header) http.Header {
 	return h2
 }
 
-func decorateObject(object interface{}, nodeName string) interface{} {
+func decorateObject(object any, nodeName string) any {
 	metadata := agent.Metadata{}
 	metadata.Agent.NodeName = nodeName
 
-	JSONObject := object.(map[string]interface{})
+	JSONObject := object.(map[string]any)
 	JSONObject[agent.ResponseMetadataKey] = metadata
 
 	return JSONObject
