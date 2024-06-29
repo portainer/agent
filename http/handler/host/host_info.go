@@ -21,10 +21,9 @@ func (handler *Handler) hostInfo(rw http.ResponseWriter, r *http.Request) *httpe
 
 func (handler *Handler) fillHostInfo(hi *agent.HostInfo) error {
 	devices, devicesError := handler.systemService.GetPciDevices()
-	if devicesError != nil {
-		return devicesError
+	if devicesError == nil {
+		hi.PCIDevices = devices
 	}
-	hi.PCIDevices = devices
 
 	disks, disksError := handler.systemService.GetDiskInfo()
 	if disksError != nil {
