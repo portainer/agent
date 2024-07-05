@@ -19,6 +19,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const requestRetryWait = 5 * time.Second
+
 // PortainerEdgeClient is used to execute HTTP requests against the Portainer API
 type PortainerEdgeClient struct {
 	httpClient      *edgeHTTPClient
@@ -239,7 +241,7 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 	log.Debug().
 		Int("edgeStackID", edgeStackID).
 		Int("edgeStackStatus", int(edgeStackStatus)).
-		Int("time check", int(payload.Time)).
+		Int("time_check", int(payload.Time)).
 		Msg("SetEdgeStackStatus")
 
 	data, err := json.Marshal(payload)
@@ -249,20 +251,41 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 
 	requestURL := fmt.Sprintf("%s/api/edge_stacks/%d/status", client.serverAddress, edgeStackID)
 
-	req, err := http.NewRequest(http.MethodPut, requestURL, bytes.NewReader(data))
-	if err != nil {
-		return err
+	var resp *http.Response
+	for {
+		req, err := http.NewRequest(http.MethodPut, requestURL, bytes.NewReader(data))
+		if err != nil {
+			return err
+		}
+
+		req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+
+		resp, err = client.httpClient.Do(req)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Int("edgeStackID", edgeStackID).
+				Msg("could not set edge stack status, retrying...")
+
+			time.Sleep(requestRetryWait)
+
+			continue
+		}
+
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+
+		if resp.StatusCode < http.StatusInternalServerError {
+			break
+		}
+
+		log.Error().
+			Str("status", resp.Status).
+			Int("edgeStackID", edgeStackID).
+			Msg("could not set edge stack status, retrying...")
+
+		time.Sleep(requestRetryWait)
 	}
-
-	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
-
-	resp, err := client.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Error().Int("response_code", resp.StatusCode).Msg("SetEdgeStackStatus operation failed")
