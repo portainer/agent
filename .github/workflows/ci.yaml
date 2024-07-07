@@ -21,7 +21,7 @@ on:
 
 env:
   DOCKER_HUB_REPO: portainerci/agent
-  GO_VERSION: 1.21.9
+  GO_VERSION: 1.21.11
 
 jobs:
   build_images:
