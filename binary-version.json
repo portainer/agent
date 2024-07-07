@@ -1,6 +1,6 @@
 {
-  "docker": "v24.0.9",
-  "dockerCompose": "v2.26.1",
-  "kubectl": "v1.29.4",
-  "mingit": "2.44.0.1"
+  "docker": "v27.0.3",
+  "dockerCompose": "v2.28.1",
+  "kubectl": "v1.30.2",
+  "mingit": "2.45.2.1"
 }
