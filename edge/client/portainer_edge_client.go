@@ -117,7 +117,7 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, logPollingError(resp, "global key request failed")
+		return 0, logPollingError(resp, "EdgeAgentGetEnvironmentID", fmt.Sprintf("EdgeAgent [%d] failed to request global key", client.getEndpointIDFn()))
 	}
 
 	var responseData globalKeyResponse
@@ -160,7 +160,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, logPollingError(resp, "short poll request failed")
+		return nil, logPollingError(resp, "EdgeAgentGetEnvironmentStatus", fmt.Sprintf("EdgeAgent [%d] failed to request edge environment status", client.getEndpointIDFn()))
 	}
 
 	var responseData PollStatusResponse
@@ -195,7 +195,7 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int, version *
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, logPollingError(resp, "GetEdgeStackConfig operation failed")
+		return nil, logPollingError(resp, "EdgeAgentGetEdgeStackConfig", fmt.Sprintf("EdgeAgent [%d] failed to request edge stack config", client.getEndpointIDFn()))
 	}
 
 	var data edge.StackPayload
@@ -250,7 +250,7 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return logPollingError(resp, "SetEdgeStackStatus operation failed")
+		return logPollingError(resp, "EdgeAgentSetEdgeStackStatus", fmt.Sprintf("EdgeAgent [%d] failed to set edge stack status", client.getEndpointIDFn()))
 	}
 
 	return nil
@@ -285,7 +285,7 @@ func (client *PortainerEdgeClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobS
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return logPollingError(resp, "SetEdgeJobStatus operation failed")
+		return logPollingError(resp, "EdgeAgentSetEdgeJobStatus", fmt.Sprintf("EdgeAgent [%d] failed to set edge job status", client.getEndpointIDFn()))
 	}
 
 	return nil
@@ -308,10 +308,10 @@ func (client *PortainerEdgeClient) GetEdgeConfig(id EdgeConfigID) (*EdgeConfig, 
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusForbidden {
-			return nil, logPollingError(resp, "GetEdgeConfig operation forbidden")
+			return nil, logPollingError(resp, "EdgeAgentGetEdgeConfig", fmt.Sprintf("EdgeAgent [%d] is forbidden to get the info of edge config [%d]", client.getEndpointIDFn(), id))
 		}
 
-		return nil, logPollingError(resp, "GetEdgeConfig operation failed")
+		return nil, logPollingError(resp, "EdgeAgentGetEdgeConfig", fmt.Sprintf("EdgeAgent [%d] failed to get the info of edge config [%d]", client.getEndpointIDFn(), id))
 	}
 
 	var data EdgeConfig
@@ -341,7 +341,7 @@ func (client *PortainerEdgeClient) SetEdgeConfigState(id EdgeConfigID, state Edg
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return logPollingError(resp, fmt.Sprintf("edge_config_id: %d, state: %s, error: %s", id, state, "SetEdgeConfigState operation failed"))
+		return logPollingError(resp, "EdgeAgentSetEdgeConfigState", fmt.Sprintf("EdgeAgent [%d] failed to set the state [%s] to edge config [%d]", client.getEndpointIDFn(), state, id))
 	}
 
 	return nil

@@ -9,12 +9,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func logPollingError(resp *http.Response, errMsg string) error {
+func logPollingError(resp *http.Response, ctxMsg, errMsg string) error {
 	var respErr httperror.HandlerError
 	if err := json.NewDecoder(resp.Body).Decode(&respErr); err != nil {
-		log.Error().Err(err).Int("response_code", resp.StatusCode).Msg("failed to parse response error")
+		log.
+			Error().
+			Err(err).
+			Str("context", ctxMsg).
+			Int("response_code", resp.StatusCode).
+			Msg("PollClient failed to decode server response")
 	}
-	log.Error().Err(respErr.Err).
+	log.
+		Error().Err(respErr.Err).
+		Str("context", ctxMsg).
 		Str("response message", respErr.Message).
 		Int("status code", respErr.StatusCode).
 		Msg(errMsg)
