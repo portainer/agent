@@ -10,6 +10,7 @@ linters:
     - govet
     - errorlint
     - exportloopref
+    - intrange
 
 linters-settings:
   depguard:
