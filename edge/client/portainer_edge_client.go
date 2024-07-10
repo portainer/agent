@@ -47,14 +47,6 @@ type logFilePayload struct {
 	FileContent string
 }
 
-type NonOkResponseError struct {
-	msg string
-}
-
-func (e *NonOkResponseError) Error() string {
-	return e.msg
-}
-
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
 func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *edgeHTTPClient) *PortainerEdgeClient {
 	c := &PortainerEdgeClient{
@@ -117,7 +109,18 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, logPollingError(resp, "EdgeAgentGetEnvironmentID", fmt.Sprintf("EdgeAgent [%d] failed to request global key", client.getEndpointIDFn()))
+		ctxMsg := "EdgeAgentGetEnvironmentID"
+		errMsg := "EdgeAgent failed to request global key"
+		if err := decodeNonOkayResponse(resp, ctxMsg); err != nil {
+			log.
+				Error().Err(err.Err).
+				Str("context", ctxMsg).
+				Str("response message", err.Message).
+				Int("status code", err.StatusCode).
+				Int("endpoint id", int(client.getEndpointIDFn())).
+				Msg(errMsg)
+		}
+		return 0, newNonOkResponseError(errMsg)
 	}
 
 	var responseData globalKeyResponse
@@ -160,7 +163,18 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, logPollingError(resp, "EdgeAgentGetEnvironmentStatus", fmt.Sprintf("EdgeAgent [%d] failed to request edge environment status", client.getEndpointIDFn()))
+		ctxMsg := "EdgeAgentGetEnvironmentStatus"
+		errMsg := "EdgeAgent failed to request edge environment status"
+		if err := decodeNonOkayResponse(resp, ctxMsg); err != nil {
+			log.
+				Error().Err(err.Err).
+				Str("context", ctxMsg).
+				Str("response message", err.Message).
+				Int("status code", err.StatusCode).
+				Int("endpoint id", int(client.getEndpointIDFn())).
+				Msg(errMsg)
+		}
+		return nil, newNonOkResponseError(errMsg)
 	}
 
 	var responseData PollStatusResponse
@@ -195,7 +209,18 @@ func (client *PortainerEdgeClient) GetEdgeStackConfig(edgeStackID int, version *
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, logPollingError(resp, "EdgeAgentGetEdgeStackConfig", fmt.Sprintf("EdgeAgent [%d] failed to request edge stack config", client.getEndpointIDFn()))
+		ctxMsg := "EdgeAgentGetEdgeStackConfig"
+		errMsg := "EdgeAgent failed to request edge stack config"
+		if err := decodeNonOkayResponse(resp, ctxMsg); err != nil {
+			log.
+				Error().Err(err.Err).
+				Str("context", ctxMsg).
+				Str("response message", err.Message).
+				Int("status code", err.StatusCode).
+				Int("endpoint id", int(client.getEndpointIDFn())).
+				Msg(errMsg)
+		}
+		return nil, newNonOkResponseError(errMsg)
 	}
 
 	var data edge.StackPayload
@@ -250,7 +275,18 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return logPollingError(resp, "EdgeAgentSetEdgeStackStatus", fmt.Sprintf("EdgeAgent [%d] failed to set edge stack status", client.getEndpointIDFn()))
+		ctxMsg := "EdgeAgentSetEdgeStackStatus"
+		errMsg := "EdgeAgent failed to set edge stack status"
+		if err := decodeNonOkayResponse(resp, ctxMsg); err != nil {
+			log.
+				Error().Err(err.Err).
+				Str("context", ctxMsg).
+				Str("response message", err.Message).
+				Int("status code", err.StatusCode).
+				Int("endpoint id", int(client.getEndpointIDFn())).
+				Msg(errMsg)
+		}
+		return newNonOkResponseError(errMsg)
 	}
 
 	return nil
@@ -285,7 +321,18 @@ func (client *PortainerEdgeClient) SetEdgeJobStatus(edgeJobStatus agent.EdgeJobS
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return logPollingError(resp, "EdgeAgentSetEdgeJobStatus", fmt.Sprintf("EdgeAgent [%d] failed to set edge job status", client.getEndpointIDFn()))
+		ctxMsg := "EdgeAgentSetEdgeJobStatus"
+		errMsg := "EdgeAgent failed to set edge job status"
+		if err := decodeNonOkayResponse(resp, ctxMsg); err != nil {
+			log.
+				Error().Err(err.Err).
+				Str("context", ctxMsg).
+				Str("response message", err.Message).
+				Int("status code", err.StatusCode).
+				Int("endpoint id", int(client.getEndpointIDFn())).
+				Msg(errMsg)
+		}
+		return newNonOkResponseError(errMsg)
 	}
 
 	return nil
@@ -307,11 +354,24 @@ func (client *PortainerEdgeClient) GetEdgeConfig(id EdgeConfigID) (*EdgeConfig, 
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusForbidden {
-			return nil, logPollingError(resp, "EdgeAgentGetEdgeConfig", fmt.Sprintf("EdgeAgent [%d] is forbidden to get the info of edge config [%d]", client.getEndpointIDFn(), id))
+		ctxMsg := "EdgeAgentGetEdgeConfig"
+		errMsg := "EdgeAgent failed to get edge config info"
+		if err := decodeNonOkayResponse(resp, ctxMsg); err != nil {
+			log.
+				Error().Err(err.Err).
+				Str("context", ctxMsg).
+				Str("response message", err.Message).
+				Int("status code", err.StatusCode).
+				Int("endpoint id", int(client.getEndpointIDFn())).
+				Int("edge config", int(id)).
+				Msg(errMsg)
 		}
 
-		return nil, logPollingError(resp, "EdgeAgentGetEdgeConfig", fmt.Sprintf("EdgeAgent [%d] failed to get the info of edge config [%d]", client.getEndpointIDFn(), id))
+		if resp.StatusCode == http.StatusForbidden {
+			return nil, newForbiddenResponseError(errMsg)
+		}
+
+		return nil, newNonOkResponseError(errMsg)
 	}
 
 	var data EdgeConfig
@@ -341,7 +401,20 @@ func (client *PortainerEdgeClient) SetEdgeConfigState(id EdgeConfigID, state Edg
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return logPollingError(resp, "EdgeAgentSetEdgeConfigState", fmt.Sprintf("EdgeAgent [%d] failed to set the state [%s] to edge config [%d]", client.getEndpointIDFn(), state, id))
+		ctxMsg := "EdgeAgentSetEdgeConfigState"
+		errMsg := "EdgeAgent failed to set state to edge config"
+		if err := decodeNonOkayResponse(resp, ctxMsg); err != nil {
+			log.
+				Error().Err(err.Err).
+				Str("context", ctxMsg).
+				Str("response message", err.Message).
+				Int("status code", err.StatusCode).
+				Int("endpoint id", int(client.getEndpointIDFn())).
+				Int("edge config id", int(id)).
+				Int("edge state", int(state)).
+				Msg(errMsg)
+		}
+		return newNonOkResponseError(errMsg)
 	}
 
 	return nil
