@@ -279,7 +279,7 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 			break
 		}
 
-		log.Error().
+		log.Debug().
 			Str("status", resp.Status).
 			Int("edgeStackID", edgeStackID).
 			Msg("could not set edge stack status, retrying...")
