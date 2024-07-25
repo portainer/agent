@@ -42,7 +42,7 @@ tidy: ## Tidy up the go.mod file
 .PHONY: test test-client test-server
 
 test:	## Run server tests
-	$(GOTESTSUM) --format pkgname-and-test-fails --format-hide-empty-pkg --hide-summary skipped -- -cover  ./...
+	$(GOTESTSUM) --format pkgname-and-test-fails --format-hide-empty-pkg --hide-summary skipped -- -cover -race -covermode=atomic -coverprofile=coverage.out ./...
 
 ##@ Miscellaneous
 
