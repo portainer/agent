@@ -70,6 +70,7 @@ func main() {
 	var kubeClient *kubernetes.KubeClient
 
 	var updaterCleaner updates.GhostUpdaterCleaner
+	ctx := context.Background()
 	// !Generic
 
 	// Docker & Podman
@@ -107,7 +108,7 @@ func main() {
 		}
 
 		if containerPlatform == agent.PlatformDocker && options.EdgeMetaFields.UpdateID != 0 {
-			updaterCleaner = updates.NewDockerUpdaterCleaner(options.EdgeMetaFields.UpdateID)
+			updaterCleaner = updates.NewDockerUpdaterCleaner(ctx, options.EdgeMetaFields.UpdateID)
 		}
 
 		if containerPlatform == agent.PlatformDocker && clusterMode {
@@ -205,8 +206,6 @@ func main() {
 
 	// Clean the updater
 	if updaterCleaner != nil {
-		ctx := context.Background()
-
 		go updates.Remove(ctx, updaterCleaner)
 	}
 	// !Clean the updater
