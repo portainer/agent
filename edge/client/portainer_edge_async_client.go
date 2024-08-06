@@ -415,14 +415,18 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		errorData := parseError(resp)
-		logError(resp, errorData)
-
-		if errorData != nil {
-			return nil, errors.New(errorData.Message + ": " + errorData.Details)
+		ctxMsg := "AsyncEdgeAgentExecuteAsyncRequest"
+		errMsg := "AsyncEdgeAgent failed to execute async request"
+		if err := decodeNonOkayResponse(resp, ctxMsg); err != nil {
+			log.
+				Error().Err(err.Err).
+				Str("context", ctxMsg).
+				Str("response message", err.Message).
+				Int("status code", err.StatusCode).
+				Int("endpoint id", int(client.getEndpointIDFn())).
+				Msg(errMsg)
 		}
-
-		return nil, errors.New("short poll request failed")
+		return nil, newNonOkResponseError(errMsg)
 	}
 
 	var asyncResponse AsyncResponse

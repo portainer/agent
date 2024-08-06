@@ -4,38 +4,45 @@ import (
 	"encoding/json"
 	"net/http"
 
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 	"github.com/rs/zerolog/log"
 )
 
-type errorData struct {
-	Details string
-	Message string
+type NonOkResponseError struct {
+	msg string
 }
 
-func parseError(resp *http.Response) *errorData {
-	errorData := &errorData{}
+func newNonOkResponseError(msg string) *NonOkResponseError {
+	return &NonOkResponseError{msg: msg}
+}
 
-	err := json.NewDecoder(resp.Body).Decode(&errorData)
-	if err != nil {
-		log.Debug().CallerSkipFrame(1).
+func (e *NonOkResponseError) Error() string {
+	return e.msg
+}
+
+type ForbiddenResponseError struct {
+	msg string
+}
+
+func newForbiddenResponseError(msg string) *ForbiddenResponseError {
+	return &ForbiddenResponseError{msg: msg}
+}
+
+func (e *ForbiddenResponseError) Error() string {
+	return e.msg
+}
+
+func decodeNonOkayResponse(resp *http.Response, ctxMsg string) *httperror.HandlerError {
+	var respErr httperror.HandlerError
+	if err := json.NewDecoder(resp.Body).Decode(&respErr); err != nil {
+		log.
+			Error().
 			Err(err).
-			Int("status_code", resp.StatusCode).
-			Msg("failed to decode error response")
-
+			CallerSkipFrame(1).
+			Str("context", ctxMsg).
+			Int("response_code", resp.StatusCode).
+			Msg("PollClient failed to decode server response")
 		return nil
 	}
-
-	return errorData
-}
-
-func logError(resp *http.Response, errorData *errorData) {
-	if errorData == nil {
-		return
-	}
-
-	log.Debug().CallerSkipFrame(1).
-		Str("error_response_message", errorData.Message).
-		Str("error_response_details", errorData.Details).
-		Int("status_code", resp.StatusCode).
-		Msg("poll request failure")
+	return &respErr
 }
