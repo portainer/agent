@@ -259,6 +259,7 @@ func (client *PortainerEdgeClient) SetEdgeStackStatus(
 		}
 
 		req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+		req.Header.Set("X-Portainer-No-Body", "1")
 
 		resp, err = client.httpClient.Do(req)
 		if err != nil {
