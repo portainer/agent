@@ -356,13 +356,11 @@ func gzipCompress(data []byte) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	_, err = gz.Write(data)
-	if err != nil {
+	if _, err := gz.Write(data); err != nil {
 		return nil, err
 	}
 
-	err = gz.Close()
-	if err != nil {
+	if err := gz.Close(); err != nil {
 		return nil, err
 	}
 
@@ -376,13 +374,10 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	}
 
 	var buf *bytes.Buffer
-	if payload.Snapshot != nil {
-		buf, err = gzipCompress(data)
-		if err != nil {
-			return nil, err
-		}
-	} else {
+	if payload.Snapshot == nil {
 		buf = bytes.NewBuffer(data)
+	} else if buf, err = gzipCompress(data); err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", pollURL, buf)
@@ -406,6 +401,7 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 		Int(agent.HTTPResponseAgentPlatform, (int(client.agentPlatformIdentifier))).
 		Str(agent.HTTPResponseAgentHeaderName, agent.Version).
 		Str(agent.HTTPResponseAgentTimeZone, time.Local.String()).
+		Int("endpoint_id", int(client.getEndpointIDFn())).
 		Msg("sending async request with headers")
 
 	resp, err := client.httpClient.Do(req)
@@ -428,8 +424,7 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 	}
 
 	var asyncResponse AsyncResponse
-	err = json.NewDecoder(resp.Body).Decode(&asyncResponse)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&asyncResponse); err != nil {
 		return nil, err
 	}
 
@@ -523,8 +518,7 @@ func (client *PortainerAsyncClient) EnqueueLogCollectionForStack(logCmd LogComma
 func snapshotHash(snapshot any) (uint32, bool) {
 	b := &bytes.Buffer{}
 
-	err := json.NewEncoder(b).Encode(snapshot)
-	if err != nil {
+	if err := json.NewEncoder(b).Encode(snapshot); err != nil {
 		log.Error().Err(err).Msg("could not encode the snapshot")
 
 		return 0, false
