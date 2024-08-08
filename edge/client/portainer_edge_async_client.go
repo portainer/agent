@@ -418,6 +418,8 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 		errorData := parseError(resp)
 		logError(resp, errorData)
 
+		client.setEndpointIDFn(0)
+
 		if errorData != nil {
 			return nil, errors.New(errorData.Message + ": " + errorData.Details)
 		}
