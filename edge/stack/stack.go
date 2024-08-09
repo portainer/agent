@@ -369,7 +369,7 @@ func (manager *StackManager) performActionOnStack() {
 
 		manager.deployStack(ctx, stack, stackName, stackFileLocation)
 	case actionDelete:
-		stackFileLocation = fmt.Sprintf("%s/%s", SuccessStackFileFolder(stack.FileFolder), stack.FileName)
+		stackFileLocation = fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
 		manager.deleteStack(ctx, stack, stackName, stackFileLocation)
 
 		if IsRelativePathStack(stack) {
@@ -648,10 +648,6 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 		log.Error().Err(err).Msg("unable to update Edge stack status")
 	}
 
-	if err := backupSuccessStack(stack); err != nil {
-		log.Error().Err(err).Msg("unable to backup successful Edge stack")
-	}
-
 	stack.Status = StatusAwaitingDeployedStatus
 }
 
@@ -671,23 +667,6 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	stack.Status = StatusRemoving
 	log.Debug().Int("stack_identifier", stack.ID).Msg("removing stack")
 
-	successFileFolder := SuccessStackFileFolder(stack.FileFolder)
-
-	exist, err := filesystem.FileExists(stackFileLocation)
-	if err != nil {
-		log.Error().Err(err).
-			Str("stack_file_location", stackFileLocation).
-			Msg("unable to check stack file existence")
-
-		return
-	} else if !exist {
-		log.Debug().
-			Str("stack_file_location", stackFileLocation).
-			Msg("stack file not found, skipping removal")
-
-		return
-	}
-
 	if err := manager.deployer.Remove(
 		ctx,
 		stackName,
@@ -695,7 +674,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		agent.RemoveOptions{
 			DeployerBaseOptions: agent.DeployerBaseOptions{
 				Namespace:  stack.Namespace,
-				WorkingDir: successFileFolder,
+				WorkingDir: stack.FileFolder,
 				Env:        buildEnvVarsForDeployer(stack.EnvVars),
 			},
 		},
@@ -716,11 +695,6 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	// Remove stack file folder
 	if err := os.RemoveAll(stack.FileFolder); err != nil {
 		log.Error().Err(err).Msgf("unable to delete Edge stack folder %s", stack.FileFolder)
-	}
-
-	// Remove success stack file folder
-	if err := os.RemoveAll(successFileFolder); err != nil {
-		log.Error().Err(err).Msgf("unable to delete Edge stack folder %s", successFileFolder)
 	}
 }
 
