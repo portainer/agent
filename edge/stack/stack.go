@@ -50,6 +50,7 @@ const (
 	StatusRemoving
 	StatusAwaitingDeployedStatus
 	StatusAwaitingRemovedStatus
+	StatusCompleted
 )
 
 type edgeStackAction int
@@ -397,6 +398,7 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 		}
 	}
 
+	// Pick the first one randomly
 	for _, stack := range manager.stacks {
 		if stack.Status == StatusDeployed {
 			return stack
@@ -448,6 +450,8 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 
 	// Only report back the Completed status for already deployed stacks
 	if stack.Status == StatusDeployed {
+		defer time.Sleep(queueSleepInterval)
+
 		if status == libstack.StatusCompleted {
 			return manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusCompleted, stack.RollbackTo, "")
 		}
@@ -466,7 +470,7 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 	}
 
 	if status == libstack.StatusCompleted {
-		stack.Status = StatusDeployed
+		stack.Status = StatusCompleted
 		return manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusCompleted, stack.RollbackTo, "")
 	}
 
