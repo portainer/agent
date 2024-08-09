@@ -453,6 +453,7 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 		defer time.Sleep(queueSleepInterval)
 
 		if status == libstack.StatusCompleted {
+			stack.Status = StatusCompleted
 			return manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusCompleted, stack.RollbackTo, "")
 		}
 
