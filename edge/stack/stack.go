@@ -325,9 +325,9 @@ func (manager *StackManager) performActionOnStack() {
 	stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
 	manager.mu.Unlock()
 
-	if stack.Status == StatusAwaitingDeployedStatus || stack.Status == StatusAwaitingRemovedStatus {
-		err := manager.checkStackStatus(ctx, stackName, stack)
-		if err != nil {
+	switch stack.Status {
+	case StatusAwaitingDeployedStatus, StatusAwaitingRemovedStatus, StatusDeployed:
+		if err := manager.checkStackStatus(ctx, stackName, stack); err != nil {
 			log.Error().Err(err).Msg("unable to check Edge stack status")
 		}
 
@@ -409,6 +409,12 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 		}
 	}
 
+	for _, stack := range manager.stacks {
+		if stack.Status == StatusDeployed {
+			return stack
+		}
+	}
+
 	return nil
 }
 
@@ -422,12 +428,24 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 	defer manager.mu.Unlock()
 
 	requiredStatus := libstack.StatusRemoved
-	if stack.Status == StatusAwaitingDeployedStatus {
+
+	switch stack.Status {
+	case StatusAwaitingDeployedStatus:
 		requiredStatus = libstack.StatusRunning
+
+	case StatusDeployed:
+		// There is no need to wait for a change of state, just observe if it
+		// has happened already, the new timeout is just enough to get past the
+		// ctx.Done() check and run once.
+		var cancelFn func()
+		ctx, cancelFn = context.WithTimeout(ctx, 1*time.Second)
+		defer cancelFn()
+
+		requiredStatus = libstack.StatusCompleted
 	}
 
 	status, statusMessage, err := manager.waitForStatus(ctx, stackName, requiredStatus)
-	if err != nil {
+	if err != nil && stack.Status != StatusDeployed {
 		return err
 	}
 
@@ -439,6 +457,15 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 		Str("status_message", statusMessage).
 		Int("old_status", int(stack.Status)).
 		Msg("stack status")
+
+	// Only report back the Completed status for already deployed stacks
+	if stack.Status == StatusDeployed {
+		if status == libstack.StatusCompleted {
+			return manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusCompleted, stack.RollbackTo, "")
+		}
+
+		return nil
+	}
 
 	if status == libstack.StatusError {
 		stack.Status = StatusError
