@@ -661,21 +661,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 
 	successFileFolder := SuccessStackFileFolder(stack.FileFolder)
 
-	exist, err := filesystem.FileExists(stackFileLocation)
-	if err != nil {
-		log.Error().Err(err).
-			Str("stack_file_location", stackFileLocation).
-			Msg("unable to check stack file existence")
-		return
-	}
-	if !exist {
-		log.Debug().
-			Str("stack_file_location", stackFileLocation).
-			Msg("stack file not found, skipping removal")
-		return
-	}
-
-	err = manager.deployer.Remove(
+	err := manager.deployer.Remove(
 		ctx,
 		stackName,
 		[]string{stackFileLocation},
