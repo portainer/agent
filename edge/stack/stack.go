@@ -535,13 +535,12 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 
 	envVars := buildEnvVarsForDeployer(stack.EnvVars)
 
-	err := manager.deployer.Pull(ctx, stackName, []string{stackFileLocation}, agent.PullOptions{
+	if err := manager.deployer.Pull(ctx, stackName, []string{stackFileLocation}, agent.PullOptions{
 		DeployerBaseOptions: agent.DeployerBaseOptions{
 			WorkingDir: stack.FileFolder,
 			Env:        envVars,
 		},
-	})
-	if err != nil {
+	}); err != nil {
 		log.Error().Err(err).
 			Int("stack_identifier", stack.ID).
 			Int("PullCount", stack.PullCount).
@@ -581,7 +580,7 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 			Msg("unable to update Edge stack status")
 	}
 
-	return err
+	return nil
 }
 
 func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, stackName, stackFileLocation string) {
@@ -738,7 +737,6 @@ func (manager *StackManager) DeleteStack(ctx context.Context, stackData edge.Sta
 }
 
 func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload, deleteStack bool) error {
-	var err error
 	var stack *edgeStack
 
 	// The stack information will be shared with edge agent registry server (request by docker credential helper)
@@ -807,19 +805,16 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 	stack.EnvVars = stackPayload.EnvVars
 	stack.Namespace = stackPayload.Namespace
 
-	err = filesystem.DecodeDirEntries(stackPayload.DirEntries)
-	if err != nil {
+	if err := filesystem.DecodeDirEntries(stackPayload.DirEntries); err != nil {
 		return err
 	}
 
-	err = manager.addRegistryToEntryFile(&stackPayload)
-	if err != nil {
+	if err := manager.addRegistryToEntryFile(&stackPayload); err != nil {
 		return err
 	}
 
 	if !deleteStack {
-		err = filesystem.PersistDir(stack.FileFolder, stackPayload.DirEntries)
-		if err != nil {
+		if err := filesystem.PersistDir(stack.FileFolder, stackPayload.DirEntries); err != nil {
 			return err
 		}
 	}
@@ -842,9 +837,9 @@ func (manager *StackManager) GetEdgeRegistryCredentials() []edge.RegistryCredent
 func (manager *StackManager) DeleteNormalStack(ctx context.Context, stackName string) error {
 	log.Debug().Str("stack_name", stackName).Msg("removing normal stack")
 
-	err := manager.deployer.Remove(ctx, stackName, []string{}, agent.RemoveOptions{})
-	if err != nil {
+	if err := manager.deployer.Remove(ctx, stackName, []string{}, agent.RemoveOptions{}); err != nil {
 		log.Error().Err(err).Msg("unable to remove normal stack")
+
 		return err
 	}
 
