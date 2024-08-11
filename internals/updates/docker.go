@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/portainer/agent/docker"
@@ -90,9 +92,7 @@ func updateAgentInfoIfNeeds(ctx context.Context, updateID int) error {
 	}
 	defer cli.Close()
 
-	possibleImagePrefixes := []string{"portainer/agent", "portainerci/agent"}
-
-	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := getAgentContainerCandicates(ctx, cli)
 	if err != nil {
 		return fmt.Errorf("unable to list containers. Error: %w", err)
 	}
@@ -103,18 +103,14 @@ func updateAgentInfoIfNeeds(ctx context.Context, updateID int) error {
 		oldContainerName  string
 	)
 	for i, container := range containers {
-		for _, possibleImage := range possibleImagePrefixes {
-			if strings.HasPrefix(container.Image, possibleImage) {
-				if container.Labels != nil && container.Labels["io.portainer.update.scheduleId"] == strconv.Itoa(updateID) {
-					newAgentContainer = &containers[i]
-					break
-				}
+		if container.Labels != nil && container.Labels["io.portainer.update.scheduleId"] == strconv.Itoa(updateID) {
+			newAgentContainer = containers[i]
+			continue
+		}
 
-				oldAgentContainer = &containers[i]
-				if len(oldAgentContainer.Names) > 0 {
-					oldContainerName = strings.TrimPrefix(oldAgentContainer.Names[0], "/")
-				}
-			}
+		oldAgentContainer = containers[i]
+		if len(oldAgentContainer.Names) > 0 {
+			oldContainerName = strings.TrimPrefix(oldAgentContainer.Names[0], "/")
 		}
 	}
 
@@ -178,4 +174,59 @@ func tryRemoveOldContainer(ctx context.Context, dockerCli *client.Client, oldCon
 
 	// remove old container
 	return dockerCli.ContainerRemove(ctx, oldContainerId, container.RemoveOptions{Force: true})
+}
+
+func getAgentContainerCandicates(ctx context.Context, cli *client.Client) ([]*types.Container, error) {
+	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return nil, fmt.Errorf("unable to list containers. Error: %w", err)
+	}
+
+	uniqueContainers := map[string]*types.Container{}
+	// Filter by label
+	possibleLabel := "io.portainer.agent"
+	for i, container := range containers {
+		if container.Labels != nil && container.Labels[possibleLabel] == "true" {
+			uniqueContainers[container.ID] = &containers[i]
+		}
+	}
+
+	// If filtering by label failed (the old version agent might not be added label), filter by possible image name.
+	possibleImagePrefixes := []string{"portainer/agent", "portainerci/agent"}
+	for i, container := range containers {
+		for _, possibleImage := range possibleImagePrefixes {
+			if strings.HasPrefix(container.Image, possibleImage) {
+				uniqueContainers[container.ID] = &containers[i]
+			}
+		}
+	}
+
+	// If filter by label and image failed, filter by logs
+	possibleLog := "Starting Agent API server"
+	for i, container := range containers {
+		logs, err := cli.ContainerLogs(ctx, container.ID, dockercontainer.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: false,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unable to get container logs. Error: %w", err)
+		}
+
+		scanner := bufio.NewScanner(logs)
+		for scanner.Scan() {
+			if strings.Contains(scanner.Text(), possibleLog) {
+				uniqueContainers[container.ID] = &containers[i]
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			return nil, fmt.Errorf("unable to read container logs. Error: %w", err)
+		}
+	}
+
+	containerCandicates := []*types.Container{}
+	for _, container := range uniqueContainers {
+		containerCandicates = append(containerCandicates, container)
+	}
+	return containerCandicates, nil
 }
