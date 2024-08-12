@@ -423,7 +423,11 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 
 	requiredStatus := libstack.StatusRemoved
 	if stack.Status == StatusAwaitingDeployedStatus {
-		requiredStatus = libstack.StatusRunning
+		if stack.EdgeUpdateID != 0 {
+			requiredStatus = libstack.StatusCompleted
+		} else {
+			requiredStatus = libstack.StatusRunning
+		}
 	}
 
 	status, statusMessage, err := manager.waitForStatus(ctx, stackName, requiredStatus)
@@ -715,12 +719,16 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 
 	// Remove stack file folder
 	if err := os.RemoveAll(stack.FileFolder); err != nil {
-		log.Error().Err(err).Msgf("unable to delete Edge stack folder %s", stack.FileFolder)
+		log.Error().Err(err).
+			Str("stack_file_folder", stack.FileFolder).
+			Msgf("Unable to delete Edge stack folder")
 	}
 
 	// Remove success stack file folder
-	if err := os.RemoveAll(successFileFolder); err != nil {
-		log.Error().Err(err).Msgf("unable to delete Edge stack folder %s", successFileFolder)
+	if err = os.RemoveAll(successFileFolder); err != nil {
+		log.Error().Err(err).
+			Str("stack_success_file_folder", successFileFolder).
+			Msg("Unable to delete Edge stack success folder")
 	}
 }
 
