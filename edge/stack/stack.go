@@ -697,20 +697,6 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 
 	successFileFolder := SuccessStackFileFolder(stack.FileFolder)
 
-	exist, err := filesystem.FileExists(stackFileLocation)
-	if err != nil {
-		log.Error().Err(err).
-			Str("stack_file_location", stackFileLocation).
-			Msg("unable to check stack file existence")
-		return
-	}
-	if !exist {
-		log.Debug().
-			Str("stack_file_location", stackFileLocation).
-			Msg("stack file not found, skipping removal")
-		return
-	}
-
 	if err := manager.deployer.Remove(
 		ctx,
 		stackName,
@@ -727,7 +713,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		return
 	}
 
-	if err = manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRemoving, stack.RollbackTo, ""); err != nil {
+	if err := manager.portainerClient.SetEdgeStackStatus(int(stack.ID), portainer.EdgeStackStatusRemoving, stack.RollbackTo, ""); err != nil {
 		log.Error().Err(err).Msg("unable to delete Edge stack status")
 
 		return
@@ -743,7 +729,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	}
 
 	// Remove success stack file folder
-	if err = os.RemoveAll(successFileFolder); err != nil {
+	if err := os.RemoveAll(successFileFolder); err != nil {
 		log.Error().Err(err).
 			Str("stack_success_file_folder", successFileFolder).
 			Msg("Unable to delete Edge stack success folder")
