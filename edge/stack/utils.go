@@ -21,5 +21,6 @@ func SuccessStackFileFolder(fileFolder string) string {
 func backupSuccessStack(stack *edgeStack) error {
 	src := stack.FileFolder
 	dst := SuccessStackFileFolder(src)
+
 	return filesystem.CopyDir(src, dst, false)
 }

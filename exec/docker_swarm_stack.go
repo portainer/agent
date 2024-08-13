@@ -90,8 +90,7 @@ func (service *DockerSwarmStackService) Remove(ctx context.Context, name string,
 	args := []string{"stack", "rm", name}
 
 	_, err := runCommandAndCaptureStdErr(service.command, args, &cmdOpts{
-		WorkingDir: options.WorkingDir,
-		Env:        options.Env,
+		Env: options.Env,
 	})
 
 	return err
