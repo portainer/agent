@@ -401,6 +401,8 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 	// Pick the first one randomly
 	for _, stack := range manager.stacks {
 		if stack.Status == StatusDeployed {
+			time.Sleep(queueSleepInterval)
+
 			return stack
 		}
 	}
@@ -443,19 +445,19 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 		return err
 	}
 
-	log.Debug().
-		Int("stack_identifier", int(stack.ID)).
-		Str("stack_name", stackName).
-		Str("requiredStatus", string(requiredStatus)).
-		Str("status", string(status)).
-		Str("status_message", statusMessage).
-		Int("old_status", int(stack.Status)).
-		Msg("stack status")
+	if stack.Status != StatusDeployed {
+		log.Debug().
+			Int("stack_identifier", int(stack.ID)).
+			Str("stack_name", stackName).
+			Str("requiredStatus", string(requiredStatus)).
+			Str("status", string(status)).
+			Str("status_message", statusMessage).
+			Int("old_status", int(stack.Status)).
+			Msg("stack status")
+	}
 
 	// Only report back the Completed status for already deployed stacks
 	if stack.Status == StatusDeployed {
-		defer time.Sleep(queueSleepInterval)
-
 		if status == libstack.StatusCompleted {
 			stack.Status = StatusCompleted
 			return manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusCompleted, stack.RollbackTo, "")
