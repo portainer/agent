@@ -21,14 +21,14 @@ function compile_agent() {
 
     cd cmd/agent || exit 1
 
-    local cmd=(go build -trimpath --installsuffix cgo)
+    local cmd=(go build -race -trimpath --installsuffix cgo)
 
     ldflags="-s"
     if [[ -n "$AGENT_VERSION" ]]; then
         ldflags="$ldflags -X 'github.com/portainer/agent.Version=${AGENT_VERSION}'"
     fi
 
-    GOOS="linux" GOARCH="$(go env GOARCH)" CGO_ENABLED=0 "${cmd[@]}" --ldflags "$ldflags"
+    GOOS="linux" GOARCH="$(go env GOARCH)" "${cmd[@]}" --ldflags "$ldflags"
 
     rc=$?
     if [[ $rc != 0 ]]; then exit $rc; fi
