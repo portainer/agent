@@ -741,7 +741,7 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 	}
 
 	// Remove success stack file folder
-	if err = os.RemoveAll(successFileFolder); err != nil {
+	if err := os.RemoveAll(successFileFolder); err != nil {
 		log.Error().Err(err).
 			Str("stack_success_file_folder", successFileFolder).
 			Msg("Unable to delete Edge stack success folder")
