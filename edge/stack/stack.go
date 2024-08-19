@@ -396,6 +396,8 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 
 	for _, stack := range manager.stacks {
 		if stack.Status == StatusAwaitingDeployedStatus || stack.Status == StatusAwaitingRemovedStatus {
+			time.Sleep(queueSleepInterval)
+
 			return stack
 		}
 	}
