@@ -514,7 +514,17 @@ func (manager *StackManager) waitForStatus(ctx context.Context, stackName string
 	statusCh := manager.deployer.WaitForStatus(ctx, stackName, requiredStatus)
 
 	result := <-statusCh
+
 	if result.ErrorMsg == "" {
+		// TODO: remove this once a proper implementation of WaitForStatus() is in place
+		if manager.engineType == EngineTypeKubernetes {
+			if requiredStatus == libstack.StatusCompleted {
+				requiredStatus = libstack.StatusRunning
+			}
+
+			return requiredStatus, "", nil
+		}
+
 		return result.Status, "", nil
 	}
 
