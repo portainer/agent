@@ -2,7 +2,7 @@ module github.com/portainer/agent
 
 go 1.21
 
-toolchain go1.21.11
+toolchain go1.21.12
 
 require (
 	github.com/Microsoft/go-winio v0.6.1
@@ -12,7 +12,7 @@ require (
 	github.com/aws/rolesanywhere-credential-helper v1.0.2
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20221118222346-4177265fa425
 	github.com/docker/distribution v2.8.3+incompatible
-	github.com/docker/docker v26.0.2+incompatible
+	github.com/docker/docker v26.1.5+incompatible
 	github.com/docker/docker-credential-helpers v0.8.1
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.0
