@@ -1,8 +1,6 @@
 module github.com/portainer/agent
 
-go 1.22
-
-toolchain go1.22.5
+go 1.22.5
 
 require (
 	github.com/Microsoft/go-winio v0.6.1
