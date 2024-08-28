@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/asaskevich/govalidator"
 	"github.com/portainer/agent/filesystem"
 	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 	"github.com/portainer/portainer/pkg/libhttp/request"
@@ -17,10 +16,10 @@ type browseRenamePayload struct {
 }
 
 func (payload *browseRenamePayload) Validate(r *http.Request) error {
-	if govalidator.IsNull(payload.CurrentFilePath) {
+	if len(payload.CurrentFilePath) != 0 {
 		return errors.New("Current file path is invalid")
 	}
-	if govalidator.IsNull(payload.NewFilePath) {
+	if len(payload.NewFilePath) != 0 {
 		return errors.New("New file path is invalid")
 	}
 	return nil
