@@ -670,6 +670,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 				WorkingDir: stack.FileFolder,
 				Env:        envVars,
 			},
+			ForceRecreate: stack.ForceRedeploy,
 		},
 	)
 	manager.mu.Lock()
@@ -874,6 +875,7 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 	stack.FileFolder = getStackFileFolder(stack)
 	stack.EnvVars = stackPayload.EnvVars
 	stack.Namespace = stackPayload.Namespace
+	stack.ForceRedeploy = stackPayload.ForceRedeploy
 
 	if err := filesystem.DecodeDirEntries(stackPayload.DirEntries); err != nil {
 		return err

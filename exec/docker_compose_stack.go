@@ -36,6 +36,7 @@ func (service *DockerComposeStackService) Deploy(ctx context.Context, name strin
 			WorkingDir:  options.WorkingDir,
 			Env:         options.Env,
 		},
+		ForceRecreate: options.ForceRecreate,
 	})
 }
 

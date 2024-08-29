@@ -200,7 +200,8 @@ type (
 
 	DeployOptions struct {
 		DeployerBaseOptions
-		Prune bool
+		Prune         bool
+		ForceRecreate bool
 	}
 
 	RemoveOptions struct {
