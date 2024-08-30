@@ -228,6 +228,7 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 	stack.FileName = stackPayload.EntryFileName
 	stack.FileFolder = getStackFileFolder(stack)
 	stack.RollbackTo = stackPayload.RollbackTo
+	stack.ForceRedeploy = stackPayload.ForceRedeploy
 
 	if err := filesystem.DecodeDirEntries(stackPayload.DirEntries); err != nil {
 		return err
