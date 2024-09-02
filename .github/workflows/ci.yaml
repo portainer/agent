@@ -28,11 +28,11 @@ jobs:
       matrix:
         config:
           - { platform: linux, arch: amd64, version: "" }
-          # - { platform: linux, arch: arm64, version: "" }
-          # - { platform: linux, arch: arm, version: "" }
-          # - { platform: linux, arch: ppc64le, version: "" }
-          # - { platform: windows, arch: amd64, version: 1809 }
-          # - { platform: windows, arch: amd64, version: ltsc2022 }
+          - { platform: linux, arch: arm64, version: "" }
+          - { platform: linux, arch: arm, version: "" }
+          - { platform: linux, arch: ppc64le, version: "" }
+          - { platform: windows, arch: amd64, version: 1809 }
+          - { platform: windows, arch: amd64, version: ltsc2022 }
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
