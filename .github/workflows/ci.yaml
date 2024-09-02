@@ -91,6 +91,18 @@ jobs:
           fi
         env:
           CONTAINER_IMAGE_TAG: ${{ env.CONTAINER_IMAGE_TAG }}
+      - name: Docker Scout
+        id: docker-scout
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: docker/scout-action@v1
+        with:
+          command: compare
+          image: ${{ env.DOCKER_HUB_REPO }}:${{ env.CONTAINER_IMAGE_TAG }}
+          to: portainerci/base:latest
+          ignore-unchanged: true
+          only-severities: critical,high
+          write-comment: true
+          github-token: ${{ secrets.GITHUB_TOKEN }} # to be able to write the comment
   build_manifests:
     runs-on: ubuntu-latest
     needs: [build_images]
