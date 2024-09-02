@@ -18,7 +18,7 @@ require (
 	github.com/hashicorp/logutils v1.0.0
 	github.com/hashicorp/serf v0.8.3
 	github.com/jaypipes/ghw v0.9.0
-	github.com/jpillora/chisel v1.9.0
+	github.com/jpillora/chisel v1.10.0
 	github.com/koding/websocketproxy v0.0.0-20181220232114-7ed82d81a28c
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/opencontainers/image-spec v1.1.0
