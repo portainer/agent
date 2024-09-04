@@ -2,5 +2,5 @@
   "docker": "v27.1.2",
   "dockerCompose": "v2.29.2",
   "kubectl": "v1.31.0",
-  "mingit": "2.45.2.1"
+  "mingit": "2.46.0.1"
 }
