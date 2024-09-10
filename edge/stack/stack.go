@@ -106,12 +106,12 @@ func NewStackManager(cli client.PortainerClient, assetsPath string, config *agen
 }
 
 func (manager *StackManager) UpdateStacksStatus(pollResponseStacks map[int]client.StackStatus) error {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	if !manager.isEnabled {
 		return nil
 	}
-
-	manager.mu.Lock()
-	defer manager.mu.Unlock()
 
 	for stackID, status := range pollResponseStacks {
 		err := manager.processStack(stackID, status)
@@ -176,8 +176,11 @@ func getStackFileFolder(stack *edgeStack) string {
 func (manager *StackManager) processStack(stackID int, stackStatus client.StackStatus) error {
 	var stack *edgeStack
 
-	originalStack, processedStack := manager.stacks[edgeStackID(stackID)]
-	if processedStack {
+	manager.mu.Lock()
+	originalStack, known := manager.stacks[edgeStackID(stackID)]
+	manager.mu.Unlock()
+
+	if known {
 		// update the cloned stack to keep data consistency
 		clonedStack := *originalStack
 		stack = &clonedStack
@@ -241,7 +244,9 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 		return err
 	}
 
+	manager.mu.Lock()
 	manager.stacks[edgeStackID(stackID)] = stack
+	manager.mu.Unlock()
 
 	log.Debug().
 		Int("stack_identifier", stack.ID).
@@ -355,12 +360,7 @@ func (manager *StackManager) performActionOnStack() {
 
 				stack.Status = StatusError
 
-				err := manager.portainerClient.SetEdgeStackStatus(
-					stack.ID,
-					portainer.EdgeStackStatusError,
-					stack.RollbackTo,
-					err.Error())
-				if err != nil {
+				if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, err.Error()); err != nil {
 					log.Error().Err(err).Msg("unable to update Edge stack status")
 				}
 
@@ -890,6 +890,9 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 }
 
 func (manager *StackManager) GetEdgeRegistryCredentials() []edge.RegistryCredentials {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	for _, stack := range manager.stacks {
 		if stack.Status == StatusDeploying {
 			return stack.RegistryCredentials
