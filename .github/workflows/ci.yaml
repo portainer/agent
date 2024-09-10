@@ -96,7 +96,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         uses: docker/scout-action@v1
         with:
-          command: compare
+          command: cves
           image: ${{ env.DOCKER_HUB_REPO }}:${{ env.CONTAINER_IMAGE_TAG }}
           to: portainer/base:latest
           ignore-unchanged: true
