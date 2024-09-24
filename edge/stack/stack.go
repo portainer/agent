@@ -685,7 +685,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 		stack.Status = StatusError
 
-		if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, "failed to redeploy stack"); err != nil {
+		if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, "failed to redeploy stack. Error: "+err.Error()); err != nil {
 			log.Error().Err(err).Msg("unable to update Edge stack status")
 		}
 
