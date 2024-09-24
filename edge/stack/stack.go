@@ -355,7 +355,7 @@ func (manager *StackManager) performActionOnStack() {
 
 				stack.Status = StatusError
 
-				if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, err.Error()); err != nil {
+				if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, "failed to copy git stack to host. Error: "+err.Error()); err != nil {
 					log.Error().Err(err).Msg("unable to update Edge stack status")
 				}
 
@@ -550,7 +550,7 @@ func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeS
 		log.Error().Int("stack_identifier", stack.ID).Err(err).Msg("stack validation failed")
 		stack.Status = StatusError
 
-		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, err.Error())
+		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, "failed to validate stack. Error: "+err.Error())
 		if statusUpdateErr != nil {
 			log.Error().Err(statusUpdateErr).Msg("unable to update Edge stack status")
 		}
@@ -604,7 +604,7 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 
 		stack.Status = StatusError
 
-		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, err.Error())
+		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, "failed to pull image. Error: "+err.Error())
 		if statusUpdateErr != nil {
 			log.Error().
 				Err(statusUpdateErr).
