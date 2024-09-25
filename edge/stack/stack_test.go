@@ -216,7 +216,7 @@ func TestStackManager_deployStack(t *testing.T) {
 				Env:        buildEnvVarsForDeployer(stack.EnvVars),
 			},
 		}).Return(errors.New("deploy failed"))
-		mockPortainerClient.EXPECT().SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, "failed to redeploy stack").Return(nil)
+		mockPortainerClient.EXPECT().SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, "failed to redeploy stack. Error: deploy failed").Return(nil)
 
 		manager.deployStack(ctx, stack, stackName, stackFileLocation)
 
