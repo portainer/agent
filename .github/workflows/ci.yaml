@@ -123,7 +123,7 @@ jobs:
             CONTAINER_IMAGE_TAG=$(echo $GITHUB_REF_NAME | sed 's/\//-/g')
           fi
 
-          docker buildx imagetools create -t "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}" \
+          docker manifest create "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-amd64" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-arm64" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-arm" \
@@ -131,7 +131,11 @@ jobs:
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-windows1809-amd64" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-windowsltsc2022-amd64"
 
-          docker buildx imagetools create -t "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-alpine" \
+          docker manifest push "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}"
+
+          docker manifest create "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-alpine" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-amd64-alpine" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-arm64-alpine" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-arm-alpine"
+
+          docker manifest push "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-alpine"
