@@ -15,7 +15,7 @@ COPY dist/docker-compose.exe C:/app/
 COPY dist/docker-credential-portainer.exe C:/app/
 COPY dist/kubectl.exe C:/app/
 
-COPY static C:/app/static
+COPY static/ C:/app/static
 COPY config /Users/ContainerAdministrator/.docker/
 
 LABEL io.portainer.agent=true
