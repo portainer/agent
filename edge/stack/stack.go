@@ -176,10 +176,7 @@ func getStackFileFolder(stack *edgeStack) string {
 func (manager *StackManager) processStack(stackID int, stackStatus client.StackStatus) error {
 	var stack *edgeStack
 
-	manager.mu.Lock()
 	originalStack, known := manager.stacks[edgeStackID(stackID)]
-	manager.mu.Unlock()
-
 	if known {
 		// update the cloned stack to keep data consistency
 		clonedStack := *originalStack
@@ -244,9 +241,7 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 		return err
 	}
 
-	manager.mu.Lock()
 	manager.stacks[edgeStackID(stackID)] = stack
-	manager.mu.Unlock()
 
 	log.Debug().
 		Int("stack_identifier", stack.ID).
