@@ -23,18 +23,23 @@ const requestRetryWait = 5 * time.Second
 
 // PortainerEdgeClient is used to execute HTTP requests against the Portainer API
 type PortainerEdgeClient struct {
-	httpClient      *edgeHTTPClient
-	serverAddress   string
-	setEndpointIDFn setEndpointIDFn
-	getEndpointIDFn getEndpointIDFn
-	edgeID          string
-	agentPlatform   agent.ContainerPlatform
-	metaFields      agent.EdgeMetaFields
-	reqCache        *lru.Cache
+	httpClient           *edgeHTTPClient
+	serverAddress        string
+	setEndpointIDFn      setEndpointIDFn
+	getEndpointIDFn      getEndpointIDFn
+	edgeID               string
+	agentPlatform        agent.ContainerPlatform
+	metaFields           agent.EdgeMetaFields
+	reqCache             *lru.Cache
+	reAssociatedEndpoint bool
+	waitToBeAssociated   bool
 }
 
 type globalKeyResponse struct {
-	EndpointID portainer.EndpointID `json:"endpointID"`
+	EndpointID           portainer.EndpointID `json:"endpointID"`
+	ReAssociatedEndpoint bool                 `json:"reAssociatedEndpoint"`
+
+	WaitToBeAssociated bool `json:"waitToBeAssociated"`
 }
 
 type setEdgeStackStatusPayload struct {
@@ -64,13 +69,15 @@ func (e *NonOkResponseError) Error() string {
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
 func NewPortainerEdgeClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, agentPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *edgeHTTPClient) *PortainerEdgeClient {
 	c := &PortainerEdgeClient{
-		serverAddress:   serverAddress,
-		setEndpointIDFn: setEIDFn,
-		getEndpointIDFn: getEIDFn,
-		edgeID:          edgeID,
-		agentPlatform:   agentPlatform,
-		httpClient:      httpClient,
-		metaFields:      metaFields,
+		serverAddress:        serverAddress,
+		setEndpointIDFn:      setEIDFn,
+		getEndpointIDFn:      getEIDFn,
+		edgeID:               edgeID,
+		agentPlatform:        agentPlatform,
+		httpClient:           httpClient,
+		metaFields:           metaFields,
+		reAssociatedEndpoint: false,
+		waitToBeAssociated:   false,
 	}
 
 	cache, err := lru.New(8)
@@ -131,6 +138,12 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 	var responseData globalKeyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
 		return 0, err
+	}
+	if responseData.ReAssociatedEndpoint {
+		client.reAssociatedEndpoint = true
+	}
+	if responseData.WaitToBeAssociated {
+		client.waitToBeAssociated = true
 	}
 
 	return responseData.EndpointID, nil
@@ -401,6 +414,12 @@ func (client *PortainerEdgeClient) ProcessAsyncCommands() error {
 func (client *PortainerEdgeClient) SetLastCommandTimestamp(timestamp time.Time) {} // edge mode only
 
 func (client *PortainerEdgeClient) EnqueueLogCollectionForStack(logCmd LogCommandData) {}
+
+// IsWaitingToBeAssociated returns true if the agent is waiting to be associated with a group
+// Typically, this happens when the agent is deployed by Auto Onboarding script
+func (client *PortainerEdgeClient) IsWaitingToBeAssociated() bool {
+	return client.waitToBeAssociated
+}
 
 func (client *PortainerEdgeClient) cacheHeaders() string {
 	if client.reqCache == nil {

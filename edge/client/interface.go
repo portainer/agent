@@ -29,6 +29,7 @@ type PortainerClient interface {
 	SetTimeout(t time.Duration)
 	SetLastCommandTimestamp(timestamp time.Time)
 	EnqueueLogCollectionForStack(logCmd LogCommandData)
+	IsWaitingToBeAssociated() bool
 }
 
 type EdgeConfigID int

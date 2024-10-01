@@ -81,16 +81,17 @@ const (
 
 // StackManager represents a service for managing Edge stacks
 type StackManager struct {
-	engineType      engineType
-	edgeID          string
-	stacks          map[edgeStackID]*edgeStack
-	stopSignal      chan struct{}
-	deployer        agent.Deployer
-	isEnabled       bool
-	portainerClient client.PortainerClient
-	assetsPath      string
-	awsConfig       *agent.AWSConfig
-	mu              sync.Mutex
+	engineType                    engineType
+	edgeID                        string
+	stacks                        map[edgeStackID]*edgeStack
+	stopSignal                    chan struct{}
+	deployer                      agent.Deployer
+	isEnabled                     bool
+	portainerClient               client.PortainerClient
+	assetsPath                    string
+	awsConfig                     *agent.AWSConfig
+	mu                            sync.Mutex
+	resyncdEnvironmentStatusCount int
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
@@ -182,9 +183,11 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 		clonedStack := *originalStack
 		stack = &clonedStack
 
-		if stack.Version == stackStatus.Version && !stackStatus.ReadyRePullImage {
+		if stack.Version == stackStatus.Version && !stackStatus.ReadyRePullImage && !manager.isResyncingEnvironmentStatus() {
 			return nil // stack is unchanged
 		}
+
+		manager.decrementResyncEnvironmentStatus()
 
 		log.Debug().Int("stack_identifier", stackID).Msg("marking stack for update")
 
@@ -907,4 +910,29 @@ func (manager *StackManager) DeleteNormalStack(ctx context.Context, stackName st
 	}
 
 	return nil
+}
+
+// ResetEnvironmentStatusCount resets the count of stacks waiting for a status check.
+// If the agent, deployed via Auto Onboarding script, is removed from the Portainer UI, it may
+// enter a state where it is associated with a new environment but not with any group or edge group,
+// leaving it in the "Waiting Room."
+// When the agent is reassigned to a new group, the status of running edge stacks in the environment
+// needs to be resynced to the server accordingly.
+// In this scenario, all stacks need to be re-synced, so the environment status count is reset to the
+// number of stacks in the environment.
+func (manager *StackManager) ResetEnvironmentStatusCount() {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	manager.resyncdEnvironmentStatusCount = len(manager.stacks)
+}
+
+func (manager *StackManager) isResyncingEnvironmentStatus() bool {
+	return manager.resyncdEnvironmentStatusCount > 0
+}
+
+func (manager *StackManager) decrementResyncEnvironmentStatus() {
+	if manager.resyncdEnvironmentStatusCount > 0 {
+		manager.resyncdEnvironmentStatusCount--
+	}
 }

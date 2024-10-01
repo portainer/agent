@@ -515,6 +515,10 @@ func (client *PortainerAsyncClient) EnqueueLogCollectionForStack(logCmd LogComma
 	client.stackLogCollectionQueue = append(client.stackLogCollectionQueue, logCmd)
 }
 
+func (client *PortainerAsyncClient) IsWaitingToBeAssociated() bool {
+	return false
+}
+
 func snapshotHash(snapshot any) (uint32, bool) {
 	b := &bytes.Buffer{}
 

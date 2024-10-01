@@ -211,6 +211,9 @@ func (service *PollService) poll() error {
 			return err
 		}
 
+		if service.portainerClient.IsWaitingToBeAssociated() {
+			service.edgeManager.stackManager.ResetEnvironmentStatusCount()
+		}
 		service.edgeManager.SetEndpointID(endpointID)
 	}
 
