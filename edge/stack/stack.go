@@ -580,12 +580,17 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 
 	envVars := buildEnvVarsForDeployer(stack.EnvVars)
 
-	if err := manager.deployer.Pull(ctx, stackName, []string{stackFileLocation}, agent.PullOptions{
+	// Unlock so GetEdgeRegistryCredentials() can acquire the lock if called
+	manager.mu.Unlock()
+	err := manager.deployer.Pull(ctx, stackName, []string{stackFileLocation}, agent.PullOptions{
 		DeployerBaseOptions: agent.DeployerBaseOptions{
 			WorkingDir: stack.FileFolder,
 			Env:        envVars,
 		},
-	}); err != nil {
+	})
+	manager.mu.Lock()
+
+	if err != nil {
 		log.Error().Err(err).
 			Int("stack_identifier", stack.ID).
 			Int("PullCount", stack.PullCount).
@@ -656,7 +661,9 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 	envVars := buildEnvVarsForDeployer(stack.EnvVars)
 
-	if err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
+	// Unlock so GetEdgeRegistryCredentials() can acquire the lock if called
+	manager.mu.Unlock()
+	err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
 		agent.DeployOptions{
 			DeployerBaseOptions: agent.DeployerBaseOptions{
 				Namespace:  stack.Namespace,
@@ -664,7 +671,10 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 				Env:        envVars,
 			},
 		},
-	); err != nil {
+	)
+	manager.mu.Lock()
+
+	if err != nil {
 		log.Error().Err(err).Int("DeployCount", stack.DeployCount).Msg("stack deployment failed")
 
 		if stack.RetryDeploy && stack.DeployCount < maxRetries {
