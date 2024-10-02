@@ -119,6 +119,20 @@ func (mr *MockPortainerClientMockRecorder) GetEnvironmentStatus(flags ...any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEnvironmentStatus", reflect.TypeOf((*MockPortainerClient)(nil).GetEnvironmentStatus), flags...)
 }
 
+// IsWaitingToBeAssociated mocks base method.
+func (m *MockPortainerClient) IsWaitingToBeAssociated() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsWaitingToBeAssociated")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsWaitingToBeAssociated indicates an expected call of IsWaitingToBeAssociated.
+func (mr *MockPortainerClientMockRecorder) IsWaitingToBeAssociated() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsWaitingToBeAssociated", reflect.TypeOf((*MockPortainerClient)(nil).IsWaitingToBeAssociated))
+}
+
 // SetEdgeConfigState mocks base method.
 func (m *MockPortainerClient) SetEdgeConfigState(id client.EdgeConfigID, state client.EdgeConfigStateType) error {
 	m.ctrl.T.Helper()
