@@ -817,9 +817,11 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 
 			stack.Action = actionDelete
 		} else {
-			if stack.Version == stackPayload.Version && !stackPayload.ReadyRePullImage {
+			if stack.Version == stackPayload.Version && !stackPayload.ReadyRePullImage && !manager.isResyncingEnvironmentStatus() {
 				return nil
 			}
+
+			manager.decrementResyncEnvironmentStatus()
 
 			log.Debug().Int("stack_id", stackPayload.ID).Msg("marking stack for update")
 

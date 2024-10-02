@@ -185,6 +185,10 @@ func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 		return err
 	}
 
+	if service.portainerClient.IsWaitingToBeAssociated() {
+		service.edgeManager.stackManager.ResetEnvironmentStatusCount()
+	}
+
 	service.processAsyncCommands(status.AsyncCommands)
 
 	service.scheduleManager.ProcessScheduleLogsCollection()

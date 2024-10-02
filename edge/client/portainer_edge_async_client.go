@@ -42,6 +42,7 @@ type PortainerAsyncClient struct {
 	snapshotRetried   bool
 
 	stackLogCollectionQueue []LogCommandData
+	waitToBeAssociated      bool
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
@@ -56,6 +57,7 @@ func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, get
 		agentPlatformIdentifier: containerPlatform,
 		commandTimestamp:        &initialCommandTimestamp,
 		metaFields:              metaFields,
+		waitToBeAssociated:      false,
 	}
 }
 
@@ -110,6 +112,9 @@ type AsyncResponse struct {
 	EndpointID       portainer.EndpointID `json:"endpointID"`
 	Commands         []AsyncCommand       `json:"commands"`
 	NeedFullSnapshot bool                 `json:"needFullSnapshot"`
+	// WaitToBeAssociated is true means the endpoint is not associated with the
+	// edge group yet but it is created listed in the Waiting room
+	WaitToBeAssociated bool `json:"waitToBeAssociated"`
 }
 
 type AsyncCommand struct {
@@ -334,6 +339,10 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		client.stackLogCollectionQueue = nil
 	}
 
+	if asyncResponse.WaitToBeAssociated {
+		client.waitToBeAssociated = true
+	}
+
 	client.setEndpointIDFn(asyncResponse.EndpointID)
 
 	response := &PollStatusResponse{
@@ -516,7 +525,7 @@ func (client *PortainerAsyncClient) EnqueueLogCollectionForStack(logCmd LogComma
 }
 
 func (client *PortainerAsyncClient) IsWaitingToBeAssociated() bool {
-	return false
+	return client.waitToBeAssociated
 }
 
 func snapshotHash(snapshot any) (uint32, bool) {
