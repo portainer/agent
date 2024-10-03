@@ -2,13 +2,16 @@ package stack
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"testing"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/internals/mocks"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
+	"github.com/portainer/portainer/api/filesystem"
 	"github.com/stretchr/testify/assert"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -222,5 +225,103 @@ func TestStackManager_deployStack(t *testing.T) {
 
 		assert.Equal(t, StatusError, stack.Status)
 		assert.Equal(t, actionIdle, stack.Action)
+	})
+}
+
+func TestEnvironmentStatusCount(t *testing.T) {
+	manager := &StackManager{
+		stacks: map[edgeStackID]*edgeStack{1: nil, 2: nil},
+	}
+
+	manager.ResetEnvironmentStatusCount()
+	assert.Equal(t, manager.resyncdEnvironmentStatusCount, 2)
+
+	isResyncing := manager.isResyncingEnvironmentStatus()
+	assert.True(t, isResyncing)
+
+	manager.decrementResyncEnvironmentStatus()
+	isResyncing = manager.isResyncingEnvironmentStatus()
+	assert.True(t, isResyncing)
+
+	manager.decrementResyncEnvironmentStatus()
+	isResyncing = manager.isResyncingEnvironmentStatus()
+	assert.False(t, isResyncing)
+}
+
+func TestBuildDeployerParams(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	t.Run("Build deployer params for resyncing environment status", func(t *testing.T) {
+		mockPortainerClient := mocks.NewMockPortainerClient(ctrl)
+
+		stackPayload := edge.StackPayload{
+			ID:            1,
+			Version:       1,
+			EntryFileName: "stack.yml",
+			DirEntries: []filesystem.DirEntry{{
+				Name:        "stack.yml",
+				Content:     base64.StdEncoding.EncodeToString([]byte(`version: 3.1`)),
+				IsFile:      true,
+				Permissions: 0755,
+			}},
+		}
+
+		manager := &StackManager{
+			portainerClient: mockPortainerClient,
+			stacks:          map[edgeStackID]*edgeStack{1: {StackPayload: stackPayload}},
+		}
+		manager.ResetEnvironmentStatusCount()
+		assert.True(t, manager.isResyncingEnvironmentStatus())
+
+		err := manager.buildDeployerParams(stackPayload, false)
+		assert.NoError(t, err)
+
+		stack := manager.stacks[1]
+		assert.Equal(t, actionUpdate, stack.Action)
+
+		assert.False(t, manager.isResyncingEnvironmentStatus())
+	})
+}
+
+func TestProcessStack(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	t.Run("Process stack with resyncing environment status", func(t *testing.T) {
+		mockPortainerClient := mocks.NewMockPortainerClient(ctrl)
+
+		stackPayload := edge.StackPayload{
+			ID:            1,
+			Version:       1,
+			EntryFileName: "stack.yml",
+			DirEntries: []filesystem.DirEntry{{
+				Name:        "stack.yml",
+				Content:     base64.StdEncoding.EncodeToString([]byte(`version: 3.1`)),
+				IsFile:      true,
+				Permissions: 0755,
+			}},
+		}
+
+		stackStatus := client.StackStatus{Version: 1}
+
+		manager := &StackManager{
+			portainerClient: mockPortainerClient,
+			stacks:          map[edgeStackID]*edgeStack{1: {StackPayload: stackPayload}},
+		}
+
+		mockPortainerClient.EXPECT().GetEdgeStackConfig(1, gomock.Any()).Return(&stackPayload, nil)
+		mockPortainerClient.EXPECT().SetEdgeStackStatus(gomock.Any(), gomock.Any(), gomock.Any(), "").Return(nil)
+
+		manager.ResetEnvironmentStatusCount()
+		assert.True(t, manager.isResyncingEnvironmentStatus())
+
+		err := manager.processStack(1, stackStatus)
+		assert.NoError(t, err)
+
+		stack := manager.stacks[1]
+		assert.Equal(t, actionUpdate, stack.Action)
+
+		assert.False(t, manager.isResyncingEnvironmentStatus())
 	})
 }
