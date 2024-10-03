@@ -4,12 +4,14 @@ import (
 	"errors"
 	"net/http"
 
+	portainer "github.com/portainer/portainer/api"
 	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 	"github.com/portainer/portainer/pkg/libhttp/response"
 )
 
 type keyInspectResponse struct {
-	Key string `json:"key"`
+	Key         string `json:"key"`
+	NewProperty string `json:"prop"`
 }
 
 func (handler *Handler) keyInspect(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
@@ -24,6 +26,7 @@ func (handler *Handler) keyInspect(w http.ResponseWriter, r *http.Request) *http
 	edgeKey := handler.edgeManager.GetKey()
 
 	return response.JSON(w, keyInspectResponse{
-		Key: edgeKey,
+		Key:         edgeKey,
+		NewProperty: portainer.NewProperty,
 	})
 }
