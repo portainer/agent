@@ -1,0 +1,76 @@
+# <INFO> Optional: can be added to expose the agent port 80 to associate an Edge key.
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: portainer-agent
+#   namespace: portainer
+# spec:
+#   type: LoadBalancer
+#   selector:
+#     app: portainer-agent
+#   ports:
+#     - name: http
+#       protocol: TCP
+#       port: 80
+#       targetPort: 80
+# ---
+# <INFO> Regular service
+apiVersion: v1
+kind: Service
+metadata:
+  name: portainer-agent
+  namespace: portainer
+spec:
+  clusterIP: None
+  selector:
+    app: portainer-agent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portainer-agent
+  namespace: portainer
+spec:
+  selector:
+    matchLabels:
+      app: portainer-agent
+  template:
+    metadata:
+      labels:
+        app: portainer-agent
+    spec:
+      serviceAccountName: portainer-sa-clusteradmin
+      containers:
+        - name: portainer-agent
+          image: portainer/agent
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: LOG_LEVEL
+              value: DEBUG
+            - name: KUBERNETES_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: EDGE
+              value: '1'
+            - name: EDGE_ASYNC
+              value: "1"
+            - name: EDGE_INSECURE_POLL
+              value: '1'
+            - name: AGENT_CLUSTER_ADDR
+              value: 'portainer-agent'
+            - name: EDGE_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: portainer-agent-edge-id
+                  key: edge.id
+            - name: EDGE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: portainer-agent-edge-key
+                  key: edge.key
+          ports:
+            - containerPort: 9001
+              protocol: TCP
+            - containerPort: 80
+              protocol: TCP

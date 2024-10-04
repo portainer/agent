@@ -1,0 +1,125 @@
+# EDGE_ID="e090ce2a-db10-47ff-be66-6209716a2a83"
+# EDGE_KEY="aHR0cHM6Ly8xOTIuMTY4LjEuMjA6OTQ0M3wxOTIuMTY4LjEuMjA6ODAwMHxHSTNOamRoMkxkdm1mK09KQ1VCaHFyTGxacEk1MXp0VnNVRm5HV3RJU0Y4PXwz"
+# "fa599970-c47c-4f56-a6af-9372b5f48d48" "aHR0cHM6Ly8xOTIuMTY4LjEuMjA6OTQ0M3wxOTIuMTY4LjEuMjA6ODAwMHxHSTNOamRoMkxkdm1mK09KQ1VCaHFyTGxacEk1MXp0VnNVRm5HV3RJU0Y4PXw0"
+
+# config.define_string_list("edge_config", args=True)
+# config.define_bool("async")
+# cfg = config.parse()
+# a = cfg.get('edge_config')
+# ASYNC=cfg.get('async')
+
+# Load 
+load('ext://dotenv', 'dotenv')
+dotenv()
+EDGE_ID=os.getenv("EDGE_ID")
+EDGE_KEY=os.getenv("EDGE_KEY")
+EDGE_ASYNC=os.getenv("EDGE_ASYNC")
+if EDGE_ID == "" or EDGE_KEY == "":
+  print("Empty EDGE_ID or EDGE_KEY")
+  exit(1)
+
+if EDGE_ASYNC != "true":
+  EDGE_ASYNC=False
+
+# Load the restart_process extension with the docker_build_with_restart func for live reloading.
+load('ext://restart_process', 'docker_build_with_restart')
+# Load the configmap extension with the secret_from_dict func to create EDGE_ID configmap
+load('ext://configmap', 'configmap_from_dict')
+# Load the secret extension with the secret_from_dict func to create EDGE_KEY secret
+load('ext://secret', 'secret_from_dict')
+
+# Deploy Portainer resources - NS / SA / CRB
+k8s_yaml('portainer-resources-k8s.yaml')
+
+# Create EDGE_ID and EDGE_KEY resources
+# kubectl create configmap portainer-agent-edge-id "--from-literal=edge.id=$1" -n portainer
+k8s_yaml(configmap_from_dict(
+    name='portainer-agent-edge-id',
+    namespace="portainer",
+    inputs={"edge.id": EDGE_ID}
+))
+# kubectl --context $CONTEXT create secret generic portainer-agent-edge-key "--from-literal=edge.key=$2" -n portainer
+k8s_yaml(secret_from_dict(
+    name='portainer-agent-edge-key',
+    namespace="portainer",
+    inputs={"edge.key": EDGE_KEY}
+))
+
+# Building binary locally.
+local_resource('build-portainer-agent',
+    cmd="cd .. && make debug/build",
+    deps=['*.go', 
+    '../agent.go',
+    '../build',
+    '../chisel',
+    '../cmd',
+    '../config',
+    '../constants',
+    '../crypto',
+    '../dist',
+    '../docker',
+    '../edge',
+    '../exec',
+    '../filesystem',
+    '../ghw',
+    '../healthcheck',
+    '../http',
+    '../internals',
+    '../kubernetes',
+    '../net',
+    '../nomad',
+    '../os',
+    '../release.sh',
+    '../serf',
+    '../static'
+  ],
+  ignore=[
+    '../dist', 
+    '/**/*_test.go'
+  ],
+)
+
+# Use custom Dockerfile for Tilt builds, which only takes locally built binary for live reloading.
+dockerfile = '''
+FROM golang:1.21-alpine
+
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+ENV PATH="/app:$PATH"
+WORKDIR /app
+
+COPY dist/agent /app/
+COPY dist/docker /app/
+COPY dist/docker-compose /app/
+COPY dist/docker-credential-portainer /app/
+COPY dist/kubectl /app/
+
+COPY static /app/static
+COPY config $HOME/.docker/
+
+LABEL io.portainer.agent true
+'''
+
+# Wrap a docker_build to restart the given entrypoint after a Live Update.
+docker_build_with_restart(
+    'portainer/agent',
+    context='..',
+    # dockerfile_contents=dockerfile,
+    # entrypoint="dlv version",
+    dockerfile="Dockerfile",
+    entrypoint='dlv --continue --listen=0.0.0.0:50100 --accept-multiclient --headless exec /app/agent',
+    live_update=[
+        # Copy the binary so it gets restarted.
+        sync('dist', '/app'),
+        sync('static', '/app/static'),
+    ],
+)
+
+# Create the deployment from YAML file path.
+k8s_yaml('portainer-agent-edge-k8s.yaml')
+k8s_kind('Environment', image_json_path='{.spec.runtime.image}')
+
+# Configure the resource.
+k8s_resource("portainer-agent",
+  port_forwards = ["50100:50100"] # Set up the K8s port-forward to be able to connect to it locally.
+)

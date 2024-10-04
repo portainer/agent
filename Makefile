@@ -53,7 +53,26 @@ clean: ## Remove all build and download artifacts
 	@echo "Clearing the dist directory..."
 	@rm -f dist/*
 
+##@ VSCode debug
+.PHONY: debug/build debug/up debug/cluster/create debug/cluster/delete debug/cluster/recreate
+
+debug/build: ## Build the agent with the correct flags
+	@echo "Building debug Portainer agent..."
+	@CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) go build -gcflags "all=-N -l" --installsuffix cgo -o dist/$(agent) cmd/agent/main.go
+
+debug/up: ## Deploy the edge agent with Tilt
+	@tilt up --context kind-vscode-debug -f vscode-debug/Tiltfile; tilt down -f vscode-debug/Tiltfile --delete-namespaces
+
+debug/cluster/create: ## Create a k8s KinD cluster for live debug in VSCode
+	@vscode-debug/cluster.sh create
+
+debug/cluster/delete: ## Delete the k8s KinD cluster
+	@vscode-debug/cluster.sh delete
+
+debug/cluster/recreate: ## Recreate the k8s KinD cluster
+	@vscode-debug/cluster.sh recreate
+
 ##@ Helpers
 
 help:  ## Display this help
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_/\-]+:.*?##/ { printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
