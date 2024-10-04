@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	defaultTimeoutInSeconds = 3
+	defaultTimeoutInSeconds = 30
 )
 
 type Service struct {
