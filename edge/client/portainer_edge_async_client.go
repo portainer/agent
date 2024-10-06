@@ -30,7 +30,6 @@ type PortainerAsyncClient struct {
 	serverAddress           string
 	setEndpointIDFn         setEndpointIDFn
 	getEndpointIDFn         getEndpointIDFn
-	resetEdgeStacks         resetEdgeStacksFn
 	edgeID                  string
 	agentPlatformIdentifier agent.ContainerPlatform
 	commandTimestamp        *time.Time
@@ -46,13 +45,12 @@ type PortainerAsyncClient struct {
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
-func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, resetESFn resetEdgeStacksFn, edgeID string, containerPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *edgeHTTPClient) *PortainerAsyncClient {
+func NewPortainerAsyncClient(serverAddress string, setEIDFn setEndpointIDFn, getEIDFn getEndpointIDFn, edgeID string, containerPlatform agent.ContainerPlatform, metaFields agent.EdgeMetaFields, httpClient *edgeHTTPClient) *PortainerAsyncClient {
 	initialCommandTimestamp := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 	return &PortainerAsyncClient{
 		serverAddress:           serverAddress,
 		setEndpointIDFn:         setEIDFn,
 		getEndpointIDFn:         getEIDFn,
-		resetEdgeStacks:         resetESFn,
 		edgeID:                  edgeID,
 		httpClient:              httpClient,
 		agentPlatformIdentifier: containerPlatform,
@@ -416,14 +414,11 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 		errorData := parseError(resp)
 		logError(resp, errorData)
 
-		client.setEndpointIDFn(0)
-		client.resetEdgeStacks()
-
 		if errorData != nil {
-			return nil, errors.New(errorData.Message + ": " + errorData.Details)
+			return nil, newNonOkResponseError(errorData.Message + ": " + errorData.Details)
 		}
 
-		return nil, errors.New("short poll request failed")
+		return nil, newNonOkResponseError("short poll request failed")
 	}
 
 	var asyncResponse AsyncResponse

@@ -182,6 +182,12 @@ func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 
 	status, err := service.portainerClient.GetEnvironmentStatus(flags...)
 	if err != nil {
+		var nonOkError *client.NonOkResponseError
+		if errors.As(err, &nonOkError) {
+			service.edgeManager.SetEndpointID(globalKeyInUse)
+			service.edgeStackManager.ResetStacks()
+		}
+
 		return err
 	}
 

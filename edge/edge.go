@@ -99,7 +99,6 @@ func (manager *Manager) Start() error {
 		manager.key.PortainerInstanceURL,
 		manager.SetEndpointID,
 		manager.GetEndpointID,
-		manager.stackManager.ResetStacks,
 		manager.agentOptions.EdgeID,
 		manager.agentOptions.EdgeAsyncMode,
 		agentPlatform,

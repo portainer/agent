@@ -19,7 +19,7 @@ import (
 )
 
 const tunnelActivityCheckInterval = 30 * time.Second
-const waitToBeAssociated = 0
+const globalKeyInUse = 0
 
 // PollService is used to poll a Portainer instance to retrieve the status associated to the Edge endpoint.
 // It is responsible for managing the state of the reverse tunnel (open and closing after inactivity).
@@ -206,7 +206,7 @@ func (service *PollService) startActivityMonitoringLoop() {
 }
 
 func (service *PollService) poll() error {
-	if service.edgeManager.GetEndpointID() == waitToBeAssociated {
+	if service.edgeManager.GetEndpointID() == globalKeyInUse {
 		endpointID, err := service.portainerClient.GetEnvironmentID()
 		if err != nil {
 			return err
@@ -219,7 +219,7 @@ func (service *PollService) poll() error {
 	if err != nil {
 		var nonOkError *client.NonOkResponseError
 		if errors.As(err, &nonOkError) {
-			service.edgeManager.SetEndpointID(waitToBeAssociated)
+			service.edgeManager.SetEndpointID(globalKeyInUse)
 			service.edgeStackManager.ResetStacks()
 		}
 

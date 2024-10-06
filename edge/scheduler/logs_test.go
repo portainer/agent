@@ -13,7 +13,6 @@ func TestDataRace(t *testing.T) {
 		"portainerURL",
 		func(portainer.EndpointID) {},
 		func() portainer.EndpointID { return 1 },
-		func() {},
 		"edgeID",
 		false,
 		agent.PlatformDocker,
