@@ -918,3 +918,10 @@ func (manager *StackManager) DeleteNormalStack(ctx context.Context, stackName st
 
 	return nil
 }
+
+func (manager *StackManager) ResetStacks() {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
+	manager.stacks = map[edgeStackID]*edgeStack{}
+}

@@ -414,13 +414,11 @@ func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, po
 		errorData := parseError(resp)
 		logError(resp, errorData)
 
-		client.setEndpointIDFn(0)
-
 		if errorData != nil {
-			return nil, errors.New(errorData.Message + ": " + errorData.Details)
+			return nil, newNonOkResponseError(errorData.Message + ": " + errorData.Details)
 		}
 
-		return nil, errors.New("short poll request failed")
+		return nil, newNonOkResponseError("short poll request failed")
 	}
 
 	var asyncResponse AsyncResponse

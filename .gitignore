@@ -5,3 +5,5 @@ dist
 .idea
 .DS_Store
 go.work.sum
+coverage.out
+__debug_bin*
