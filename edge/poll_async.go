@@ -3,6 +3,7 @@ package edge
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/portainer/agent"
@@ -268,7 +269,7 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 	switch command.Operation {
 	case "add", "replace":
 		if err := service.edgeStackManager.DeployStack(ctx, stackData); err != nil {
-			return service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusError, stackData.RollbackTo, "failed to deploy async stack. Error: "+err.Error())
+			return service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusError, stackData.RollbackTo, fmt.Errorf("failed to deploy async stack: %w", err).Error())
 		}
 
 		if err := service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusDeploying, stackData.RollbackTo, ""); err != nil {
@@ -281,10 +282,10 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 		}
 
 		if err := service.edgeStackManager.DeleteStack(ctx, stackData); err != nil {
-			return service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusError, stackData.RollbackTo, "failed to delete async stack. Error: "+err.Error())
+			return service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusError, stackData.RollbackTo, fmt.Errorf("failed to delete async stack: %w", err).Error())
 		}
 
-		if err = service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusRemoved, stackData.RollbackTo, ""); err != nil {
+		if err := service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusRemoved, stackData.RollbackTo, ""); err != nil {
 			return newOperationError("stack", command.Operation, err)
 		}
 
