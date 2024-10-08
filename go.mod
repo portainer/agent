@@ -4,6 +4,8 @@ go 1.21
 
 toolchain go1.21.12
 
+replace github.com/portainer/portainer => ../server-ce
+
 require (
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
