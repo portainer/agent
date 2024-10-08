@@ -355,7 +355,7 @@ func (manager *StackManager) performActionOnStack() {
 
 				stack.Status = StatusError
 
-				if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, err.Error()); err != nil {
+				if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, fmt.Errorf("failed to copy git stack to host: %w", err).Error()); err != nil {
 					log.Error().Err(err).Msg("unable to update Edge stack status")
 				}
 
@@ -550,7 +550,7 @@ func (manager *StackManager) validateStackFile(ctx context.Context, stack *edgeS
 		log.Error().Int("stack_identifier", stack.ID).Err(err).Msg("stack validation failed")
 		stack.Status = StatusError
 
-		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, err.Error())
+		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, fmt.Errorf("failed to validate stack: %w", err).Error())
 		if statusUpdateErr != nil {
 			log.Error().Err(statusUpdateErr).Msg("unable to update Edge stack status")
 		}
@@ -604,7 +604,7 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 
 		stack.Status = StatusError
 
-		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, err.Error())
+		statusUpdateErr := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, fmt.Errorf("failed to pull image: %w", err).Error())
 		if statusUpdateErr != nil {
 			log.Error().
 				Err(statusUpdateErr).
@@ -685,7 +685,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 		stack.Status = StatusError
 
-		if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, "failed to redeploy stack"); err != nil {
+		if err := manager.portainerClient.SetEdgeStackStatus(stack.ID, portainer.EdgeStackStatusError, stack.RollbackTo, fmt.Errorf("failed to redeploy stack: %w", err).Error()); err != nil {
 			log.Error().Err(err).Msg("unable to update Edge stack status")
 		}
 

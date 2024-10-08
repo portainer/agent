@@ -3,6 +3,7 @@ package edge
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/portainer/agent"
@@ -267,30 +268,24 @@ func (service *PollService) processStackCommand(ctx context.Context, command cli
 
 	switch command.Operation {
 	case "add", "replace":
-		err = service.edgeStackManager.DeployStack(ctx, stackData)
-
-		if err != nil {
-			return service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusError, stackData.RollbackTo, err.Error())
+		if err := service.edgeStackManager.DeployStack(ctx, stackData); err != nil {
+			return service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusError, stackData.RollbackTo, fmt.Errorf("failed to deploy async stack: %w", err).Error())
 		}
 
-		err = service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusDeploying, stackData.RollbackTo, "")
-		if err != nil {
+		if err := service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusDeploying, stackData.RollbackTo, ""); err != nil {
 			return newOperationError("stack", command.Operation, err)
 		}
 
 	case "remove":
-		err = service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusRemoving, stackData.RollbackTo, "")
-		if err != nil {
+		if err := service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusRemoving, stackData.RollbackTo, ""); err != nil {
 			return newOperationError("stack", command.Operation, err)
 		}
 
-		err = service.edgeStackManager.DeleteStack(ctx, stackData)
-		if err != nil {
-			return service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusError, stackData.RollbackTo, err.Error())
+		if err := service.edgeStackManager.DeleteStack(ctx, stackData); err != nil {
+			return service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusError, stackData.RollbackTo, fmt.Errorf("failed to delete async stack: %w", err).Error())
 		}
 
-		err = service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusRemoved, stackData.RollbackTo, "")
-		if err != nil {
+		if err := service.portainerClient.SetEdgeStackStatus(stackData.ID, portainer.EdgeStackStatusRemoved, stackData.RollbackTo, ""); err != nil {
 			return newOperationError("stack", command.Operation, err)
 		}
 
