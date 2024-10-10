@@ -69,7 +69,7 @@ func (manager *Manager) Start() error {
 	pollServiceConfig := &pollServiceConfig{
 		APIServerAddr:           apiServerAddr,
 		EdgeID:                  manager.agentOptions.EdgeID,
-		PollFrequency:           agent.DefaultEdgePollInterval,
+		PollFrequency:           manager.agentOptions.EdgePollFrequency,
 		InactivityTimeout:       manager.agentOptions.EdgeInactivityTimeout,
 		TunnelCapability:        manager.agentOptions.EdgeTunnel,
 		PortainerURL:            manager.key.PortainerInstanceURL,

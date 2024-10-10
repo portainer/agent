@@ -94,6 +94,7 @@ type (
 		EdgeID                string
 		EdgeUIServerAddr      string
 		EdgeUIServerPort      string
+		EdgePollFrequency     string
 		EdgeInactivityTimeout string
 		EdgeInsecurePoll      bool
 		EdgeTunnel            bool
