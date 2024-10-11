@@ -52,7 +52,7 @@ jobs:
         uses: docker/setup-buildx-action@v3.0.0
         with:
           endpoint: builders
-          driver-opts: image=moby/buildkit:v0.13.2
+          # driver-opts: image=moby/buildkit:v0.10.6
       - name: "[preparation] docker login"
         uses: docker/login-action@v3.0.0
         with:
@@ -84,10 +84,10 @@ jobs:
       - name: "[execution] build and push docker images"
         run: |
           if [ "${{ matrix.config.platform }}" == "windows" ]; then
-            docker buildx build --output=type=registry --attest type=provenance,mode=max --attest type=sbom,disabled=false --platform ${{ matrix.config.platform }}/${{ matrix.config.arch }} --build-arg OSVERSION=${{ matrix.config.version }} -t "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}" -f build/${{ matrix.config.platform }}/Dockerfile .
+            docker buildx build --output=type=registry --platform ${{ matrix.config.platform }}/${{ matrix.config.arch }} --build-arg OSVERSION=${{ matrix.config.version }} -t "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}" -f build/${{ matrix.config.platform }}/Dockerfile .
           else 
-            docker buildx build --output=type=registry --attest type=provenance,mode=max --attest type=sbom,disabled=false --platform ${{ matrix.config.platform }}/${{ matrix.config.arch }} -t "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}" -f build/${{ matrix.config.platform }}/Dockerfile .
-            docker buildx build --output=type=registry --attest type=provenance,mode=max --attest type=sbom,disabled=false --platform ${{ matrix.config.platform }}/${{ matrix.config.arch }} -t "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-alpine" -f build/${{ matrix.config.platform }}/alpine.Dockerfile .
+            docker buildx build --output=type=registry --platform ${{ matrix.config.platform }}/${{ matrix.config.arch }} -t "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}" -f build/${{ matrix.config.platform }}/Dockerfile .
+            docker buildx build --output=type=registry --platform ${{ matrix.config.platform }}/${{ matrix.config.arch }} -t "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-alpine" -f build/${{ matrix.config.platform }}/alpine.Dockerfile .
           fi
         env:
           CONTAINER_IMAGE_TAG: ${{ env.CONTAINER_IMAGE_TAG }}
@@ -123,7 +123,7 @@ jobs:
             CONTAINER_IMAGE_TAG=$(echo $GITHUB_REF_NAME | sed 's/\//-/g')
           fi
 
-          docker buildx imagetools create -t "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}" \
+          docker manifest create "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-amd64" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-arm64" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-arm" \
@@ -131,7 +131,11 @@ jobs:
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-windows1809-amd64" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-windowsltsc2022-amd64"
 
-          docker buildx imagetools create -t "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-alpine" \
+          docker manifest push "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}"
+
+          docker manifest create "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-alpine" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-amd64-alpine" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-arm64-alpine" \
             "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-linux-arm-alpine"
+
+          docker manifest push "${DOCKER_HUB_REPO}:${CONTAINER_IMAGE_TAG}-alpine"
