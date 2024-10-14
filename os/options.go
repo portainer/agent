@@ -26,6 +26,7 @@ const (
 	EnvKeyEdgeID                = "EDGE_ID"
 	EnvKeyEdgeServerHost        = "EDGE_SERVER_HOST"
 	EnvKeyEdgeServerPort        = "EDGE_SERVER_PORT"
+	EnvKeyEdgePollFrequency     = "EDGE_POLL_FREQUENCY"
 	EnvKeyEdgeInactivityTimeout = "EDGE_INACTIVITY_TIMEOUT"
 	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
 	EnvKeyEdgeTunnel            = "EDGE_TUNNEL"
@@ -77,6 +78,7 @@ var (
 	fEdgeID                = kingpin.Flag("edge-id", EnvKeyEdgeID+" a unique identifier associated to this agent cluster").Envar(EnvKeyEdgeID).String()
 	fEdgeServerAddr        = kingpin.Flag("edge-host", EnvKeyEdgeServerHost+" address on which the Edge UI will be exposed (default to 0.0.0.0)").Envar(EnvKeyEdgeServerHost).Default(agent.DefaultEdgeServerAddr).IP()
 	fEdgeServerPort        = kingpin.Flag("edge-port", EnvKeyEdgeServerPort+" port on which the Edge UI will be exposed (default to 80)").Envar(EnvKeyEdgeServerPort).Default(agent.DefaultEdgeServerPort).Int()
+	fEdgePollFrequency     = kingpin.Flag("edge-poll-frequency", EnvKeyEdgePollFrequency+" frequency at which the agent will poll the server before receiving its configuration remotely (default to 5s)").Envar(EnvKeyEdgePollFrequency).Default(agent.DefaultEdgePollInterval).String()
 	fEdgeInactivityTimeout = kingpin.Flag("edge-inactivity", EnvKeyEdgeInactivityTimeout+" timeout used by the agent to close the reverse tunnel after inactivity (default to 5m)").Envar(EnvKeyEdgeInactivityTimeout).Default(agent.DefaultEdgeSleepInterval).String()
 	fEdgeInsecurePoll      = kingpin.Flag("edge-insecurepoll", EnvKeyEdgeInsecurePoll+" enable this option if you need the agent to poll a HTTPS Portainer instance with self-signed certificates. Disabled by default, set to 1 to enable it").Envar(EnvKeyEdgeInsecurePoll).Bool()
 	fEdgeTunnel            = kingpin.Flag("edge-tunnel", EnvKeyEdgeTunnel+" disable this option if you wish to prevent the agent from opening tunnels over websockets").Envar(EnvKeyEdgeTunnel).Default("true").Bool()
@@ -142,6 +144,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 		EdgeID:                *fEdgeID,
 		EdgeUIServerAddr:      fEdgeServerAddr.String(),
 		EdgeUIServerPort:      strconv.Itoa(*fEdgeServerPort),
+		EdgePollFrequency:     *fEdgePollFrequency,
 		EdgeInactivityTimeout: *fEdgeInactivityTimeout,
 		EdgeInsecurePoll:      *fEdgeInsecurePoll,
 		EdgeTunnel:            *fEdgeTunnel,
