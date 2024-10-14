@@ -68,7 +68,7 @@ func authenticateAgainstIAMRA(awsConfig *agent.AWSConfig) (*iamra.CredentialProc
 		RoleArn:           awsConfig.RoleARN,
 		ProfileArnStr:     awsConfig.ProfileARN,
 		TrustAnchorArnStr: awsConfig.TrustAnchorARN,
-		SessionDuration:   3600,
+		SessionDuration:   3600 * 6,
 		NoVerifySSL:       false,
 		WithProxy:         false,
 		Debug:             false,
