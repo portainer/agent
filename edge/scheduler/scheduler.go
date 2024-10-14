@@ -6,18 +6,16 @@ package scheduler
 import (
 	"encoding/base64"
 	"fmt"
-	"strings"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"syscall"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/filesystem"
 
+	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"
-)
-
-const (
-	cronDirectory = "/etc/cron.d"
-	cronFile      = "portainer_agent"
-	cronJobUser   = "root"
 )
 
 // CronManager is a service that manage schedules by creating a new entry inside the host filesystem under
@@ -26,14 +24,19 @@ type CronManager struct {
 	logsManager      *LogsManager
 	cronFileExists   bool
 	managedSchedules map[int]agent.Schedule
+	cron             *cron.Cron
 }
 
 // NewCronManager returns a pointer to a new instance of CronManager.
 func NewCronManager(logsManager *LogsManager) *CronManager {
+	cron := cron.New()
+	cron.Start()
+
 	return &CronManager{
 		logsManager:      logsManager,
 		cronFileExists:   false,
 		managedSchedules: make(map[int]agent.Schedule),
+		cron:             cron,
 	}
 }
 
@@ -101,47 +104,39 @@ func (manager *CronManager) Schedule(schedules []agent.Schedule) error {
 }
 
 func (manager *CronManager) removeCronFile() error {
-	manager.managedSchedules = map[int]agent.Schedule{}
-	if manager.cronFileExists {
-		log.Debug().Msg("no schedules available, removing cron file")
-
-		manager.cronFileExists = false
-		return filesystem.RemoveFile(fmt.Sprintf("%s%s/%s", agent.HostRoot, cronDirectory, cronFile))
+	for _, s := range manager.managedSchedules {
+		manager.cron.Remove(s.EntryID)
 	}
+
+	manager.managedSchedules = map[int]agent.Schedule{}
+
 	return nil
 }
 
 func (manager *CronManager) flushEntries(schedules map[int]agent.Schedule) error {
-	cronEntries := make([]string, 0)
+	manager.cron.Stop()
+	manager.cron = cron.New()
+	manager.cron.Start()
 
-	header := []string{
-		"## This file is managed by the Portainer agent. DO NOT EDIT MANUALLY ALL YOUR CHANGES WILL BE OVERWRITTEN.",
-		"SHELL=/bin/sh",
-		"PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin",
-		"",
-	}
-
-	cronEntries = append(cronEntries, header...)
-
-	for _, schedule := range schedules {
-		cronEntry, err := createCronEntry(&schedule)
+	for key, schedule := range schedules {
+		cronSpec, cronEntry, err := createCronEntry(&schedule)
 		if err != nil {
 			log.Error().Int("schedule_id", schedule.ID).Err(err).Msg("unable to create cron entry")
 
 			return err
 		}
 
-		cronEntries = append(cronEntries, cronEntry)
+		entryID, err := manager.cron.AddFunc(cronSpec, cronEntry)
+		if err != nil {
+			return err
+		}
+
+		s := schedules[key]
+		s.EntryID = entryID
+		schedules[key] = s
 	}
 
 	log.Debug().Int("schedule_count", len(manager.managedSchedules)).Msg("writing cron file on disk")
-
-	cronEntries = append(cronEntries, "")
-	cronFileContent := strings.Join(cronEntries, "\n")
-	err := filesystem.WriteFile(fmt.Sprintf("%s%s", agent.HostRoot, cronDirectory), cronFile, []byte(cronFileContent), 0644)
-	if err != nil {
-		return err
-	}
 
 	manager.cronFileExists = true
 	manager.managedSchedules = schedules
@@ -149,22 +144,47 @@ func (manager *CronManager) flushEntries(schedules map[int]agent.Schedule) error
 	return nil
 }
 
-func createCronEntry(schedule *agent.Schedule) (string, error) {
+func createCronEntry(schedule *agent.Schedule) (string, cron.FuncJob, error) {
 	decodedScript, err := base64.RawStdEncoding.DecodeString(schedule.Script)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	err = filesystem.WriteFile(fmt.Sprintf("%s%s", agent.HostRoot, agent.ScheduleScriptDirectory), fmt.Sprintf("schedule_%d", schedule.ID), decodedScript, 0744)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	cronExpression := schedule.CronExpression
 	command := fmt.Sprintf("%s/schedule_%d", agent.ScheduleScriptDirectory, schedule.ID)
 	logFile := fmt.Sprintf("%s/schedule_%d.log", agent.ScheduleScriptDirectory, schedule.ID)
 
-	return fmt.Sprintf("%s %s %s > %s 2>&1", cronExpression, cronJobUser, command, logFile), nil
+	cronFn := func() {
+		log.Info().Str("command", command).Msg("running cron job")
+
+		logFileWriter, err := os.OpenFile(filepath.Join(agent.HostRoot, logFile), os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Error().Err(err).Msg("could not open the log file")
+			return
+		}
+		defer logFileWriter.Close()
+
+		cmd := exec.Command("/bin/sh", command)
+		cmd.Dir = "/"
+		cmd.SysProcAttr = &syscall.SysProcAttr{Chroot: agent.HostRoot}
+		cmd.Env = []string{
+			"SHELL=/bin/sh",
+			"PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin",
+		}
+		cmd.Stdout = logFileWriter
+		cmd.Stderr = logFileWriter
+
+		if err := cmd.Run(); err != nil {
+			log.Error().Err(err).Msg("error encountered in cron job run")
+		}
+	}
+
+	return cronExpression, cronFn, nil
 }
 
 func (manager *CronManager) ProcessScheduleLogsCollection() {
@@ -188,10 +208,6 @@ func (manager *CronManager) AddSchedule(schedule agent.Schedule) error {
 
 func (manager *CronManager) RemoveSchedule(schedule agent.Schedule) error {
 	delete(manager.managedSchedules, schedule.ID)
-
-	if len(manager.managedSchedules) == 0 {
-		return manager.removeCronFile()
-	}
 
 	return manager.flushEntries(manager.managedSchedules)
 }

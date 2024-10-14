@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/portainer/portainer/pkg/libstack"
+	"github.com/robfig/cron/v3"
 )
 
 type (
@@ -138,6 +139,7 @@ type (
 	// Schedule represents a script that can be scheduled on the underlying host
 	Schedule struct {
 		ID             int
+		EntryID        cron.EntryID
 		CronExpression string
 		Script         string
 		Version        int
