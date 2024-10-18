@@ -81,7 +81,8 @@ func (kcl *KubeClient) StartExecProcess(token, namespace, podName, containerName
 		Tty:    true,
 	})
 	if err != nil {
-		if _, ok := err.(utilexec.ExitError); !ok {
+		var exitError utilexec.ExitError
+		if !errors.As(err, &exitError) {
 			return errors.New("unable to start exec process")
 		}
 	}

@@ -140,7 +140,7 @@ func getServiceStatus(ctx context.Context, cli *client.Client, service swarm.Ser
 		}),
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("failed to list tasks for service %s: %v", service.Spec.Name, err)
+		return "", "", fmt.Errorf("failed to list tasks for service %s: %w", service.Spec.Name, err)
 	}
 
 	expectedRunningTaskCount := 0
@@ -151,7 +151,7 @@ func getServiceStatus(ctx context.Context, cli *client.Client, service swarm.Ser
 	if service.Spec.Mode.Global != nil {
 		nodes, err := cli.NodeList(ctx, types.NodeListOptions{})
 		if err != nil {
-			return "", "", fmt.Errorf("failed to list nodes: %v", err)
+			return "", "", fmt.Errorf("failed to list nodes: %w", err)
 		}
 
 		expectedRunningTaskCount = len(nodes)
