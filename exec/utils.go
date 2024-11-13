@@ -9,9 +9,10 @@ import (
 )
 
 type cmdOpts struct {
-	WorkingDir string
-	Input      string
-	Env        []string
+	WorkingDir  string
+	Input       string
+	Env         []string
+	ProjectName string
 }
 
 func runCommandAndCaptureStdErr(command string, args []string, opts *cmdOpts) ([]byte, error) {
