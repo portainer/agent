@@ -38,7 +38,8 @@ type edgeStack struct {
 	PullFinished bool
 	DeployCount  int
 
-	LastAction time.Time
+	FirstAction time.Time
+	LastAction  time.Time
 }
 
 type edgeStackStatus int
@@ -155,8 +156,7 @@ func (manager *StackManager) UpdateStacksStatus(pollResponseStacks map[int]clien
 	}
 
 	for stackID, status := range pollResponseStacks {
-		err := manager.processStack(stackID, status)
-		if err != nil {
+		if err := manager.processStack(stackID, status); err != nil {
 			return err
 		}
 	}
@@ -263,6 +263,7 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 	stack.PrePullImage = stackPayload.PrePullImage
 	stack.RePullImage = stackPayload.RePullImage
 	stack.RetryDeploy = stackPayload.RetryDeploy
+	stack.RetryPeriod = stackPayload.RetryPeriod
 	stack.EnvVars = append(stackPayload.EnvVars, edgeIdPair)
 	stack.SupportRelativePath = stackPayload.SupportRelativePath
 	stack.FilesystemPath = stackPayload.FilesystemPath
@@ -366,6 +367,11 @@ func (manager *StackManager) performActionOnStack() {
 
 	manager.mu.Lock()
 	stack.LastAction = time.Now()
+
+	if stack.FirstAction.IsZero() {
+		stack.FirstAction = stack.LastAction
+	}
+
 	stackName := fmt.Sprintf("edge_%s", stack.Name)
 	stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
 	manager.mu.Unlock()
@@ -641,7 +647,8 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 			Int("PullCount", stack.PullCount).
 			Msg("images pull failed")
 
-		if stack.PullCount < maxRetries {
+		withinRetryPeriod := stack.RetryPeriod <= 0 || int(time.Since(stack.FirstAction).Seconds()) < stack.RetryPeriod
+		if stack.PullCount < maxRetries && withinRetryPeriod {
 			stack.Status = StatusRetry
 
 			return err
