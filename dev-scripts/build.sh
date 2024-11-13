@@ -19,7 +19,7 @@ function build() {
     msg "Image build..."
     docker build --no-cache -t "$1" -f build/linux/Dockerfile . &>/dev/null
 
-    msg "Image $1 is built"
+    msg "Image is built: $1"
 }
 
 function build_podman() {
@@ -28,7 +28,7 @@ function build_podman() {
     msg "Image build..."
     podman build --no-cache -t "$1" -f build/linux/Dockerfile . &>/dev/null
 
-    msg "Image $1 is built"
+    msg "Image is built: $1"
 }
 
 function parse_build_params() {

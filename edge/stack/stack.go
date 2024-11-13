@@ -374,7 +374,12 @@ func (manager *StackManager) performActionOnStack() {
 
 	switch stack.Status {
 	case StatusAwaitingDeployedStatus, StatusAwaitingRemovedStatus, StatusDeployed:
-		if err := manager.checkStackStatus(ctx, stackName, stack, stackFileLocation); err != nil {
+		if err := manager.checkStackStatus(ctx, stackName, stack, agent.CheckStatusOptions{
+			StackFileLocation: stackFileLocation,
+			DeployerBaseOptions: agent.DeployerBaseOptions{
+				Namespace: stack.Namespace,
+			},
+		}); err != nil {
 			log.Error().Err(err).Msg("unable to check Edge stack status")
 		}
 		return
@@ -471,7 +476,7 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 
 // check the status of running workloads for stack when stack.Status is
 // one of StatusAwaitingDeployedStatus | StatusAwaitingRemovedStatus | StatusDeployed
-func (manager *StackManager) checkStackStatus(ctx context.Context, stackName string, stack *edgeStack, stackFileLocation string) error {
+func (manager *StackManager) checkStackStatus(ctx context.Context, stackName string, stack *edgeStack, options agent.CheckStatusOptions) error {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
@@ -504,7 +509,7 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 		requiredStatus = libstack.StatusCompleted
 	}
 
-	status, statusMessage, err := manager.waitForStatus(ctx, stackName, requiredStatus, stackFileLocation)
+	status, statusMessage, err := manager.waitForStatus(ctx, stackName, requiredStatus, options)
 	if err != nil && stack.Status != StatusDeployed {
 		return err
 	}
@@ -551,11 +556,11 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 	return nil
 }
 
-func (manager *StackManager) waitForStatus(ctx context.Context, stackName string, requiredStatus libstack.Status, stackFileLocation string) (libstack.Status, string, error) {
+func (manager *StackManager) waitForStatus(ctx context.Context, stackName string, requiredStatus libstack.Status, options agent.CheckStatusOptions) (libstack.Status, string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 
-	statusCh := manager.deployer.WaitForStatus(ctx, stackName, requiredStatus, stackFileLocation)
+	statusCh := manager.deployer.WaitForStatus(ctx, stackName, requiredStatus, options)
 
 	result := <-statusCh
 

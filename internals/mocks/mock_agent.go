@@ -356,17 +356,17 @@ func (mr *MockDeployerMockRecorder) Validate(ctx, name, filePaths, options any) 
 }
 
 // WaitForStatus mocks base method.
-func (m *MockDeployer) WaitForStatus(ctx context.Context, name string, status libstack.Status, stackFileLocation string) <-chan libstack.WaitResult {
+func (m *MockDeployer) WaitForStatus(ctx context.Context, name string, status libstack.Status, options agent.CheckStatusOptions) <-chan libstack.WaitResult {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WaitForStatus", ctx, name, status, stackFileLocation)
+	ret := m.ctrl.Call(m, "WaitForStatus", ctx, name, status, options)
 	ret0, _ := ret[0].(<-chan libstack.WaitResult)
 	return ret0
 }
 
 // WaitForStatus indicates an expected call of WaitForStatus.
-func (mr *MockDeployerMockRecorder) WaitForStatus(ctx, name, status, stackFileLocation any) *gomock.Call {
+func (mr *MockDeployerMockRecorder) WaitForStatus(ctx, name, status, options any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForStatus", reflect.TypeOf((*MockDeployer)(nil).WaitForStatus), ctx, name, status, stackFileLocation)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForStatus", reflect.TypeOf((*MockDeployer)(nil).WaitForStatus), ctx, name, status, options)
 }
 
 // MockKubernetesInfoService is a mock of KubernetesInfoService interface.

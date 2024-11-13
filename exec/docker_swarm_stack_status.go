@@ -9,12 +9,13 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
 	libstack "github.com/portainer/portainer/pkg/libstack"
 	"github.com/rs/zerolog/log"
 )
 
-func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name string, status libstack.Status, _ string) <-chan libstack.WaitResult {
+func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name string, status libstack.Status, _ agent.CheckStatusOptions) <-chan libstack.WaitResult {
 	waitResultCh := make(chan libstack.WaitResult)
 	waitResult := libstack.WaitResult{
 		Status: status,

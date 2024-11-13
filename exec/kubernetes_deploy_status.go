@@ -13,12 +13,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes/scheme"
 
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/kubernetes"
 	libstack "github.com/portainer/portainer/pkg/libstack"
 	"github.com/rs/zerolog/log"
 )
 
-func (service *KubernetesDeployer) WaitForStatus(ctx context.Context, name string, requiredStatus libstack.Status, stackFileLocation string) <-chan libstack.WaitResult {
+func (service *KubernetesDeployer) WaitForStatus(ctx context.Context, name string, requiredStatus libstack.Status, options agent.CheckStatusOptions) <-chan libstack.WaitResult {
 	waitResultCh := make(chan libstack.WaitResult)
 
 	go func() {
@@ -31,7 +32,7 @@ func (service *KubernetesDeployer) WaitForStatus(ctx context.Context, name strin
 
 			time.Sleep(1 * time.Second)
 
-			status, workloadError, err := service.getStatusForYAML(requiredStatus, stackFileLocation)
+			status, workloadError, err := service.getStatusForYAML(requiredStatus, options)
 			if err != nil {
 				log.Warn().
 					Str("project_name", name).
@@ -67,13 +68,15 @@ func (service *KubernetesDeployer) WaitForStatus(ctx context.Context, name strin
 	return waitResultCh
 }
 
-func (service *KubernetesDeployer) getStatusForYAML(requiredStatus libstack.Status, stackFileLocation string) (libstack.Status, string, error) {
+func (service *KubernetesDeployer) getStatusForYAML(requiredStatus libstack.Status, options agent.CheckStatusOptions) (libstack.Status, string, error) {
 	// open the YAML file
-	file, err := os.Open(stackFileLocation)
+	file, err := os.Open(options.StackFileLocation)
 	if err != nil {
 		return libstack.StatusError, "", err
 	}
 	defer file.Close()
+
+	defaultNamespace := options.Namespace
 
 	// create YAML to JSON decoder
 	yamlDecoder := yaml.NewYAMLOrJSONDecoder(file, 4096)
@@ -111,13 +114,29 @@ func (service *KubernetesDeployer) getStatusForYAML(requiredStatus libstack.Stat
 
 		switch o := obj.(type) {
 		case *appsv1.Deployment:
-			status = service.kubeClient.GetDeploymentStatus(o.Namespace, o.Name)
+			ns := defaultNamespace
+			if o.Namespace != "" {
+				ns = o.Namespace
+			}
+			status = service.kubeClient.GetDeploymentStatus(ns, o.Name)
 		case *appsv1.DaemonSet:
-			status = service.kubeClient.GetDaemonSetStatus(o.Namespace, o.Name)
+			ns := defaultNamespace
+			if o.Namespace != "" {
+				ns = o.Namespace
+			}
+			status = service.kubeClient.GetDaemonSetStatus(ns, o.Name)
 		case *appsv1.StatefulSet:
-			status = service.kubeClient.GetStatefulSetStatus(o.Namespace, o.Name)
+			ns := defaultNamespace
+			if o.Namespace != "" {
+				ns = o.Namespace
+			}
+			status = service.kubeClient.GetStatefulSetStatus(ns, o.Name)
 		case *corev1.Pod:
-			status = service.kubeClient.GetPodStatus(o.Namespace, o.Name)
+			ns := defaultNamespace
+			if o.Namespace != "" {
+				ns = o.Namespace
+			}
+			status = service.kubeClient.GetPodStatus(ns, o.Name)
 		default:
 			continue
 		}
