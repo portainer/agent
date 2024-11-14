@@ -729,7 +729,8 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 	if err != nil {
 		log.Error().Err(err).Int("DeployCount", stack.DeployCount).Msg("stack deployment failed")
 
-		if stack.RetryDeploy && stack.DeployCount < maxRetries {
+		withinRetryPeriod := stack.RetryPeriod <= 0 || int(time.Since(stack.FirstAction).Seconds()) < stack.RetryPeriod
+		if stack.RetryDeploy && stack.DeployCount < maxRetries && withinRetryPeriod {
 			stack.Status = StatusRetry
 
 			return
