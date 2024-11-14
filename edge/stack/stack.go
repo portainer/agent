@@ -943,6 +943,7 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 	stack.PrePullImage = stackPayload.PrePullImage
 	stack.RePullImage = stackPayload.RePullImage
 	stack.RetryDeploy = stackPayload.RetryDeploy
+	stack.RetryPeriod = stackPayload.RetryPeriod
 	stack.PullCount = 0
 	stack.PullFinished = false
 	stack.DeployCount = 0
