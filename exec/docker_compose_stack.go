@@ -3,6 +3,7 @@ package exec
 import (
 	"context"
 
+	"github.com/docker/cli/cli/config/types"
 	"github.com/portainer/agent"
 	libstack "github.com/portainer/portainer/pkg/libstack"
 	"github.com/portainer/portainer/pkg/libstack/compose"
@@ -23,11 +24,22 @@ func NewDockerComposeStackService(binaryPath string) *DockerComposeStackService 
 
 // Deploy executes the docker stack deploy command.
 func (service *DockerComposeStackService) Deploy(ctx context.Context, name string, filePaths []string, options agent.DeployOptions) error {
+	var registries []types.AuthConfig
+
+	for _, r := range options.Registries {
+		registries = append(registries, types.AuthConfig{
+			Username:      r.Username,
+			Password:      r.Secret,
+			ServerAddress: r.ServerURL,
+		})
+	}
+
 	return service.deployer.Deploy(ctx, filePaths, libstack.DeployOptions{
 		Options: libstack.Options{
 			ProjectName: name,
 			WorkingDir:  options.WorkingDir,
 			Env:         options.Env,
+			Registries:  registries,
 		},
 		RemoveOrphans: options.Prune,
 	})

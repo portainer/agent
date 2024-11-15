@@ -721,6 +721,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 				Namespace:  stack.Namespace,
 				WorkingDir: stack.FileFolder,
 				Env:        envVars,
+				Registries: stack.RegistryCredentials,
 			},
 		},
 	)

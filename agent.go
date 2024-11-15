@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/portainer/portainer/api/edge"
 	"github.com/portainer/portainer/pkg/libstack"
 )
 
@@ -196,6 +197,7 @@ type (
 		Namespace  string
 		WorkingDir string
 		Env        []string
+		Registries []edge.RegistryCredentials
 	}
 
 	DeployOptions struct {
