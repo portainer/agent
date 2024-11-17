@@ -637,6 +637,7 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 		DeployerBaseOptions: agent.DeployerBaseOptions{
 			WorkingDir: stack.FileFolder,
 			Env:        envVars,
+			Registries: stack.RegistryCredentials,
 		},
 	})
 	manager.mu.Lock()

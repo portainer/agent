@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/cli/cli/config/types"
 	"github.com/portainer/agent"
+	"github.com/portainer/portainer/api/edge"
 	libstack "github.com/portainer/portainer/pkg/libstack"
 	"github.com/portainer/portainer/pkg/libstack/compose"
 )
@@ -24,22 +25,12 @@ func NewDockerComposeStackService(binaryPath string) *DockerComposeStackService 
 
 // Deploy executes the docker stack deploy command.
 func (service *DockerComposeStackService) Deploy(ctx context.Context, name string, filePaths []string, options agent.DeployOptions) error {
-	var registries []types.AuthConfig
-
-	for _, r := range options.Registries {
-		registries = append(registries, types.AuthConfig{
-			Username:      r.Username,
-			Password:      r.Secret,
-			ServerAddress: r.ServerURL,
-		})
-	}
-
 	return service.deployer.Deploy(ctx, filePaths, libstack.DeployOptions{
 		Options: libstack.Options{
 			ProjectName: name,
 			WorkingDir:  options.WorkingDir,
 			Env:         options.Env,
-			Registries:  registries,
+			Registries:  registryCredsToAuthConfigs(options.Registries),
 		},
 		RemoveOrphans: options.Prune,
 	})
@@ -51,6 +42,7 @@ func (service *DockerComposeStackService) Pull(ctx context.Context, name string,
 		ProjectName: name,
 		WorkingDir:  options.WorkingDir,
 		Env:         options.Env,
+		Registries:  registryCredsToAuthConfigs(options.Registries),
 	})
 }
 
@@ -75,4 +67,18 @@ func (service *DockerComposeStackService) Validate(ctx context.Context, name str
 
 func (service *DockerComposeStackService) WaitForStatus(ctx context.Context, name string, status libstack.Status, _ agent.CheckStatusOptions) <-chan libstack.WaitResult {
 	return service.deployer.WaitForStatus(ctx, name, status)
+}
+
+func registryCredsToAuthConfigs(registryCreds []edge.RegistryCredentials) []types.AuthConfig {
+	var authConfigs []types.AuthConfig
+
+	for _, r := range registryCreds {
+		authConfigs = append(authConfigs, types.AuthConfig{
+			Username:      r.Username,
+			Password:      r.Secret,
+			ServerAddress: r.ServerURL,
+		})
+	}
+
+	return authConfigs
 }
