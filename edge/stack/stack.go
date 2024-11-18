@@ -2,6 +2,7 @@ package stack
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
+	"github.com/portainer/agent/edge/aws"
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/yaml"
 	"github.com/portainer/agent/exec"
@@ -637,7 +639,7 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 		DeployerBaseOptions: agent.DeployerBaseOptions{
 			WorkingDir: stack.FileFolder,
 			Env:        envVars,
-			Registries: stack.RegistryCredentials,
+			Registries: manager.ensureRegCreds(stack),
 		},
 	})
 	manager.mu.Lock()
@@ -722,7 +724,7 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 				Namespace:  stack.Namespace,
 				WorkingDir: stack.FileFolder,
 				Env:        envVars,
-				Registries: stack.RegistryCredentials,
+				Registries: manager.ensureRegCreds(stack),
 			},
 		},
 	)
@@ -1006,4 +1008,27 @@ func (manager *StackManager) ResetStacks() {
 	defer manager.mu.Unlock()
 
 	manager.stacks = map[edgeStackID]*edgeStack{}
+}
+
+func (manager *StackManager) ensureRegCreds(stack *edgeStack) []edge.RegistryCredentials {
+	var rcs []edge.RegistryCredentials
+
+	for _, rc := range stack.RegistryCredentials {
+		if manager.awsConfig != nil {
+			log.Info().Msg("using local AWS config for credential lookup")
+
+			ecrCred, err := aws.DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(rc.ServerURL, manager.awsConfig)
+			if err != nil && !errors.Is(err, aws.ErrNoCredentials) {
+				log.Error().Err(err).Str("server_url", rc.ServerURL).Msg("Unable to retrieve ECR credentials")
+
+				continue
+			}
+
+			rc = *ecrCred
+		}
+
+		rcs = append(rcs, rc)
+	}
+
+	return rcs
 }
