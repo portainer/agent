@@ -94,5 +94,5 @@ func (service *DockerSwarmStackService) Remove(ctx context.Context, name string,
 }
 
 func (service *DockerSwarmStackService) GetEdgeStacks(ctx context.Context) ([]agent.EdgeStack, error) {
-	return []agent.EdgeStack{}, nil
+	return nil, nil
 }
