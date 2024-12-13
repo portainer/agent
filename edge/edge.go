@@ -163,16 +163,14 @@ func (manager *Manager) GetEndpointID() portainer.EndpointID {
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency time.Duration) error {
-	err := manager.checkDockerRuntimeConfig()
-	if err != nil {
+	if err := manager.checkDockerRuntimeConfig(); err != nil {
 		return err
 	}
 
 	go func() {
 		ticker := time.NewTicker(runtimeCheckFrequency)
 		for range ticker.C {
-			err := manager.checkDockerRuntimeConfig()
-			if err != nil {
+			if err := manager.checkDockerRuntimeConfig(); err != nil {
 				log.Error().Msg("an error occurred during Docker runtime configuration check")
 			}
 		}
@@ -182,22 +180,24 @@ func (manager *Manager) startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency
 }
 
 func (manager *Manager) startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency time.Duration) error {
-	manager.pollService.Start()
+	if err := manager.stackManager.SetEngineType(stack.EngineTypeKubernetes); err != nil {
+		log.Error().Err(err).Msg("unable to set engine status")
+	} else {
+		manager.pollService.Start()
+	}
 
 	go func() {
 		ticker := time.NewTicker(runtimeCheckFrequency)
 		for range ticker.C {
-			manager.pollService.Start()
-
-			err := manager.stackManager.SetEngineType(stack.EngineTypeKubernetes)
-			if err != nil {
+			if err := manager.stackManager.SetEngineType(stack.EngineTypeKubernetes); err != nil {
 				log.Error().Err(err).Msg("unable to set engine status")
 
 				return
 			}
 
-			err = manager.stackManager.Start()
-			if err != nil {
+			manager.pollService.Start()
+
+			if err := manager.stackManager.Start(); err != nil {
 				log.Error().Err(err).Msg("unable to Start stack manager")
 
 				return
@@ -238,18 +238,17 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 		Bool("leader_node", agentRunsOnLeaderNode).
 		Msg("Docker runtime configuration check")
 
+	engineType := stack.EngineTypeDockerStandalone
+	if agentRunsOnSwarm {
+		engineType = stack.EngineTypeDockerSwarm
+	}
+
 	if !agentRunsOnSwarm || agentRunsOnLeaderNode {
-		engineType := stack.EngineTypeDockerStandalone
-		if agentRunsOnSwarm {
-			engineType = stack.EngineTypeDockerSwarm
+		if err := manager.stackManager.SetEngineType(engineType); err != nil {
+			return err
 		}
 
 		manager.pollService.Start()
-
-		err = manager.stackManager.SetEngineType(engineType)
-		if err != nil {
-			return err
-		}
 
 		return manager.stackManager.Start()
 	}
@@ -263,8 +262,7 @@ func (manager *Manager) checkDockerRuntimeConfig() error {
 func (manager *Manager) CreateEdgeConfig(config *client.EdgeConfig) error {
 	baseDir := filesystem.JoinPaths(agent.HostRoot, config.BaseDir)
 
-	err := filesystem.DecodeDirEntries(config.DirEntries)
-	if err != nil {
+	if err := filesystem.DecodeDirEntries(config.DirEntries); err != nil {
 		return err
 	}
 
