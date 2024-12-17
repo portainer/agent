@@ -36,6 +36,8 @@ type edgeStack struct {
 	PullCount    int
 	PullFinished bool
 	DeployCount  int
+
+	LastAction time.Time
 }
 
 type edgeStackStatus int
@@ -322,6 +324,7 @@ func (manager *StackManager) performActionOnStack() {
 
 	ctx := context.TODO()
 	manager.mu.Lock()
+	stack.LastAction = time.Now()
 	stackName := fmt.Sprintf("edge_%s", stack.Name)
 	stackFileLocation := fmt.Sprintf("%s/%s", stack.FileFolder, stack.FileName)
 	manager.mu.Unlock()
@@ -382,21 +385,29 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 	// if not found look for a stack waiting for status check
 	// if not found, look for the first retry stack and set it to pending
 
+	// Filter out stacks that were used too recently
+	coldStacks := []*edgeStack{}
 	for _, stack := range manager.stacks {
+		if time.Since(stack.LastAction) < queueSleepInterval {
+			continue
+		}
+
+		coldStacks = append(coldStacks, stack)
+	}
+
+	for _, stack := range coldStacks {
 		if stack.Status == StatusPending {
 			return stack
 		}
 	}
 
-	for _, stack := range manager.stacks {
+	for _, stack := range coldStacks {
 		if stack.Status == StatusAwaitingDeployedStatus || stack.Status == StatusAwaitingRemovedStatus {
-			time.Sleep(queueSleepInterval)
-
 			return stack
 		}
 	}
 
-	for _, stack := range manager.stacks {
+	for _, stack := range coldStacks {
 		if stack.Status == StatusRetry {
 			log.Debug().
 				Int("stack_identifier", int(stack.ID)).
@@ -406,11 +417,8 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 		}
 	}
 
-	// Pick the first one randomly
-	for _, stack := range manager.stacks {
+	for _, stack := range coldStacks {
 		if stack.Status == StatusDeployed {
-			time.Sleep(queueSleepInterval)
-
 			return stack
 		}
 	}
@@ -419,13 +427,13 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 }
 
 func (manager *StackManager) checkStackStatus(ctx context.Context, stackName string, stack *edgeStack) error {
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
+
 	log.Debug().
 		Int("stack_identifier", int(stack.ID)).
 		Str("stack_name", stackName).
 		Msg("checking stack status")
-
-	manager.mu.Lock()
-	defer manager.mu.Unlock()
 
 	requiredStatus := libstack.StatusRemoved
 
