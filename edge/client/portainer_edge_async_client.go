@@ -438,7 +438,7 @@ func (client *PortainerAsyncClient) createDockerSnapshot(payload *AsyncRequest, 
 		return
 	}
 
-	if !isDockerSnapshotDiffEmpty(payload.Snapshot.DockerPatch) {
+	if !isDockerSnapshotDiffEmpty(dockerPatch) {
 		currentSnapshot.Docker = nil
 
 		payload.Snapshot.DockerPatch = dockerPatch
