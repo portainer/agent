@@ -123,8 +123,6 @@ func (service *Service) certIsRevokedCRL(cert *x509.Certificate, url string) (re
 		}
 	}
 
-	issuer := service.getIssuer(cert)
-
 	if shouldFetchCRL {
 		var err error
 		crl, err = service.fetchCRL(url)
@@ -135,7 +133,7 @@ func (service *Service) certIsRevokedCRL(cert *x509.Certificate, url string) (re
 		}
 
 		// check CRL signature
-		if issuer != nil {
+		if issuer := service.getIssuer(cert); issuer != nil {
 			err = issuer.CheckCRLSignature(crl)
 			if err != nil {
 				log.Warn().Str("url", url).Err(err).Msg("failed verifying CRL")

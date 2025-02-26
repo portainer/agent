@@ -18,14 +18,16 @@ import (
 )
 
 type edgeHTTPClient struct {
-	httpClient    *http.Client
-	options       *agent.Options
-	revokeService *revoke.Service
-	certMTime     time.Time
-	keyMTime      time.Time
-	caMTime       time.Time
-	mu            sync.RWMutex
-	localAddr     *net.TCPAddr
+	httpClient       *http.Client
+	options          *agent.Options
+	revokeService    *revoke.Service
+	certMTime        time.Time
+	keyMTime         time.Time
+	caMTime          time.Time
+	mu               sync.RWMutex
+	localAddr        *net.TCPAddr
+	verifiedChains   [][]*x509.Certificate // verifiedChains is used to store the verified certificate chains from the mTLS handshake
+	verifiedChainsMu sync.RWMutex
 }
 
 func BuildHTTPClient(timeout float64, options *agent.Options) *edgeHTTPClient {
@@ -53,6 +55,15 @@ func (c *edgeHTTPClient) Do(req *http.Request) (*http.Response, error) {
 		c.mu.Lock()
 		c.httpClient.Transport = c.buildTransport()
 		c.mu.Unlock()
+	}
+
+	// If mTLS is enforced and there is an established connection, check validity of server certificates
+	if !c.options.EdgeInsecurePoll {
+		if err := c.verifyPeerCertificate(nil, c.getVerifiedChains()); err != nil {
+			c.mu.Lock()
+			c.httpClient.Transport = c.buildTransport()
+			c.mu.Unlock()
+		}
 	}
 
 	c.mu.RLock()
@@ -139,22 +150,54 @@ func (c *edgeHTTPClient) buildTransport() *http.Transport {
 		return &cert, err
 	}
 
-	transport.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-		for _, chain := range verifiedChains {
-			for _, cert := range chain {
-				revoked, err := c.revokeService.VerifyCertificate(cert)
-				if err != nil {
-					return err
-				}
+	transport.TLSClientConfig.VerifyPeerCertificate = c.verifyPeerCertificate
 
-				if revoked {
-					return errors.New("certificate has been revoked")
-				}
-			}
-		}
+	transport.TLSClientConfig.VerifyConnection = func(state tls.ConnectionState) error {
+		// Note, this callback is called during the TLS handshake, but after the VerifyPeerCertificate callback.
+		// The state argument contains the verified chains, which are used to check if certificates have been revoked, or expired.
+		c.setVerifiedChains(state.VerifiedChains)
 
 		return nil
 	}
 
 	return transport
+}
+
+// verifyPeerCertificate is a callback that adheres to the tls.Config.VerifyPeerCertificate signature. It is used to
+// verify the peer certificate chain and check if the certificate has been revoked.
+func (c *edgeHTTPClient) verifyPeerCertificate(_ [][]byte, verifiedChains [][]*x509.Certificate) error {
+	for _, chain := range verifiedChains {
+		for _, cert := range chain {
+			revoked, err := c.revokeService.VerifyCertificate(cert)
+			if err != nil {
+				return err
+			}
+
+			if revoked {
+				return errors.New("certificate has been revoked")
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *edgeHTTPClient) setVerifiedChains(chains [][]*x509.Certificate) {
+	c.verifiedChainsMu.Lock()
+	defer c.verifiedChainsMu.Unlock()
+
+	c.verifiedChains = chains
+}
+
+func (c *edgeHTTPClient) getVerifiedChains() [][]*x509.Certificate {
+	c.verifiedChainsMu.RLock()
+	defer c.verifiedChainsMu.RUnlock()
+
+	verifiedChains := make([][]*x509.Certificate, len(c.verifiedChains))
+	for i, chain := range c.verifiedChains {
+		verifiedChains[i] = make([]*x509.Certificate, len(chain))
+		copy(verifiedChains[i], chain)
+	}
+
+	return verifiedChains
 }
