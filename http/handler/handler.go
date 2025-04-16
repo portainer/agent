@@ -46,15 +46,16 @@ type Handler struct {
 // Config represents a server handler configuration
 // used to create a new handler
 type Config struct {
-	SystemService        agent.SystemService
-	ClusterService       agent.ClusterService
-	SignatureService     agent.DigitalSignatureService
-	KubeClient           *kubecli.KubeClient
-	KubernetesDeployer   *exec.KubernetesDeployer
-	EdgeManager          *edge.Manager
-	RuntimeConfiguration *agent.RuntimeConfig
-	UseTLS               bool
-	ContainerPlatform    agent.ContainerPlatform
+	SystemService          agent.SystemService
+	ClusterService         agent.ClusterService
+	SignatureService       agent.DigitalSignatureService
+	KubeClient             *kubecli.KubeClient
+	KubernetesDeployer     *exec.KubernetesDeployer
+	EdgeManager            *edge.Manager
+	RuntimeConfiguration   *agent.RuntimeConfig
+	UseTLS                 bool
+	ContainerPlatform      agent.ContainerPlatform
+	PullLimitCheckDisabled bool
 }
 
 var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
@@ -69,7 +70,7 @@ func NewHandler(config *Config) *Handler {
 		browseHandler:          browse.NewHandler(agentProxy, notaryService),
 		browseHandlerV1:        browse.NewHandlerV1(agentProxy, notaryService),
 		dockerProxyHandler:     docker.NewHandler(config.ClusterService, config.RuntimeConfiguration, notaryService, config.UseTLS),
-		dockerhubHandler:       dockerhub.NewHandler(notaryService),
+		dockerhubHandler:       dockerhub.NewHandler(notaryService, config.PullLimitCheckDisabled),
 		diagnosticsHandler:     diagnostics.NewHandler(config.ContainerPlatform, config.EdgeManager, notaryService),
 		keyHandler:             key.NewHandler(notaryService, config.EdgeManager),
 		kubernetesHandler:      kubernetes.NewHandler(notaryService, config.KubernetesDeployer),

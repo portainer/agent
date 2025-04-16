@@ -68,15 +68,16 @@ func NewAPIServer(config *APIServerConfig) *APIServer {
 // Start starts a new web server by listening on the specified listenAddr.
 func (server *APIServer) Start(edgeMode bool) error {
 	config := &handler.Config{
-		SystemService:        server.systemService,
-		ClusterService:       server.clusterService,
-		SignatureService:     server.signatureService,
-		RuntimeConfiguration: server.agentTags,
-		EdgeManager:          server.edgeManager,
-		KubeClient:           server.kubeClient,
-		KubernetesDeployer:   server.kubernetesDeployer,
-		UseTLS:               !edgeMode,
-		ContainerPlatform:    server.containerPlatform,
+		SystemService:          server.systemService,
+		ClusterService:         server.clusterService,
+		SignatureService:       server.signatureService,
+		RuntimeConfiguration:   server.agentTags,
+		EdgeManager:            server.edgeManager,
+		KubeClient:             server.kubeClient,
+		KubernetesDeployer:     server.kubernetesDeployer,
+		UseTLS:                 !edgeMode,
+		ContainerPlatform:      server.containerPlatform,
+		PullLimitCheckDisabled: server.agentOptions.PullLimitCheckDisabled,
 	}
 
 	httpHandler := handler.NewHandler(config)

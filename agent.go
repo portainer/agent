@@ -81,39 +81,40 @@ type (
 
 	// Options are the options used to start an agent.
 	Options struct {
-		AssetsPath            string
-		AgentServerAddr       string
-		AgentServerPort       string
-		AgentSecurityShutdown time.Duration
-		ClusterAddress        string
-		ClusterProbeTimeout   time.Duration
-		ClusterProbeInterval  time.Duration
-		DataPath              string
-		SharedSecret          string
-		EdgeMode              bool
-		EdgeAsyncMode         bool
-		EdgeKey               string
-		EdgeID                string
-		EdgeUIServerAddr      string
-		EdgeUIServerPort      string
-		EdgeInactivityTimeout string
-		EdgeInsecurePoll      bool
-		EdgeTunnel            bool
-		EdgeTunnelProxy       string
-		EdgeMetaFields        EdgeMetaFields
-		LogLevel              string
-		LogMode               string
-		SSLCert               string
-		SSLKey                string
-		SSLCACert             string
-		CertRetryInterval     time.Duration
-		AWSClientCert         string
-		AWSClientKey          string
-		AWSClientBundle       string
-		AWSRoleARN            string
-		AWSTrustAnchorARN     string
-		AWSProfileARN         string
-		AWSRegion             string
+		AssetsPath             string
+		AgentServerAddr        string
+		AgentServerPort        string
+		AgentSecurityShutdown  time.Duration
+		ClusterAddress         string
+		ClusterProbeTimeout    time.Duration
+		ClusterProbeInterval   time.Duration
+		DataPath               string
+		SharedSecret           string
+		EdgeMode               bool
+		EdgeAsyncMode          bool
+		EdgeKey                string
+		EdgeID                 string
+		EdgeUIServerAddr       string
+		EdgeUIServerPort       string
+		EdgeInactivityTimeout  string
+		EdgeInsecurePoll       bool
+		EdgeTunnel             bool
+		EdgeTunnelProxy        string
+		EdgeMetaFields         EdgeMetaFields
+		LogLevel               string
+		LogMode                string
+		SSLCert                string
+		SSLKey                 string
+		SSLCACert              string
+		CertRetryInterval      time.Duration
+		AWSClientCert          string
+		AWSClientKey           string
+		AWSClientBundle        string
+		AWSRoleARN             string
+		AWSTrustAnchorARN      string
+		AWSProfileARN          string
+		AWSRegion              string
+		PullLimitCheckDisabled bool
 	}
 
 	// PciDevice is the representation of a physical pci device on a host
@@ -318,6 +319,8 @@ const (
 	ComposePathPrefix = "portainer-compose-unpacker"
 	// EdgeIdEnvVarName is the environment variable name of the edge ID for per device edge stack configurations
 	EdgeIdEnvVarName = "PORTAINER_EDGE_ID"
+	// DefaultPullLimitCheckDisabled is the default value for the registry pull limit check
+	DefaultPullLimitCheckDisabled = "false"
 )
 
 const (

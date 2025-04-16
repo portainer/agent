@@ -12,12 +12,14 @@ import (
 // Handler represents an HTTP API Handler for host specific actions
 type Handler struct {
 	*mux.Router
+	PullLimitCheckDisabled bool
 }
 
 // NewHandler returns a new instance of Handler
-func NewHandler(notaryService *security.NotaryService) *Handler {
+func NewHandler(notaryService *security.NotaryService, pullLimitCheckDisabled bool) *Handler {
 	h := &Handler{
-		Router: mux.NewRouter(),
+		Router:                 mux.NewRouter(),
+		PullLimitCheckDisabled: pullLimitCheckDisabled,
 	}
 
 	h.Handle("/dockerhub",

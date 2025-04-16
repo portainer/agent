@@ -49,6 +49,13 @@ func (handler *Handler) dockerhubStatus(w http.ResponseWriter, r *http.Request) 
 		return httperror.BadRequest("Invalid request payload", err)
 	}
 
+	if handler.PullLimitCheckDisabled {
+		return response.JSON(w, &dockerhubStatusResponse{
+			Limit:     10,
+			Remaining: 10,
+		})
+	}
+
 	httpClient := &http.Client{
 		Timeout: time.Second * 3,
 	}

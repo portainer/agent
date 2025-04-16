@@ -11,43 +11,44 @@ import (
 )
 
 const (
-	EnvKeyAgentHost             = "AGENT_HOST"
-	EnvKeyAgentPort             = "AGENT_PORT"
-	EnvKeyClusterAddr           = "AGENT_CLUSTER_ADDR"
-	EnvKeyClusterProbeTimeout   = "AGENT_CLUSTER_PROBE_TIMEOUT"
-	EnvKeyClusterProbeInterval  = "AGENT_CLUSTER_PROBE_INTERVAL"
-	EnvKeyAgentSecret           = "AGENT_SECRET"
-	EnvKeyAgentSecurityShutdown = "AGENT_SECRET_TIMEOUT"
-	EnvKeyAssetsPath            = "ASSETS_PATH"
-	EnvKeyDataPath              = "DATA_PATH"
-	EnvKeyEdge                  = "EDGE"
-	EnvKeyEdgeAsync             = "EDGE_ASYNC"
-	EnvKeyEdgeKey               = "EDGE_KEY"
-	EnvKeyEdgeID                = "EDGE_ID"
-	EnvKeyEdgeServerHost        = "EDGE_SERVER_HOST"
-	EnvKeyEdgeServerPort        = "EDGE_SERVER_PORT"
-	EnvKeyEdgeInactivityTimeout = "EDGE_INACTIVITY_TIMEOUT"
-	EnvKeyEdgeInsecurePoll      = "EDGE_INSECURE_POLL"
-	EnvKeyEdgeTunnel            = "EDGE_TUNNEL"
-	EnvKeyEdgeTunnelHttpProxy   = "HTTP_PROXY"
-	EnvKeyEdgeTunnelHttpsProxy  = "HTTPS_PROXY"
-	EnvKeyLogLevel              = "LOG_LEVEL"
-	EnvKeyLogMode               = "LOG_MODE"
-	EnvKeySSLCert               = "MTLS_SSL_CERT"
-	EnvKeySSLKey                = "MTLS_SSL_KEY"
-	EnvKeySSLCACert             = "MTLS_SSL_CA"
-	EnvKeyCertRetryInterval     = "MTLS_CERT_RETRY_INTERVAL"
-	EnvKeyAWSClientCert         = "AWS_CLIENT_CERT"
-	EnvKeyAWSClientKey          = "AWS_CLIENT_KEY"
-	EnvKeyAWSClientBundle       = "AWS_CLIENT_BUNDLE"
-	EnvKeyAWSRoleARN            = "AWS_ROLE_ARN"
-	EnvKeyAWSTrustAnchorARN     = "AWS_TRUST_ANCHOR_ARN"
-	EnvKeyAWSProfileARN         = "AWS_PROFILE_ARN"
-	EnvKeyAWSRegion             = "AWS_REGION"
-	EnvKeyUpdateID              = "UPDATE_ID"
-	EnvKeyEdgeGroups            = "EDGE_GROUPS"
-	EnvKeyEnvironmentGroup      = "PORTAINER_GROUP"
-	EnvKeyTags                  = "PORTAINER_TAGS"
+	EnvKeyAgentHost              = "AGENT_HOST"
+	EnvKeyAgentPort              = "AGENT_PORT"
+	EnvKeyClusterAddr            = "AGENT_CLUSTER_ADDR"
+	EnvKeyClusterProbeTimeout    = "AGENT_CLUSTER_PROBE_TIMEOUT"
+	EnvKeyClusterProbeInterval   = "AGENT_CLUSTER_PROBE_INTERVAL"
+	EnvKeyAgentSecret            = "AGENT_SECRET"
+	EnvKeyAgentSecurityShutdown  = "AGENT_SECRET_TIMEOUT"
+	EnvKeyAssetsPath             = "ASSETS_PATH"
+	EnvKeyDataPath               = "DATA_PATH"
+	EnvKeyEdge                   = "EDGE"
+	EnvKeyEdgeAsync              = "EDGE_ASYNC"
+	EnvKeyEdgeKey                = "EDGE_KEY"
+	EnvKeyEdgeID                 = "EDGE_ID"
+	EnvKeyEdgeServerHost         = "EDGE_SERVER_HOST"
+	EnvKeyEdgeServerPort         = "EDGE_SERVER_PORT"
+	EnvKeyEdgeInactivityTimeout  = "EDGE_INACTIVITY_TIMEOUT"
+	EnvKeyEdgeInsecurePoll       = "EDGE_INSECURE_POLL"
+	EnvKeyEdgeTunnel             = "EDGE_TUNNEL"
+	EnvKeyEdgeTunnelHttpProxy    = "HTTP_PROXY"
+	EnvKeyEdgeTunnelHttpsProxy   = "HTTPS_PROXY"
+	EnvKeyLogLevel               = "LOG_LEVEL"
+	EnvKeyLogMode                = "LOG_MODE"
+	EnvKeySSLCert                = "MTLS_SSL_CERT"
+	EnvKeySSLKey                 = "MTLS_SSL_KEY"
+	EnvKeySSLCACert              = "MTLS_SSL_CA"
+	EnvKeyCertRetryInterval      = "MTLS_CERT_RETRY_INTERVAL"
+	EnvKeyAWSClientCert          = "AWS_CLIENT_CERT"
+	EnvKeyAWSClientKey           = "AWS_CLIENT_KEY"
+	EnvKeyAWSClientBundle        = "AWS_CLIENT_BUNDLE"
+	EnvKeyAWSRoleARN             = "AWS_ROLE_ARN"
+	EnvKeyAWSTrustAnchorARN      = "AWS_TRUST_ANCHOR_ARN"
+	EnvKeyAWSProfileARN          = "AWS_PROFILE_ARN"
+	EnvKeyAWSRegion              = "AWS_REGION"
+	EnvKeyUpdateID               = "UPDATE_ID"
+	EnvKeyEdgeGroups             = "EDGE_GROUPS"
+	EnvKeyEnvironmentGroup       = "PORTAINER_GROUP"
+	EnvKeyTags                   = "PORTAINER_TAGS"
+	EnvKeyPullLimitCheckDisabled = "PULL_LIMIT_CHECK_DISABLED"
 )
 
 type EnvOptionParser struct{}
@@ -57,18 +58,19 @@ func NewEnvOptionParser() *EnvOptionParser {
 }
 
 var (
-	fAssetsPath            = kingpin.Flag("assets", EnvKeyAssetsPath+" path to the assets folder").Envar(EnvKeyAssetsPath).Default(agent.DefaultAssetsPath).String()
-	fAgentServerAddr       = kingpin.Flag("host", EnvKeyAgentHost+" address on which the agent API will be exposed").Envar(EnvKeyAgentHost).Default(agent.DefaultAgentAddr).IP()
-	fAgentServerPort       = kingpin.Flag("port", EnvKeyAgentPort+" port on which the agent API will be exposed").Envar(EnvKeyAgentPort).Default(agent.DefaultAgentPort).Int()
-	fAgentSecurityShutdown = kingpin.Flag("secret-timeout", EnvKeyAgentSecurityShutdown+" the duration after which the agent will be shutdown if not associated or secured by AGENT_SECRET. (defaults to 72h)").Envar(EnvKeyAgentSecurityShutdown).Default(agent.DefaultAgentSecurityShutdown).Duration()
-	fClusterAddress        = kingpin.Flag("cluster-addr", EnvKeyClusterAddr+" address (in the IP:PORT format) of an existing agent to join the agent cluster. When deploying the agent as a Docker Swarm service, we can leverage the internal Docker DNS to automatically join existing agents or form a cluster by using tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT> as the address").Envar(EnvKeyClusterAddr).String()
-	fClusterProbeTimeout   = kingpin.Flag("agent-cluster-timeout", EnvKeyClusterProbeTimeout+" timeout interval for receiving agent member probe responses (only change this setting if you know what you're doing)").Envar(EnvKeyClusterProbeTimeout).Default(agent.DefaultClusterProbeTimeout).Duration()
-	fClusterProbeInterval  = kingpin.Flag("agent-cluster-interval", EnvKeyClusterProbeInterval+" interval for repeating failed agent member probe (only change this setting if you know what you're doing)").Envar(EnvKeyClusterProbeInterval).Default(agent.DefaultClusterProbeInterval).Duration()
-	fDataPath              = kingpin.Flag("data", EnvKeyDataPath+" path to the data folder").Envar(EnvKeyDataPath).Default(agent.DefaultDataPath).String()
-	fSharedSecret          = kingpin.Flag("secret", EnvKeyAgentSecret+" shared secret used in the signature verification process").Envar(EnvKeyAgentSecret).String()
-	fLogLevel              = kingpin.Flag("log-level", EnvKeyLogLevel+" defines the log output verbosity (default to INFO)").Envar(EnvKeyLogLevel).Default(agent.DefaultLogLevel).Enum("ERROR", "WARN", "INFO", "DEBUG")
-	fLogMode               = kingpin.Flag("log-mode", EnvKeyLogMode+" defines the logging output mode").Envar(EnvKeyLogMode).Default("PRETTY").Enum("NOCOLOR", "PRETTY", "JSON")
-	fUpdateID              = kingpin.Flag("update-id", "the edge update identifier that started this agent").Envar(EnvKeyUpdateID).Int()
+	fAssetsPath             = kingpin.Flag("assets", EnvKeyAssetsPath+" path to the assets folder").Envar(EnvKeyAssetsPath).Default(agent.DefaultAssetsPath).String()
+	fAgentServerAddr        = kingpin.Flag("host", EnvKeyAgentHost+" address on which the agent API will be exposed").Envar(EnvKeyAgentHost).Default(agent.DefaultAgentAddr).IP()
+	fAgentServerPort        = kingpin.Flag("port", EnvKeyAgentPort+" port on which the agent API will be exposed").Envar(EnvKeyAgentPort).Default(agent.DefaultAgentPort).Int()
+	fAgentSecurityShutdown  = kingpin.Flag("secret-timeout", EnvKeyAgentSecurityShutdown+" the duration after which the agent will be shutdown if not associated or secured by AGENT_SECRET. (defaults to 72h)").Envar(EnvKeyAgentSecurityShutdown).Default(agent.DefaultAgentSecurityShutdown).Duration()
+	fClusterAddress         = kingpin.Flag("cluster-addr", EnvKeyClusterAddr+" address (in the IP:PORT format) of an existing agent to join the agent cluster. When deploying the agent as a Docker Swarm service, we can leverage the internal Docker DNS to automatically join existing agents or form a cluster by using tasks.<AGENT_SERVICE_NAME>:<AGENT_PORT> as the address").Envar(EnvKeyClusterAddr).String()
+	fClusterProbeTimeout    = kingpin.Flag("agent-cluster-timeout", EnvKeyClusterProbeTimeout+" timeout interval for receiving agent member probe responses (only change this setting if you know what you're doing)").Envar(EnvKeyClusterProbeTimeout).Default(agent.DefaultClusterProbeTimeout).Duration()
+	fClusterProbeInterval   = kingpin.Flag("agent-cluster-interval", EnvKeyClusterProbeInterval+" interval for repeating failed agent member probe (only change this setting if you know what you're doing)").Envar(EnvKeyClusterProbeInterval).Default(agent.DefaultClusterProbeInterval).Duration()
+	fDataPath               = kingpin.Flag("data", EnvKeyDataPath+" path to the data folder").Envar(EnvKeyDataPath).Default(agent.DefaultDataPath).String()
+	fSharedSecret           = kingpin.Flag("secret", EnvKeyAgentSecret+" shared secret used in the signature verification process").Envar(EnvKeyAgentSecret).String()
+	fLogLevel               = kingpin.Flag("log-level", EnvKeyLogLevel+" defines the log output verbosity (default to INFO)").Envar(EnvKeyLogLevel).Default(agent.DefaultLogLevel).Enum("ERROR", "WARN", "INFO", "DEBUG")
+	fLogMode                = kingpin.Flag("log-mode", EnvKeyLogMode+" defines the logging output mode").Envar(EnvKeyLogMode).Default("PRETTY").Enum("NOCOLOR", "PRETTY", "JSON")
+	fUpdateID               = kingpin.Flag("update-id", "the edge update identifier that started this agent").Envar(EnvKeyUpdateID).Int()
+	fPullLimitCheckDisabled = kingpin.Flag("pull-limit-check-disabled", "Pull limit check").Envar(EnvKeyPullLimitCheckDisabled).Default(agent.DefaultPullLimitCheckDisabled).Bool()
 
 	// Edge mode
 	fEdgeMode              = kingpin.Flag("edge", EnvKeyEdge+" enable Edge mode. Disabled by default, set to 1 or true to enable it").Envar(EnvKeyEdge).Bool()
@@ -166,6 +168,7 @@ func (parser *EnvOptionParser) Options() (*agent.Options, error) {
 			TagsIDs:            tagsIDs,
 			UpdateID:           *fUpdateID,
 		},
+		PullLimitCheckDisabled: *fPullLimitCheckDisabled,
 	}, nil
 }
 
