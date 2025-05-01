@@ -3,7 +3,9 @@ package stack
 import (
 	"context"
 
+	"github.com/portainer/agent"
 	"github.com/portainer/agent/deployer"
+	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
 	"github.com/portainer/portainer/api/filesystem"
 	"github.com/rs/zerolog/log"
@@ -78,6 +80,8 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 		}
 	}
 
+	edgeIdPair := portainer.Pair{Name: agent.EdgeIdEnvVarName, Value: manager.edgeID}
+
 	stack.Name = stackPayload.Name
 	stack.RegistryCredentials = stackPayload.RegistryCredentials
 
@@ -97,7 +101,7 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 	stack.FilesystemPath = stackPayload.FilesystemPath
 	stack.FileName = stackPayload.EntryFileName
 	stack.FileFolder = getStackFileFolder(stack)
-	stack.EnvVars = stackPayload.EnvVars
+	stack.EnvVars = append(stackPayload.EnvVars, edgeIdPair)
 	stack.Namespace = stackPayload.Namespace
 
 	if err := filesystem.DecodeDirEntries(stackPayload.DirEntries); err != nil {
