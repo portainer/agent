@@ -219,7 +219,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "2.29.0"
+	Version = "2.30.0"
 )
 
 const (
