@@ -247,7 +247,12 @@ func (manager *StackManager) performActionOnStack() {
 			return
 		}
 
-		if IsRelativePathStack(stack) {
+		// Copying the stack files to the host will delete all existing files in the
+		// bind source folder. However, container recreation is not guaranteed during
+		// this process, so changes to the bind source may not be reflected in the container.
+		// Therefore, this operation should only be performed if the stack is new
+		// or if the re-pull image flag is explicitly set.
+		if IsRelativePathStack(stack) && (stack.Action != actionUpdate || stack.RePullImage) {
 			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
 
 			if err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName, manager.assetsPath); err != nil {
