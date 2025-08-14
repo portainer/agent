@@ -7,12 +7,15 @@ import (
 
 	"github.com/portainer/agent"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/pkg/fips"
 
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 )
 
 func Test_executeAsyncRequestCompression(t *testing.T) {
+	fips.InitFIPS(false)
+
 	client := &PortainerAsyncClient{
 		getEndpointIDFn: func() portainer.EndpointID { return 1 },
 		httpClient:      BuildHTTPClient(30, &agent.Options{}),
