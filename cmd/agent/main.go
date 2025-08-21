@@ -77,6 +77,9 @@ func main() {
 	ctx := context.Background()
 
 	fips.InitFIPS(options.FIPSMode)
+	if fips.FIPSMode() {
+		log.Info().Msg("Starting with FIPS mode enabled")
+	}
 
 	// !Generic
 
