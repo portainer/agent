@@ -27,9 +27,9 @@
 
 CURRENT=$(pwd)
 HOST=${1:-"portainer.p1.alho.st"}
-CERTDIR=~/.config/portainer/certs/
+CERTDIR=/tmp/portainer_fips/certs/
 
-CUSTOM_IPS='IP:192.168.1.20'
+CUSTOM_IPS='IP:192.168.1.21'
 
 declare -A _=(
   [ca]='ca'
@@ -75,7 +75,7 @@ gen_ca() {
 }
 
 gen_server_cert() {
-  DEFAULT_IPS='IP:10.0.0.200,IP:127.0.0.1,IP:10.10.10.189'
+  DEFAULT_IPS='IP:127.0.0.1'
 
   info " > > > Generate the Portainer server cert < < <"
   openssl genrsa -out ${server[key]} 4096
@@ -130,7 +130,9 @@ count=${1:-'1'}
 
 re='^[0-9]+$'
 if ! [[ $count =~ $re ]]; then
-  echo "Usage: $(basename $0) [COUNT]"
+  echo "Usage: $(basename $0) [HOST] [COUNT]"
+  echo "       - HOST:  host for the TLS cert"
+  echo "                defaults to 'portainer.p1.alho.st'"
   echo "       - COUNT: number of clients certs to generate"
   echo "                defaults to 1"
   exit 1
