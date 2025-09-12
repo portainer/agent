@@ -6,9 +6,9 @@ The Portainer Agent is a workaround for a Docker API limitation when using the D
 
 Docker Swarm mode introduces a concept which is the clustering of Docker nodes. It also adds services, tasks, configs and secrets which are cluster-aware resources. Cluster-aware means that you can query for a list of services or inspect a task inside any node on the cluster, as long as you’re executing the Docker API request on a manager node.
 
-Containers, networks, volumes and images are node specific resources, not cluster-aware. When you, for example, want to list all the volumes available on a node inside your cluster, you will need to send a query to that specific node.
+Containers, networks, volumes and images are node-specific resources, not cluster-aware. When you, for example, want to list all the volumes available on a node inside your cluster, you will need to send a query to that specific node.
 
-The purpose of the agent aims to allows previously node specific resources to be cluster-aware, all while keeping the Docker API request format. As aforementioned, this means that you only need to execute one Docker API request to retrieve all these resources from every node inside the cluster. In all bringing a better Docker user experience when managing Swarm clusters.
+The purpose of the agent is to allow previously node-specific resources to be cluster-aware, all while keeping the Docker API request format. As aforementioned, this means that you only need to execute one Docker API request to retrieve all these resources from every node inside the cluster. In all bringing a better Docker user experience when managing Swarm clusters.
 
 ## Security
 
@@ -17,17 +17,17 @@ Here at Portainer, we believe in [responsible disclosure](https://en.wikipedia.o
 ## Technical details
 
 The Portainer agent is basically a cluster of Docker API proxies. Deployed inside a Swarm cluster on each node, it allows the
-redirection (proxy) of a Docker API request on any specific node as well as the aggregration of the response of multiple nodes.
+redirection (proxy) of a Docker API request on any specific node as well as the aggregation of the response of multiple nodes.
 
-At startup, the agent will communicate with the Docker node it is deployed on via the Unix socket/Windows named pipe to retrieve information about the node (name, IP address, role in the Swarm cluster). This data will be shared when the agent will register into the agent cluster.
+At startup, the agent will communicate with the Docker node it is deployed on via the Unix socket/Windows named pipe to retrieve information about the node (name, IP address, role in the Swarm cluster). This data will be shared when the agent registers into the agent cluster.
 
 ### Agent cluster
 
-This implementation is using *serf* to form a cluster over a network, each agent requires an address where it will advertise its
+This implementation uses *serf* to form a cluster over a network, each agent requires an address where it will advertise its
 ability to be part of a cluster and a join address where it will be able to reach other agents.
 
 The agent retrieves the IP address it can use to create
-a cluster by inspecting the Docker networks associated to the agent container. If multiple networks are available, it will pickup the first network available and retrieve the IP address inside this network.
+a cluster by inspecting the Docker networks associated with the agent container. If multiple networks are available, it will pick up the first network available and retrieve the IP address inside this network.
 
 Note: Be careful when deploying the agent to not deploy it inside the Swarm ingress network (by not using `mode=host` when exposing ports). This could lead to the agent being unable to create a cluster correctly, if picking the IP address inside the ingress network.
 
@@ -60,14 +60,14 @@ Some requests are specifically marked to be executed against the whole cluster:
 * `GET /networks`
 
 The agent handles these requests using the same header mechanism. If no `X-PortainerAgent-Target` is found, it will automatically execute
-the request against each node in the cluster in a concurrent way. Behind the scene, it retrieves the IP address of each node, create a copy of the request, decorate each request with the `X-PortainerAgent-Target` header and aggregate the response of each request into a single one (reproducing the Docker API response format).
+the request against each node in the cluster in a concurrent way. Behind the scene, it retrieves the IP address of each node, creates a copy of the request, decorates each request with the `X-PortainerAgent-Target` header and aggregates the response of each request into a single one (reproducing the Docker API response format).
 
 
 ### Docker API compliance
 
 When communicating with a Portainer agent instead of using the Docker API directly, the only difference is the possibility to add the `X-PortainerAgent-Target` header to each request to be able to execute some actions against a specific node in the cluster.
 
-The fact that the agent final proxy target is always the Docker API means that we keep the Docker original response format. The only difference in the response is that the agent will automatically add the `Portainer-Agent` header to each response using the version of the Portainer agent as value.
+The fact that the agent's final proxy target is always the Docker API means that we keep the Docker original response format. The only difference in the response is that the agent will automatically add the `Portainer-Agent` header to each response using the version of the Portainer agent as value.
 
 ### Agent specific API
 
@@ -75,16 +75,16 @@ The agent also exposes the following endpoints:
 
 * `/agents` (*GET*): List all the available agents in the cluster
 * `/browse/ls` (*GET*): List the files available under a specific path on the filesystem
-* `/browse/get` (*GET*): Retrieve a file available under a specific path on the filesytem
-* `/browse/delete` (*DELETE*): Delete an existing file under a specific path on the filesytem
-* `/browse/rename` (*PUT*): Rename an existing file under a specific path on the filesytem
-* `/browse/put` (*POST*): Upload a file under a specific path on the filesytem
+* `/browse/get` (*GET*): Retrieve a file available under a specific path on the filesystem
+* `/browse/delete` (*DELETE*): Delete an existing file under a specific path on the filesystem
+* `/browse/rename` (*PUT*): Rename an existing file under a specific path on the filesystem
+* `/browse/put` (*POST*): Upload a file under a specific path on the filesystem
 * `/host/info` (*GET*): Get information about the underlying host system
-* `/ping` (*GET*): Returns a 204. Public endpoint that do not require any form of authentication
+* `/ping` (*GET*): Returns a 204. Public endpoint that does not require any form of authentication
 * `/key` (*GET*): Returns the Edge key associated to the agent **only available when agent is started in Edge mode**
 * `/key` (*POST*): Set the Edge key on this agent **only available when agent is started in Edge mode**
-* `/websocket/attach` (*GET*): Websocket attach endpoint (for container console usage)
-* `/websocket/exec` (*GET*): Websocket exec endpoint (for container console usage)
+* `/websocket/attach` (*GET*): WebSocket attach endpoint (for container console usage)
+* `/websocket/exec` (*GET*): WebSocket exec endpoint (for container console usage)
 
 Note: The `/browse/*` endpoints can be used to manage a filesystem. By default, it allows manipulation of files in Docker volumes (available under `/var/run/docker/volumes` when bind-mounted in the agent container) but can also manipulate files anywhere on the filesystem. 
 
@@ -111,7 +111,7 @@ Upon startup, the agent will try to retrieve an existing Edge key in the followi
 * from the filesystem (see the Edge key section below for more information about key persistence on disk)
 * from the cluster (if joining an existing Edge agent cluster)
 
-If no Edge key was retrieved, the agent will start a HTTP server where it will expose a UI to associate an Edge key. After associating a key via the UI, the UI server will shutdown.
+If no Edge key is retrieved, the agent will start an HTTP server where it will expose a UI to associate an Edge key. After associating a key via the UI, the UI server will shutdown.
 
 For security reasons, the Edge server UI will shutdown after 15 minutes if no key has been specified. The agent will require a restart in order
 to access the Edge UI again.
@@ -190,7 +190,7 @@ The following protocol is used between a Portainer instance and an agent:
 
 For each HTTP request made from the Portainer instance to the agent:
 
-1. The Portainer instance generates a signature using its private key. It encodes this signature in `base64` format (without the padding characters) and add it to the `X-PortainerAgent-Signature` header of the request
+1. The Portainer instance generates a signature using its private key. It encodes this signature in `base64` format (without the padding characters) and adds it to the `X-PortainerAgent-Signature` header of the request
 2. The Portainer instance encodes its public key in hexadecimal and adds it the `X-PortainerAgent-PublicKey` header of the request
 
 
@@ -207,7 +207,7 @@ The signature verification process can follow two different paths based on how t
 
 By default, the agent will wait for a valid request from a Portainer instance and automatically associate the first Portainer instance that communicates with it by registering the public key found in the `X-PortainerAgent-PublicKey` header inside memory.
 
-During the association process, the agent will first decode the specified public key from hexadecimal and then parse the public key. Only if these steps are successfull then the key will be associated to the agent.
+During the association process, the agent will first decode the specified public key from hexadecimal and then parse the public key. Only if these steps are successful then the key will be associated to the agent.
 
 Once a Portainer instance is registered by the agent, the agent will not try to decode/parse the public key associated to a request anymore and will assume that only signatures associated to this public key are authorized (preventing any other Portainer instance to communicate with this agent).
 
@@ -246,7 +246,7 @@ we can leverage the internal Docker DNS to automatically join existing agents or
 * EDGE_SERVER_HOST (*optional*): address on which the Edge UI will be exposed (default to `0.0.0.0`)
 * EDGE_SERVER_PORT (*optional*): port on which the Edge UI will be exposed (default to `80`).
 * EDGE_INACTIVITY_TIMEOUT (*optional*): timeout used by the agent to close the reverse tunnel after inactivity (default to `5m`)
-* EDGE_INSECURE_POLL (*optional*): enable this option if you need the agent to poll a HTTPS Portainer instance with self-signed certificates. Disabled by default, set to `1` to enable it
+* EDGE_INSECURE_POLL (*optional*): enable this option if you need the agent to poll an HTTPS Portainer instance with self-signed certificates. Disabled by default, set to `1` to enable it
 
 
 For more information about deployment scenarios, see: https://docs.portainer.io/start/install/agent
