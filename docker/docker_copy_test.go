@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
+	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/pkg/fips"
 	"github.com/stretchr/testify/require"
 )
@@ -71,7 +72,7 @@ func TestCreateContainerConfig(t *testing.T) {
 			fips: false,
 			expectedConfig: &container.Config{
 				Cmd:   []string{"remove-dir", "test-dir"},
-				Image: "portainer/compose-unpacker:2.33.0-rc1",
+				Image: "portainer/compose-unpacker:" + portainer.APIVersion,
 			},
 		},
 		{
@@ -80,7 +81,7 @@ func TestCreateContainerConfig(t *testing.T) {
 			fips: true,
 			expectedConfig: &container.Config{
 				Cmd:   []string{"remove-dir", "test-dir"},
-				Image: "portainer/compose-unpacker:2.33.0-rc1",
+				Image: "portainer/compose-unpacker:" + portainer.APIVersion,
 				Env:   []string{"GODEBUG=fips140=on"},
 			},
 		},
