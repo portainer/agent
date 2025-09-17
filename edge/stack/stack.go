@@ -138,6 +138,7 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 	stack.RetryPeriod = stackPayload.RetryPeriod
 	stack.EnvVars = append(stackPayload.EnvVars, edgeIdPair)
 	stack.SupportRelativePath = stackPayload.SupportRelativePath
+	stack.AlwaysCloneGitRepoForRelativePath = stackPayload.AlwaysCloneGitRepoForRelativePath
 	stack.FilesystemPath = stackPayload.FilesystemPath
 	stack.FileName = stackPayload.EntryFileName
 	stack.FileFolder = getStackFileFolder(stack)
@@ -214,7 +215,7 @@ func (manager *StackManager) performActionOnStack() {
 		// in the next status check.
 		stack.Status = StatusDeployed
 	}
-	
+
 	manager.mu.Unlock()
 
 	log.Debug().Str("name", stackName).Str("status", stack.Status.String()).Str("action", stack.Action.String()).Msg("evaluating stack")
@@ -251,7 +252,7 @@ func (manager *StackManager) performActionOnStack() {
 		// this process, so changes to the bind source may not be reflected in the container.
 		// Therefore, this operation should only be performed if the stack is new
 		// or if the re-pull image flag is explicitly set.
-		if IsRelativePathStack(stack) && (stack.Action != actionUpdate || stack.RePullImage) {
+		if IsRelativePathStack(stack) && (stack.Action == actionDeploy || stack.RePullImage || stack.AlwaysCloneGitRepoForRelativePath) {
 			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
 
 			if err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName, manager.assetsPath); err != nil {

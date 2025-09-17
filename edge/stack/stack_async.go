@@ -98,6 +98,7 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 	stack.DeployerOptionsPayload = stackPayload.DeployerOptionsPayload
 
 	stack.SupportRelativePath = stackPayload.SupportRelativePath
+	stack.AlwaysCloneGitRepoForRelativePath = stackPayload.AlwaysCloneGitRepoForRelativePath
 	stack.FilesystemPath = stackPayload.FilesystemPath
 	stack.FileName = stackPayload.EntryFileName
 	stack.FileFolder = getStackFileFolder(stack)
