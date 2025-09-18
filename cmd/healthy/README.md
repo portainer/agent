@@ -1,6 +1,6 @@
 # Healthy
 
-`healty` is a lightweight CLI tool used to check the health status of a Portainer agent instance.
+`healthy` is a lightweight CLI tool used to check the health status of a Portainer agent instance.
 
 It performs a health check using the agent's internal logic and exits with a corresponding status code. This makes it ideal for use in automation, container health checks, and update orchestrators such as `portainer-updater`.
 
@@ -17,7 +17,7 @@ All log output is structured (JSON format) using [Zerolog](https://github.com/rs
 
 ### Standalone
 ```sh
-healty
+healthy
 ```
 ### In Docker
 ```sh
