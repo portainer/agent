@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/portainer/pkg/fips"
 	"github.com/portainer/portainer/pkg/librand"
 
 	"github.com/docker/docker/api/types/container"
@@ -28,10 +29,16 @@ func RemoveGitStackFromHost(src, dst string, stackID int, stackName string) erro
 	return removeAndCopy(src, dst, stackID, stackName, "", false)
 }
 
-func buildRemoveDirCmd(src, dst string) []string {
-	gitStackPath := filepath.Join(dst, filepath.Base(src))
+func buildRemoveDirCmd(src, dst string, fips bool) []string {
+	var cmd []string
+	if fips {
+		cmd = append(cmd, "--fips-mode")
+	}
 
-	return []string{"remove-dir", gitStackPath}
+	gitStackPath := filepath.Join(dst, filepath.Base(src))
+	cmd = append(cmd, []string{"remove-dir", gitStackPath}...)
+
+	return cmd
 }
 
 // removeAndCopy removes the copy of src folder on the host,
@@ -41,9 +48,11 @@ func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, ne
 		return err
 	}
 
-	removeDirCmd := buildRemoveDirCmd(src, dst)
+	fips := fips.FIPSMode()
 
-	unpackerContainer, err := createUnpackerContainer(stackID, stackName, dst, removeDirCmd)
+	removeDirCmd := buildRemoveDirCmd(src, dst, fips)
+
+	unpackerContainer, err := createUnpackerContainer(stackID, stackName, dst, removeDirCmd, fips)
 	if err != nil {
 		return err
 	}
@@ -104,16 +113,28 @@ func pullUnpackerImage() error {
 	return nil
 }
 
-func createUnpackerContainer(stackID int, stackName, composeDestination string, cmd []string) (container.CreateResponse, error) {
+func createContainerConfig(cmd []string, fips bool) *container.Config {
 	image := getUnpackerImage()
 
+	containerConfig := &container.Config{
+		Image: image,
+		Cmd:   cmd,
+	}
+
+	if fips {
+		containerConfig.Env = []string{"GODEBUG=fips140=on"}
+	}
+
+	return containerConfig
+}
+
+func createUnpackerContainer(stackID int, stackName, composeDestination string, cmd []string, fips bool) (container.CreateResponse, error) {
 	containerName := "portainer-unpacker-" + strconv.Itoa(stackID) + "-" + stackName + "-" + strconv.Itoa(librand.Intn(100))
 
+	containerConfig := createContainerConfig(cmd, fips)
+
 	return ContainerCreate(
-		&container.Config{
-			Image: image,
-			Cmd:   cmd,
-		},
+		containerConfig,
 		&container.HostConfig{
 			Binds: []string{
 				fmt.Sprintf("%s:%s", composeDestination, composeDestination),
