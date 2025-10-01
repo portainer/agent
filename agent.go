@@ -202,6 +202,7 @@ type (
 		CreateTunnel(config TunnelConfig) error
 		CloseTunnel() error
 		IsTunnelOpen() bool
+		CertsNeedRotation() bool
 	}
 
 	// Scheduler is used to manage schedules

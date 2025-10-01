@@ -19,8 +19,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const tunnelActivityCheckInterval = 30 * time.Second
-const globalKeyInUse = 0
+const (
+	tunnelActivityCheckInterval = 30 * time.Second
+	globalKeyInUse              = 0
+)
 
 // PollService is used to poll a Portainer instance to retrieve the status associated to the Edge endpoint.
 // It is responsible for managing the state of the reverse tunnel (open and closing after inactivity).
@@ -105,7 +107,11 @@ func newPollService(edgeManager *Manager, edgeStackManager *stack.StackManager, 
 	}
 
 	if config.TunnelCapability {
-		pollService.tunnelClient = chisel.NewClient()
+		pollService.tunnelClient = chisel.NewClient(
+			edgeManager.agentOptions.SSLCACert,
+			edgeManager.agentOptions.SSLCert,
+			edgeManager.agentOptions.SSLKey,
+		)
 	}
 
 	if edgeAsyncMode {
@@ -192,6 +198,17 @@ func (service *PollService) startActivityMonitoringLoop() {
 			log.Debug().
 				Float64("tunnel_last_activity_seconds", elapsed.Seconds()).
 				Msg("tunnel activity monitoring")
+
+			if service.tunnelClient.IsTunnelOpen() && service.tunnelClient.CertsNeedRotation() {
+				log.Info().
+					Float64("tunnel_last_activity_seconds", elapsed.Seconds()).
+					Msg("shutting down tunnel to rotate certificates")
+
+				err := service.tunnelClient.CloseTunnel()
+				if err != nil {
+					log.Error().Err(err).Msg("unable to shutdown tunnel")
+				}
+			}
 
 			if service.tunnelClient != nil && service.tunnelClient.IsTunnelOpen() && elapsed.Seconds() > service.inactivityTimeout.Seconds() {
 				log.Info().

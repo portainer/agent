@@ -33,6 +33,8 @@ linters:
           msg: Use crypto.CreateTLSConfiguration() instead
         - pattern: ^tls\.Config\.(InsecureSkipVerify|MinVersion|MaxVersion|CipherSuites|CurvePreferences)$
           msg: Do not set this field directly, use crypto.CreateTLSConfiguration() instead
+        - pattern: ^(chclient\.TLSConfig\.)?SkipVerify$
+          msg: "Not allowed because of FIPS mode"
       analyze-types: true
   exclusions:
     generated: lax
