@@ -39,34 +39,27 @@ func NewEdgeRegistryHandler(edgeManager *edge.Manager, awsConfig *agent.AWSConfi
 func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *httperror.HandlerError {
 	stackManager := handler.EdgeManager.GetStackManager()
 	if stackManager == nil {
-		return httperror.InternalServerError("Unable to retrieve stack manager", errors.New("Stack manager is not available"))
+		return httperror.InternalServerError("Unable to retrieve stack manager", errors.New("stack manager is not available"))
 	}
 
 	serverUrl, _ := request.RetrieveQueryParameter(r, "serverurl", false)
 
-	log.Info().Str("server_url", serverUrl).Msg("looking up credentials")
+	log.Info().Str("server_url", r.URL.Query().Get("serverurl")).Msg("registry lookup handler looking up credentials")
 
 	if serverUrl == "" {
 		return response.Empty(rw)
 	}
 
-	// We could technically filter out non ECR registry URLs here and not apply this logic to all the registries
-	// The cost of going through this logic for all server/registries is to authenticate against IAM RA for each registry
-	// We could filter non ECR registries based on a URL pattern: https://docs.aws.amazon.com/AmazonECR/latest/userguide/Registries.html
-	// BUT, to keep support for DNS aliases with ECR registries (e.g. mapping a custom domain such as myregistry.portainer.io to an ECR registry) I've decided to avoid the filter
 	if handler.awsConfig != nil {
-		log.Info().Msg("using local AWS config for credential lookup")
-
-		c, err := aws.DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, handler.awsConfig)
-		if err != nil && !errors.Is(err, aws.ErrNoCredentials) {
-			return httperror.InternalServerError("Unable to retrieve credentials", err)
-		}
-
-		// Only write credentials if credentials are found
-		// For non ECR registries, credentials will be set to nil
-		// Therefore we want to fallback to the default credential lookup
-		if c != nil {
-			return response.JSON(rw, c)
+		ecrCred, err := aws.DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, handler.awsConfig)
+		if err == nil && ecrCred != nil {
+			log.Info().Str("registry_server_url", serverUrl).Msg("lookup handler successfully fetched ECR credentials for private ECR repository")
+			return response.JSON(rw, ecrCred)
+		} else if errors.Is(err, aws.ErrNotPrivateECRRepo) {
+			log.Info().Str("registry_server_url", serverUrl).Msg("lookup handler repository url is not a private ECR repository, continuing")
+		} else {
+			log.Error().Err(err).Str("registry_server_url", serverUrl).Msg("lookup handler failed to fetch ECR credentials for private ECR repository")
+			return httperror.InternalServerError("Unable to retrieve temporary ECR credentials", err)
 		}
 	}
 
@@ -93,10 +86,12 @@ func (handler *Handler) LookupHandler(rw http.ResponseWriter, r *http.Request) *
 
 	for _, c := range credentials {
 		if key == c.ServerURL {
+			log.Info().Str("registry_server_url", c.ServerURL).Msg("lookup handler found credentials")
 			return response.JSON(rw, c)
 		}
 	}
 
+	log.Info().Str("registry_server_url", key).Msg("lookup handler no credentials found")
 	return response.Empty(rw)
 }
 

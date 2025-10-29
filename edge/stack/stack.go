@@ -486,13 +486,23 @@ func (manager *StackManager) pullImages(ctx context.Context, stack *edgeStack, s
 
 	// Unlock so GetEdgeRegistryCredentials() can acquire the lock if called
 	manager.mu.Unlock()
-	err := manager.deployer.Pull(ctx, stackName, []string{stackFileLocation}, deployer.PullOptions{
-		DeployerBaseOptions: deployer.DeployerBaseOptions{
-			WorkingDir: stack.FileFolder,
-			Env:        envVars,
-			Registries: manager.ensureRegCreds(stack),
-		},
-	})
+
+	regCreds, err := manager.ensureRegCreds(stack)
+	if err != nil {
+		// failing to ensure credentials (currently only happens if IAMRA ECR
+		// login is required but fails) will fail deployment, but allow standard
+		// retries to continue
+		log.Error().Err(err).Msg("unable to ensure registry credentials")
+	} else {
+		err = manager.deployer.Pull(ctx, stackName, []string{stackFileLocation}, deployer.PullOptions{
+			DeployerBaseOptions: deployer.DeployerBaseOptions{
+				WorkingDir: stack.FileFolder,
+				Env:        envVars,
+				Registries: regCreds,
+			},
+		})
+	}
+
 	manager.mu.Lock()
 
 	if err != nil {
@@ -569,19 +579,28 @@ func (manager *StackManager) deployStack(ctx context.Context, stack *edgeStack, 
 
 	// Unlock so GetEdgeRegistryCredentials() can acquire the lock if called
 	manager.mu.Unlock()
-	err := manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
-		deployer.DeployOptions{
-			DeployerBaseOptions: deployer.DeployerBaseOptions{
-				Namespace:  stack.Namespace,
-				WorkingDir: stack.FileFolder,
-				Env:        envVars,
-				Registries: manager.ensureRegCreds(stack),
+
+	regCreds, err := manager.ensureRegCreds(stack)
+	if err != nil {
+		// failing to ensure credentials (currently only happens if IAMRA ECR
+		// login is required but fails) will fail deployment, but allow standard
+		// retries to continue
+		log.Error().Err(err).Msg("unable to ensure registry credentials")
+	} else {
+		err = manager.deployer.Deploy(ctx, stackName, []string{stackFileLocation},
+			deployer.DeployOptions{
+				DeployerBaseOptions: deployer.DeployerBaseOptions{
+					Namespace:  stack.Namespace,
+					WorkingDir: stack.FileFolder,
+					Env:        envVars,
+					Registries: regCreds,
+				},
+				EdgeStackID:   portainer.EdgeStackID(stack.ID),
+				Prune:         stack.DeployerOptionsPayload.Prune,
+				ForceRecreate: stack.RePullImage,
 			},
-			EdgeStackID:   portainer.EdgeStackID(stack.ID),
-			Prune:         stack.DeployerOptionsPayload.Prune,
-			ForceRecreate: stack.RePullImage,
-		},
-	)
+		)
+	}
 	manager.mu.Lock()
 
 	if err != nil {
@@ -726,27 +745,30 @@ func (manager *StackManager) GetEdgeRegistryCredentials() []edge.RegistryCredent
 	return nil
 }
 
-func (manager *StackManager) ensureRegCreds(stack *edgeStack) []edge.RegistryCredentials {
+func (manager *StackManager) ensureRegCreds(stack *edgeStack) ([]edge.RegistryCredentials, error) {
 	var rcs []edge.RegistryCredentials
 
 	for _, rc := range stack.RegistryCredentials {
 		if manager.awsConfig != nil {
-			log.Info().Msg("using local AWS config for credential lookup")
+			log.Info().Msg("using local AWS IAMRA config for credential lookup for ensureRegCreds")
 
+			// Use client certificate to authenticate with IAMRA and fetch temporary ECR credentials
 			ecrCred, err := aws.DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(rc.ServerURL, manager.awsConfig)
-			if err != nil && !errors.Is(err, aws.ErrNoCredentials) {
-				log.Error().Err(err).Str("server_url", rc.ServerURL).Msg("Unable to retrieve ECR credentials")
-
-				continue
+			if err == nil && ecrCred != nil {
+				log.Info().Str("registry_server_url", rc.ServerURL).Msg("successfully fetched ECR credentials for private ECR repository, adding regCreds")
+				rc = *ecrCred
+			} else if errors.Is(err, aws.ErrNotPrivateECRRepo) {
+				log.Info().Str("registry_server_url", rc.ServerURL).Msg("repository url is not a private ECR repository, continuing without credentials")
+			} else {
+				log.Error().Err(err).Str("registry_server_url", rc.ServerURL).Msg("failed to fetch ECR credentials for private ECR repository, failing deployment")
+				return nil, fmt.Errorf("failed to fetch ECR credentials for private ECR repository: %w", err)
 			}
-
-			rc = *ecrCred
 		}
 
 		rcs = append(rcs, rc)
 	}
 
-	return rcs
+	return rcs, nil
 }
 
 func buildEnvVarsForDeployer(envVars []portainer.Pair) []string {

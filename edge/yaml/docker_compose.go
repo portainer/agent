@@ -66,26 +66,26 @@ func (y *DockerComposeYaml) AddCredentialsAsEnvForSpecificService(serviceName st
 	// Generate envs
 	envs := make(map[string]string)
 	if y.awsConfig != nil {
-		log.Info().Msg("using local AWS config for credential lookup")
+		log.Info().Msg("using local AWS IAMRA config for credential lookup for compose")
 
-		// Exchange ECR credential with ECR certificate
+		// Use client certificate to authenticate with IAMRA and fetch temporary ECR credentials
 		c, err := aws.DoAWSIAMRolesAnywhereAuthAndGetECRCredentials(serverUrl, y.awsConfig)
-		if err != nil {
-			// It doesn't need to fallback the registry here, so it is unnecessary to check ErrNoCredential error
-			return "", err
-		}
-
-		if c != nil {
-			log.Info().Str("registry_server_url", serverUrl).Msg("")
+		if err == nil && c != nil {
+			log.Info().Str("registry_server_url", serverUrl).Msg("successfully fetched ECR credentials for private ECR repository setting username and password env")
 
 			envs["REGISTRY_USED"] = "1"
 			// hardcode username for aws ecr registry
 			// @https://docs.aws.amazon.com/cli/latest/reference/ecr/get-login-password.html#examples
 			envs["REGISTRY_USERNAME"] = "AWS"
 			envs["REGISTRY_PASSWORD"] = c.Secret
+		} else if errors.Is(err, aws.ErrNotPrivateECRRepo) {
+			log.Info().Str("registry_server_url", serverUrl).Msg("repository url is not a private ECR repository, continuing without credentials")
+		} else {
+			log.Error().Err(err).Str("registry_server_url", serverUrl).Msg("failed to fetch ECR credentials for private ECR repository, failing deployment")
+			return "", fmt.Errorf("failed to fetch ECR credentials for private ECR repository: %w", err)
 		}
 	} else if len(y.RegistryCredentials) > 0 {
-		log.Info().Msg("using private registry credential")
+		log.Info().Msg("using static private registry credential")
 
 		for _, cred := range y.RegistryCredentials {
 			if serverUrl == cred.ServerURL {
@@ -98,6 +98,8 @@ func (y *DockerComposeYaml) AddCredentialsAsEnvForSpecificService(serviceName st
 				break
 			}
 		}
+	} else {
+		log.Info().Msg("no registry credentials found, continuing without credentials")
 	}
 
 	return updateServiceWithEnv(compose, serviceName, envs)
