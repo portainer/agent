@@ -71,7 +71,7 @@ func TestCreateContainerConfig(t *testing.T) {
 			fips: false,
 			expectedConfig: &container.Config{
 				Cmd:   []string{"remove-dir", "test-dir"},
-				Image: "portainer/compose-unpacker:2.33.3",
+				Image: "portainer/compose-unpacker:2.33.4",
 			},
 		},
 		{
@@ -80,7 +80,7 @@ func TestCreateContainerConfig(t *testing.T) {
 			fips: true,
 			expectedConfig: &container.Config{
 				Cmd:   []string{"remove-dir", "test-dir"},
-				Image: "portainer/compose-unpacker:2.33.3",
+				Image: "portainer/compose-unpacker:2.33.4",
 				Env:   []string{"GODEBUG=fips140=on"},
 			},
 		},
