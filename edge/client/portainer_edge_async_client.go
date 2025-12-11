@@ -506,11 +506,12 @@ func isDockerSnapshotDiffEmpty(dockerPatch jsondiff.Patch) bool {
 		"/Time",
 	}
 
+outerLoop:
 	for _, op := range dockerPatch {
 		// Skip noisy field regexps
 		for _, noisyRegexp := range noisyFieldRegexps {
 			if noisyRegexp.MatchString(op.Path.String()) {
-				continue
+				continue outerLoop
 			}
 		}
 
