@@ -65,6 +65,7 @@ test:	## Run server tests
 ##@ Miscellaneous
 
 lint:   ## Run linter
+	go mod tidy
 	golangci-lint run -c .golangci.yaml
 
 clean: ## Remove all build and download artifacts
