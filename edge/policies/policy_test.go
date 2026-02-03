@@ -41,7 +41,7 @@ func TestProcessPolicyHelmCharts(t *testing.T) {
 	t.Run("Empty policy chart summaries", func(t *testing.T) {
 		manager := NewPolicyManager(mockPortainerClient, mockKubeClient, test.NewMockHelmPackageManager())
 
-		// Even with empty chart list, GetCharts is called to get restore bundle
+		// restore bundle
 		mockPortainerClient.EXPECT().GetCharts([]string{}).Return([]portainer.PolicyChartBundle{}, portainer.RestoreSettingsBundle{}, nil)
 
 		manager.ProcessPolicyHelmCharts([]portainer.PolicyChartSummary{})
@@ -70,16 +70,15 @@ func TestProcessPolicyHelmCharts(t *testing.T) {
 		}
 
 		mockPortainerClient.EXPECT().GetCharts([]string{"chart1"}).Return([]portainer.PolicyChartBundle{chartBundle}, portainer.RestoreSettingsBundle{}, nil)
-		mockPortainerClient.EXPECT().UpdatePolicyChartStatuses(
-			[]portainer.PolicyChartStatus{
-				{
-					ChartName:   chartBundle.ChartName,
-					Fingerprint: chartBundle.Fingerprint,
-					Status:      portainer.HelmInstallStatusInstalled,
-					Namespace:   chartBundle.Namespace,
-				},
-			},
-		).Return(nil)
+		mockPortainerClient.EXPECT().UpdatePolicyChartStatuses(gomock.Any()).DoAndReturn(func(statuses []portainer.PolicyChartStatus) error {
+			assert.Len(t, statuses, 1)
+			assert.Equal(t, chartBundle.ChartName, statuses[0].ChartName)
+			assert.Equal(t, chartBundle.Fingerprint, statuses[0].Fingerprint)
+			assert.Equal(t, portainer.HelmInstallStatusInstalled, statuses[0].Status)
+			assert.Equal(t, chartBundle.Namespace, statuses[0].Namespace)
+			// LastAttemptTime might be 0 if the mock release has zero time, which is fine to test
+			return nil
+		})
 
 		manager.ProcessPolicyHelmCharts(chartSummaries)
 
@@ -121,22 +120,23 @@ func TestProcessPolicyHelmCharts(t *testing.T) {
 		}
 
 		mockPortainerClient.EXPECT().GetCharts([]string{"chart1"}).Return(nil, portainer.RestoreSettingsBundle{}, errors.New("server error"))
-		mockPortainerClient.EXPECT().UpdatePolicyChartStatuses(
-			[]portainer.PolicyChartStatus{
-				{
-					ChartName:   summary.ChartName,
-					Fingerprint: summary.Fingerprint,
-					Status:      portainer.HelmInstallStatusFailed,
-					Message:     "Failed to retrieve charts from server",
-				},
-			},
-		).Return(nil)
+		mockPortainerClient.EXPECT().UpdatePolicyChartStatuses(gomock.Any()).DoAndReturn(func(statuses []portainer.PolicyChartStatus) error {
+			assert.Len(t, statuses, 1)
+			assert.Equal(t, summary.ChartName, statuses[0].ChartName)
+			assert.Equal(t, summary.Fingerprint, statuses[0].Fingerprint)
+			assert.Equal(t, portainer.HelmInstallStatusFailed, statuses[0].Status)
+			assert.Equal(t, "Failed to retrieve charts from server", statuses[0].Message)
+			assert.NotZero(t, statuses[0].LastAttemptTime)
+
+			return nil
+		})
 
 		manager.ProcessPolicyHelmCharts(chartSummaries)
 
 		assert.Len(t, manager.policyChartStatus, 1)
 		assert.Equal(t, portainer.HelmInstallStatusFailed, manager.policyChartStatus["chart1"].Status)
 		assert.Equal(t, "Failed to retrieve charts from server", manager.policyChartStatus["chart1"].Message)
+
 	})
 }
 

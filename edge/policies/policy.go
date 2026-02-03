@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/portainer/agent/deployer"
 	"github.com/portainer/agent/edge/client"
@@ -180,7 +181,7 @@ func (pm *PolicyManager) installOrUpgradeCharts(policyChartSummaries []string, c
 			Str("namespace", chartBundle.Namespace).
 			Msg("installing/upgrading Helm chart")
 
-		_, err = pm.helmPackageManager.Upgrade(installOpts)
+		release, err := pm.helmPackageManager.Upgrade(installOpts)
 		if err != nil {
 			pm.setChartToFailed(chartBundle.ChartName, "Failed to install/upgrade Helm chart")
 			log.Error().
@@ -190,7 +191,12 @@ func (pm *PolicyManager) installOrUpgradeCharts(policyChartSummaries []string, c
 			continue
 		}
 
-		pm.setChartToInstalled(chartBundle)
+		lastDeployed := time.Now().Unix()
+		if release.Info != nil {
+			lastDeployed = release.Info.LastDeployed.Unix()
+		}
+
+		pm.setChartToInstalled(chartBundle, lastDeployed)
 
 		log.Info().
 			Str("chart", chartBundle.ChartName).
@@ -254,14 +260,16 @@ func (pm *PolicyManager) setChartToFailed(chartName string, message string) {
 	if status, ok := pm.policyChartStatus[chartName]; ok {
 		status.Status = portainer.HelmInstallStatusFailed
 		status.Message = message
+		status.LastAttemptTime = time.Now().Unix()
 	}
 }
 
-func (pm *PolicyManager) setChartToInstalled(chartBundle portainer.PolicyChartBundle) {
+func (pm *PolicyManager) setChartToInstalled(chartBundle portainer.PolicyChartBundle, lastAttemptTime int64) {
 	if status, ok := pm.policyChartStatus[chartBundle.ChartName]; ok {
 		status.Status = portainer.HelmInstallStatusInstalled
 		status.Fingerprint = chartBundle.Fingerprint
 		status.Namespace = chartBundle.Namespace
+		status.LastAttemptTime = lastAttemptTime
 	}
 }
 
