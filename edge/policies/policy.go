@@ -23,19 +23,23 @@ import (
 )
 
 type PolicyManager struct {
-	policyChartStatus  map[string]*portainer.PolicyChartStatus
-	portainerClient    client.PortainerClient
-	kubeClient         *kubernetes.KubeClient
-	helmPackageManager libhelmtypes.HelmPackageManager
-	mu                 sync.Mutex
+	policyChartStatus   map[string]*portainer.PolicyChartStatus
+	portainerClient     client.PortainerClient
+	kubeClient          *kubernetes.KubeClient
+	helmPackageManager  libhelmtypes.HelmPackageManager
+	mu                  sync.Mutex
+	restoredPolicyTypes map[portainer.PolicyType]bool   // tracks which policy types have been restored
+	pendingRestorations portainer.RestoreSettingsBundle // stores restoration settings to retry on each poll
 }
 
 func NewPolicyManager(portainerClient client.PortainerClient, kubeClient *kubernetes.KubeClient, helmPackageManager libhelmtypes.HelmPackageManager) *PolicyManager {
 	return &PolicyManager{
-		portainerClient:    portainerClient,
-		kubeClient:         kubeClient,
-		helmPackageManager: helmPackageManager,
-		policyChartStatus:  make(map[string]*portainer.PolicyChartStatus),
+		portainerClient:     portainerClient,
+		kubeClient:          kubeClient,
+		helmPackageManager:  helmPackageManager,
+		policyChartStatus:   make(map[string]*portainer.PolicyChartStatus),
+		restoredPolicyTypes: make(map[portainer.PolicyType]bool),
+		pendingRestorations: make(portainer.RestoreSettingsBundle),
 	}
 }
 
@@ -46,6 +50,13 @@ func (pm *PolicyManager) ProcessPolicyHelmCharts(policyChartSummaries []portaine
 	}
 	defer pm.mu.Unlock()
 
+	// Clear restoredPolicyTypes for any policy type that is back in the bundle (re-attached).
+	for _, chart := range policyChartSummaries {
+		if policyType := getRestoreTypeForChart(chart.ChartName); policyType != "" {
+			delete(pm.restoredPolicyTypes, policyType)
+		}
+	}
+
 	chartsToInstall := make([]string, 0, len(policyChartSummaries))
 	for _, chart := range policyChartSummaries {
 		// Update or Install
@@ -54,10 +65,12 @@ func (pm *PolicyManager) ProcessPolicyHelmCharts(policyChartSummaries []portaine
 			chartsToInstall = append(chartsToInstall, chart.ChartName)
 
 			pm.policyChartStatus[chart.ChartName] = &portainer.PolicyChartStatus{
-				ChartName:   chart.ChartName,
-				Fingerprint: chart.Fingerprint,
-				Status:      portainer.HelmInstallStatusInstalling,
-				Namespace:   "", // Namespace will be set when chart is actually installed from chartBundle
+				ChartName:       chart.ChartName,
+				Fingerprint:     chart.Fingerprint,
+				Status:          portainer.HelmInstallStatusInstalling,
+				Message:         "Preparing to install",
+				Namespace:       "", // Namespace will be set when chart is actually installed from chartBundle
+				LastAttemptTime: time.Now().Unix(),
 			}
 		}
 	}
@@ -65,7 +78,7 @@ func (pm *PolicyManager) ProcessPolicyHelmCharts(policyChartSummaries []portaine
 	// Get the charts and restore bundle from the server
 	chartBundles, restoreBundle, err := pm.portainerClient.GetCharts(chartsToInstall)
 	if err != nil {
-		pm.setChartsToFailed(chartsToInstall, "Failed to retrieve charts from server")
+		pm.setChartsToFailedWithError(chartsToInstall, "Failed to retrieve charts from server", err)
 		log.Error().Err(err).Msg("failed to retrieve charts from server")
 
 		pm.updatePolicyChartStatuses()
@@ -89,7 +102,23 @@ func (pm *PolicyManager) ProcessPolicyHelmCharts(policyChartSummaries []portaine
 		}
 	}
 
-	pm.uninstallRemovedCharts(chartsToUninstall, restoreBundle)
+	pm.uninstallRemovedCharts(chartsToUninstall)
+
+	// If charts were uninstalled, report status immediately and fetch restore bundle
+	// This ensures the server knows about the "uninstalling" status and can provide the restore bundle
+	if len(chartsToUninstall) > 0 {
+		pm.updatePolicyChartStatuses()
+
+		// Fetch restore bundle now that server knows about the uninstalls.
+		// Uninstall was called with Wait: true so resources are fully deleted before we apply restore.
+		_, restoreBundle, err = pm.portainerClient.GetCharts([]string{})
+		if err != nil {
+			log.Error().Err(err).Msg("failed to fetch restore bundle after uninstall")
+		}
+	}
+
+	// Process any pending restorations after uninstalls are complete
+	pm.processRestorations(restoreBundle)
 
 	pm.updatePolicyChartStatuses()
 }
@@ -102,7 +131,7 @@ func (pm *PolicyManager) installOrUpgradeCharts(policyChartSummaries []string, c
 	// Create temporary directory for chart files
 	tempDir, err := os.MkdirTemp("", "helm-charts-")
 	if err != nil {
-		pm.setChartsToFailed(policyChartSummaries, "Failed to create temporary directory for charts")
+		pm.setChartsToFailedWithError(policyChartSummaries, "Failed to create temporary directory for charts", err)
 		log.Error().Err(err).Msg("failed to create temporary directory for charts")
 
 		return
@@ -129,14 +158,14 @@ func (pm *PolicyManager) installOrUpgradeCharts(policyChartSummaries []string, c
 		}
 
 		if err := pm.applyPreReleaseManifest(&chartBundle); err != nil {
-			pm.setChartToFailed(chartBundle.ChartName, "Failed to apply pre-release manifest")
+			pm.setChartToFailed(chartBundle.ChartName, "Failed to apply pre-release manifest", err)
 			log.Error().Err(err).Str("chart", chartBundle.ChartName).Msg("failed to apply pre-release manifest")
 			continue // Skip chart installation if pre-release manifest fails
 		}
 
 		chartData, err := base64.StdEncoding.DecodeString(chartBundle.EncodedTgz)
 		if err != nil {
-			pm.setChartToFailed(chartBundle.ChartName, "Failed to decode chart data")
+			pm.setChartToFailed(chartBundle.ChartName, "Failed to decode chart data", err)
 			log.Error().Err(err).Str("chart", chartBundle.ChartName).Msg("failed to decode chart data")
 			continue
 		}
@@ -144,14 +173,14 @@ func (pm *PolicyManager) installOrUpgradeCharts(policyChartSummaries []string, c
 		// Save chart to temporary file
 		chartPath := filepath.Join(tempDir, chartBundle.ChartName+".tgz")
 		if err := os.WriteFile(chartPath, chartData, 0644); err != nil {
-			pm.setChartToFailed(chartBundle.ChartName, "Failed to save chart file")
+			pm.setChartToFailed(chartBundle.ChartName, "Failed to save chart file", err)
 			log.Error().Err(err).Str("chart", chartBundle.ChartName).Msg("failed to save chart file")
 			continue
 		}
 
 		valuesData, err := base64.StdEncoding.DecodeString(chartBundle.EncodedValues)
 		if err != nil {
-			pm.setChartToFailed(chartBundle.ChartName, "Failed to decode chart values")
+			pm.setChartToFailed(chartBundle.ChartName, "Failed to decode chart values", err)
 			log.Error().Err(err).Str("chart", chartBundle.ChartName).Msg("failed to decode chart values")
 			continue
 		}
@@ -159,7 +188,7 @@ func (pm *PolicyManager) installOrUpgradeCharts(policyChartSummaries []string, c
 		// Save values to a temporary file
 		valuesPath := filepath.Join(tempDir, chartBundle.ChartName+".yaml")
 		if err := os.WriteFile(valuesPath, valuesData, 0644); err != nil {
-			pm.setChartToFailed(chartBundle.ChartName, "Failed to save chart file")
+			pm.setChartToFailed(chartBundle.ChartName, "Failed to save chart file", err)
 			log.Error().Err(err).Str("chart", chartBundle.ChartName).Msg("failed to save chart file")
 			continue
 		}
@@ -176,6 +205,14 @@ func (pm *PolicyManager) installOrUpgradeCharts(policyChartSummaries []string, c
 			Atomic:          true, // Equivalent to --atomic flag
 		}
 
+		// Check if there's a failed/pending release that needs cleanup before install
+		if err := pm.cleanupFailedRelease(chartBundle.ChartName, chartBundle.Namespace); err != nil {
+			log.Warn().
+				Err(err).
+				Str("chart", chartBundle.ChartName).
+				Msg("failed to cleanup existing release, proceeding with install anyway")
+		}
+
 		log.Info().
 			Str("chart", chartBundle.ChartName).
 			Str("namespace", chartBundle.Namespace).
@@ -183,7 +220,7 @@ func (pm *PolicyManager) installOrUpgradeCharts(policyChartSummaries []string, c
 
 		release, err := pm.helmPackageManager.Upgrade(installOpts)
 		if err != nil {
-			pm.setChartToFailed(chartBundle.ChartName, "Failed to install/upgrade Helm chart")
+			pm.setChartToFailed(chartBundle.ChartName, "Failed to install/upgrade Helm chart", err)
 			log.Error().
 				Err(err).
 				Str("chart", chartBundle.ChartName).
@@ -250,16 +287,23 @@ func (pm *PolicyManager) applyPreReleaseManifest(chartBundle *portainer.PolicyCh
 	return nil
 }
 
-func (pm *PolicyManager) setChartsToFailed(charts []string, message string) {
+func (pm *PolicyManager) setChartsToFailedWithError(charts []string, message string, err error) {
 	for _, chart := range charts {
-		pm.setChartToFailed(chart, message)
+		pm.setChartToFailed(chart, message, err)
 	}
 }
 
-func (pm *PolicyManager) setChartToFailed(chartName string, message string) {
+func (pm *PolicyManager) setChartToFailed(chartName string, message string, err error) {
 	if status, ok := pm.policyChartStatus[chartName]; ok {
 		status.Status = portainer.HelmInstallStatusFailed
-		status.Message = message
+		// Include the actual error in the message for admin visibility
+		if err != nil {
+			status.Message = fmt.Sprintf("%s: %s", message, err.Error())
+		} else {
+			status.Message = message
+		}
+		// Clear fingerprint so the chart will be retried on next poll
+		status.Fingerprint = ""
 		status.LastAttemptTime = time.Now().Unix()
 	}
 }
@@ -270,19 +314,42 @@ func (pm *PolicyManager) setChartToInstalled(chartBundle portainer.PolicyChartBu
 		status.Fingerprint = chartBundle.Fingerprint
 		status.Namespace = chartBundle.Namespace
 		status.LastAttemptTime = lastAttemptTime
+		status.Message = "Successfully installed"
 	}
 }
 
-func (pm *PolicyManager) uninstallRemovedCharts(chartsToUninstall []string, restoreBundle portainer.RestoreSettingsBundle) {
+func (pm *PolicyManager) setChartToUninstalling(chartName string) {
+	if status, ok := pm.policyChartStatus[chartName]; ok {
+		status.Status = portainer.HelmInstallStatusUninstalling
+		status.Fingerprint = "" // Clear fingerprint to force reinstall if policy is re-attached
+		status.Message = "Uninstalling chart"
+		status.LastAttemptTime = time.Now().Unix()
+	}
+}
+
+func (pm *PolicyManager) setChartUninstallFailed(chartName string, err error) {
+	if status, ok := pm.policyChartStatus[chartName]; ok {
+		// Set status back to installed so it can be retried next poll
+		// unless this was a "not found" error
+		if !isNotFoundError(err) {
+			status.Status = portainer.HelmInstallStatusInstalled
+			status.Message = "Failed to uninstall: " + err.Error()
+		} else {
+			// Release not found, treat as already uninstalled
+			status.Message = "Release not found during uninstall"
+		}
+		status.LastAttemptTime = time.Now().Unix()
+	}
+}
+
+func (pm *PolicyManager) uninstallRemovedCharts(chartsToUninstall []string) {
 	if len(chartsToUninstall) == 0 {
 		return
 	}
 
 	for _, chartName := range chartsToUninstall {
 		// Set status to uninstalling before attempting uninstall
-		if chartStatus, ok := pm.policyChartStatus[chartName]; ok {
-			chartStatus.Status = portainer.HelmInstallStatusUninstalling
-		}
+		pm.setChartToUninstalling(chartName)
 
 		log.Info().
 			Str("chart", chartName).
@@ -292,6 +359,7 @@ func (pm *PolicyManager) uninstallRemovedCharts(chartsToUninstall []string, rest
 		uninstallOpts := options.UninstallOptions{
 			Name:      chartName,
 			Namespace: chartStatus.Namespace,
+			Wait:      true, // block until resources are deleted so restore manifest is not applied over terminating resources
 		}
 
 		err := pm.helmPackageManager.Uninstall(uninstallOpts)
@@ -301,13 +369,7 @@ func (pm *PolicyManager) uninstallRemovedCharts(chartsToUninstall []string, rest
 				Str("chart", chartName).
 				Msg("failed to uninstall Helm chart")
 
-			// Set status back to installed on failure so it can be retried next poll,
-			if chartStatus, ok := pm.policyChartStatus[chartName]; ok {
-				// only retry if this was not a "not found" error, otherwise it will be retried forever
-				if !isNotFoundError(err) {
-					chartStatus.Status = portainer.HelmInstallStatusInstalled
-				}
-			}
+			pm.setChartUninstallFailed(chartName, err)
 			continue
 		}
 
@@ -315,17 +377,8 @@ func (pm *PolicyManager) uninstallRemovedCharts(chartsToUninstall []string, rest
 			Str("chart", chartName).
 			Msg("successfully uninstalled Helm chart")
 
-		// Restore environment-level settings after successful uninstall
-		if err := pm.restoreEnvironmentSettings(chartName, restoreBundle); err != nil {
-			log.Error().
-				Err(err).
-				Str("chart", chartName).
-				Msg("failed to restore environment settings")
-		}
-
-		// Remove from our tracking map after successful uninstall
-		// Note, we can't guarantee that the chart is fully deleted yet, so here we lose tracking of its status
-		delete(pm.policyChartStatus, chartName)
+		// Keep in map with "uninstalling" status - will be reported to server
+		// and then deleted after restore bundle is fetched
 	}
 }
 
@@ -472,10 +525,10 @@ func (pm *PolicyManager) updatePolicyChartStatuses() {
 	for _, chartStatus := range pm.policyChartStatus {
 		statuses = append(statuses, *chartStatus)
 	}
-	if len(statuses) == 0 {
-		return
-	}
 
+	// Always call UpdatePolicyChartStatuses, even with empty list.
+	// This allows the server to clean up stale chart statuses (e.g., "uninstalling")
+	// when the agent no longer tracks those charts.
 	if err := pm.portainerClient.UpdatePolicyChartStatuses(statuses); err != nil {
 		log.Error().Err(err).Msg("failed to update policy chart statuses on server")
 	}
@@ -512,6 +565,7 @@ func (pm *PolicyManager) restoreEnvironmentSettings(chartName string, restoreBun
 		Str("restore_type", string(restoreType)).
 		Msg("restoring environment settings")
 
+	// Decode the base64-encoded manifest
 	manifestBytes, err := base64.StdEncoding.DecodeString(restoreSettings.Manifest)
 	if err != nil {
 		return fmt.Errorf("failed to decode manifest: %w", err)
@@ -555,7 +609,225 @@ func getRestoreTypeForChart(chartName string) portainer.PolicyType {
 	switch chartName {
 	case "portainer-registry-k8s":
 		return portainer.RegistryK8s
+	case "gatekeeper", "portainer-security-k8s":
+		return portainer.SecurityK8s
 	default:
 		return ""
+	}
+}
+
+// cleanupFailedRelease checks if there's an existing release that is NOT in a deployed
+// state and removes it to allow a fresh install. This handles cases where a previous
+// install/upgrade/rollback attempt failed or left the release stuck in a non-deployed
+// state (e.g. failed, pending-*, uninstalling, superseded).
+// Helm's "upgrade" command requires at least one deployed release to upgrade from,
+// so any non-deployed release must be cleaned up before a fresh install can proceed.
+func (pm *PolicyManager) cleanupFailedRelease(releaseName, namespace string) error {
+	// Use GetHistory for reliable detection - it directly queries release storage
+	// and returns all versions regardless of status, unlike List which may filter.
+	historyOpts := options.HistoryOptions{
+		Name:      releaseName,
+		Namespace: namespace,
+	}
+
+	history, err := pm.helmPackageManager.GetHistory(historyOpts)
+	if err != nil {
+		// If release not found, nothing to clean up
+		if strings.Contains(err.Error(), "not found") {
+			return nil
+		}
+		return fmt.Errorf("failed to get release history: %w", err)
+	}
+
+	if len(history) == 0 {
+		return nil
+	}
+
+	// History is sorted latest first - check if the latest version is deployed
+	latestRelease := history[0]
+	if latestRelease.Info == nil {
+		return nil
+	}
+
+	latestStatus := string(latestRelease.Info.Status)
+	if latestStatus == "deployed" {
+		// Release is healthy, no cleanup needed
+		return nil
+	}
+
+	log.Info().
+		Str("chart", releaseName).
+		Str("namespace", namespace).
+		Str("status", latestStatus).
+		Msg("found release in non-deployed state, cleaning up before fresh install")
+
+	uninstallOpts := options.UninstallOptions{
+		Name:      releaseName,
+		Namespace: namespace,
+		Wait:      true,
+	}
+
+	if err := pm.helmPackageManager.Uninstall(uninstallOpts); err != nil {
+		log.Warn().
+			Err(err).
+			Str("chart", releaseName).
+			Msg("standard uninstall failed, attempting to force-remove release history")
+
+		// When CRDs are missing, Helm can't build kubernetes objects for deletion and
+		// returns early without purging the release history. Force-remove the release
+		// so a fresh install can proceed on the next attempt.
+		if forceErr := pm.helmPackageManager.ForceRemoveRelease(uninstallOpts); forceErr != nil {
+			return fmt.Errorf("failed to force-remove release after uninstall failure: %w (original: %w)", forceErr, err)
+		}
+
+		log.Info().
+			Str("chart", releaseName).
+			Msg("successfully force-removed stuck release history")
+
+		return nil
+	}
+
+	log.Info().
+		Str("chart", releaseName).
+		Str("namespace", namespace).
+		Msg("successfully cleaned up non-deployed release")
+
+	return nil
+}
+
+// isFailedOrPendingStatus checks if a release status indicates it needs cleanup.
+// Kept for backward compatibility in tests, but cleanupFailedRelease now uses
+// a broader "is NOT deployed" check via GetHistory.
+func isFailedOrPendingStatus(status string) bool {
+	switch status {
+	case "failed", "pending-install", "pending-upgrade", "pending-rollback":
+		return true
+	default:
+		return false
+	}
+}
+
+// processRestorations processes any pending environment restorations after uninstalls are complete.
+// It stores restoration settings and retries on each poll until successful.
+func (pm *PolicyManager) processRestorations(restoreBundle portainer.RestoreSettingsBundle) {
+	// Merge incoming restore bundle into pendingRestorations
+	// This ensures we keep trying even after the server stops sending the data
+	for policyType, restoreSettings := range restoreBundle {
+		if restoreSettings.Manifest != "" && !pm.restoredPolicyTypes[policyType] {
+			// Only store if not already restored and has valid manifest
+			if _, exists := pm.pendingRestorations[policyType]; !exists {
+				log.Info().
+					Str("policy_type", string(policyType)).
+					Msg("storing restoration settings for retry")
+				pm.pendingRestorations[policyType] = restoreSettings
+			}
+		}
+	}
+
+	if len(pm.pendingRestorations) == 0 {
+		// Clean up any charts that were uninstalled (no restoration needed or already done)
+		pm.cleanupUninstalledCharts()
+		return
+	}
+
+	// Process each pending restoration
+	for policyType, restoreSettings := range pm.pendingRestorations {
+		// Skip if nothing to restore
+		if restoreSettings.Manifest == "" {
+			delete(pm.pendingRestorations, policyType)
+			continue
+		}
+
+		// Check if we've already restored this policy type
+		if pm.restoredPolicyTypes[policyType] {
+			log.Debug().
+				Str("policy_type", string(policyType)).
+				Msg("restoration already completed for this policy type, removing from pending")
+			delete(pm.pendingRestorations, policyType)
+			continue
+		}
+
+		log.Info().
+			Str("policy_type", string(policyType)).
+			Msg("processing environment restoration (retry on each poll until success)")
+
+		// Decode and apply the manifest using kubectl apply
+		manifestBytes, err := base64.StdEncoding.DecodeString(restoreSettings.Manifest)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Str("policy_type", string(policyType)).
+				Msg("failed to decode restoration manifest, will retry on next poll")
+			continue
+		}
+
+		tempFile, err := os.CreateTemp("", fmt.Sprintf("restore-%s-*.yaml", policyType))
+		if err != nil {
+			log.Error().
+				Err(err).
+				Str("policy_type", string(policyType)).
+				Msg("failed to create temp file for restoration, will retry on next poll")
+			continue
+		}
+
+		// Write manifest to temp file
+		if _, err := tempFile.Write(manifestBytes); err != nil {
+			logs.CloseAndLogErr(tempFile)
+			if removeErr := os.Remove(tempFile.Name()); removeErr != nil {
+				log.Warn().Err(removeErr).Msg("failed to remove temporary restoration file")
+			}
+			log.Error().
+				Err(err).
+				Str("policy_type", string(policyType)).
+				Msg("failed to write restoration manifest, will retry on next poll")
+			continue
+		}
+		logs.CloseAndLogErr(tempFile)
+
+		// Apply the manifest using kubectl
+		kubernetesDeployer := exec.NewKubernetesDeployer(pm.kubeClient)
+		err = kubernetesDeployer.Deploy(
+			context.Background(),
+			fmt.Sprintf("restore-%s", policyType),
+			[]string{tempFile.Name()},
+			deployer.DeployOptions{},
+		)
+
+		// Cleanup temp file
+		if removeErr := os.Remove(tempFile.Name()); removeErr != nil {
+			log.Warn().Err(removeErr).Msg("failed to remove temporary restoration file")
+		}
+
+		if err != nil {
+			log.Error().
+				Err(err).
+				Str("policy_type", string(policyType)).
+				Msg("failed to apply restoration manifest, will retry on next poll")
+			continue
+		}
+
+		log.Info().
+			Str("policy_type", string(policyType)).
+			Msg("successfully restored environment settings")
+
+		// Mark this policy type as restored and remove from pending
+		pm.restoredPolicyTypes[policyType] = true
+		delete(pm.pendingRestorations, policyType)
+	}
+
+	// Clean up any charts that have been restored
+	pm.cleanupUninstalledCharts()
+}
+
+// cleanupUninstalledCharts removes charts with "uninstalling" status from the tracking map
+// Called after restoration is complete or when no restoration is needed
+func (pm *PolicyManager) cleanupUninstalledCharts() {
+	for chartName, status := range pm.policyChartStatus {
+		if status.Status == portainer.HelmInstallStatusUninstalling {
+			log.Debug().
+				Str("chart", chartName).
+				Msg("removing uninstalled chart from tracking")
+			delete(pm.policyChartStatus, chartName)
+		}
 	}
 }

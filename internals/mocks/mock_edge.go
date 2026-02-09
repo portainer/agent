@@ -17,7 +17,6 @@ import (
 	client "github.com/portainer/agent/edge/client"
 	portainer "github.com/portainer/portainer/api"
 	edge "github.com/portainer/portainer/api/edge"
-
 	gomock "go.uber.org/mock/gomock"
 )
 
