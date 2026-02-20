@@ -16,8 +16,8 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/docker"
-	aos "github.com/portainer/agent/os"
 	"github.com/portainer/agent/kubernetes"
+	aos "github.com/portainer/agent/os"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
 
@@ -143,7 +143,7 @@ type snapshot struct {
 	StackStatusArray map[portainer.EdgeStackID][]portainer.EdgeStackDeploymentStatus `json:"stackStatusArray,omitempty"`
 	JobsStatus       map[portainer.EdgeJobID]agent.EdgeJobStatus                     `json:"jobsStatus,omitempty"`
 	EdgeConfigStates map[EdgeConfigID]EdgeConfigStateType                            `json:"edgeConfigStates,omitempty"`
-	PolicyStatus     map[string][]portainer.PolicyChartStatus                        `json:"policyStatus,omitempty"`
+	PolicyStatus     map[string][]portainer.PolicyChartStatus                        `json:"policyStatus"`
 }
 
 type AsyncResponse struct {
@@ -249,6 +249,7 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		payload.Snapshot.StackStatusArray = client.nextSnapshot.StackStatusArray
 		payload.Snapshot.JobsStatus = client.nextSnapshot.JobsStatus
 		payload.Snapshot.EdgeConfigStates = client.nextSnapshot.EdgeConfigStates
+		payload.Snapshot.PolicyStatus = client.nextSnapshot.PolicyStatus
 		client.nextSnapshotMutex.Unlock()
 	}
 
@@ -519,6 +520,10 @@ func (client *PortainerAsyncClient) UpdatePolicyChartStatuses(statuses []portain
 	client.nextSnapshotMutex.Lock()
 	defer client.nextSnapshotMutex.Unlock()
 
+	if len(statuses) == 0 {
+		return nil
+	}
+
 	if client.nextSnapshot.PolicyStatus == nil {
 		client.nextSnapshot.PolicyStatus = make(map[string][]portainer.PolicyChartStatus)
 	}
@@ -762,6 +767,7 @@ func (client *PortainerAsyncClient) rotateSnapshots(currentSnapshot snapshot, as
 	client.nextSnapshot.StackStatusArray = nil
 	client.nextSnapshot.JobsStatus = nil
 	client.nextSnapshot.EdgeConfigStates = nil
+	client.nextSnapshot.PolicyStatus = nil
 	client.stackLogCollectionQueue = nil
 }
 
