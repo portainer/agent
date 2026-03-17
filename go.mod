@@ -1,6 +1,6 @@
 module github.com/portainer/agent
 
-go 1.25.7
+go 1.25.8
 
 replace github.com/portainer/portainer => ../server-ce
 
