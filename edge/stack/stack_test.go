@@ -624,3 +624,49 @@ func getContainerEnv(containerName string) map[string]string {
 
 	return vars
 }
+
+func TestStackManager_processStack_resetsFirstActionOnUpdate(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPortainerClient := mocks.NewMockPortainerClient(ctrl)
+
+	stackID := 42
+	helmPayload := &edge.StackPayload{
+		ID:      stackID,
+		Version: 2,
+	}
+
+	manager := &StackManager{
+		stacks:          map[edgeStackID]*edgeStack{},
+		portainerClient: mockPortainerClient,
+	}
+
+	manager.stacks[edgeStackID(stackID)] = &edgeStack{
+		StackPayload: edge.StackPayload{
+			ID:      stackID,
+			Version: 1,
+		},
+		FirstAction: time.Now().Add(-5 * time.Minute),
+	}
+
+	mockPortainerClient.EXPECT().
+		GetEdgeStackConfig(stackID, gomock.Any()).
+		Return(helmPayload, nil)
+
+	mockPortainerClient.EXPECT().
+		SetEdgeStackStatus(stackID, 2, portainer.EdgeStackStatusAcknowledged, gomock.Any(), "").
+		Return(nil)
+
+	stackStatus := client.StackStatus{
+		ID:      stackID,
+		Version: 2,
+	}
+
+	err := manager.processStack(stackID, stackStatus)
+	require.NoError(t, err)
+
+	stack := manager.stacks[edgeStackID(stackID)]
+	require.True(t, stack.FirstAction.IsZero())
+}

@@ -49,6 +49,10 @@ func (manager *StackManager) UpdateStacksStatus(pollResponseStacks map[int]clien
 }
 
 func (manager *StackManager) addRegistryToEntryFile(stackPayload *edge.StackPayload) error {
+	if stackPayload.EntryFileName == "" {
+		return nil
+	}
+
 	var fileContent *string
 
 	for index, dirEntry := range stackPayload.DirEntries {
@@ -108,6 +112,7 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 		stack.PullCount = 0
 		stack.DeployCount = 0
 		stack.ReadyRePullImage = stackStatus.ReadyRePullImage
+		stack.FirstAction = time.Time{}
 	} else {
 		log.Debug().Int("stack_identifier", stackID).Msg("marking stack for deployment")
 
