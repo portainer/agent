@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/portainer/api/edge"
@@ -43,7 +44,7 @@ func TestPortainerEdgeIDEnvVarPresent(t *testing.T) {
 	require.Equal(t, edgeID, edgeStack.EnvVars[0].Value)
 }
 
-func setupManagerAndFile(t *testing.T) (*StackManager, string) {
+func setupManagerAndFile(t *testing.T) (*StackManager, string, int) {
 	manager := NewStackManager(nil, "", nil, "edge_id", nil)
 	manager.stacks[edgeStackID(1)] = &edgeStack{
 		StackPayload: edge.StackPayload{ID: 1, Version: 1},
@@ -60,12 +61,12 @@ func setupManagerAndFile(t *testing.T) (*StackManager, string) {
 		require.NoError(t, os.RemoveAll(stackFolder))
 	})
 
-	return manager, composeFile
+	return manager, composeFile, 1
 }
 
 func TestStack_BuildDeployerParams_ForceRecreate(t *testing.T) {
 	t.Run("Force redeploy flag- should set ForceRecreate to true", func(t *testing.T) {
-		manager, composeFile := setupManagerAndFile(t)
+		manager, composeFile, _ := setupManagerAndFile(t)
 
 		stackPayload := edge.StackPayload{ID: 1, Version: 1,
 			DeployerOptionsPayload: edge.DeployerOptionsPayload{
@@ -88,7 +89,7 @@ func TestStack_BuildDeployerParams_ForceRecreate(t *testing.T) {
 	})
 
 	t.Run("No force flags - should set ForceRecreate to false", func(t *testing.T) {
-		manager, composeFile := setupManagerAndFile(t)
+		manager, composeFile, _ := setupManagerAndFile(t)
 		stackPayload := edge.StackPayload{ID: 1, Version: 2,
 			DirEntries: []filesystem.DirEntry{
 				{
@@ -103,4 +104,30 @@ func TestStack_BuildDeployerParams_ForceRecreate(t *testing.T) {
 
 		require.False(t, manager.stacks[edgeStackID(stackPayload.ID)].DeployerOptionsPayload.ForceRecreate)
 	})
+}
+
+func TestStack_BuildDeployerParams_resetsFirstAction(t *testing.T) {
+	t.Parallel()
+	manager, composeFile, stackID := setupManagerAndFile(t)
+
+	manager.stacks[edgeStackID(stackID)].FirstAction = time.Now().Add(-5 * time.Minute)
+
+	stackPayload := edge.StackPayload{
+		ID:      stackID,
+		Version: 2,
+		DirEntries: []filesystem.DirEntry{
+			{
+				Name:    "docker-compose.yml",
+				Content: base64.StdEncoding.EncodeToString([]byte(composeFile)),
+				IsFile:  true,
+			},
+		},
+		EntryFileName: "docker-compose.yml",
+	}
+
+	err := manager.buildDeployerParams(stackPayload, false)
+	require.NoError(t, err)
+
+	stack := manager.stacks[edgeStackID(stackID)]
+	require.True(t, stack.FirstAction.IsZero())
 }

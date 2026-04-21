@@ -2,6 +2,7 @@ package stack
 
 import (
 	"context"
+	"time"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/deployer"
@@ -97,6 +98,7 @@ func (manager *StackManager) buildDeployerParams(stackPayload edge.StackPayload,
 	stack.PullCount = 0
 	stack.PullFinished = false
 	stack.DeployCount = 0
+	stack.FirstAction = time.Time{}
 	stack.DeployerOptionsPayload = stackPayload.DeployerOptionsPayload
 
 	stack.SupportRelativePath = stackPayload.SupportRelativePath

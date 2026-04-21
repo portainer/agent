@@ -114,6 +114,7 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 		stack.PullFinished = false
 		stack.PullCount = 0
 		stack.DeployCount = 0
+		stack.FirstAction = time.Time{}
 	} else {
 		log.Debug().Int("stack_identifier", stackID).Msg("marking stack for deployment")
 
