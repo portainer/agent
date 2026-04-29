@@ -203,7 +203,7 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 
 	req.Header.Set(agent.HTTPResponseUpdateIDHeaderName, strconv.Itoa(client.metaFields.UpdateID))
 
-	if containerEngine := aos.GetContainerEngineName(client.agentPlatform); containerEngine != "" {
+	if containerEngine := aos.GetContainerEngineName(aos.DetermineContainerPlatform()); containerEngine != "" {
 		req.Header.Set(agent.HTTPResponseAgentContainerEngine, containerEngine)
 	}
 

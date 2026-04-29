@@ -86,7 +86,11 @@ func main() {
 	// Docker & Podman
 
 	if containerPlatform == agent.PlatformDocker || containerPlatform == agent.PlatformPodman {
-		log.Info().Msg("agent running on Docker platform")
+		if containerPlatform == agent.PlatformPodman {
+			log.Info().Msg("agent running on Podman platform")
+		} else {
+			log.Info().Msg("agent running on Docker platform")
+		}
 
 		dockerInfoService = docker.NewInfoService()
 

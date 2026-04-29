@@ -234,7 +234,7 @@ func (manager *Manager) startEdgeBackgroundProcess() error {
 	}
 
 	switch manager.containerPlatform {
-	case agent.PlatformDocker:
+	case agent.PlatformDocker, agent.PlatformPodman:
 		return manager.startEdgeBackgroundProcessOnDocker(runtimeCheckFrequency)
 	case agent.PlatformKubernetes:
 		return manager.startEdgeBackgroundProcessOnKubernetes(runtimeCheckFrequency)
