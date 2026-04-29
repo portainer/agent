@@ -11,6 +11,7 @@ import (
 	"testing/synctest"
 
 	"github.com/portainer/agent"
+	aos "github.com/portainer/agent/os"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/pkg/fips"
 	pkgmetrics "github.com/portainer/portainer/pkg/metrics"
@@ -232,8 +233,9 @@ func TestSetAlertStateCachesHeader(t *testing.T) {
 	require.Empty(t, client.alertStateHeader)
 }
 
-func TestGetEnvironmentStatusSendsContainerEngineHeader(t *testing.T) {
+func TestGetEnvironmentStatusSendsContainerEngineHeaderFromRuntimePlatform(t *testing.T) {
 	fips.InitFIPS(false)
+	t.Setenv(aos.PodmanMode, "1")
 
 	httpClient := BuildHTTPClient(30, &agent.Options{})
 	httpClient.httpClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -252,7 +254,7 @@ func TestGetEnvironmentStatusSendsContainerEngineHeader(t *testing.T) {
 		getEndpointIDFn: func() portainer.EndpointID { return 1 },
 		httpClient:      httpClient,
 		serverAddress:   "http://edge.test",
-		agentPlatform:   agent.PlatformPodman,
+		agentPlatform:   agent.PlatformDocker,
 	}
 
 	_, err := client.GetEnvironmentStatus()

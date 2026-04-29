@@ -11,17 +11,17 @@ import (
 	"github.com/portainer/portainer/pkg/snapshot"
 )
 
-// getDiagnostics returns diagnostic information about the current container platform
-// It supports both Kubernetes and Docker platforms
+// getDiagnostics returns diagnostic information about the current container platform.
+// Podman uses the Docker-compatible diagnostics path.
 func (h *Handler) diagnostics(rw http.ResponseWriter, request *http.Request) *httperror.HandlerError {
 	switch h.containerPlatform {
 	case agent.PlatformKubernetes:
 		return h.getKubernetesDiagnostics(rw)
-	case agent.PlatformDocker:
+	case agent.PlatformDocker, agent.PlatformPodman:
 		return h.getDockerDiagnostics(rw)
 	default:
 		return httperror.InternalServerError(
-			"Unsupported container platform. Only Docker and Kubernetes are supported.",
+			"Unsupported container platform. Only Docker, Podman, and Kubernetes are supported.",
 			nil,
 		)
 	}
