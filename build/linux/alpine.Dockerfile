@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:3.23.4
 
 ENV PATH="/app:$PATH"
 WORKDIR /app
