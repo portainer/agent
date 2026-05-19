@@ -174,63 +174,6 @@ func TestClearTLSCertMetricsRemovesPublishedSeries(t *testing.T) {
 	require.NotContains(t, body, pkgmetrics.ClusterAPIServerTLSCertExpirySecondsMetric)
 }
 
-func TestUpdateControlPlaneMetricsPublishesSeries(t *testing.T) {
-	h := NewHandler()
-
-	h.UpdateControlPlaneMetrics([]kubernetes.ComponentHealthStatus{
-		{Component: "kube-scheduler", Healthy: true, Valid: true},
-		{Component: "kube-controller-manager", Healthy: false, Valid: true},
-	})
-
-	body := serveMetrics(t, h)
-	require.Contains(t, body, pkgmetrics.ClusterControlPlaneHealthyMetric+`{component="kube-scheduler"} 1`)
-	require.Contains(t, body, pkgmetrics.ClusterControlPlaneHealthValidMetric+`{component="kube-scheduler"} 1`)
-	require.Contains(t, body, pkgmetrics.ClusterControlPlaneHealthyMetric+`{component="kube-controller-manager"} 0`)
-	require.Contains(t, body, pkgmetrics.ClusterControlPlaneHealthValidMetric+`{component="kube-controller-manager"} 1`)
-}
-
-func TestUpdateControlPlaneMetricsReplacesPublishedSeries(t *testing.T) {
-	h := NewHandler()
-
-	h.UpdateControlPlaneMetrics([]kubernetes.ComponentHealthStatus{
-		{Component: "kube-scheduler", Healthy: true, Valid: true},
-	})
-	require.Contains(t, serveMetrics(t, h), pkgmetrics.ClusterControlPlaneHealthyMetric+`{component="kube-scheduler"} 1`)
-
-	h.UpdateControlPlaneMetrics([]kubernetes.ComponentHealthStatus{
-		{Component: "kube-controller-manager", Healthy: true, Valid: true},
-	})
-
-	body := serveMetrics(t, h)
-	require.NotContains(t, body, `component="kube-scheduler"`)
-	require.Contains(t, body, pkgmetrics.ClusterControlPlaneHealthyMetric+`{component="kube-controller-manager"} 1`)
-}
-
-func TestClearControlPlaneMetricsRemovesSeries(t *testing.T) {
-	h := NewHandler()
-
-	h.UpdateControlPlaneMetrics([]kubernetes.ComponentHealthStatus{
-		{Component: "kube-scheduler", Healthy: true, Valid: true},
-	})
-	require.Contains(t, serveMetrics(t, h), pkgmetrics.ClusterControlPlaneHealthyMetric)
-
-	h.ClearControlPlaneMetrics()
-	require.NotContains(t, serveMetrics(t, h), pkgmetrics.ClusterControlPlaneHealthyMetric)
-}
-
-func TestUpdateControlPlaneMetricsInvalidProbeNotAlertable(t *testing.T) {
-	h := NewHandler()
-
-	// valid=false means the probe was indeterminate; healthy=false should not be alertable
-	h.UpdateControlPlaneMetrics([]kubernetes.ComponentHealthStatus{
-		{Component: "kube-scheduler", Healthy: false, Valid: false},
-	})
-
-	body := serveMetrics(t, h)
-	require.Contains(t, body, pkgmetrics.ClusterControlPlaneHealthyMetric+`{component="kube-scheduler"} 0`)
-	require.Contains(t, body, pkgmetrics.ClusterControlPlaneHealthValidMetric+`{component="kube-scheduler"} 0`)
-}
-
 func serveMetrics(t *testing.T, h *Handler) string {
 	t.Helper()
 
