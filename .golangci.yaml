@@ -83,6 +83,8 @@ linters:
           msg: "Not allowed because of FIPS mode"
         - pattern: ^(chclient\.TLSConfig\.)?SkipVerify$
           msg: "Not allowed because of FIPS mode"
+        - pattern: ^git\.PlainClone(Context|WithOptions)?$
+          msg: "Use git.CloneContext with NewNoSymlinkFS to prevent symlink traversal attacks"
       analyze-types: true
   exclusions:
     generated: lax
