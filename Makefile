@@ -17,11 +17,11 @@ healthy=healthy
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: agent credential-helper healthy download-binaries clean help
+.PHONY: agent credential-helper healthy clean help
 
 ##@ Building
 
-all: tidy credential-helper healthy download-binaries mock agent ## Build everything
+all: tidy credential-helper healthy mock agent ## Build everything
 
 agent: ## Build the agent
 	@echo "Building Portainer agent..."
@@ -44,9 +44,6 @@ healthy: ## Build the healthy binary
 	else \
 		echo "healthy already exists, skipping build."; \
 	fi
-
-download-binaries: ## Download dependant binaries
-	@./setup.sh $(PLATFORM) $(ARCH)
 
 image: ## Build the agent and the image
 	@./dev.sh build -c

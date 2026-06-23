@@ -17,7 +17,7 @@ import (
 func TestPortainerEdgeIDEnvVarPresent(t *testing.T) {
 	edgeID := "edge_id"
 
-	sm := NewStackManager(nil, "", nil, edgeID, nil)
+	sm := NewStackManager(nil, nil, edgeID, nil)
 
 	stackID := rand.Int()
 
@@ -45,7 +45,7 @@ func TestPortainerEdgeIDEnvVarPresent(t *testing.T) {
 }
 
 func setupManagerAndFile(t *testing.T) (*StackManager, string, int) {
-	manager := NewStackManager(nil, "", nil, "edge_id", nil)
+	manager := NewStackManager(nil, nil, "edge_id", nil)
 	manager.stacks[edgeStackID(1)] = &edgeStack{
 		StackPayload: edge.StackPayload{ID: 1, Version: 1},
 	}
@@ -56,7 +56,7 @@ func setupManagerAndFile(t *testing.T) (*StackManager, string, int) {
 			image: nginx`
 
 	stackFolder := getStackFileFolder(&edgeStack{StackPayload: edge.StackPayload{ID: 1, Version: 1}})
-	require.NoError(t, os.MkdirAll(stackFolder, 0755))
+	require.NoError(t, os.MkdirAll(stackFolder, 0o755))
 	t.Cleanup(func() {
 		require.NoError(t, os.RemoveAll(stackFolder))
 	})
@@ -68,7 +68,8 @@ func TestStack_BuildDeployerParams_ForceRecreate(t *testing.T) {
 	t.Run("Force redeploy flag- should set ForceRecreate to true", func(t *testing.T) {
 		manager, composeFile, _ := setupManagerAndFile(t)
 
-		stackPayload := edge.StackPayload{ID: 1, Version: 1,
+		stackPayload := edge.StackPayload{
+			ID: 1, Version: 1,
 			DeployerOptionsPayload: edge.DeployerOptionsPayload{
 				ForceRecreate: true,
 			},
@@ -90,7 +91,8 @@ func TestStack_BuildDeployerParams_ForceRecreate(t *testing.T) {
 
 	t.Run("No force flags - should set ForceRecreate to false", func(t *testing.T) {
 		manager, composeFile, _ := setupManagerAndFile(t)
-		stackPayload := edge.StackPayload{ID: 1, Version: 2,
+		stackPayload := edge.StackPayload{
+			ID: 1, Version: 2,
 			DirEntries: []filesystem.DirEntry{
 				{
 					Name:    "docker-compose.yml",

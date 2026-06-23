@@ -82,41 +82,43 @@ type (
 
 	// Options are the options used to start an agent.
 	Options struct {
-		AssetsPath             string
-		AgentServerAddr        string
-		AgentServerPort        string
-		AgentSecurityShutdown  time.Duration
-		ClusterAddress         string
-		ClusterProbeTimeout    time.Duration
-		ClusterProbeInterval   time.Duration
-		DataPath               string
-		SharedSecret           string
-		EdgeMode               bool
-		EdgeAsyncMode          bool
-		EdgeKey                string
-		EdgeID                 string
-		EdgeUIServerAddr       string
-		EdgeUIServerPort       string
-		EdgeInactivityTimeout  string
-		EdgeInsecurePoll       bool
-		EdgeTunnel             bool
-		EdgeTunnelProxy        string
-		EdgeMetaFields         EdgeMetaFields
-		FIPSMode               bool
-		LogLevel               string
-		LogMode                string
-		SSLCert                string
-		SSLKey                 string
-		SSLCACert              string
-		CertRetryInterval      time.Duration
-		AWSClientCert          string
-		AWSClientKey           string
-		AWSClientBundle        string
-		AWSRoleARN             string
-		AWSTrustAnchorARN      string
-		AWSProfileARN          string
-		AWSRegion              string
-		PullLimitCheckDisabled bool
+		AgentServerAddr             string
+		AgentServerPort             string
+		AgentSecurityShutdown       time.Duration
+		ClusterAddress              string
+		ClusterProbeTimeout         time.Duration
+		ClusterProbeInterval        time.Duration
+		DataPath                    string
+		SharedSecret                string
+		EdgeMode                    bool
+		EdgeAsyncMode               bool
+		EdgeKey                     string
+		EdgeID                      string
+		EdgeUIServerAddr            string
+		EdgeUIServerPort            string
+		EdgeInactivityTimeout       string
+		EdgeInsecurePoll            bool
+		EdgeTunnel                  bool
+		EdgeTunnelProxy             string
+		EdgeConnectivityCheck       bool
+		EdgeConnectivityCheckURL    string
+		EdgeConnectivityCheckTunnel string
+		EdgeMetaFields              EdgeMetaFields
+		FIPSMode                    bool
+		LogLevel                    string
+		LogMode                     string
+		SSLCert                     string
+		SSLKey                      string
+		SSLCACert                   string
+		CertRetryInterval           time.Duration
+		AWSClientCert               string
+		AWSClientKey                string
+		AWSClientBundle             string
+		AWSRoleARN                  string
+		AWSTrustAnchorARN           string
+		AWSProfileARN               string
+		AWSRegion                   string
+		PullLimitCheckDisabled      bool
 	}
 
 	// PciDevice is the representation of a physical pci device on a host
@@ -303,8 +305,6 @@ const (
 	ScheduleScriptDirectory = "/opt/portainer/scripts"
 	// EdgeKeyFile is the name of the file used to persist the Edge key associated to the agent.
 	EdgeKeyFile = "agent_edge_key"
-	// DefaultAssetsPath is the default path of the binaries
-	DefaultAssetsPath = "/app"
 	// EdgeStackFilesPath is the path where edge stack files are saved
 	EdgeStackFilesPath = "/tmp/edge_stacks"
 	// UpdateEdgeStackFilesPath is the path where remote update edge stack files are saved.

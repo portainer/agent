@@ -41,19 +41,17 @@ type StackManager struct {
 	deployer        deployer.Deployer
 	isEnabled       bool
 	portainerClient client.PortainerClient
-	assetsPath      string
 	awsConfig       *agent.AWSConfig
 	mu              sync.Mutex
 	kubeClient      *kubernetes.KubeClient
 }
 
 // NewStackManager returns a pointer to a new instance of StackManager
-func NewStackManager(cli client.PortainerClient, assetsPath string, config *agent.AWSConfig, edgeID string, kubeClient *kubernetes.KubeClient) *StackManager {
+func NewStackManager(cli client.PortainerClient, config *agent.AWSConfig, edgeID string, kubeClient *kubernetes.KubeClient) *StackManager {
 	return &StackManager{
 		stacks:          map[edgeStackID]*edgeStack{},
 		stopSignal:      nil,
 		portainerClient: cli,
-		assetsPath:      assetsPath,
 		awsConfig:       config,
 		edgeID:          edgeID,
 		kubeClient:      kubeClient,
@@ -118,7 +116,7 @@ func (manager *StackManager) SetEngineType(engineTyp engineType) error {
 
 	manager.Stop()
 
-	deployer, err := manager.buildDeployerService(manager.assetsPath, engineTyp)
+	deployer, err := manager.buildDeployerService(engineTyp)
 	if err != nil {
 		return err
 	}
@@ -196,12 +194,12 @@ func (manager *StackManager) LoadExistingPortainerUpdaterEdgeStack(ctx context.C
 	return nil
 }
 
-func (manager *StackManager) buildDeployerService(assetsPath string, engineStatus engineType) (deployer.Deployer, error) {
+func (manager *StackManager) buildDeployerService(engineStatus engineType) (deployer.Deployer, error) {
 	switch engineStatus {
 	case EngineTypeDockerStandalone:
-		return exec.NewDockerComposeStackService(assetsPath), nil
+		return exec.NewDockerComposeStackService(), nil
 	case EngineTypeDockerSwarm:
-		return exec.NewDockerSwarmStackService(assetsPath), nil
+		return exec.NewDockerSwarmStackService(), nil
 	case EngineTypeKubernetes:
 		return exec.NewKubernetesDeployer(manager.kubeClient), nil
 	}

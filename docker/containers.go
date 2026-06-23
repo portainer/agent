@@ -2,14 +2,18 @@ package docker
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"path/filepath"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/moby/go-archive"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/portainer/portainer/api/logs"
 )
 
 const largeClientTimeout = 1 * time.Hour
@@ -77,6 +81,28 @@ func ContainerKill(name string) error {
 func ContainerDelete(name string, opts container.RemoveOptions) error {
 	return withCli(func(cli *client.Client) error {
 		return cli.ContainerRemove(context.Background(), name, opts)
+	})
+}
+
+func CopyToContainer(containerID, dstPath, srcPath string) error {
+	if !filepath.IsAbs(srcPath) {
+		return fmt.Errorf("srcPath %q must be an absolute url", srcPath)
+	}
+
+	srcInfo, err := archive.CopyInfoSourcePath(srcPath, true)
+	if err != nil {
+		return err
+	}
+
+	tarReader, err := archive.TarResource(srcInfo)
+	if err != nil {
+		return err
+	}
+
+	defer logs.CloseAndLogErr(tarReader)
+
+	return withCli(func(cli *client.Client) error {
+		return cli.CopyToContainer(context.Background(), containerID, dstPath, tarReader, container.CopyToContainerOptions{})
 	})
 }
 

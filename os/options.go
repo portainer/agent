@@ -11,45 +11,47 @@ import (
 )
 
 const (
-	EnvKeyAgentHost              = "AGENT_HOST"
-	EnvKeyAgentPort              = "AGENT_PORT"
-	EnvKeyClusterAddr            = "AGENT_CLUSTER_ADDR"
-	EnvKeyClusterProbeTimeout    = "AGENT_CLUSTER_PROBE_TIMEOUT"
-	EnvKeyClusterProbeInterval   = "AGENT_CLUSTER_PROBE_INTERVAL"
-	EnvKeyAgentSecret            = "AGENT_SECRET"
-	EnvKeyAgentSecurityShutdown  = "AGENT_SECRET_TIMEOUT"
-	EnvKeyAssetsPath             = "ASSETS_PATH"
-	EnvKeyDataPath               = "DATA_PATH"
-	EnvKeyEdge                   = "EDGE"
-	EnvKeyEdgeAsync              = "EDGE_ASYNC"
-	EnvKeyEdgeKey                = "EDGE_KEY"
-	EnvKeyEdgeID                 = "EDGE_ID"
-	EnvKeyEdgeServerHost         = "EDGE_SERVER_HOST"
-	EnvKeyEdgeServerPort         = "EDGE_SERVER_PORT"
-	EnvKeyEdgeInactivityTimeout  = "EDGE_INACTIVITY_TIMEOUT"
-	EnvKeyEdgeInsecurePoll       = "EDGE_INSECURE_POLL"
-	EnvKeyEdgeTunnel             = "EDGE_TUNNEL"
-	EnvKeyEdgeTunnelHttpProxy    = "HTTP_PROXY"
-	EnvKeyEdgeTunnelHttpsProxy   = "HTTPS_PROXY"
-	EnvKeyLogLevel               = "LOG_LEVEL"
-	EnvKeyLogMode                = "LOG_MODE"
-	EnvKeySSLCert                = "MTLS_SSL_CERT"
-	EnvKeySSLKey                 = "MTLS_SSL_KEY"
-	EnvKeySSLCACert              = "MTLS_SSL_CA"
-	EnvKeyCertRetryInterval      = "MTLS_CERT_RETRY_INTERVAL"
-	EnvKeyAWSClientCert          = "AWS_CLIENT_CERT"
-	EnvKeyAWSClientKey           = "AWS_CLIENT_KEY"
-	EnvKeyAWSClientBundle        = "AWS_CLIENT_BUNDLE"
-	EnvKeyAWSRoleARN             = "AWS_ROLE_ARN"
-	EnvKeyAWSTrustAnchorARN      = "AWS_TRUST_ANCHOR_ARN"
-	EnvKeyAWSProfileARN          = "AWS_PROFILE_ARN"
-	EnvKeyAWSRegion              = "AWS_REGION"
-	EnvKeyUpdateID               = "UPDATE_ID"
-	EnvKeyEdgeGroups             = "EDGE_GROUPS"
-	EnvKeyEnvironmentGroup       = "PORTAINER_GROUP"
-	EnvKeyTags                   = "PORTAINER_TAGS"
-	EnvKeyPullLimitCheckDisabled = "PULL_LIMIT_CHECK_DISABLED"
-	EnvKeyFipsMode               = "FIPS_MODE"
+	EnvKeyAgentHost                   = "AGENT_HOST"
+	EnvKeyAgentPort                   = "AGENT_PORT"
+	EnvKeyClusterAddr                 = "AGENT_CLUSTER_ADDR"
+	EnvKeyClusterProbeTimeout         = "AGENT_CLUSTER_PROBE_TIMEOUT"
+	EnvKeyClusterProbeInterval        = "AGENT_CLUSTER_PROBE_INTERVAL"
+	EnvKeyAgentSecret                 = "AGENT_SECRET"
+	EnvKeyAgentSecurityShutdown       = "AGENT_SECRET_TIMEOUT"
+	EnvKeyDataPath                    = "DATA_PATH"
+	EnvKeyEdge                        = "EDGE"
+	EnvKeyEdgeAsync                   = "EDGE_ASYNC"
+	EnvKeyEdgeKey                     = "EDGE_KEY"
+	EnvKeyEdgeID                      = "EDGE_ID"
+	EnvKeyEdgeServerHost              = "EDGE_SERVER_HOST"
+	EnvKeyEdgeServerPort              = "EDGE_SERVER_PORT"
+	EnvKeyEdgeInactivityTimeout       = "EDGE_INACTIVITY_TIMEOUT"
+	EnvKeyEdgeInsecurePoll            = "EDGE_INSECURE_POLL"
+	EnvKeyEdgeTunnel                  = "EDGE_TUNNEL"
+	EnvKeyEdgeTunnelHttpProxy         = "HTTP_PROXY"
+	EnvKeyEdgeTunnelHttpsProxy        = "HTTPS_PROXY"
+	EnvKeyLogLevel                    = "LOG_LEVEL"
+	EnvKeyLogMode                     = "LOG_MODE"
+	EnvKeySSLCert                     = "MTLS_SSL_CERT"
+	EnvKeySSLKey                      = "MTLS_SSL_KEY"
+	EnvKeySSLCACert                   = "MTLS_SSL_CA"
+	EnvKeyCertRetryInterval           = "MTLS_CERT_RETRY_INTERVAL"
+	EnvKeyAWSClientCert               = "AWS_CLIENT_CERT"
+	EnvKeyAWSClientKey                = "AWS_CLIENT_KEY"
+	EnvKeyAWSClientBundle             = "AWS_CLIENT_BUNDLE"
+	EnvKeyAWSRoleARN                  = "AWS_ROLE_ARN"
+	EnvKeyAWSTrustAnchorARN           = "AWS_TRUST_ANCHOR_ARN"
+	EnvKeyAWSProfileARN               = "AWS_PROFILE_ARN"
+	EnvKeyAWSRegion                   = "AWS_REGION"
+	EnvKeyUpdateID                    = "UPDATE_ID"
+	EnvKeyEdgeGroups                  = "EDGE_GROUPS"
+	EnvKeyEnvironmentGroup            = "PORTAINER_GROUP"
+	EnvKeyTags                        = "PORTAINER_TAGS"
+	EnvKeyPullLimitCheckDisabled      = "PULL_LIMIT_CHECK_DISABLED"
+	EnvKeyFipsMode                    = "FIPS_MODE"
+	EnvKeyEdgeConnectivityCheck       = "EDGE_CONNECTIVITY_CHECK"
+	EnvKeyEdgeConnectivityCheckURL    = "EDGE_CONNECTIVITY_CHECK_URL"
+	EnvKeyEdgeConnectivityCheckTunnel = "EDGE_CONNECTIVITY_CHECK_TUNNEL_ADDR"
 )
 
 type EnvOptionParser struct{}
@@ -59,7 +61,6 @@ func NewEnvOptionParser() EnvOptionParser {
 }
 
 var (
-	fAssetsPath             = kingpin.Flag("assets", EnvKeyAssetsPath+" path to the assets folder").Envar(EnvKeyAssetsPath).Default(agent.DefaultAssetsPath).String()
 	fAgentServerAddr        = kingpin.Flag("host", EnvKeyAgentHost+" address on which the agent API will be exposed").Envar(EnvKeyAgentHost).Default(agent.DefaultAgentAddr).IP()
 	fAgentServerPort        = kingpin.Flag("port", EnvKeyAgentPort+" port on which the agent API will be exposed").Envar(EnvKeyAgentPort).Default(agent.DefaultAgentPort).Int()
 	fAgentSecurityShutdown  = kingpin.Flag("secret-timeout", EnvKeyAgentSecurityShutdown+" the duration after which the agent will be shutdown if not associated or secured by AGENT_SECRET. (defaults to 72h)").Envar(EnvKeyAgentSecurityShutdown).Default(agent.DefaultAgentSecurityShutdown).Duration()
@@ -133,7 +134,6 @@ func (parser EnvOptionParser) Options() (*agent.Options, error) {
 	}
 
 	return &agent.Options{
-		AssetsPath:            *fAssetsPath,
 		AgentServerAddr:       fAgentServerAddr.String(),
 		AgentServerPort:       strconv.Itoa(*fAgentServerPort),
 		AgentSecurityShutdown: *fAgentSecurityShutdown,

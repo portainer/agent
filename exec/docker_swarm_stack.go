@@ -2,97 +2,75 @@ package exec
 
 import (
 	"context"
-	"errors"
-	"path"
-	"runtime"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/deployer"
 	libstack "github.com/portainer/portainer/pkg/libstack"
-	"github.com/portainer/portainer/pkg/libstack/compose"
+	libswarm "github.com/portainer/portainer/pkg/libstack/swarm"
 )
 
 var _ deployer.Deployer = &DockerSwarmStackService{}
 
-// DockerSwarmStackService represents a service for managing stacks by using the Docker binary.
+// DockerSwarmStackService manages Docker Swarm stacks via the SwarmDeployer.
 type DockerSwarmStackService struct {
-	command         string
-	composeDeployer libstack.Deployer
+	swarmDeployer libswarm.Deployer
 }
 
-type DockerSwarmDeployOpts struct {
-	Prune bool
-}
-
-// NewDockerSwarmStackService initializes a new DockerStackService service.
-// It also updates the configuration of the Docker CLI binary.
-func NewDockerSwarmStackService(binaryPath string) *DockerSwarmStackService {
-	command := path.Join(binaryPath, "docker")
-
-	if runtime.GOOS == "windows" {
-		command = path.Join(binaryPath, "docker.exe")
-	}
-
+// NewDockerSwarmStackService initializes a new DockerSwarmStackService.
+func NewDockerSwarmStackService() *DockerSwarmStackService {
 	return &DockerSwarmStackService{
-		command:         command,
-		composeDeployer: compose.NewComposeDeployer(),
+		swarmDeployer: libswarm.NewSwarmDeployer(),
 	}
 }
 
-// Deploy executes the docker stack deploy command.
-func (service *DockerSwarmStackService) Deploy(ctx context.Context, name string, filePaths []string, options deployer.DeployOptions) error {
-	if len(filePaths) == 0 {
-		return errors.New("missing file paths")
-	}
-
-	stackFilePath := filePaths[0]
-
-	args := []string{"stack", "deploy", "--with-registry-auth"}
-	if options.Prune {
-		args = append(args, "--prune")
-	}
-	args = append(args, "--compose-file", stackFilePath, name)
-
-	stackFolder := options.WorkingDir
-	if stackFolder == "" {
-		stackFolder = path.Dir(stackFilePath)
-	}
-
-	_, err := runCommandAndCaptureStdErr(service.command, args, &cmdOpts{
-		WorkingDir:  stackFolder,
-		Env:         options.Env,
-		ProjectName: name,
+// Deploy creates or updates a Docker Swarm stack from the given compose files.
+func (service *DockerSwarmStackService) Deploy(
+	ctx context.Context,
+	name string,
+	filePaths []string,
+	options deployer.DeployOptions,
+) error {
+	return service.swarmDeployer.Deploy(ctx, filePaths, libswarm.DeployOptions{
+		Options: libswarm.Options{
+			ProjectName: name,
+			WorkingDir:  options.WorkingDir,
+			Env:         options.Env,
+			Registries:  registryCredsToAuthConfigs(options.Registries),
+		},
+		RemoveOrphans: options.Prune,
+		PullImage:     true,
 	})
-
-	return err
 }
 
-// Pull is a dummy method for Swarm
-func (service *DockerSwarmStackService) Pull(ctx context.Context, name string, filePaths []string, options deployer.PullOptions) error {
+// Pull is a no-op for Swarm; images are pulled on deploy.
+func (service *DockerSwarmStackService) Pull(_ context.Context, _ string, _ []string, _ deployer.PullOptions) error {
 	return nil
 }
 
-// Validate uses compose to validate the stack files
+// Validate checks that the compose file(s) are valid for swarm deployment.
 func (service *DockerSwarmStackService) Validate(ctx context.Context, name string, filePaths []string, options deployer.ValidateOptions) error {
-	return service.composeDeployer.Validate(ctx, filePaths, libstack.Options{
+	return service.swarmDeployer.Validate(ctx, filePaths, libswarm.Options{
+		ProjectName: name,
 		WorkingDir:  options.WorkingDir,
 		Env:         options.Env,
-		ProjectName: name,
+		Registries:  registryCredsToAuthConfigs(options.Registries),
 	})
 }
 
-// Remove executes the docker stack rm command.
-func (service *DockerSwarmStackService) Remove(ctx context.Context, name string, filePaths []string, options deployer.RemoveOptions) error {
-	args := []string{"stack", "rm", name}
-
-	_, err := runCommandAndCaptureStdErr(service.command, args, &cmdOpts{
-		Env:         options.Env,
-		ProjectName: name,
+// Remove deletes all resources belonging to a Swarm stack.
+func (service *DockerSwarmStackService) Remove(ctx context.Context, name string, _ []string, options deployer.RemoveOptions) error {
+	return service.swarmDeployer.Remove(ctx, name, libswarm.RemoveOptions{
+		Options: libswarm.Options{
+			ProjectName: name,
+			Env:         options.Env,
+		},
 	})
-
-	return err
 }
 
-func (service *DockerSwarmStackService) GetEdgeStacks(ctx context.Context) ([]agent.EdgeStack, error) {
+func (service *DockerSwarmStackService) WaitForStatus(ctx context.Context, name string, status libstack.Status, _ deployer.CheckStatusOptions) libstack.WaitResult {
+	return service.swarmDeployer.WaitForStatus(ctx, name, libswarm.Options{}, status)
+}
+
+func (service *DockerSwarmStackService) GetEdgeStacks(_ context.Context) ([]agent.EdgeStack, error) {
 	return nil, nil
 }

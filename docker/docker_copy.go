@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 
@@ -21,13 +19,13 @@ import (
 )
 
 // CopyGitStackToHost copies src folder to the dst folder on the host
-func CopyGitStackToHost(src, dst string, stackID int, stackName, assetPath string) error {
-	return removeAndCopy(src, dst, stackID, stackName, assetPath, true)
+func CopyGitStackToHost(src, dst string, stackID int, stackName string) error {
+	return removeAndCopy(src, dst, stackID, stackName, true)
 }
 
 // RemoveGitStackFromHost removes the copy of src folder on the host
 func RemoveGitStackFromHost(src, dst string, stackID int, stackName string) error {
-	return removeAndCopy(src, dst, stackID, stackName, "", false)
+	return removeAndCopy(src, dst, stackID, stackName, false)
 }
 
 func buildRemoveDirCmd(src, dst string, fips bool) []string {
@@ -44,7 +42,7 @@ func buildRemoveDirCmd(src, dst string, fips bool) []string {
 
 // removeAndCopy removes the copy of src folder on the host,
 // then copies src folder to the dst folder on the host
-func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, needCopy bool) error {
+func removeAndCopy(src, dst string, stackID int, stackName string, needCopy bool) error {
 	if err := pullUnpackerImage(); err != nil {
 		return err
 	}
@@ -74,7 +72,7 @@ func removeAndCopy(src, dst string, stackID int, stackName, assetPath string, ne
 	}
 
 	if needCopy {
-		return copyToContainer(assetPath, src, unpackerContainer.ID, dst)
+		return CopyToContainer(unpackerContainer.ID, dst, src)
 	}
 
 	return nil
@@ -141,19 +139,4 @@ func createUnpackerContainer(stackID int, stackName, composeDestination string, 
 		nil,
 		containerName,
 	)
-}
-
-func copyToContainer(assetPath, src, containerID, dst string) error {
-	dockerBinaryPath := path.Join(assetPath, "docker")
-	fullDst := containerID + ":" + dst
-	cmd := exec.Command(dockerBinaryPath, "cp", src, fullDst)
-
-	output, err := cmd.Output()
-	if err != nil {
-		return err
-	}
-
-	log.Debug().Str("output", string(output)).Msg("Copy stack to host filesystem")
-
-	return nil
 }

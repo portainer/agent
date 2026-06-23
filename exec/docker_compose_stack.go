@@ -21,7 +21,7 @@ type DockerComposeStackService struct {
 
 // NewDockerComposeStackService initializes a new DockerStackService service.
 // It also updates the configuration of the Docker CLI binary.
-func NewDockerComposeStackService(binaryPath string) *DockerComposeStackService {
+func NewDockerComposeStackService() *DockerComposeStackService {
 	return &DockerComposeStackService{
 		deployer: compose.NewComposeDeployer(),
 	}

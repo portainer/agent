@@ -115,7 +115,6 @@ func (manager *Manager) Start() error {
 
 	manager.stackManager = stack.NewStackManager(
 		portainerClient,
-		manager.agentOptions.AssetsPath,
 		aws.ExtractAwsConfig(manager.agentOptions),
 		manager.agentOptions.EdgeID,
 		manager.kubeClient,

@@ -288,7 +288,7 @@ func (manager *StackManager) performActionOnStack() {
 		if IsRelativePathStack(stack) && (stack.Action == actionDeploy || stack.AlwaysCloneGitRepoForRelativePath) {
 			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
 
-			if err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName, manager.assetsPath); err != nil {
+			if err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName); err != nil {
 				log.Error().Err(err).Msg("unable to copy the stack to host")
 
 				manager.mu.Lock()

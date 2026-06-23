@@ -47,8 +47,7 @@ services:
 		},
 	}
 
-	w := NewDockerSwarmStackService("")
-	ctx := context.Background()
+	w := NewDockerSwarmStackService()
 	dir := t.TempDir()
 
 	for _, testCase := range testCases {
@@ -63,12 +62,12 @@ services:
 				t.Fatalf("[test: %s] Failed to write compose file: %v", testCase.TestName, err)
 			}
 
-			err = w.Deploy(ctx, projectName, []string{composeFilePath}, deployer.DeployOptions{})
+			err = w.Deploy(t.Context(), projectName, []string{composeFilePath}, deployer.DeployOptions{})
 			if err != nil {
 				t.Fatalf("[test: %s] [path: %s] Failed to deploy compose file: %v", testCase.TestName, composeFilePath, err)
 			}
 
-			status, statusMessage, err := waitForStatus(w, ctx, projectName, libstack.StatusRunning)
+			status, statusMessage, err := waitForStatus(w, t.Context(), projectName, libstack.StatusRunning)
 			if err != nil {
 				t.Fatalf("[test: %s] Failed to get compose project status: %v", testCase.TestName, err)
 			}
@@ -81,12 +80,12 @@ services:
 				t.Fatalf("[test: %s] Expected status message but got empty", testCase.TestName)
 			}
 
-			err = w.Remove(ctx, projectName, nil, deployer.RemoveOptions{})
+			err = w.Remove(t.Context(), projectName, nil, deployer.RemoveOptions{})
 			if err != nil {
 				t.Fatalf("[test: %s] Failed to remove compose project: %v", testCase.TestName, err)
 			}
 
-			status, statusMessage, err = waitForStatus(w, ctx, projectName, libstack.StatusRemoved)
+			status, statusMessage, err = waitForStatus(w, t.Context(), projectName, libstack.StatusRemoved)
 			if err != nil {
 				t.Fatalf("[test: %s] Failed to get compose project status: %v", testCase.TestName, err)
 			}
