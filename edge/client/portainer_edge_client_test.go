@@ -8,8 +8,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"testing/synctest"
-
 	"github.com/portainer/agent"
 	aos "github.com/portainer/agent/os"
 	portainer "github.com/portainer/portainer/api"
@@ -86,7 +84,7 @@ func TestMutateResponseForCaching(t *testing.T) {
 	require.True(t, originalResp.Stacks[2].ForceRedeploy)
 }
 
-func TestUpdatePolicyChartStatuses_RetriesOnServerError(t *testing.T) {
+func TestUpdatePolicyChartStatuses_ReturnsErrorOnServerError(t *testing.T) {
 	t.Parallel()
 	fips.InitFIPS(false)
 
@@ -98,17 +96,8 @@ func TestUpdatePolicyChartStatuses_RetriesOnServerError(t *testing.T) {
 		require.Equal(t, "/api/endpoints/1/edge/charts/statuses", r.URL.Path)
 		require.Equal(t, "edge-id", r.Header.Get(agent.HTTPEdgeIdentifierHeaderName))
 
-		if requests.Load() < 3 {
-			return &http.Response{
-				StatusCode: http.StatusInternalServerError,
-				Body:       io.NopCloser(strings.NewReader("")),
-				Header:     make(http.Header),
-				Request:    r,
-			}, nil
-		}
-
 		return &http.Response{
-			StatusCode: http.StatusNoContent,
+			StatusCode: http.StatusInternalServerError,
 			Body:       io.NopCloser(strings.NewReader("")),
 			Header:     make(http.Header),
 			Request:    r,
@@ -122,14 +111,12 @@ func TestUpdatePolicyChartStatuses_RetriesOnServerError(t *testing.T) {
 		serverAddress:   "http://edge.test",
 	}
 
-	synctest.Test(t, func(t *testing.T) {
-		err := client.UpdatePolicyChartStatuses([]portainer.PolicyChartStatus{{ChartName: "gatekeeper"}})
-		require.NoError(t, err)
-		require.Equal(t, int32(3), requests.Load())
-	})
+	err := client.UpdatePolicyChartStatuses([]portainer.PolicyChartStatus{{ChartName: "gatekeeper"}})
+	require.Error(t, err)
+	require.Equal(t, int32(1), requests.Load())
 }
 
-func TestUpdatePolicyChartStatuses_RetriesOnTransportError(t *testing.T) {
+func TestUpdatePolicyChartStatuses_ReturnsErrorOnTransportError(t *testing.T) {
 	t.Parallel()
 	fips.InitFIPS(false)
 
@@ -141,16 +128,7 @@ func TestUpdatePolicyChartStatuses_RetriesOnTransportError(t *testing.T) {
 		require.Equal(t, "/api/endpoints/1/edge/charts/statuses", req.URL.Path)
 		require.Equal(t, "edge-id", req.Header.Get(agent.HTTPEdgeIdentifierHeaderName))
 
-		if requests.Load() == 1 {
-			return nil, errors.New("dial timeout")
-		}
-
-		return &http.Response{
-			StatusCode: http.StatusNoContent,
-			Body:       io.NopCloser(strings.NewReader("")),
-			Header:     make(http.Header),
-			Request:    req,
-		}, nil
+		return nil, errors.New("dial timeout")
 	})
 
 	client := &PortainerEdgeClient{
@@ -160,11 +138,9 @@ func TestUpdatePolicyChartStatuses_RetriesOnTransportError(t *testing.T) {
 		serverAddress:   "http://edge.test",
 	}
 
-	synctest.Test(t, func(t *testing.T) {
-		err := client.UpdatePolicyChartStatuses([]portainer.PolicyChartStatus{{ChartName: "gatekeeper"}})
-		require.NoError(t, err)
-		require.Equal(t, int32(2), requests.Load())
-	})
+	err := client.UpdatePolicyChartStatuses([]portainer.PolicyChartStatus{{ChartName: "gatekeeper"}})
+	require.ErrorContains(t, err, "could not update policy chart statuses")
+	require.Equal(t, int32(1), requests.Load())
 }
 
 func TestUpdatePolicyChartStatuses_DoesNotRetryOnClientError(t *testing.T) {

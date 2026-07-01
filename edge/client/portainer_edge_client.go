@@ -385,41 +385,22 @@ func (client *PortainerEdgeClient) UpdatePolicyChartStatuses(statuses []portaine
 
 	requestURL := fmt.Sprintf("%s/api/endpoints/%d/edge/charts/statuses", client.serverAddress, client.getEndpointIDFn())
 
-	var resp *http.Response
-	for {
-		req, err := http.NewRequest(http.MethodPut, requestURL, bytes.NewReader(data))
-		if err != nil {
-			return err
-		}
+	req, err := http.NewRequest(http.MethodPut, requestURL, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
 
-		req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
+	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 
-		resp, err = client.httpClient.Do(req)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Msg("could not update policy chart statuses, retrying...")
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("could not update policy chart statuses: %w", err)
+	}
 
-			time.Sleep(requestRetryWait)
+	_, _ = io.Copy(io.Discard, resp.Body)
 
-			continue
-		}
-
-		_, _ = io.Copy(io.Discard, resp.Body)
-
-		if err := resp.Body.Close(); err != nil {
-			log.Warn().Err(err).Msg("failed to close response body")
-		}
-
-		if resp.StatusCode < http.StatusInternalServerError {
-			break
-		}
-
-		log.Debug().
-			Str("status", resp.Status).
-			Msg("could not update policy chart statuses, retrying...")
-
-		time.Sleep(requestRetryWait)
+	if err := resp.Body.Close(); err != nil {
+		log.Warn().Err(err).Msg("failed to close response body")
 	}
 
 	if resp.StatusCode != http.StatusNoContent {
