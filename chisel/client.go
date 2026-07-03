@@ -15,6 +15,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	tunnelKeepAliveInterval = 25 * time.Second
+	tunnelMaxRetryInterval  = 30 * time.Second
+	tunnelUnlimitedRetries  = -1
+)
+
 // Client is used to create a reverse proxy tunnel connected to a Portainer instance.
 type Client struct {
 	chiselClient *chclient.Client
@@ -71,11 +77,14 @@ func (client *Client) CreateTunnel(tunnelConfig agent.TunnelConfig) error {
 		Msg("creating reverse tunnel client")
 
 	config := &chclient.Config{
-		Server:      tunnelConfig.ServerAddr,
-		Remotes:     []string{remote},
-		Fingerprint: tunnelConfig.ServerFingerprint,
-		Auth:        tunnelConfig.Credentials,
-		Proxy:       tunnelConfig.Proxy,
+		Server:           tunnelConfig.ServerAddr,
+		Remotes:          []string{remote},
+		Fingerprint:      tunnelConfig.ServerFingerprint,
+		Auth:             tunnelConfig.Credentials,
+		Proxy:            tunnelConfig.Proxy,
+		KeepAlive:        tunnelKeepAliveInterval,
+		MaxRetryCount:    tunnelUnlimitedRetries,
+		MaxRetryInterval: tunnelMaxRetryInterval,
 	}
 
 	if fips.FIPSMode() {
