@@ -33,6 +33,7 @@ func (service *DockerSwarmStackService) Deploy(
 	return service.swarmDeployer.Deploy(ctx, filePaths, libswarm.DeployOptions{
 		Options: libswarm.Options{
 			ProjectName: name,
+			WorkingDir:  options.WorkingDir,
 			Env:         options.Env,
 			Registries:  registryCredsToAuthConfigs(options.Registries),
 		},
@@ -50,6 +51,7 @@ func (service *DockerSwarmStackService) Pull(_ context.Context, _ string, _ []st
 func (service *DockerSwarmStackService) Validate(ctx context.Context, name string, filePaths []string, options deployer.ValidateOptions) error {
 	return service.swarmDeployer.Validate(ctx, filePaths, libswarm.Options{
 		ProjectName: name,
+		WorkingDir:  options.WorkingDir,
 		Env:         options.Env,
 		Registries:  registryCredsToAuthConfigs(options.Registries),
 	})
