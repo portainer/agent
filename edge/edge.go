@@ -17,6 +17,7 @@ import (
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/policies"
 	"github.com/portainer/agent/edge/policies/helm"
+	"github.com/portainer/agent/edge/policies/resourcepatch"
 	"github.com/portainer/agent/edge/scheduler"
 	"github.com/portainer/agent/edge/stack"
 	"github.com/portainer/agent/exec"
@@ -178,6 +179,7 @@ func (manager *Manager) Start() error {
 		manager.pollService.RegisterPolicy(helm.Registration(
 			manager.kubeClient, helmPackageManager, portainerClient, coordinator, chartReporter,
 		))
+		manager.pollService.RegisterPolicy(resourcepatch.Registration(manager.kubeClient))
 		manager.pollService.SetChartReporter(chartReporter)
 	}
 
