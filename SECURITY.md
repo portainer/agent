@@ -54,6 +54,8 @@ If you follow the responsible disclosure process, we will:
 
 We will make every effort to promptly address any security weaknesses. Security advisories and fixes will be published through GitHub Security Advisories and other channels as needed.
 
+Portainer does not operate a paid bug bounty program and does not offer monetary rewards for vulnerability reports. Portainer will not pursue legal action against good-faith research conducted in line with this policy.
+
 Thank you for helping keep Portainer and our community secure.
 
 ## Resources
