@@ -105,8 +105,9 @@ func (r *Reconciler) RegisterFactory(policyType string, f HandlerFactory) {
 }
 
 // Reconcile drives the reconcile cycle for a single poll. It serialises:
-//  1. Apply handlers for new or changed desired states.
-//  2. Remove handlers for policies no longer in the desired set.
+//  1. Remove departed resource-patch policies first so restore annotations remain correct.
+//  2. Apply handlers for new or changed desired states.
+//  3. Remove departed handlers of every other policy type.
 //
 // The global lock is held for the full cycle. Two concurrent Reconcile calls
 // serialise — the second blocks until the first completes. This is intentional:
@@ -118,6 +119,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, desired []DesiredState) {
 	defer r.mu.Unlock()
 
 	desiredByID := index(desired)
+
+	r.removeUndesired(ctx, desiredByID, func(policyType string) bool {
+		return policyType == portainer.ResourcePatchAgentType
+	})
 
 	for _, d := range desired {
 		handler, exists := r.handlers[d.PolicyID]
@@ -162,8 +167,21 @@ func (r *Reconciler) Reconcile(ctx context.Context, desired []DesiredState) {
 		}
 	}
 
+	r.removeUndesired(ctx, desiredByID, func(policyType string) bool {
+		return policyType != portainer.ResourcePatchAgentType
+	})
+}
+
+// removeUndesired removes and discards every handler no longer present in desired
+// whose policy type satisfies match. Best-effort: a handler is always discarded
+// even if its Remove fails — retaining a stuck handler risks masking a clean
+// re-create of the same policy ID on the next cycle.
+func (r *Reconciler) removeUndesired(ctx context.Context, desiredByID map[portainer.PolicyID]struct{}, match func(policyType string) bool) {
 	for id, handler := range r.handlers {
 		if _, wanted := desiredByID[id]; wanted {
+			continue
+		}
+		if !match(r.actual[id].Type) {
 			continue
 		}
 		actual := r.actual[id]
@@ -172,9 +190,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, desired []DesiredState) {
 		// StatusRemoving above is set for intent documentation only — it is never
 		// observable externally because Reconcile holds mu.Lock() for its full
 		// duration and Statuses() requires mu.RLock(). The state is deleted below.
-		_ = handler.Remove(ctx) // best-effort: handler is always discarded even on error.
-		// Retaining a stuck handler risks masking a clean re-create of the same
-		// policy ID on the next cycle.
+		_ = handler.Remove(ctx)
 		delete(r.handlers, id)
 		delete(r.actual, id)
 	}

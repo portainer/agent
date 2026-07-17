@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -65,6 +66,85 @@ func newFactory(handlers map[portainer.PolicyID]*stubHandler, applyErr error) po
 		handlers[id] = h
 		return h
 	}
+}
+
+// orderingHandler records the sequence of Apply/Remove calls across all handlers
+// into a shared log, so tests can assert cross-handler ordering within a cycle.
+type orderingHandler struct {
+	id     portainer.PolicyID
+	record func(string)
+}
+
+func (h *orderingHandler) Apply(context.Context, json.RawMessage) error {
+	h.record(fmt.Sprintf("apply-%d", h.id))
+	return nil
+}
+
+func (h *orderingHandler) Remove(context.Context) error {
+	h.record(fmt.Sprintf("remove-%d", h.id))
+	return nil
+}
+
+func (h *orderingHandler) Status() policyreconcile.ActualState {
+	return policyreconcile.ActualState{PolicyID: h.id, Status: policyreconcile.StatusApplied}
+}
+
+func orderingFactory(record func(string)) policyreconcile.HandlerFactory {
+	return func(id portainer.PolicyID) policyreconcile.PolicyHandler {
+		return &orderingHandler{id: id, record: record}
+	}
+}
+
+// A superseding resource-patch policy must apply AFTER the departed one is removed,
+// so the outgoing policy's owner-scoped restore does not clobber the incoming values.
+func TestReconcile_ResourcePatchRemovedBeforeApply(t *testing.T) {
+	var (
+		mu     sync.Mutex
+		events []string
+	)
+	record := func(s string) {
+		mu.Lock()
+		defer mu.Unlock()
+		events = append(events, s)
+	}
+
+	r := policyreconcile.NewReconciler()
+	r.RegisterFactory(portainer.ResourcePatchAgentType, orderingFactory(record))
+
+	r.Reconcile(context.Background(), []policyreconcile.DesiredState{
+		{PolicyID: 1, Type: portainer.ResourcePatchAgentType, Fingerprint: "a", Config: json.RawMessage(`{}`)},
+	})
+	// Policy 2 supersedes policy 1: 1 departs, 2 is new — in the same cycle.
+	r.Reconcile(context.Background(), []policyreconcile.DesiredState{
+		{PolicyID: 2, Type: portainer.ResourcePatchAgentType, Fingerprint: "b", Config: json.RawMessage(`{}`)},
+	})
+
+	assert.Equal(t, []string{"apply-1", "remove-1", "apply-2"}, events)
+}
+
+// Non-resource-patch policy types keep the default apply-before-remove ordering.
+func TestReconcile_OtherTypeRemovedAfterApply(t *testing.T) {
+	var (
+		mu     sync.Mutex
+		events []string
+	)
+	record := func(s string) {
+		mu.Lock()
+		defer mu.Unlock()
+		events = append(events, s)
+	}
+
+	r := policyreconcile.NewReconciler()
+	r.RegisterFactory("helm-k8s", orderingFactory(record))
+
+	r.Reconcile(context.Background(), []policyreconcile.DesiredState{
+		{PolicyID: 1, Type: "helm-k8s", Fingerprint: "a", Config: json.RawMessage(`{}`)},
+	})
+	r.Reconcile(context.Background(), []policyreconcile.DesiredState{
+		{PolicyID: 2, Type: "helm-k8s", Fingerprint: "b", Config: json.RawMessage(`{}`)},
+	})
+
+	assert.Equal(t, []string{"apply-1", "apply-2", "remove-1"}, events)
 }
 
 func TestReconcile_NewPolicy_FactoryCalledAndApplied(t *testing.T) {
