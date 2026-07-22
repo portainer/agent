@@ -13,6 +13,7 @@ import (
 )
 
 func TestUpdateMetricsReplacesPublishedSnapshot(t *testing.T) {
+	t.Parallel()
 	h := NewHandler()
 
 	h.UpdateMetrics(&kubernetes.ClusterRawMetrics{
@@ -37,6 +38,7 @@ func TestUpdateMetricsReplacesPublishedSnapshot(t *testing.T) {
 }
 
 func TestClearMetricsRemovesPublishedSnapshot(t *testing.T) {
+	t.Parallel()
 	h := NewHandler()
 	h.UpdateMetrics(&kubernetes.ClusterRawMetrics{
 		HasCPU:               true,
@@ -53,6 +55,7 @@ func TestClearMetricsRemovesPublishedSnapshot(t *testing.T) {
 }
 
 func TestUpdateEtcdMetricsSetsGauge(t *testing.T) {
+	t.Parallel()
 	h := NewHandler()
 
 	h.UpdateEtcdMetrics(true)
@@ -67,6 +70,7 @@ func TestUpdateEtcdMetricsSetsGauge(t *testing.T) {
 }
 
 func TestClearEtcdMetricsMarksGaugeAsIndeterminate(t *testing.T) {
+	t.Parallel()
 	h := NewHandler()
 
 	h.UpdateEtcdMetrics(true)
@@ -78,6 +82,7 @@ func TestClearEtcdMetricsMarksGaugeAsIndeterminate(t *testing.T) {
 }
 
 func TestUpdateNodeMetricsReplacesPublishedSeries(t *testing.T) {
+	t.Parallel()
 	h := NewHandler()
 
 	h.UpdateNodeMetrics([]kubernetes.NodeReadyStatus{
@@ -101,6 +106,7 @@ func TestUpdateNodeMetricsReplacesPublishedSeries(t *testing.T) {
 }
 
 func TestClearNodeMetricsKeepsRawSnapshot(t *testing.T) {
+	t.Parallel()
 	h := NewHandler()
 
 	h.UpdateMetrics(&kubernetes.ClusterRawMetrics{
@@ -119,6 +125,7 @@ func TestClearNodeMetricsKeepsRawSnapshot(t *testing.T) {
 }
 
 func TestUpdateTLSCertMetricsPublishesSeries(t *testing.T) {
+	t.Parallel()
 	h := NewHandler()
 	expiry := time.Unix(1_800_000_000, 0)
 
@@ -135,6 +142,7 @@ func TestUpdateTLSCertMetricsPublishesSeries(t *testing.T) {
 }
 
 func TestUpdateTLSCertMetricsReplacesPublishedSeries(t *testing.T) {
+	t.Parallel()
 	h := NewHandler()
 
 	h.UpdateAPIServerTLSCertMetrics([]kubernetes.TLSCertInfo{{
@@ -155,6 +163,7 @@ func TestUpdateTLSCertMetricsReplacesPublishedSeries(t *testing.T) {
 }
 
 func TestClearTLSCertMetricsRemovesPublishedSeries(t *testing.T) {
+	t.Parallel()
 	h := NewHandler()
 
 	h.UpdateMetrics(&kubernetes.ClusterRawMetrics{

@@ -148,6 +148,7 @@ func TestReconcile_OtherTypeRemovedAfterApply(t *testing.T) {
 }
 
 func TestReconcile_NewPolicy_FactoryCalledAndApplied(t *testing.T) {
+	t.Parallel()
 	r := policyreconcile.NewReconciler()
 	handlers := map[portainer.PolicyID]*stubHandler{}
 	r.RegisterFactory("test", newFactory(handlers, nil))
@@ -165,6 +166,7 @@ func TestReconcile_NewPolicy_FactoryCalledAndApplied(t *testing.T) {
 }
 
 func TestReconcile_SameFingerprintApplied_NoOp(t *testing.T) {
+	t.Parallel()
 	r := policyreconcile.NewReconciler()
 	handlers := map[portainer.PolicyID]*stubHandler{}
 	r.RegisterFactory("test", newFactory(handlers, nil))
@@ -179,6 +181,7 @@ func TestReconcile_SameFingerprintApplied_NoOp(t *testing.T) {
 }
 
 func TestReconcile_ChangedFingerprint_ApplyCalledOnExistingHandler(t *testing.T) {
+	t.Parallel()
 	r := policyreconcile.NewReconciler()
 	handlers := map[portainer.PolicyID]*stubHandler{}
 	r.RegisterFactory("test", newFactory(handlers, nil))
@@ -195,6 +198,7 @@ func TestReconcile_ChangedFingerprint_ApplyCalledOnExistingHandler(t *testing.T)
 }
 
 func TestReconcile_PolicyRemoved_RemoveCalled(t *testing.T) {
+	t.Parallel()
 	r := policyreconcile.NewReconciler()
 	handlers := map[portainer.PolicyID]*stubHandler{}
 	r.RegisterFactory("test", newFactory(handlers, nil))
@@ -209,6 +213,7 @@ func TestReconcile_PolicyRemoved_RemoveCalled(t *testing.T) {
 }
 
 func TestReconcile_ApplyError_FingerprintPreservedStatusFailed(t *testing.T) {
+	t.Parallel()
 	r := policyreconcile.NewReconciler()
 	handlers := map[portainer.PolicyID]*stubHandler{}
 	r.RegisterFactory("test", newFactory(handlers, errors.New("install failed")))
@@ -228,6 +233,7 @@ func TestReconcile_ApplyError_FingerprintPreservedStatusFailed(t *testing.T) {
 }
 
 func TestReconcile_FailedPolicy_RetriedOnNextCycle(t *testing.T) {
+	t.Parallel()
 	// Verify that a failed policy IS retried on the next reconcile cycle
 	// even though the fingerprint is preserved (retry driven by status != Applied).
 	r := policyreconcile.NewReconciler()
@@ -263,6 +269,7 @@ func TestReconcile_FailedPolicy_RetriedOnNextCycle(t *testing.T) {
 }
 
 func TestReconcile_RemoveError_HandlerStillDiscarded(t *testing.T) {
+	t.Parallel()
 	r := policyreconcile.NewReconciler()
 	handlers := map[portainer.PolicyID]*stubHandler{}
 	factory := func(id portainer.PolicyID) policyreconcile.PolicyHandler {
@@ -282,6 +289,7 @@ func TestReconcile_RemoveError_HandlerStillDiscarded(t *testing.T) {
 }
 
 func TestReconcile_UnknownType_StatusFailed(t *testing.T) {
+	t.Parallel()
 	r := policyreconcile.NewReconciler()
 
 	r.Reconcile(context.Background(), []policyreconcile.DesiredState{
@@ -295,6 +303,7 @@ func TestReconcile_UnknownType_StatusFailed(t *testing.T) {
 }
 
 func TestReconcile_ConcurrentCalls_Serialize(t *testing.T) {
+	t.Parallel()
 	// Both goroutines reconcile the same policy with different fingerprints.
 	// Because Reconcile serialises, each call must complete fully — total
 	// applyCalls must equal 2 (no call is dropped or double-counted).
@@ -320,6 +329,7 @@ func TestReconcile_ConcurrentCalls_Serialize(t *testing.T) {
 }
 
 func TestReconcile_TwoPolicies_ModifyingOneDoesNotAffectOther(t *testing.T) {
+	t.Parallel()
 	r := policyreconcile.NewReconciler()
 	handlers := map[portainer.PolicyID]*stubHandler{}
 	r.RegisterFactory("helm-k8s", newFactory(handlers, nil))
@@ -345,6 +355,7 @@ func TestReconcile_TwoPolicies_ModifyingOneDoesNotAffectOther(t *testing.T) {
 }
 
 func TestReconcile_PolicyRemoval_OnlyThatHandlerRemoved(t *testing.T) {
+	t.Parallel()
 	r := policyreconcile.NewReconciler()
 	handlers := map[portainer.PolicyID]*stubHandler{}
 	r.RegisterFactory("helm-k8s", newFactory(handlers, nil))

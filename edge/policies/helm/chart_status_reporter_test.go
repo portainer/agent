@@ -12,6 +12,7 @@ import (
 )
 
 func TestChartStatusReporter_SetAndSnapshot(t *testing.T) {
+	t.Parallel()
 	r := helm.NewChartStatusReporter()
 	r.Set(1, []portainer.PolicyChartStatus{{ChartName: "gatekeeper", Fingerprint: "fp1"}})
 	r.Set(2, []portainer.PolicyChartStatus{{ChartName: "portainer-registry-k8s", Fingerprint: "fp2"}})
@@ -21,6 +22,7 @@ func TestChartStatusReporter_SetAndSnapshot(t *testing.T) {
 }
 
 func TestChartStatusReporter_ClearRemovesPolicy(t *testing.T) {
+	t.Parallel()
 	r := helm.NewChartStatusReporter()
 	r.Set(1, []portainer.PolicyChartStatus{{ChartName: "gatekeeper"}})
 	r.Set(2, []portainer.PolicyChartStatus{{ChartName: "portainer-registry-k8s"}})
@@ -33,12 +35,14 @@ func TestChartStatusReporter_ClearRemovesPolicy(t *testing.T) {
 }
 
 func TestChartStatusSnapshot_NilReporter(t *testing.T) {
+	t.Parallel()
 	// Docker/Podman agents have a nil reporter — must not panic.
 	result := helm.ChartStatusSnapshot(nil)
 	assert.Nil(t, result)
 }
 
 func TestChartStatusReporter_ConcurrentAccess_NoRace(t *testing.T) {
+	t.Parallel()
 	r := helm.NewChartStatusReporter()
 	var wg sync.WaitGroup
 

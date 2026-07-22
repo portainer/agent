@@ -12,6 +12,7 @@ import (
 )
 
 func TestEdgeHandlerSkipsActivityResetForMetricsPrefix(t *testing.T) {
+	t.Parallel()
 	manager := edge.NewManager(&edge.ManagerParameters{
 		Options: &agent.Options{DataPath: t.TempDir()},
 	})

@@ -21,6 +21,7 @@ func failApplier(err error) helm.ApplierFunc {
 }
 
 func TestRestoreCoordinator_Enqueue_NewEntry(t *testing.T) {
+	t.Parallel()
 	c := helm.NewRestoreCoordinator(successApplier)
 	c.Enqueue(1, "manifest-a")
 	// Drain should apply and remove it.
@@ -32,6 +33,7 @@ func TestRestoreCoordinator_Enqueue_NewEntry(t *testing.T) {
 }
 
 func TestRestoreCoordinator_Enqueue_SameManifest_AttemptsNotReset(t *testing.T) {
+	t.Parallel()
 	calls := 0
 	applyFn := func(_ context.Context, _ string) error {
 		calls++
@@ -46,6 +48,7 @@ func TestRestoreCoordinator_Enqueue_SameManifest_AttemptsNotReset(t *testing.T) 
 }
 
 func TestRestoreCoordinator_Enqueue_DifferentManifest_AttemptsReset(t *testing.T) {
+	t.Parallel()
 	calls := 0
 	applyFn := func(_ context.Context, _ string) error {
 		calls++
@@ -60,6 +63,7 @@ func TestRestoreCoordinator_Enqueue_DifferentManifest_AttemptsReset(t *testing.T
 }
 
 func TestRestoreCoordinator_Tick_CancelsReentered(t *testing.T) {
+	t.Parallel()
 	applied := false
 	applyFn := func(_ context.Context, _ string) error {
 		applied = true
@@ -73,6 +77,7 @@ func TestRestoreCoordinator_Tick_CancelsReentered(t *testing.T) {
 }
 
 func TestRestoreCoordinator_Tick_SuccessRemovesEntry(t *testing.T) {
+	t.Parallel()
 	c := helm.NewRestoreCoordinator(successApplier)
 	c.Enqueue(1, "manifest-a")
 	c.Tick(context.Background(), nil)
@@ -82,6 +87,7 @@ func TestRestoreCoordinator_Tick_SuccessRemovesEntry(t *testing.T) {
 }
 
 func TestRestoreCoordinator_Tick_FailureIncrementsAttempts(t *testing.T) {
+	t.Parallel()
 	c := helm.NewRestoreCoordinator(failApplier(errors.New("boom")))
 	c.Enqueue(1, "manifest-a")
 	// Three calls — at attempt 3 it becomes visible.
@@ -98,6 +104,7 @@ func TestRestoreCoordinator_Tick_FailureIncrementsAttempts(t *testing.T) {
 }
 
 func TestRestoreCoordinator_Tick_ContextCancelled_AttemptsNotIncremented(t *testing.T) {
+	t.Parallel()
 	calls := 0
 	applyFn := func(ctx context.Context, _ string) error {
 		calls++
@@ -115,6 +122,7 @@ func TestRestoreCoordinator_Tick_ContextCancelled_AttemptsNotIncremented(t *test
 }
 
 func TestRestoreCoordinator_Tick_ContextCancelled_ProcessesRemainingRestores(t *testing.T) {
+	t.Parallel()
 	calls := 0
 	applyFn := func(ctx context.Context, _ string) error {
 		calls++
@@ -132,6 +140,7 @@ func TestRestoreCoordinator_Tick_ContextCancelled_ProcessesRemainingRestores(t *
 }
 
 func TestRestoreCoordinator_BelowVisibleThreshold_NoStatuses(t *testing.T) {
+	t.Parallel()
 	c := helm.NewRestoreCoordinator(failApplier(errors.New("fail")))
 	c.Enqueue(1, "m")
 	for range 2 {
@@ -141,6 +150,7 @@ func TestRestoreCoordinator_BelowVisibleThreshold_NoStatuses(t *testing.T) {
 }
 
 func TestRestoreCoordinator_AtVisibleThreshold_StatusFailed(t *testing.T) {
+	t.Parallel()
 	c := helm.NewRestoreCoordinator(failApplier(errors.New("fail")))
 	c.Enqueue(1, "m")
 	var statuses []policyreconcile.ActualState
@@ -154,6 +164,7 @@ func TestRestoreCoordinator_AtVisibleThreshold_StatusFailed(t *testing.T) {
 }
 
 func TestRestoreCoordinator_NoHardCap(t *testing.T) {
+	t.Parallel()
 	calls := 0
 	applyFn := func(_ context.Context, _ string) error {
 		calls++
@@ -168,6 +179,7 @@ func TestRestoreCoordinator_NoHardCap(t *testing.T) {
 }
 
 func TestRestoreCoordinator_ConcurrentEnqueueAndTick_NoRace(t *testing.T) {
+	t.Parallel()
 	c := helm.NewRestoreCoordinator(successApplier)
 	var wg sync.WaitGroup
 	wg.Add(2)

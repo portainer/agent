@@ -15,22 +15,32 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func TestCollectAPIServerCert(t *testing.T) {
+func init() {
 	fips.InitFIPS(false)
+}
+
+func TestCollectAPIServerCert(t *testing.T) {
+	t.Parallel()
 
 	t.Run("returns error when kc is nil", func(t *testing.T) {
+		t.Parallel()
+
 		_, err := CollectAPIServerCert(context.Background(), nil)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "kubernetes client is nil")
 	})
 
 	t.Run("returns error when kc.config is nil", func(t *testing.T) {
+		t.Parallel()
+
 		_, err := CollectAPIServerCert(context.Background(), &KubeClient{})
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "kubernetes client config is nil")
 	})
 
 	t.Run("returns cert details when API server cert is trusted", func(t *testing.T) {
+		t.Parallel()
+
 		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		}))
@@ -60,6 +70,8 @@ func TestCollectAPIServerCert(t *testing.T) {
 	})
 
 	t.Run("accepts portless URL and fails at connection not validation", func(t *testing.T) {
+		t.Parallel()
+
 		kc := &KubeClient{config: &rest.Config{Host: "https://kubernetes.default.svc"}}
 
 		_, err := CollectAPIServerCert(context.Background(), kc)
@@ -68,6 +80,8 @@ func TestCollectAPIServerCert(t *testing.T) {
 	})
 
 	t.Run("returns cert details even when cert chain cannot be verified", func(t *testing.T) {
+		t.Parallel()
+
 		// InsecureSkipVerify is intentional: we inspect the cert's NotAfter field
 		// regardless of whether the cert is trusted or expired.
 		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -87,6 +101,7 @@ func TestCollectAPIServerCert(t *testing.T) {
 }
 
 func TestBuildAPIServerTLSTarget(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		host        string
@@ -122,10 +137,13 @@ func TestBuildAPIServerTLSTarget(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			parsedURL, err := resolveAPIServerURL(tc.host)
 			if tc.expectedErr != "" {
 				require.Error(t, err)
 				assert.ErrorContains(t, err, tc.expectedErr)
+
 				return
 			}
 

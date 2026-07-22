@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewPreservesExistingTSDBDataDir(t *testing.T) {
+	t.Parallel()
 	dataDir := filepath.Join(t.TempDir(), "tsdb")
 	require.NoError(t, os.MkdirAll(dataDir, 0o750))
 	markerFile := filepath.Join(dataDir, "marker-file")
@@ -31,4 +32,3 @@ func TestNewPreservesExistingTSDBDataDir(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, entries)
 }
-

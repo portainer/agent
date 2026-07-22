@@ -36,6 +36,7 @@ func defaultOptions() *agent.Options {
 }
 
 func TestResolveCheckParams_ExplicitURL(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeConnectivityCheckURL = "http://portainer:9000"
 	opts.EdgeConnectivityCheckTunnel = "tunnel:8000"
@@ -57,6 +58,7 @@ func TestResolveCheckParams_ExplicitURL(t *testing.T) {
 }
 
 func TestResolveCheckParams_ExplicitURL_NoTunnel(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeConnectivityCheckURL = "http://portainer:9000"
 
@@ -71,6 +73,7 @@ func TestResolveCheckParams_ExplicitURL_NoTunnel(t *testing.T) {
 }
 
 func TestResolveCheckParams_EdgeKey(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeKey = makeEdgeKey("http://portainer:9000", "tunnel:8000", "fp", 1)
 
@@ -88,6 +91,7 @@ func TestResolveCheckParams_EdgeKey(t *testing.T) {
 }
 
 func TestResolveCheckParams_InvalidEdgeKey(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeKey = "not-valid-base64!!!"
 
@@ -98,6 +102,7 @@ func TestResolveCheckParams_InvalidEdgeKey(t *testing.T) {
 }
 
 func TestResolveCheckParams_NoTargets(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 
 	_, err := resolveCheckParams(opts)
@@ -107,6 +112,7 @@ func TestResolveCheckParams_NoTargets(t *testing.T) {
 }
 
 func TestResolveCheckParams_InvalidExplicitURL(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeConnectivityCheckURL = "portainer:9000"
 
@@ -115,6 +121,7 @@ func TestResolveCheckParams_InvalidExplicitURL(t *testing.T) {
 }
 
 func TestResolveCheckParams_BareHostTunnelAddr(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeConnectivityCheckURL = "https://portainer.example.com"
 	opts.EdgeConnectivityCheckTunnel = "tunnel.example.com"
@@ -130,6 +137,7 @@ func TestResolveCheckParams_BareHostTunnelAddr(t *testing.T) {
 }
 
 func TestResolveCheckParams_InvalidProxyURL(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeConnectivityCheckURL = "https://portainer.example.com"
 	opts.EdgeTunnelProxy = "proxy.example.com:8080"
@@ -139,6 +147,7 @@ func TestResolveCheckParams_InvalidProxyURL(t *testing.T) {
 }
 
 func TestResolveCheckParams_InvalidMTLSCAPath(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeConnectivityCheckURL = "https://portainer.example.com"
 	opts.SSLCert = filepath.Join(t.TempDir(), "client.crt")
@@ -150,6 +159,7 @@ func TestResolveCheckParams_InvalidMTLSCAPath(t *testing.T) {
 }
 
 func TestResolveCheckParams_PartialMTLSConfig(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeConnectivityCheckURL = "https://portainer.example.com"
 	opts.SSLCert = "/certs/client.crt"
@@ -159,6 +169,7 @@ func TestResolveCheckParams_PartialMTLSConfig(t *testing.T) {
 }
 
 func TestCheckConnectivity_APIPass(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -175,6 +186,7 @@ func TestCheckConnectivity_APIPass(t *testing.T) {
 }
 
 func TestCheckConnectivity_APIPassAnyStatus(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
@@ -191,6 +203,7 @@ func TestCheckConnectivity_APIPassAnyStatus(t *testing.T) {
 }
 
 func TestCheckConnectivity_APIPassWithMTLS(t *testing.T) {
+	t.Parallel()
 	certs := createMTLSCerts(t)
 
 	caPool := x509.NewCertPool()
@@ -222,6 +235,7 @@ func TestCheckConnectivity_APIPassWithMTLS(t *testing.T) {
 }
 
 func TestCheckConnectivity_APIFail(t *testing.T) {
+	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeConnectivityCheckURL = "http://" + unusedLocalAddr(t)
 
@@ -232,6 +246,7 @@ func TestCheckConnectivity_APIFail(t *testing.T) {
 }
 
 func TestCheckConnectivity_TunnelPass(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -254,6 +269,7 @@ func TestCheckConnectivity_TunnelPass(t *testing.T) {
 }
 
 func TestCheckConnectivity_TunnelPassWithMalformedHTTPResponse(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -290,6 +306,7 @@ func TestCheckConnectivity_WhitespaceTunnelAddrSkipped(t *testing.T) {
 }
 
 func TestCheckConnectivity_TunnelFail(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -307,6 +324,7 @@ func TestCheckConnectivity_TunnelFail(t *testing.T) {
 }
 
 func TestCheckConnectivity_TunnelFailOnUnexpectedProbeError(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -326,6 +344,7 @@ func TestCheckConnectivity_TunnelFailOnUnexpectedProbeError(t *testing.T) {
 }
 
 func TestCheckConnectivity_AsyncSkipsTunnel(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -344,6 +363,7 @@ func TestCheckConnectivity_AsyncSkipsTunnel(t *testing.T) {
 }
 
 func TestCheckConnectivity_TunnelDisabledSkips(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))

@@ -27,24 +27,19 @@ import (
 )
 
 func TestBuildMetricsScrapeTargetUsesConfiguredHostPort(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "http://127.0.0.1:9001/api/metrics", buildMetricsScrapeTarget("127.0.0.1:9001"))
 }
 
 func TestBuildMetricsScrapeTargetNormalizesUnspecifiedHost(t *testing.T) {
-	tests := map[string]string{
-		":9001":        "http://localhost:9001/api/metrics",
-		"0.0.0.0:9001": "http://localhost:9001/api/metrics",
-		"[::]:9001":    "http://localhost:9001/api/metrics",
-	}
-
-	for input, expected := range tests {
-		t.Run(input, func(t *testing.T) {
-			assert.Equal(t, expected, buildMetricsScrapeTarget(input))
-		})
-	}
+	t.Parallel()
+	assert.Equal(t, "http://localhost:9001/api/metrics", buildMetricsScrapeTarget(":9001"))
+	assert.Equal(t, "http://localhost:9001/api/metrics", buildMetricsScrapeTarget("0.0.0.0:9001"))
+	assert.Equal(t, "http://localhost:9001/api/metrics", buildMetricsScrapeTarget("[::]:9001"))
 }
 
 func TestComputeRulesHashSameContentSameHash(t *testing.T) {
+	t.Parallel()
 	yaml := `groups:
   - name: portainer-edge-cluster-alerts
     rules:
@@ -57,6 +52,7 @@ func TestComputeRulesHashSameContentSameHash(t *testing.T) {
 }
 
 func TestComputeRulesHashDifferentContentDifferentHash(t *testing.T) {
+	t.Parallel()
 	yamlA := `groups:
   - name: portainer-edge-cluster-alerts
     rules:
@@ -73,12 +69,14 @@ func TestComputeRulesHashDifferentContentDifferentHash(t *testing.T) {
 }
 
 func TestComputeRulesHashEmptyStringIsStable(t *testing.T) {
+	t.Parallel()
 	hashA := computeRulesHash("")
 	hashB := computeRulesHash("")
 	assert.Equal(t, hashA, hashB)
 }
 
 func TestBuildEdgeAlertStateSortsRules(t *testing.T) {
+	t.Parallel()
 	state := buildEdgeAlertState([]pkgmetrics.EdgeAlertRuleState{
 		{RuleID: 9, State: pkgmetrics.AlertRuleStatePending},
 		{RuleID: 3, State: pkgmetrics.AlertRuleStateFiring},
@@ -91,6 +89,7 @@ func TestBuildEdgeAlertStateSortsRules(t *testing.T) {
 }
 
 func TestBuildEdgeAlertStateReturnsNilWhenEmpty(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, buildEdgeAlertState(nil, ""))
 }
 
@@ -366,6 +365,7 @@ func TestPushPerformanceMetricsSkipsEtcdUpdateOnCollectionFailure(t *testing.T) 
 // response with no PolicyStates, the new agent falls back to the legacy
 // PolicyChartSummaries path without error.
 func TestVersionSkew_NewAgentOldServer(t *testing.T) {
+	t.Parallel()
 	// Old server: response has PolicyChartSummaries but no PolicyStates.
 	oldServerResponse := &client.PollStatusResponse{
 		PolicyChartSummaries: []portainer.PolicyChartSummary{
@@ -379,6 +379,7 @@ func TestVersionSkew_NewAgentOldServer(t *testing.T) {
 // TestVersionSkew_NewAgentNewServer verifies that when a new server sends
 // PolicyStates the new agent routes through the per-policy path.
 func TestVersionSkew_NewAgentNewServer(t *testing.T) {
+	t.Parallel()
 	states := []portainer.PolicyDesiredState{
 		{PolicyID: 42, Type: "helm-k8s", Fingerprint: "fp1"},
 	}
@@ -391,6 +392,7 @@ func TestVersionSkew_NewAgentNewServer(t *testing.T) {
 // policies still triggers the per-policy path (empty desired list → remove all
 // active handlers). This is the key regression this fix addresses.
 func TestVersionSkew_NewServerNoPolicies(t *testing.T) {
+	t.Parallel()
 	empty := []portainer.PolicyDesiredState{}
 	response := &client.PollStatusResponse{PolicyStates: &empty}
 	assert.True(t, hasPerPolicyPayload(response),
@@ -401,11 +403,13 @@ func TestVersionSkew_NewServerNoPolicies(t *testing.T) {
 // (e.g. unparseable agent version causes PayloadVariantNone on the server)
 // does not trigger the per-policy path.
 func TestVersionSkew_EmptyResponse(t *testing.T) {
+	t.Parallel()
 	empty := &client.PollStatusResponse{}
 	assert.False(t, hasPerPolicyPayload(empty), "nil PolicyStates must use legacy path")
 }
 
 func TestEnqueuePolicyReconcileKeepsLatestPendingPayload(t *testing.T) {
+	t.Parallel()
 	service := &PollService{
 		policyReconcileCh: make(chan []portainer.PolicyDesiredState, 1),
 	}

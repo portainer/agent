@@ -1,8 +1,8 @@
 package edge
 
 import (
+	"sync"
 	"testing"
-	"time"
 
 	"github.com/portainer/agent"
 )
@@ -15,11 +15,11 @@ func TestKeyDataRace(t *testing.T) {
 		},
 	})
 
-	go func() {
+	var wg sync.WaitGroup
+	wg.Go(func() {
 		_ = mgr.SetKey(encodeKey(&edgeKey{}))
-	}()
+	})
 
-	time.Sleep(1 * time.Second)
 	mgr.IsKeySet()
-	time.Sleep(1 * time.Second)
+	wg.Wait()
 }

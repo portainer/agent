@@ -9,6 +9,7 @@ import (
 )
 
 func TestCollectNodeReadyStatuses(t *testing.T) {
+	t.Parallel()
 	nodes := []corev1.Node{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: "node-ready"},

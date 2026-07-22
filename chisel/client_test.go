@@ -52,6 +52,7 @@ func TestInternalCertsNeedRotation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 
 			tlsCaCert := filesystem.JoinPaths(dir, "tls-ca-cert.pem")
@@ -66,12 +67,17 @@ func TestInternalCertsNeedRotation(t *testing.T) {
 			err = os.WriteFile(tlsKey, []byte{}, 0o600)
 			require.NoError(t, err)
 
+			if tc.modifyFiles {
+				// Set file times to the past so that subsequent writes produce a detectable mtime change.
+				past := time.Now().Add(-2 * time.Second)
+				require.NoError(t, os.Chtimes(tlsCaCert, past, past))
+				require.NoError(t, os.Chtimes(tlsCert, past, past))
+				require.NoError(t, os.Chtimes(tlsKey, past, past))
+			}
+
 			c := newClient(tlsCaCert, tlsCert, tlsKey, tc.fips)
 
 			if tc.modifyFiles {
-				// Sleeping so that it is guarenteed that the files will have a different modified time.
-				time.Sleep(time.Second)
-
 				err := os.WriteFile(tlsCaCert, []byte("new-data"), 0o600)
 				require.NoError(t, err)
 
@@ -162,6 +168,7 @@ func TestReplaceSchemaWithHTTPS(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			gotURL := replaceSchemaWithHTTPS(tc.u)
 
 			require.Equal(t, tc.expectedURL, gotURL)
