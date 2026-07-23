@@ -369,6 +369,25 @@ func podMessageFromContainerState(status libstack.Status, state corev1.Container
 	return ""
 }
 
+// ListNamespaces returns the resourceVersion of every namespace on the
+// cluster, keyed by name. resourceVersion changes on every update to a
+// namespace object (not just create/delete, e.g. a label edit), which makes
+// this suitable for cheap drift detection: callers can diff two snapshots to
+// tell whether anything about the namespace topology changed since the last
+// check, without re-fetching or re-rendering anything themselves.
+func (kcl *KubeClient) ListNamespaces(ctx context.Context) (map[string]string, error) {
+	list, err := kcl.cli.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	namespaces := make(map[string]string, len(list.Items))
+	for _, ns := range list.Items {
+		namespaces[ns.Name] = ns.ResourceVersion
+	}
+	return namespaces, nil
+}
+
 // GetResource retrieves a Kubernetes resource by group/version/resource and name/namespace
 func (kcl *KubeClient) GetResource(ctx context.Context, apiVersion, kind, name, namespace string) (any, error) {
 	gvr, err := parseGroupVersionResource(apiVersion, kind)

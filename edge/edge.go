@@ -142,6 +142,10 @@ func (manager *Manager) Start() error {
 
 	helmPackageManager := sdk.NewHelmSDKPackageManager()
 	coordinator := helm.NewRestoreCoordinator(buildKubernetesRestoreApplier(manager.kubeClient))
+	// Namespace-drift checks are driven per-handler (see HelmHandler.checkNamespaceDrift,
+	// wired from each handler's own kubeClient in NewHandler); this is just the
+	// per-poll registry that dispatches Tick to whichever handlers are currently live.
+	nsDriftCoordinator := helm.NewNamespaceDriftCoordinator()
 
 	// Create chartReporter before PolicyManager so both the legacy coordinator
 	// and the reconciler factory share the same reporter instance from the start.
@@ -156,6 +160,7 @@ func (manager *Manager) Start() error {
 		helmPackageManager,
 		coordinator,
 		chartReporter,
+		nsDriftCoordinator,
 		0, // endpointID unknown at startup; server resolves from request context
 	)
 
@@ -177,7 +182,7 @@ func (manager *Manager) Start() error {
 	// SetChartReporter is still needed for the legacy per-chart status endpoint.
 	if manager.kubeClient != nil {
 		manager.pollService.RegisterPolicy(helm.Registration(
-			manager.kubeClient, helmPackageManager, portainerClient, coordinator, chartReporter,
+			manager.kubeClient, helmPackageManager, portainerClient, coordinator, chartReporter, nsDriftCoordinator,
 		))
 		manager.pollService.RegisterPolicy(resourcepatch.Registration(manager.kubeClient))
 		manager.pollService.SetChartReporter(chartReporter)

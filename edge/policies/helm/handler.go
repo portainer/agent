@@ -42,6 +42,13 @@ type chartRecord struct {
 // already exists but is not managed by Portainer (no portainer/chart-path annotation).
 const externalReleaseConflictMessage = "A Helm release with this name already exists but is not managed by Portainer. Uninstall the existing release before applying this policy."
 
+// maxChartHistory caps how many old revisions Helm keeps per policy chart release.
+// Left unset, Helm keeps every revision forever; namespaceDriftSensitiveCharts get
+// re-upgraded every time HelmHandler.checkNamespaceDrift detects a live namespace
+// change, which over an agent's lifetime would otherwise grow the release
+// history without bound (see C9S-325).
+const maxChartHistory = 20
+
 // HelmPolicyConfig is a type alias (= not a new type) for portainer.HelmPolicyConfig.
 // The canonical definition lives in CE portainer.go so both server-ee and agent share
 // the same type. The alias means no conversion is needed between them.
@@ -50,7 +57,10 @@ type HelmPolicyConfig = portainer.HelmPolicyConfig
 const helmPolicyType = "helm-k8s"
 
 // Registration returns a policyreconcile.Registration for helm-k8s policies.
-// The coordinator (PollHook for restore retries) is included automatically.
+// coordinator (PollHook for restore retries) and nsDriftCoordinator (PollHook
+// that re-applies namespace-drift-sensitive charts, see C9S-325) are both
+// pre-created shared instances — pass the same nsDriftCoordinator given to
+// NewPolicyManager so a policy dispatched via either path gets drift reapply.
 // Caller must still call SetChartReporter on the PollService for legacy dual-emit.
 func Registration(
 	kube *kubernetes.KubeClient,
@@ -58,11 +68,17 @@ func Registration(
 	pc client.PortainerClient,
 	coordinator *RestoreCoordinator,
 	reporter *ChartStatusReporter,
+	nsDriftCoordinator *NamespaceDriftCoordinator,
 ) policyreconcile.Registration {
+	pollHooks := []policyreconcile.PollHook{coordinator}
+	if nsDriftCoordinator != nil {
+		pollHooks = append(pollHooks, nsDriftCoordinator)
+	}
+
 	return policyreconcile.Registration{
 		Type:      helmPolicyType,
-		Factory:   NewHandler(kube, helm, pc, coordinator, reporter),
-		PollHooks: []policyreconcile.PollHook{coordinator},
+		Factory:   NewHandler(kube, helm, pc, coordinator, reporter, nsDriftCoordinator),
+		PollHooks: pollHooks,
 	}
 }
 
@@ -74,36 +90,58 @@ type HelmHandler struct {
 	helmPackageManager libhelmtypes.HelmPackageManager
 	portainerClient    client.PortainerClient
 	coordinator        *RestoreCoordinator
-	chartReporter      *ChartStatusReporter // may be nil on non-K8s agents
+	chartReporter      *ChartStatusReporter       // may be nil on non-K8s agents
+	nsDriftCoordinator *NamespaceDriftCoordinator // may be nil (e.g. in tests)
+	namespaceLister    NamespaceLister            // nil (e.g. kubeClient is nil) disables drift checks for this handler
 
 	mu              sync.Mutex
-	installedCharts map[string]chartRecord // keyed by chartName; most policies 1:1, SecurityK8s has 2
+	installedCharts map[string]chartRecord                 // keyed by chartName; most policies 1:1, SecurityK8s has 2
+	lastBundles     map[string]portainer.PolicyChartBundle // keyed by chartName; cached for namespace-drift reapply
+	lastNamespaces  map[string]string                      // last-seen namespace snapshot; see checkNamespaceDrift
 	pendingRestore  *portainer.RestoreSettings
 	status          policyreconcile.ActualState
 }
 
 // NewHandler returns a HandlerFactory that creates one HelmHandler per policy ID.
+// nsDriftCoordinator may be nil to opt out of namespace-drift reapply (e.g. tests).
 func NewHandler(
 	kube *kubernetes.KubeClient,
 	helm libhelmtypes.HelmPackageManager,
 	pc client.PortainerClient,
 	coordinator *RestoreCoordinator,
 	reporter *ChartStatusReporter,
+	nsDriftCoordinator *NamespaceDriftCoordinator,
 ) policyreconcile.HandlerFactory {
+	// kube is a concrete *kubernetes.KubeClient; only assign it to the
+	// NamespaceLister interface when non-nil, otherwise namespaceLister would
+	// be a non-nil interface wrapping a nil pointer and checkNamespaceDrift's
+	// nil check would never trip.
+	var namespaceLister NamespaceLister
+	if kube != nil {
+		namespaceLister = kube
+	}
+
 	return func(policyID portainer.PolicyID) policyreconcile.PolicyHandler {
-		return &HelmHandler{
+		h := &HelmHandler{
 			policyID:           policyID,
 			kubeClient:         kube,
 			helmPackageManager: helm,
 			portainerClient:    pc,
 			coordinator:        coordinator,
 			chartReporter:      reporter,
+			nsDriftCoordinator: nsDriftCoordinator,
+			namespaceLister:    namespaceLister,
 			installedCharts:    make(map[string]chartRecord),
+			lastBundles:        make(map[string]portainer.PolicyChartBundle),
 			status: policyreconcile.ActualState{
 				PolicyID: policyID,
 				Type:     helmPolicyType,
 			},
 		}
+		if nsDriftCoordinator != nil {
+			nsDriftCoordinator.register(policyID, h)
+		}
+		return h
 	}
 }
 
@@ -154,6 +192,10 @@ func (h *HelmHandler) Apply(ctx context.Context, raw json.RawMessage) error {
 }
 
 func (h *HelmHandler) Remove(ctx context.Context) error {
+	if h.nsDriftCoordinator != nil {
+		h.nsDriftCoordinator.unregister(h.policyID)
+	}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.status = policyreconcile.ActualState{
@@ -427,6 +469,12 @@ func (h *HelmHandler) installChartBundle(ctx context.Context, bundle portainer.P
 		TakeOwnership:   true,
 		CreateNamespace: true,
 		Atomic:          true,
+		// Required so templates using the `lookup` function (e.g. namespace-drift-
+		// sensitive charts, see C9S-325) get a working discovery client; leaving
+		// this nil falls back to Helm's cli.New() path, which silently no-ops
+		// `lookup` instead of erroring.
+		KubernetesClusterAccess: exec.InClusterKubeAccess(),
+		MaxHistory:              maxChartHistory,
 	})
 	if err != nil {
 		h.setChartFailed(bundle.ChartName, "Failed to install/upgrade Helm chart", err)
@@ -441,6 +489,14 @@ func (h *HelmHandler) installChartBundle(ctx context.Context, bundle portainer.P
 		Namespace:   bundle.Namespace,
 		Status:      portainer.HelmInstallStatusInstalled,
 		Message:     "Successfully installed",
+	}
+
+	// Cache the bundle for namespaceDriftSensitiveCharts only, so
+	// NamespaceDriftCoordinator can re-run Upgrade() without a server
+	// round-trip. Other charts don't need this and it would otherwise hold
+	// onto every chart's tarball/values blob for the handler's lifetime.
+	if namespaceDriftSensitiveCharts[bundle.ChartName] {
+		h.lastBundles[bundle.ChartName] = bundle
 	}
 
 	log.Info().Str("context", "HelmPolicyHandler").Str("chart", bundle.ChartName).Str("namespace", bundle.Namespace).Msg("Successfully installed/upgraded Helm chart")

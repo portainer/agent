@@ -277,10 +277,17 @@ func (d *HelmDeployer) Pull(ctx context.Context, name string, filePaths []string
 
 // getKubeAccess returns the Kubernetes cluster access configuration
 func (d *HelmDeployer) getKubeAccess() *options.KubernetesClusterAccess {
-	// Build explicit KubernetesClusterAccess to prevent Helm from using cli.New()
-	// which would pick up the service account's namespace instead of respecting
-	// the namespace parameter passed to Helm operations.
+	return InClusterKubeAccess()
+}
 
+// InClusterKubeAccess builds an explicit KubernetesClusterAccess for Helm SDK
+// operations run from inside the cluster. Leaving KubernetesClusterAccess nil
+// makes the SDK fall back to Helm's cli.New()/genericclioptions path, which
+// doesn't wire a working discovery client for the SDK's programmatic use (this
+// silently breaks the `lookup` template function, see C9S-325) and picks up
+// the service account's namespace instead of respecting the namespace
+// parameter passed to Helm operations.
+func InClusterKubeAccess() *options.KubernetesClusterAccess {
 	// Check if running with DEV_KUBECONFIG_PATH (local development)
 	devKubeConfigPath := os.Getenv("DEV_KUBECONFIG_PATH")
 	if devKubeConfigPath != "" {
@@ -292,7 +299,7 @@ func (d *HelmDeployer) getKubeAccess() *options.KubernetesClusterAccess {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		log.Warn().
-			Str("context", "HelmDeployer").
+			Str("context", "InClusterKubeAccess").
 			Err(err).
 			Msg("failed to get in-cluster config, falling back to nil (may cause namespace issues)")
 		return nil

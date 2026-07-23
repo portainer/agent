@@ -41,6 +41,7 @@ func NewPolicyManager(
 	helmPackageManager libhelmtypes.HelmPackageManager,
 	coordinator *helm.RestoreCoordinator,
 	chartReporter *helm.ChartStatusReporter,
+	nsDriftCoordinator *helm.NamespaceDriftCoordinator,
 	endpointID portainer.EndpointID,
 ) *PolicyManager {
 	pm := &PolicyManager{
@@ -52,7 +53,7 @@ func NewPolicyManager(
 		chartReporter:      chartReporter,
 		endpointID:         endpointID,
 	}
-	pm.factory = helm.NewHandler(kubeClient, helmPackageManager, portainerClient, coordinator, chartReporter)
+	pm.factory = helm.NewHandler(kubeClient, helmPackageManager, portainerClient, coordinator, chartReporter, nsDriftCoordinator)
 	return pm
 }
 

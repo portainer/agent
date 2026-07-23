@@ -51,7 +51,11 @@ func (m *stubHelmPackageManager) Uninstall(opts options.UninstallOptions) error 
 }
 
 func TestHelmHandlerApply_UsesBundledChartAndReportsStatus(t *testing.T) {
-	t.Parallel()
+	// DEV_KUBECONFIG_PATH forces exec.InClusterKubeAccess() to return a non-nil
+	// sentinel regardless of whether the test runs inside a cluster, so the
+	// assertion below actually fails if installChartBundle stops wiring
+	// KubernetesClusterAccess, rather than trivially comparing nil to nil.
+	t.Setenv("DEV_KUBECONFIG_PATH", "test-kubeconfig")
 
 	manager := &stubHelmPackageManager{
 		upgradeFunc: func(opts options.InstallOptions) (*release.Release, error) {
@@ -61,11 +65,13 @@ func TestHelmHandlerApply_UsesBundledChartAndReportsStatus(t *testing.T) {
 			assert.True(t, opts.TakeOwnership)
 			assert.True(t, opts.CreateNamespace)
 			assert.True(t, opts.Atomic)
+			assert.Equal(t, maxChartHistory, opts.MaxHistory)
+			assert.Equal(t, &options.KubernetesClusterAccess{}, opts.KubernetesClusterAccess)
 			return &release.Release{Name: opts.Name, Namespace: opts.Namespace}, nil
 		},
 	}
 	reporter := NewChartStatusReporter()
-	handler := NewHandler(nil, manager, nil, nil, reporter)(7).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, reporter, nil)(7).(*HelmHandler)
 
 	raw, err := json.Marshal(HelmPolicyConfig{
 		Charts: []portainer.PolicyChartSummary{
@@ -112,7 +118,7 @@ func TestHelmHandlerApply_UsesBundledChartAndReportsStatus(t *testing.T) {
 func TestHelmHandlerMarkChartsFailed_RecordsRetryableFailure(t *testing.T) {
 	t.Parallel()
 
-	handler := NewHandler(nil, &stubHelmPackageManager{}, nil, nil, nil)(9).(*HelmHandler)
+	handler := NewHandler(nil, &stubHelmPackageManager{}, nil, nil, nil, nil)(9).(*HelmHandler)
 
 	handler.MarkChartsFailed(
 		[]portainer.PolicyChartSummary{{PolicyID: 9, ChartName: "portainer-rbac-k8s", Fingerprint: "fp1"}},
@@ -141,7 +147,7 @@ func TestHelmHandlerRemove_MarksChartsUninstalling(t *testing.T) {
 	t.Parallel()
 
 	manager := &stubHelmPackageManager{}
-	handler := NewHandler(nil, manager, nil, nil, NewChartStatusReporter())(9).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, NewChartStatusReporter(), nil)(9).(*HelmHandler)
 	handler.installedCharts["portainer-rbac-k8s"] = chartRecord{
 		ChartName:   "portainer-rbac-k8s",
 		Fingerprint: "fp1",
@@ -171,6 +177,24 @@ func (c *stubPortainerClient) GetCharts(names []string) ([]portainer.PolicyChart
 	return nil, nil, errors.New("GetCharts not configured")
 }
 
+func TestRegistration_NilNsDriftCoordinator_OmittedFromPollHooks(t *testing.T) {
+	t.Parallel()
+
+	coordinator := NewRestoreCoordinator(nil)
+	reg := Registration(nil, nil, nil, coordinator, nil, nil)
+
+	require.Len(t, reg.PollHooks, 1, "a nil nsDriftCoordinator must not be added as a PollHook")
+	assert.Same(t, coordinator, reg.PollHooks[0])
+
+	// A nil PollHook entry panics when PollService.reconcilePolicies calls
+	// Tick without a nil check (C9S-325); guard against a regression here.
+	assert.NotPanics(t, func() {
+		for _, hook := range reg.PollHooks {
+			hook.Tick(context.Background(), nil)
+		}
+	})
+}
+
 func TestReconcileCharts_MultiChart_SecurityK8sScenario(t *testing.T) {
 	t.Parallel()
 
@@ -182,7 +206,7 @@ func TestReconcileCharts_MultiChart_SecurityK8sScenario(t *testing.T) {
 		},
 	}
 	reporter := NewChartStatusReporter()
-	handler := NewHandler(nil, manager, nil, nil, reporter)(10).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, reporter, nil)(10).(*HelmHandler)
 
 	charts := []portainer.PolicyChartSummary{
 		{PolicyID: 10, ChartName: "gatekeeper", Fingerprint: "fp-gk"},
@@ -222,7 +246,7 @@ func TestReconcileCharts_FingerprintUnchanged_NoInstall(t *testing.T) {
 	t.Parallel()
 
 	manager := &stubHelmPackageManager{}
-	handler := NewHandler(nil, manager, nil, nil, nil)(5).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, nil, nil)(5).(*HelmHandler)
 
 	// Pre-populate as already installed at fp1.
 	handler.installedCharts["gatekeeper"] = chartRecord{
@@ -247,7 +271,7 @@ func TestReconcileCharts_ChartRemovedFromPolicy_Uninstalled(t *testing.T) {
 	t.Parallel()
 
 	manager := &stubHelmPackageManager{}
-	handler := NewHandler(nil, manager, nil, nil, nil)(5).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, nil, nil)(5).(*HelmHandler)
 
 	// Pre-populate two charts as installed.
 	handler.installedCharts["gatekeeper"] = chartRecord{
@@ -294,7 +318,7 @@ func TestReconcileCharts_OnDemandFetch_WhenNoBundlesSupplied(t *testing.T) {
 			}}, nil, nil
 		},
 	}
-	handler := NewHandler(nil, manager, pc, nil, nil)(5).(*HelmHandler)
+	handler := NewHandler(nil, manager, pc, nil, nil, nil)(5).(*HelmHandler)
 
 	// Apply with no bundles — should trigger on-demand fetch via GetCharts.
 	raw, err := json.Marshal(HelmPolicyConfig{
@@ -318,7 +342,7 @@ func TestReconcileCharts_FetchFailure_AllChartsFailed(t *testing.T) {
 			return nil, nil, errors.New("server unavailable")
 		},
 	}
-	handler := NewHandler(nil, manager, pc, nil, nil)(5).(*HelmHandler)
+	handler := NewHandler(nil, manager, pc, nil, nil, nil)(5).(*HelmHandler)
 
 	raw, err := json.Marshal(HelmPolicyConfig{
 		Charts: []portainer.PolicyChartSummary{
@@ -362,7 +386,7 @@ func TestReconcileCharts_PartialFailure_OneChartFails(t *testing.T) {
 		},
 	}
 	reporter := NewChartStatusReporter()
-	handler := NewHandler(nil, manager, nil, nil, reporter)(10).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, reporter, nil)(10).(*HelmHandler)
 
 	charts := []portainer.PolicyChartSummary{
 		{PolicyID: 10, ChartName: "gatekeeper", Fingerprint: "fp1"},
@@ -417,7 +441,7 @@ func TestReconcileCharts_FingerprintChanged_Reinstall(t *testing.T) {
 			return &release.Release{Name: opts.Name, Namespace: opts.Namespace}, nil
 		},
 	}
-	handler := NewHandler(nil, manager, nil, nil, nil)(5).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, nil, nil)(5).(*HelmHandler)
 
 	// Pre-populate as installed with old fingerprint.
 	handler.installedCharts["gatekeeper"] = chartRecord{
@@ -483,7 +507,7 @@ func TestReconcileCharts_ExternallyManagedRelease_ReportsConflict(t *testing.T) 
 		},
 	}
 	reporter := NewChartStatusReporter()
-	handler := NewHandler(nil, manager, nil, nil, reporter)(5).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, reporter, nil)(5).(*HelmHandler)
 
 	charts := []portainer.PolicyChartSummary{{PolicyID: 5, ChartName: "gatekeeper", Fingerprint: "fp1"}}
 	raw, err := json.Marshal(HelmPolicyConfig{
@@ -515,7 +539,7 @@ func TestReconcileCharts_PortainerManagedNonDeployed_CleanedUpThenInstalled(t *t
 			return []*release.Release{deployedRelease(opts.Name, opts.Namespace, "failed", "/charts/gatekeeper.tgz")}, nil
 		},
 	}
-	handler := NewHandler(nil, manager, nil, nil, NewChartStatusReporter())(5).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, NewChartStatusReporter(), nil)(5).(*HelmHandler)
 
 	raw, err := json.Marshal(HelmPolicyConfig{
 		Charts:  []portainer.PolicyChartSummary{{PolicyID: 5, ChartName: "gatekeeper", Fingerprint: "fp1"}},
@@ -543,7 +567,7 @@ func TestReconcileCharts_ReleaseNameHonored(t *testing.T) {
 			return nil
 		},
 	}
-	handler := NewHandler(nil, manager, nil, nil, NewChartStatusReporter())(5).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, NewChartStatusReporter(), nil)(5).(*HelmHandler)
 
 	// Install with a ReleaseName that differs from the chart name.
 	raw, err := json.Marshal(HelmPolicyConfig{
@@ -570,7 +594,7 @@ func TestReconcileCharts_FailedChart_RetriedOnSameFingerprint(t *testing.T) {
 			return &release.Release{Name: opts.Name, Namespace: opts.Namespace}, nil
 		},
 	}
-	handler := NewHandler(nil, manager, nil, nil, nil)(5).(*HelmHandler)
+	handler := NewHandler(nil, manager, nil, nil, nil, nil)(5).(*HelmHandler)
 
 	// Pre-populate as failed with fingerprint preserved (retry scenario).
 	// Retry is driven by status != Installed, not by fingerprint mismatch.

@@ -125,7 +125,7 @@ func (m *stubPMHelmManager) GetHistory(opts options.HistoryOptions) ([]*release.
 
 func newTestPolicyManager(pc *stubPMClient, hm *stubPMHelmManager) *PolicyManager {
 	reporter := helm.NewChartStatusReporter()
-	return NewPolicyManager(pc, nil, hm, nil, reporter, 1)
+	return NewPolicyManager(pc, nil, hm, nil, reporter, nil, 1)
 }
 
 func TestProcessPolicyHelmCharts_GetChartsFailure_MarksChartsFailed(t *testing.T) {
