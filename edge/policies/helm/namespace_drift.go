@@ -16,11 +16,15 @@ import (
 // against the live namespace list via Helm's `lookup` function (see
 // all_namespace_role_bindings.yaml in the rbac-k8s chart). For these charts, a
 // server-computed Fingerprint match does not guarantee the last-rendered
-// manifest is still current: a namespace created or deleted on the cluster
-// never changes that fingerprint, since the server has no live cluster access
-// when generating chart values (notably for edge-async environments). C9S-325.
+// manifest is still current: the server has no live cluster access when
+// generating chart values (notably for edge-async environments), so nothing
+// server-side ever changes that fingerprint when the cluster's namespaces do.
+// This covers namespaces being created or deleted, and also a namespace being
+// relabeled in place (e.g. gaining/losing io.portainer.kubernetes.namespace.system) -
+// see checkNamespaceDrift for why a relabel is detected too, not just add/remove. C9S-325.
 var namespaceDriftSensitiveCharts = map[string]bool{
-	"portainer-rbac-k8s": true,
+	"portainer-rbac-k8s":             true,
+	"portainer-network-security-k8s": true,
 }
 
 // NamespaceLister lists the current namespaces on a cluster, keyed by name
@@ -89,6 +93,13 @@ func (c *NamespaceDriftCoordinator) Tick(ctx context.Context, _ []portainer.Poli
 // kubeClient and, only if it has changed since the last check, re-applies
 // namespaceDriftSensitiveCharts to pick up the change. Called on every poll
 // (via NamespaceDriftCoordinator.Tick) rather than on its own timer.
+//
+// The snapshot is keyed by namespace name with ResourceVersion as the value
+// (see KubeClient.ListNamespaces), and ResourceVersion is bumped by the API
+// server on any mutation to the object - not just when it's created or
+// deleted. So this also catches a namespace being relabeled in place (e.g. the
+// io.portainer.kubernetes.namespace.system label being added or removed on an
+// existing namespace), without needing to diff labels explicitly.
 // installChartBundle already records success/failure on each chart's record,
 // so this only needs to trigger the reapply and push the resulting statuses
 // through the chart reporter, same as reconcileCharts does. lastNamespaces is

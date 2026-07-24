@@ -86,7 +86,7 @@ func TestNamespaceDriftCoordinator_SkipsChartsNotInstalledOrWithoutCachedBundle(
 	handler := newDriftTestHandler(manager, coordinator, &stubNamespaceLister{})
 
 	handler.mu.Lock()
-	// Installed, but namespaceDriftSensitiveCharts only tracks "portainer-rbac-k8s".
+	// Installed, but "gatekeeper" isn't in namespaceDriftSensitiveCharts.
 	handler.installedCharts["gatekeeper"] = chartRecord{ChartName: "gatekeeper", Status: portainer.HelmInstallStatusInstalled}
 	handler.lastBundles["gatekeeper"] = portainer.PolicyChartBundle{
 		PolicyChartSummary: portainer.PolicyChartSummary{ChartName: "gatekeeper"},
@@ -181,6 +181,44 @@ func TestNamespaceDriftCoordinator_ReappliesWhenNamespacesChange(t *testing.T) {
 		coordinator.Tick(context.Background(), nil)
 		assert.Equal(t, i, manager.upgradeCalls, "each tick with a changed namespace snapshot should reapply")
 	}
+}
+
+// TestNamespaceDriftCoordinator_ReappliesWhenNamespaceIsRelabeled makes explicit
+// a guarantee that TestNamespaceDriftCoordinator_ReappliesWhenNamespacesChange
+// only exercises incidentally: relabeling an *existing* namespace (same name,
+// same set membership) is detected as drift too, not just namespace add/remove.
+// ListNamespaces keys the snapshot by name with ResourceVersion as the value,
+// and Kubernetes bumps ResourceVersion on any mutation - including a label
+// change - so no explicit label diffing is needed for this to work.
+func TestNamespaceDriftCoordinator_ReappliesWhenNamespaceIsRelabeled(t *testing.T) {
+	t.Parallel()
+
+	manager := &stubHelmPackageManager{
+		upgradeFunc: func(opts options.InstallOptions) (*release.Release, error) {
+			return &release.Release{Name: opts.Name, Namespace: opts.Namespace}, nil
+		},
+	}
+	// Same single namespace name across ticks; only its ResourceVersion moves,
+	// simulating a label being added/removed without the namespace itself
+	// being created or deleted.
+	lister := &stubNamespaceLister{
+		listFunc: func(call int) (map[string]string, error) {
+			return map[string]string{"ns-a": fmt.Sprintf("rv-%d", call)}, nil
+		},
+	}
+	coordinator := NewNamespaceDriftCoordinator()
+	handler := newDriftTestHandler(manager, coordinator, lister)
+
+	handler.mu.Lock()
+	handler.installedCharts["portainer-rbac-k8s"] = chartRecord{ChartName: "portainer-rbac-k8s", Status: portainer.HelmInstallStatusInstalled}
+	handler.lastBundles["portainer-rbac-k8s"] = rbacBundleForTest()
+	handler.mu.Unlock()
+
+	coordinator.Tick(context.Background(), nil) // baseline
+	require.Equal(t, 1, manager.upgradeCalls)
+
+	coordinator.Tick(context.Background(), nil) // "ns-a" relabeled, same name
+	assert.Equal(t, 2, manager.upgradeCalls, "a relabeled namespace (same name, new ResourceVersion) must be treated as drift")
 }
 
 func TestNamespaceDriftCoordinator_ReportsChartFailureViaChartReporter(t *testing.T) {
