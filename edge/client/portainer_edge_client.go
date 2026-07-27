@@ -161,6 +161,12 @@ func (client *PortainerEdgeClient) GetEnvironmentID() (portainer.EndpointID, err
 
 	req.Header.Set(agent.HTTPEdgeIdentifierHeaderName, client.edgeID)
 
+	req.Header.Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(client.agentPlatform)))
+
+	if containerEngine := aos.GetContainerEngineName(aos.DetermineContainerPlatform()); containerEngine != "" {
+		req.Header.Set(agent.HTTPResponseAgentContainerEngine, containerEngine)
+	}
+
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
 		return 0, err
