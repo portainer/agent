@@ -183,6 +183,12 @@ func TestIsDockerSnapshotDiffEmpty(t *testing.T) {
 				Type: "replace",
 			},
 		},
+		{
+			{
+				Path: "/DockerSnapshotRaw/Info/NEventsListener",
+				Type: "replace",
+			},
+		},
 	}
 
 	for _, patch := range emptyPatches {

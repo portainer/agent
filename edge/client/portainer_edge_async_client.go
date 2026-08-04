@@ -625,6 +625,7 @@ func isDockerSnapshotDiffEmpty(dockerPatch jsondiff.Patch) bool {
 		"/DiagnosticsData/Telnet/edge-to-portainer",
 		"/DockerSnapshotRaw/Info/NFd",
 		"/DockerSnapshotRaw/Info/NGoroutines",
+		"/DockerSnapshotRaw/Info/NEventsListener",
 		"/DockerSnapshotRaw/Info/SystemTime",
 		"/Time",
 	}
