@@ -16,6 +16,20 @@ import (
 
 const kubernetesAPIURL = "https://kubernetes.default.svc"
 
+// http1ProtoName is the ALPN identifier for HTTP/1.1.
+const http1ProtoName = "http/1.1"
+
+// forceHTTP1 constrains the transport built from config to HTTP/1.1.
+//
+// rest.TransportFor enables HTTP/2 by default, but Go's HTTP/2 client rejects
+// requests carrying an Upgrade header. That breaks the SPDY-based upgrade verbs
+// (kubectl port-forward/exec/attach) once traffic crosses this proxy hop.
+// Pinning NextProtos to http/1.1 keeps those upgrades working while retaining
+// the in-cluster credentials.
+func forceHTTP1(config *rest.Config) {
+	config.TLSClientConfig.NextProtos = []string{http1ProtoName}
+}
+
 func NewKubernetesProxy() *httputil.ReverseProxy {
 	remoteURL, _ := url.Parse(kubernetesAPIURL)
 
@@ -42,6 +56,7 @@ func NewKubernetesProxy() *httputil.ReverseProxy {
 
 	var transport http.RoundTripper
 	if config != nil {
+		forceHTTP1(config)
 		transport, err = rest.TransportFor(config)
 		if err != nil {
 			log.Error().Err(err).Msg("error getting transport for Kubernetes proxy with in-cluster config")
@@ -85,6 +100,7 @@ func NewKubernetesProxy() *httputil.ReverseProxy {
 		return proxy
 	}
 
+	forceHTTP1(config)
 	transport, err = rest.TransportFor(config)
 	if err != nil {
 		log.Error().Err(err).Msg("error getting transport for dev kubeconfig")
