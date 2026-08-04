@@ -68,14 +68,22 @@ func (handler *Handler) browseListV1(rw http.ResponseWriter, r *http.Request) *h
 	return response.JSON(rw, files)
 }
 
-// resolveVolumePath returns the host-accessible path to a file inside a volume.
-// It queries Docker for the volume's Mountpoint, then resolves it via /host.
-// Falls back to the legacy SystemVolumePath-based path if the Docker inspect fails.
+// getVolumeMountpointFunc is a package-level indirection to allow tests to stub
+// the Docker volume mountpoint lookup without a live Docker daemon.
+var getVolumeMountpointFunc = docker.GetVolumeMountpoint
+
+// resolveVolumePath returns the host-accessible path to a file inside a volume,
+// falling back to the legacy default path if the Docker-reported mountpoint isn't reachable.
 func resolveVolumePath(volumeID, filePath string) (string, error) {
-	mountpoint, err := docker.GetVolumeMountpoint(volumeID)
-	if err == nil && mountpoint != "" {
-		return filesystem.BuildPathToFileInsideVolumeFromMountpoint(mountpoint, filePath)
+	mountpoint, err := getVolumeMountpointFunc(volumeID)
+	if err != nil || mountpoint == "" {
+		return filesystem.BuildPathToFileInsideVolume(volumeID, filePath)
 	}
 
-	return filesystem.BuildPathToFileInsideVolume(volumeID, filePath)
+	resolved, err := filesystem.BuildPathToFileInsideVolumeFromMountpoint(mountpoint, filePath)
+	if errors.Is(err, filesystem.ErrSystemVolumePathNotMounted) {
+		return filesystem.BuildPathToFileInsideVolume(volumeID, filePath)
+	}
+
+	return resolved, err
 }
