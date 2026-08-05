@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"math/big"
 	"net"
 	"net/http"
@@ -577,6 +578,144 @@ func abruptCloseServerAddr(t *testing.T) string {
 	}()
 
 	return listener.Addr().String()
+}
+
+// startUnresponsiveListener accepts TCP connections but never answers them, which is
+// what a firewalled port or a wildcard DNS record does. The probe then stalls until
+// its own timeout rather than failing fast.
+func startUnresponsiveListener(t *testing.T) string {
+	t.Helper()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start listener: %v", err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			// hold the connection open without replying
+			t.Cleanup(func() { _ = conn.Close() })
+		}
+	}()
+
+	return listener.Addr().String()
+}
+
+// captureStdout collects everything HasServerConnectivity prints, so tests can assert
+// on what the user actually sees.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+
+	original := os.Stdout
+	os.Stdout = writer
+
+	done := make(chan string, 1)
+	go func() {
+		var sb strings.Builder
+		_, _ = io.Copy(&sb, reader)
+		done <- sb.String()
+	}()
+
+	fn()
+
+	os.Stdout = original
+	_ = writer.Close()
+	output := <-done
+	_ = reader.Close()
+
+	return output
+}
+
+func TestResolveCheckTimeout_DefaultWhenUnset(t *testing.T) {
+	t.Parallel()
+
+	if timeout := resolveCheckTimeout(defaultOptions()); timeout != DefaultConnectivityCheckTimeoutSeconds {
+		t.Errorf("expected default timeout %d, got %v", DefaultConnectivityCheckTimeoutSeconds, timeout)
+	}
+}
+
+func TestResolveCheckTimeout_HonoursOverride(t *testing.T) {
+	t.Parallel()
+
+	opts := defaultOptions()
+	opts.EdgeConnectivityCheckTimeout = 45
+
+	if timeout := resolveCheckTimeout(opts); timeout != 45 {
+		t.Errorf("expected timeout 45, got %v", timeout)
+	}
+}
+
+// C9S-235: an unresponsive target used to leave the user staring at a blank console
+// for the full edge client timeout. The check must announce each target up front and
+// give up after its own configured timeout.
+func TestCheckConnectivity_AnnouncesTargetBeforeStallingProbe(t *testing.T) {
+	addr := startUnresponsiveListener(t)
+
+	opts := defaultOptions()
+	opts.EdgeConnectivityCheckURL = "http://" + addr
+	opts.EdgeConnectivityCheckTimeout = 1
+	opts.EdgeInsecurePoll = true
+
+	var passed bool
+	start := time.Now()
+	output := captureStdout(t, func() { passed = HasServerConnectivity(opts) })
+	elapsed := time.Since(start)
+
+	if passed {
+		t.Error("expected the check to fail against an unresponsive target")
+	}
+
+	if !strings.Contains(output, "CHECK (1/1): trying to reach the Portainer API server at http://"+addr) {
+		t.Errorf("expected the target to be announced before the probe, got:\n%s", output)
+	}
+
+	if !strings.Contains(output, "waiting up to 1s") {
+		t.Errorf("expected the announced wait to reflect the configured timeout, got:\n%s", output)
+	}
+
+	if !strings.Contains(output, "FAIL: Failed to reach Portainer API server") {
+		t.Errorf("expected a FAIL line, got:\n%s", output)
+	}
+
+	if !strings.Contains(output, "RESULT: connectivity checks failed") {
+		t.Errorf("expected a closing RESULT line, got:\n%s", output)
+	}
+
+	// guards against the probe falling back to the 30s edge client default
+	if elapsed > 15*time.Second {
+		t.Errorf("expected the probe to honour the 1s timeout, took %v", elapsed)
+	}
+}
+
+func TestCheckConnectivity_PrintsPassingResultLine(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	opts := defaultOptions()
+	opts.EdgeConnectivityCheckURL = server.URL
+
+	var passed bool
+	output := captureStdout(t, func() { passed = HasServerConnectivity(opts) })
+
+	if !passed {
+		t.Errorf("expected the check to pass, got output:\n%s", output)
+	}
+
+	if !strings.Contains(output, "RESULT: all 1 connectivity checks passed") {
+		t.Errorf("expected a closing RESULT line, got:\n%s", output)
+	}
 }
 
 func assertErrorContains(t *testing.T, err error, expected string) {

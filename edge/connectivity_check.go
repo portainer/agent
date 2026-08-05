@@ -20,6 +20,21 @@ type connectivityCheckParams struct {
 	portainerURL string
 	tunnelAddr   string
 	skipTunnel   bool
+	timeout      float64
+}
+
+// DefaultConnectivityCheckTimeoutSeconds bounds how long a single connectivity
+// probe waits. A firewalled port or a wildcard DNS record answers the SYN with
+// silence, so without a bound each probe stalls for the full edge client
+// timeout with nothing on screen.
+const DefaultConnectivityCheckTimeoutSeconds = 15
+
+func resolveCheckTimeout(options *agent.Options) float64 {
+	if options.EdgeConnectivityCheckTimeout > 0 {
+		return float64(options.EdgeConnectivityCheckTimeout)
+	}
+
+	return DefaultConnectivityCheckTimeoutSeconds
 }
 
 func resolveCheckParams(options *agent.Options) (*connectivityCheckParams, error) {
@@ -38,6 +53,7 @@ func resolveCheckParams(options *agent.Options) (*connectivityCheckParams, error
 			portainerURL: portainerURL,
 			tunnelAddr:   tunnelAddr,
 			skipTunnel:   options.EdgeAsyncMode || !options.EdgeTunnel || tunnelAddr == "",
+			timeout:      resolveCheckTimeout(options),
 		}
 
 		return validateCheckParams(params, options)
@@ -62,6 +78,7 @@ func resolveCheckParams(options *agent.Options) (*connectivityCheckParams, error
 		portainerURL: portainerURL,
 		tunnelAddr:   tunnelAddr,
 		skipTunnel:   options.EdgeAsyncMode || !options.EdgeTunnel || tunnelAddr == "",
+		timeout:      resolveCheckTimeout(options),
 	}
 
 	return validateCheckParams(params, options)
@@ -168,9 +185,14 @@ func HasServerConnectivity(options *agent.Options) bool {
 	}
 
 	allPassed := true
+	checkCount := 1
+	totalChecks := 1
+	if !params.skipTunnel && params.tunnelAddr != "" {
+		totalChecks = 2
+	}
 
 	apiURL := params.portainerURL + "/api/system/status"
-	httpClient := client.BuildHTTPClient(client.DefaultHTTPClientTimeoutSeconds, options)
+	httpClient := client.BuildHTTPClient(params.timeout, options)
 
 	if options.EdgeTunnelProxy != "" {
 		proxyURL, _ := url.Parse(options.EdgeTunnelProxy)
@@ -178,6 +200,10 @@ func HasServerConnectivity(options *agent.Options) bool {
 	}
 
 	// intentionally use fmt.Printf instead of log.x() calls, so that Pass/Fail connectivity results are most obvious and aren't hidden in log formatting
+	// announce each check before running it, so a probe that stalls on an unresponsive
+	// host still tells the user what it is waiting for instead of printing nothing
+	printCheckStart(checkCount, totalChecks, "Portainer API server", params.portainerURL, params.timeout)
+
 	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
 	if err != nil {
 		fmt.Printf("FAIL: Failed to reach Portainer API server at %s: %v\n", params.portainerURL, err)
@@ -195,6 +221,9 @@ func HasServerConnectivity(options *agent.Options) bool {
 	}
 
 	if !params.skipTunnel && params.tunnelAddr != "" {
+		checkCount++
+		printCheckStart(checkCount, totalChecks, "Portainer tunnel server", params.tunnelAddr, params.timeout)
+
 		tunnelURL := chisel.TunnelProbeURL(params.tunnelAddr)
 		req, err := http.NewRequest(http.MethodGet, tunnelURL, nil)
 		if err != nil {
@@ -215,7 +244,20 @@ func HasServerConnectivity(options *agent.Options) bool {
 		}
 	}
 
+	// print the verdict last so an interrupted or truncated stream still ends on the result
+	if allPassed {
+		fmt.Printf("RESULT: all %d connectivity checks passed\n", totalChecks)
+	} else {
+		fmt.Printf("RESULT: connectivity checks failed, see the FAIL lines above\n")
+	}
+
 	return allPassed
+}
+
+func printCheckStart(index, total int, target, addr string, timeout float64) {
+	// keep the wording aligned with the PASS/FAIL lines below ("reach"/"reachable"),
+	// so the announcement and its outcome read as one sentence
+	fmt.Printf("CHECK (%d/%d): trying to reach the %s at %s, waiting up to %ds...\n", index, total, target, addr, int(timeout))
 }
 
 // isTunnelProbeReachable reports whether the tunnel port answered the probe.

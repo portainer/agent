@@ -11,48 +11,49 @@ import (
 )
 
 const (
-	EnvKeyAgentHost                   = "AGENT_HOST"
-	EnvKeyAgentPort                   = "AGENT_PORT"
-	EnvKeyClusterAddr                 = "AGENT_CLUSTER_ADDR"
-	EnvKeyClusterProbeTimeout         = "AGENT_CLUSTER_PROBE_TIMEOUT"
-	EnvKeyClusterProbeInterval        = "AGENT_CLUSTER_PROBE_INTERVAL"
-	EnvKeyAgentSecret                 = "AGENT_SECRET"
-	EnvKeyAgentSecurityShutdown       = "AGENT_SECRET_TIMEOUT"
-	EnvKeyDataPath                    = "DATA_PATH"
-	EnvKeyEdge                        = "EDGE"
-	EnvKeyEdgeAsync                   = "EDGE_ASYNC"
-	EnvKeyEdgeKey                     = "EDGE_KEY"
-	EnvKeyEdgeID                      = "EDGE_ID"
-	EnvKeyEdgeServerHost              = "EDGE_SERVER_HOST"
-	EnvKeyEdgeServerPort              = "EDGE_SERVER_PORT"
-	EnvKeyEdgeInactivityTimeout       = "EDGE_INACTIVITY_TIMEOUT"
-	EnvKeyEdgeInsecurePoll            = "EDGE_INSECURE_POLL"
-	EnvKeyEdgeTunnel                  = "EDGE_TUNNEL"
-	EnvKeyEdgeTunnelHttpProxy         = "HTTP_PROXY"
-	EnvKeyEdgeTunnelHttpsProxy        = "HTTPS_PROXY"
-	EnvKeyLogLevel                    = "LOG_LEVEL"
-	EnvKeyLogMode                     = "LOG_MODE"
-	EnvKeySSLCert                     = "MTLS_SSL_CERT"
-	EnvKeySSLKey                      = "MTLS_SSL_KEY"
-	EnvKeySSLCACert                   = "MTLS_SSL_CA"
-	EnvKeyCertRetryInterval           = "MTLS_CERT_RETRY_INTERVAL"
-	EnvKeyAWSClientCert               = "AWS_CLIENT_CERT"
-	EnvKeyAWSClientKey                = "AWS_CLIENT_KEY"
-	EnvKeyAWSClientBundle             = "AWS_CLIENT_BUNDLE"
-	EnvKeyAWSRoleARN                  = "AWS_ROLE_ARN"
-	EnvKeyAWSTrustAnchorARN           = "AWS_TRUST_ANCHOR_ARN"
-	EnvKeyAWSProfileARN               = "AWS_PROFILE_ARN"
-	EnvKeyAWSRegion                   = "AWS_REGION"
-	EnvKeyUpdateID                    = "UPDATE_ID"
-	EnvKeyEdgeGroups                  = "EDGE_GROUPS"
-	EnvKeyEnvironmentGroup            = "PORTAINER_GROUP"
-	EnvKeyTags                        = "PORTAINER_TAGS"
-	EnvKeyPullLimitCheckDisabled      = "PULL_LIMIT_CHECK_DISABLED"
-	EnvKeyFipsMode                    = "FIPS_MODE"
-	EnvKeyEdgeConnectivityCheck       = "EDGE_CONNECTIVITY_CHECK"
-	EnvKeyEdgeConnectivityCheckURL    = "EDGE_CONNECTIVITY_CHECK_URL"
-	EnvKeyEdgeConnectivityCheckTunnel = "EDGE_CONNECTIVITY_CHECK_TUNNEL_ADDR"
-	EnvKeyWithGPUOperator             = "WITH_GPU_OPERATOR"
+	EnvKeyAgentHost                    = "AGENT_HOST"
+	EnvKeyAgentPort                    = "AGENT_PORT"
+	EnvKeyClusterAddr                  = "AGENT_CLUSTER_ADDR"
+	EnvKeyClusterProbeTimeout          = "AGENT_CLUSTER_PROBE_TIMEOUT"
+	EnvKeyClusterProbeInterval         = "AGENT_CLUSTER_PROBE_INTERVAL"
+	EnvKeyAgentSecret                  = "AGENT_SECRET"
+	EnvKeyAgentSecurityShutdown        = "AGENT_SECRET_TIMEOUT"
+	EnvKeyDataPath                     = "DATA_PATH"
+	EnvKeyEdge                         = "EDGE"
+	EnvKeyEdgeAsync                    = "EDGE_ASYNC"
+	EnvKeyEdgeKey                      = "EDGE_KEY"
+	EnvKeyEdgeID                       = "EDGE_ID"
+	EnvKeyEdgeServerHost               = "EDGE_SERVER_HOST"
+	EnvKeyEdgeServerPort               = "EDGE_SERVER_PORT"
+	EnvKeyEdgeInactivityTimeout        = "EDGE_INACTIVITY_TIMEOUT"
+	EnvKeyEdgeInsecurePoll             = "EDGE_INSECURE_POLL"
+	EnvKeyEdgeTunnel                   = "EDGE_TUNNEL"
+	EnvKeyEdgeTunnelHttpProxy          = "HTTP_PROXY"
+	EnvKeyEdgeTunnelHttpsProxy         = "HTTPS_PROXY"
+	EnvKeyLogLevel                     = "LOG_LEVEL"
+	EnvKeyLogMode                      = "LOG_MODE"
+	EnvKeySSLCert                      = "MTLS_SSL_CERT"
+	EnvKeySSLKey                       = "MTLS_SSL_KEY"
+	EnvKeySSLCACert                    = "MTLS_SSL_CA"
+	EnvKeyCertRetryInterval            = "MTLS_CERT_RETRY_INTERVAL"
+	EnvKeyAWSClientCert                = "AWS_CLIENT_CERT"
+	EnvKeyAWSClientKey                 = "AWS_CLIENT_KEY"
+	EnvKeyAWSClientBundle              = "AWS_CLIENT_BUNDLE"
+	EnvKeyAWSRoleARN                   = "AWS_ROLE_ARN"
+	EnvKeyAWSTrustAnchorARN            = "AWS_TRUST_ANCHOR_ARN"
+	EnvKeyAWSProfileARN                = "AWS_PROFILE_ARN"
+	EnvKeyAWSRegion                    = "AWS_REGION"
+	EnvKeyUpdateID                     = "UPDATE_ID"
+	EnvKeyEdgeGroups                   = "EDGE_GROUPS"
+	EnvKeyEnvironmentGroup             = "PORTAINER_GROUP"
+	EnvKeyTags                         = "PORTAINER_TAGS"
+	EnvKeyPullLimitCheckDisabled       = "PULL_LIMIT_CHECK_DISABLED"
+	EnvKeyFipsMode                     = "FIPS_MODE"
+	EnvKeyEdgeConnectivityCheck        = "EDGE_CONNECTIVITY_CHECK"
+	EnvKeyEdgeConnectivityCheckURL     = "EDGE_CONNECTIVITY_CHECK_URL"
+	EnvKeyEdgeConnectivityCheckTunnel  = "EDGE_CONNECTIVITY_CHECK_TUNNEL_ADDR"
+	EnvKeyEdgeConnectivityCheckTimeout = "EDGE_CONNECTIVITY_CHECK_TIMEOUT"
+	EnvKeyWithGPUOperator              = "WITH_GPU_OPERATOR"
 )
 
 type EnvOptionParser struct{}
@@ -106,12 +107,13 @@ var (
 	fAWSProfileARN     = kingpin.Flag("aws-profile-arn", "AWS profile ARN used to pull policies from (IAM Roles Anywhere authentication)").Envar(EnvKeyAWSProfileARN).String()
 	fAWSRegion         = kingpin.Flag("aws-region", "AWS region used when signing against IAM Roles Anywhere").Envar(EnvKeyAWSRegion).String()
 
-	fFipsMode      = kingpin.Flag("fips-mode", EnvKeyFipsMode+" enable FIPS mode. Disabled by default, set to 1 or true to enable it").Hidden().Envar(EnvKeyFipsMode).Bool()
+	fFipsMode        = kingpin.Flag("fips-mode", EnvKeyFipsMode+" enable FIPS mode. Disabled by default, set to 1 or true to enable it").Hidden().Envar(EnvKeyFipsMode).Bool()
 	fWithGPUOperator = kingpin.Flag("with-gpu-operator", EnvKeyWithGPUOperator+" enable GPU operator scraping. Disabled by default, set to 1 or true to enable it").Hidden().Envar(EnvKeyWithGPUOperator).Bool()
 
-	fEdgeConnectivityCheck       = kingpin.Flag("edge-connectivity-check", EnvKeyEdgeConnectivityCheck+" run a one-shot connectivity check and exit").Envar(EnvKeyEdgeConnectivityCheck).Bool()
-	fEdgeConnectivityCheckURL    = kingpin.Flag("edge-connectivity-check-url", EnvKeyEdgeConnectivityCheckURL+" Portainer API URL for connectivity check (overrides EDGE_KEY)").Envar(EnvKeyEdgeConnectivityCheckURL).String()
-	fEdgeConnectivityCheckTunnel = kingpin.Flag("edge-connectivity-check-tunnel-addr", EnvKeyEdgeConnectivityCheckTunnel+" tunnel server address (host:port) for connectivity check").Envar(EnvKeyEdgeConnectivityCheckTunnel).String()
+	fEdgeConnectivityCheck        = kingpin.Flag("edge-connectivity-check", EnvKeyEdgeConnectivityCheck+" run a one-shot connectivity check and exit").Envar(EnvKeyEdgeConnectivityCheck).Bool()
+	fEdgeConnectivityCheckURL     = kingpin.Flag("edge-connectivity-check-url", EnvKeyEdgeConnectivityCheckURL+" Portainer API URL for connectivity check (overrides EDGE_KEY)").Envar(EnvKeyEdgeConnectivityCheckURL).String()
+	fEdgeConnectivityCheckTunnel  = kingpin.Flag("edge-connectivity-check-tunnel-addr", EnvKeyEdgeConnectivityCheckTunnel+" tunnel server address (host:port) for connectivity check").Envar(EnvKeyEdgeConnectivityCheckTunnel).String()
+	fEdgeConnectivityCheckTimeout = kingpin.Flag("edge-connectivity-check-timeout", EnvKeyEdgeConnectivityCheckTimeout+" seconds to wait for each connectivity check target before giving up").Envar(EnvKeyEdgeConnectivityCheckTimeout).Int()
 )
 
 func init() {
@@ -140,41 +142,42 @@ func (parser EnvOptionParser) Options() (*agent.Options, error) {
 	}
 
 	return &agent.Options{
-		AgentServerAddr:             fAgentServerAddr.String(),
-		AgentServerPort:             strconv.Itoa(*fAgentServerPort),
-		AgentSecurityShutdown:       *fAgentSecurityShutdown,
-		ClusterAddress:              *fClusterAddress,
-		ClusterProbeTimeout:         *fClusterProbeTimeout,
-		ClusterProbeInterval:        *fClusterProbeInterval,
-		DataPath:                    *fDataPath,
-		EdgeMode:                    *fEdgeMode,
-		EdgeAsyncMode:               *fEdgeAsyncMode,
-		EdgeKey:                     *fEdgeKey,
-		EdgeID:                      *fEdgeID,
-		EdgeUIServerAddr:            fEdgeServerAddr.String(),
-		EdgeUIServerPort:            strconv.Itoa(*fEdgeServerPort),
-		EdgeInactivityTimeout:       *fEdgeInactivityTimeout,
-		EdgeInsecurePoll:            *fEdgeInsecurePoll,
-		EdgeTunnel:                  *fEdgeTunnel,
-		EdgeTunnelProxy:             httpProxy,
-		EdgeConnectivityCheck:       *fEdgeConnectivityCheck,
-		EdgeConnectivityCheckURL:    *fEdgeConnectivityCheckURL,
-		EdgeConnectivityCheckTunnel: *fEdgeConnectivityCheckTunnel,
-		FIPSMode:                    *fFipsMode,
-		LogLevel:                    *fLogLevel,
-		LogMode:                     *fLogMode,
-		SharedSecret:                *fSharedSecret,
-		SSLCert:                     *fSSLCert,
-		SSLKey:                      *fSSLKey,
-		SSLCACert:                   *fSSLCACert,
-		CertRetryInterval:           *fCertRetryInterval,
-		AWSClientCert:               *fAWSClientCert,
-		AWSClientKey:                *fAWSClientKey,
-		AWSClientBundle:             *fAWSClientBundle,
-		AWSRoleARN:                  *fAWSRoleARN,
-		AWSTrustAnchorARN:           *fAWSTrustAnchorARN,
-		AWSProfileARN:               *fAWSProfileARN,
-		AWSRegion:                   *fAWSRegion,
+		AgentServerAddr:              fAgentServerAddr.String(),
+		AgentServerPort:              strconv.Itoa(*fAgentServerPort),
+		AgentSecurityShutdown:        *fAgentSecurityShutdown,
+		ClusterAddress:               *fClusterAddress,
+		ClusterProbeTimeout:          *fClusterProbeTimeout,
+		ClusterProbeInterval:         *fClusterProbeInterval,
+		DataPath:                     *fDataPath,
+		EdgeMode:                     *fEdgeMode,
+		EdgeAsyncMode:                *fEdgeAsyncMode,
+		EdgeKey:                      *fEdgeKey,
+		EdgeID:                       *fEdgeID,
+		EdgeUIServerAddr:             fEdgeServerAddr.String(),
+		EdgeUIServerPort:             strconv.Itoa(*fEdgeServerPort),
+		EdgeInactivityTimeout:        *fEdgeInactivityTimeout,
+		EdgeInsecurePoll:             *fEdgeInsecurePoll,
+		EdgeTunnel:                   *fEdgeTunnel,
+		EdgeTunnelProxy:              httpProxy,
+		EdgeConnectivityCheck:        *fEdgeConnectivityCheck,
+		EdgeConnectivityCheckURL:     *fEdgeConnectivityCheckURL,
+		EdgeConnectivityCheckTunnel:  *fEdgeConnectivityCheckTunnel,
+		EdgeConnectivityCheckTimeout: *fEdgeConnectivityCheckTimeout,
+		FIPSMode:                     *fFipsMode,
+		LogLevel:                     *fLogLevel,
+		LogMode:                      *fLogMode,
+		SharedSecret:                 *fSharedSecret,
+		SSLCert:                      *fSSLCert,
+		SSLKey:                       *fSSLKey,
+		SSLCACert:                    *fSSLCACert,
+		CertRetryInterval:            *fCertRetryInterval,
+		AWSClientCert:                *fAWSClientCert,
+		AWSClientKey:                 *fAWSClientKey,
+		AWSClientBundle:              *fAWSClientBundle,
+		AWSRoleARN:                   *fAWSRoleARN,
+		AWSTrustAnchorARN:            *fAWSTrustAnchorARN,
+		AWSProfileARN:                *fAWSProfileARN,
+		AWSRegion:                    *fAWSRegion,
 		EdgeMetaFields: agent.EdgeMetaFields{
 			EdgeGroupsIDs:      edgeGroupsIDs,
 			EnvironmentGroupID: *fEnvironmentGroupID,
