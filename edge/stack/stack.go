@@ -749,6 +749,10 @@ func (manager *StackManager) deleteStack(ctx context.Context, stack *edgeStack, 
 		log.Warn().
 			Err(err).
 			Str("context", "EdgeStackManager").
+			Int("stack_identifier", stack.ID).
+			Str("stack_name", stackName).
+			Str("stack_file_location", stackFileLocation).
+			Str("namespace", stack.Namespace).
 			Msg("unable to remove Edge stack")
 
 		// If the stack removal fails, we set the status to StatusAwaitingCleanup.
