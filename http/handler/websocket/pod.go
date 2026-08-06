@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/kubernetes"
@@ -41,7 +40,7 @@ func (handler *Handler) websocketPodExec(w http.ResponseWriter, r *http.Request)
 
 	token := r.Header.Get(agent.HTTPKubernetesSATokenHeaderName)
 
-	commandArray := strings.Split(command, " ")
+	commandArray := ws.SplitExecCommand(command)
 
 	websocketConn, err := handler.connectionUpgrader.Upgrade(w, r, nil)
 	if err != nil {
