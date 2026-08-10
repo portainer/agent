@@ -64,8 +64,9 @@ type PortainerAsyncClient struct {
 
 	policyHelmCharts *PolicyHelmCharts
 
-	createSnapshotFn DockerSnapshotter
-	gpuOperator      bool
+	createSnapshotFn           DockerSnapshotter
+	createKubernetesSnapshotFn KubernetesSnapshotter
+	gpuOperator                bool
 }
 
 // NewPortainerAsyncClient returns a pointer to a new PortainerAsyncClient instance
@@ -86,21 +87,20 @@ func NewPortainerAsyncClient(
 	}
 
 	return &PortainerAsyncClient{
-		version:                 clientOpts.version,
-		serverAddress:           serverAddress,
-		setEndpointIDFn:         setEIDFn,
-		getEndpointIDFn:         getEIDFn,
-		edgeID:                  edgeID,
-		edgeKey:                 edgeKey,
-		httpClient:              httpClient,
-		agentPlatformIdentifier: containerPlatform,
-		commandTimestamp:        time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-		timeZoneStr:             time.Local.String(),
-		pendingESCommandsTS:     make(map[portainer.EdgeStackID]versionAndTS),
-		metaFields:              metaFields,
-		createSnapshotFn:        clientOpts.dockerSnapshotter,
-		gpuOperator:             clientOpts.gpuOperator,
-		liveLogCollectors:       make(map[string]*LiveLogCollector),
+		version:                    clientOpts.version,
+		serverAddress:              serverAddress,
+		setEndpointIDFn:            setEIDFn,
+		getEndpointIDFn:            getEIDFn,
+		edgeID:                     edgeID,
+		edgeKey:                    edgeKey,
+		httpClient:                 httpClient,
+		agentPlatformIdentifier:    containerPlatform,
+		commandTimestamp:           time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+		timeZoneStr:                time.Local.String(),
+		metaFields:                 metaFields,
+		createSnapshotFn:           clientOpts.dockerSnapshotter,
+		createKubernetesSnapshotFn: kubernetes.CreateSnapshot,
+		gpuOperator:                clientOpts.gpuOperator,
 	}
 }
 
@@ -226,6 +226,8 @@ type NormalStackCommandData struct {
 
 type DockerSnapshotter func(edgeKey string) (*portainer.DockerSnapshot, error)
 
+type KubernetesSnapshotter func(edgeKey string) (*portainer.KubernetesSnapshot, error)
+
 func (client *PortainerAsyncClient) GetEnvironmentID() (portainer.EndpointID, error) {
 	return 0, errors.New("GetEnvironmentID is not available in async mode")
 }
@@ -321,8 +323,24 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 	return response, nil
 }
 
+var errBoundedBufferLimitExceeded = errors.New("write would exceed buffer limit")
+
+type boundedBuffer struct {
+	bytes.Buffer
+	limit int
+}
+
+func (b *boundedBuffer) Write(p []byte) (int, error) {
+	if b.Len()+len(p) > b.limit {
+		return 0, errBoundedBufferLimitExceeded
+	}
+
+	return b.Buffer.Write(p)
+}
+
 func gzipCompress(data []byte) (*bytes.Buffer, error) {
-	buf := &bytes.Buffer{}
+	buf := &boundedBuffer{limit: len(data)}
+	buf.Grow(len(data))
 
 	gz := gzkp.NewWriter(buf, gzip.BestCompression)
 
@@ -334,11 +352,7 @@ func gzipCompress(data []byte) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	if len(data) < buf.Len() {
-		return nil, errors.New("compressed data is larger than original data")
-	}
-
-	return buf, nil
+	return &buf.Buffer, nil
 }
 
 func (client *PortainerAsyncClient) executeAsyncRequest(payload AsyncRequest, pollURL string) (*AsyncResponse, error) {
@@ -568,6 +582,10 @@ func (client *PortainerAsyncClient) SetPendingCommand(id portainer.EdgeStackID, 
 	client.pendingCmdsMutex.Lock()
 	defer client.pendingCmdsMutex.Unlock()
 
+	if client.pendingESCommandsTS == nil {
+		client.pendingESCommandsTS = make(map[portainer.EdgeStackID]versionAndTS)
+	}
+
 	client.pendingESCommandsTS[id] = versionAndTS{version: version, timestamp: timestamp}
 }
 
@@ -588,7 +606,27 @@ func (client *PortainerAsyncClient) createDockerSnapshot(payload *AsyncRequest, 
 		return
 	}
 
-	dockerPatch, err := jsondiff.Compare(client.lastSnapshot.Docker, dockerSnapshot)
+	if client.lastSnapshot.Docker == dockerSnapshot {
+		payload.Snapshot.Docker = nil
+
+		return
+	}
+
+	lastBytes, err := json.Marshal(client.lastSnapshot.Docker)
+	if err != nil {
+		log.Warn().Err(err).Msg("could not encode the last Docker snapshot")
+
+		return
+	}
+
+	currentBytes, err := json.Marshal(dockerSnapshot)
+	if err != nil {
+		log.Warn().Err(err).Msg("could not encode the Docker snapshot")
+
+		return
+	}
+
+	dockerPatch, err := jsondiff.CompareJSON(lastBytes, currentBytes)
 	if err != nil {
 		log.Warn().Err(err).Msg("could not generate the Docker snapshot patch")
 
@@ -601,15 +639,18 @@ func (client *PortainerAsyncClient) createDockerSnapshot(payload *AsyncRequest, 
 		return
 	}
 
-	h, ok := snapshotHash(client.lastSnapshot.Docker)
-	if !ok {
+	h := fnv.New32a()
+	if _, err := h.Write(lastBytes); err != nil {
+		log.Warn().Err(err).Msg("could not hash the Docker snapshot")
+
 		return
 	}
 
 	currentSnapshot.Docker = nil
 
+	sum := h.Sum32()
 	payload.Snapshot.DockerPatch = dockerPatch
-	payload.Snapshot.DockerHash = &h
+	payload.Snapshot.DockerHash = &sum
 	payload.Snapshot.Docker = nil
 }
 
@@ -648,7 +689,7 @@ outerLoop:
 }
 
 func (client *PortainerAsyncClient) createKubernetesSnapshot(payload *AsyncRequest, currentSnapshot *snapshot) {
-	kubeSnapshot, err := kubernetes.CreateSnapshot(client.edgeKey)
+	kubeSnapshot, err := client.createKubernetesSnapshotFn(client.edgeKey)
 	if err != nil {
 		log.Warn().Err(err).Msg("could not create the Kubernetes snapshot")
 
@@ -662,20 +703,37 @@ func (client *PortainerAsyncClient) createKubernetesSnapshot(payload *AsyncReque
 		return
 	}
 
-	h, ok := snapshotHash(client.lastSnapshot.Kubernetes)
-	if !ok {
+	lastBytes, err := json.Marshal(client.lastSnapshot.Kubernetes)
+	if err != nil {
+		log.Warn().Err(err).Msg("could not encode the last Kubernetes snapshot")
+
 		return
 	}
 
-	kubePatch, err := jsondiff.Compare(client.lastSnapshot.Kubernetes, kubeSnapshot)
+	currentBytes, err := json.Marshal(kubeSnapshot)
+	if err != nil {
+		log.Warn().Err(err).Msg("could not encode the Kubernetes snapshot")
+
+		return
+	}
+
+	kubePatch, err := jsondiff.CompareJSON(lastBytes, currentBytes)
 	if err != nil {
 		log.Warn().Err(err).Msg("could not generate the Kubernetes snapshot patch")
 
 		return
 	}
 
+	h := fnv.New32a()
+	if _, err := h.Write(lastBytes); err != nil {
+		log.Warn().Err(err).Msg("could not hash the Kubernetes snapshot")
+
+		return
+	}
+
+	sum := h.Sum32()
 	payload.Snapshot.KubernetesPatch = kubePatch
-	payload.Snapshot.KubernetesHash = &h
+	payload.Snapshot.KubernetesHash = &sum
 	payload.Snapshot.Kubernetes = nil
 }
 
@@ -766,6 +824,10 @@ func (client *PortainerAsyncClient) startLiveLogCollection(payload *AsyncRequest
 
 	client.collectAvailableLogs(payload, logCollector, containerID, true)
 
+	if client.liveLogCollectors == nil {
+		client.liveLogCollectors = make(map[string]*LiveLogCollector)
+	}
+
 	client.liveLogCollectors[containerID] = logCollector
 }
 
@@ -799,25 +861,6 @@ func (client *PortainerAsyncClient) rotateSnapshots(currentSnapshot snapshot, as
 	client.nextSnapshot.PolicyChartStatuses = nil
 	client.nextSnapshot.PolicyStatuses = nil
 	client.stackLogCollectionQueue = nil
-}
-
-func snapshotHash(snapshot any) (uint32, bool) {
-	b := &bytes.Buffer{}
-
-	if err := json.NewEncoder(b).Encode(snapshot); err != nil {
-		log.Error().Err(err).Msg("could not encode the snapshot")
-
-		return 0, false
-	}
-
-	h := fnv.New32a()
-	if _, err := h.Write(bytes.TrimSpace(b.Bytes())); err != nil {
-		log.Error().Err(err).Msg("could not hash the snapshot")
-
-		return 0, false
-	}
-
-	return h.Sum32(), true
 }
 
 func getContainersFromEdgeStack(edgeStackName string) []types.Container {

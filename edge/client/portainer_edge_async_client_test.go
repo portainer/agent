@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -210,4 +211,153 @@ func TestIsDockerSnapshotDiffEmpty(t *testing.T) {
 	for _, patch := range nonEmptyPatches {
 		require.False(t, isDockerSnapshotDiffEmpty(patch))
 	}
+}
+
+func TestCreateDockerSnapshotSkipsWhenSnapshotUnchanged(t *testing.T) {
+	t.Parallel()
+
+	dockerSnapshot := &portainer.DockerSnapshot{ContainerCount: 3}
+
+	client := &PortainerAsyncClient{
+		createSnapshotFn: func(string) (*portainer.DockerSnapshot, error) { return dockerSnapshot, nil },
+	}
+	client.lastSnapshot.Docker = dockerSnapshot
+
+	payload := &AsyncRequest{Snapshot: &snapshot{}}
+	var currentSnapshot snapshot
+
+	client.createDockerSnapshot(payload, &currentSnapshot)
+
+	require.Nil(t, payload.Snapshot.Docker)
+	require.Nil(t, payload.Snapshot.DockerPatch)
+	require.Nil(t, payload.Snapshot.DockerHash)
+	require.Same(t, dockerSnapshot, currentSnapshot.Docker)
+}
+
+func TestCreateDockerSnapshotGeneratesPatchAndHash(t *testing.T) {
+	t.Parallel()
+
+	lastDocker := &portainer.DockerSnapshot{ContainerCount: 1}
+	newDocker := &portainer.DockerSnapshot{ContainerCount: 2}
+
+	client := &PortainerAsyncClient{
+		createSnapshotFn: func(string) (*portainer.DockerSnapshot, error) { return newDocker, nil },
+	}
+	client.lastSnapshot.Docker = lastDocker
+
+	payload := &AsyncRequest{Snapshot: &snapshot{}}
+	var currentSnapshot snapshot
+
+	client.createDockerSnapshot(payload, &currentSnapshot)
+
+	require.Nil(t, payload.Snapshot.Docker)
+	require.Nil(t, currentSnapshot.Docker)
+	require.NotEmpty(t, payload.Snapshot.DockerPatch)
+	require.NotNil(t, payload.Snapshot.DockerHash)
+}
+
+func TestCreateDockerSnapshotSkipsPatchWhenLastSnapshotMarshalFails(t *testing.T) {
+	t.Parallel()
+
+	lastDocker := &portainer.DockerSnapshot{PerformanceMetrics: &portainer.PerformanceMetrics{CPUUsage: math.NaN()}}
+	newDocker := &portainer.DockerSnapshot{ContainerCount: 2}
+
+	client := &PortainerAsyncClient{
+		createSnapshotFn: func(string) (*portainer.DockerSnapshot, error) { return newDocker, nil },
+	}
+	client.lastSnapshot.Docker = lastDocker
+
+	payload := &AsyncRequest{Snapshot: &snapshot{}}
+	var currentSnapshot snapshot
+
+	client.createDockerSnapshot(payload, &currentSnapshot)
+
+	require.Same(t, newDocker, payload.Snapshot.Docker)
+	require.Nil(t, payload.Snapshot.DockerPatch)
+	require.Nil(t, payload.Snapshot.DockerHash)
+}
+
+func TestCreateDockerSnapshotSkipsPatchWhenCurrentSnapshotMarshalFails(t *testing.T) {
+	t.Parallel()
+
+	lastDocker := &portainer.DockerSnapshot{ContainerCount: 1}
+	newDocker := &portainer.DockerSnapshot{PerformanceMetrics: &portainer.PerformanceMetrics{CPUUsage: math.NaN()}}
+
+	client := &PortainerAsyncClient{
+		createSnapshotFn: func(string) (*portainer.DockerSnapshot, error) { return newDocker, nil },
+	}
+	client.lastSnapshot.Docker = lastDocker
+
+	payload := &AsyncRequest{Snapshot: &snapshot{}}
+	var currentSnapshot snapshot
+
+	client.createDockerSnapshot(payload, &currentSnapshot)
+
+	require.Same(t, newDocker, payload.Snapshot.Docker)
+	require.Nil(t, payload.Snapshot.DockerPatch)
+	require.Nil(t, payload.Snapshot.DockerHash)
+}
+
+func TestCreateKubernetesSnapshotGeneratesPatchAndHash(t *testing.T) {
+	t.Parallel()
+
+	lastKube := &portainer.KubernetesSnapshot{NodeCount: 1}
+	newKube := &portainer.KubernetesSnapshot{NodeCount: 2}
+
+	client := &PortainerAsyncClient{
+		createKubernetesSnapshotFn: func(string) (*portainer.KubernetesSnapshot, error) { return newKube, nil },
+	}
+	client.lastSnapshot.Kubernetes = lastKube
+
+	payload := &AsyncRequest{Snapshot: &snapshot{}}
+	var currentSnapshot snapshot
+
+	client.createKubernetesSnapshot(payload, &currentSnapshot)
+
+	require.Nil(t, payload.Snapshot.Kubernetes)
+	require.Same(t, newKube, currentSnapshot.Kubernetes)
+	require.NotEmpty(t, payload.Snapshot.KubernetesPatch)
+	require.NotNil(t, payload.Snapshot.KubernetesHash)
+}
+
+func TestCreateKubernetesSnapshotSkipsPatchWhenLastSnapshotMarshalFails(t *testing.T) {
+	t.Parallel()
+
+	lastKube := &portainer.KubernetesSnapshot{PerformanceMetrics: &portainer.PerformanceMetrics{CPUUsage: math.NaN()}}
+	newKube := &portainer.KubernetesSnapshot{NodeCount: 2}
+
+	client := &PortainerAsyncClient{
+		createKubernetesSnapshotFn: func(string) (*portainer.KubernetesSnapshot, error) { return newKube, nil },
+	}
+	client.lastSnapshot.Kubernetes = lastKube
+
+	payload := &AsyncRequest{Snapshot: &snapshot{}}
+	var currentSnapshot snapshot
+
+	client.createKubernetesSnapshot(payload, &currentSnapshot)
+
+	require.Same(t, newKube, payload.Snapshot.Kubernetes)
+	require.Nil(t, payload.Snapshot.KubernetesPatch)
+	require.Nil(t, payload.Snapshot.KubernetesHash)
+}
+
+func TestCreateKubernetesSnapshotSkipsPatchWhenCurrentSnapshotMarshalFails(t *testing.T) {
+	t.Parallel()
+
+	lastKube := &portainer.KubernetesSnapshot{NodeCount: 1}
+	newKube := &portainer.KubernetesSnapshot{PerformanceMetrics: &portainer.PerformanceMetrics{CPUUsage: math.NaN()}}
+
+	client := &PortainerAsyncClient{
+		createKubernetesSnapshotFn: func(string) (*portainer.KubernetesSnapshot, error) { return newKube, nil },
+	}
+	client.lastSnapshot.Kubernetes = lastKube
+
+	payload := &AsyncRequest{Snapshot: &snapshot{}}
+	var currentSnapshot snapshot
+
+	client.createKubernetesSnapshot(payload, &currentSnapshot)
+
+	require.Same(t, newKube, payload.Snapshot.Kubernetes)
+	require.Nil(t, payload.Snapshot.KubernetesPatch)
+	require.Nil(t, payload.Snapshot.KubernetesHash)
 }
