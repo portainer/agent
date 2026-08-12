@@ -918,3 +918,23 @@ func TestStackManager_processStack_resetsFirstActionOnUpdate(t *testing.T) {
 	stack := manager.stacks[edgeStackID(stackID)]
 	require.True(t, stack.FirstAction.IsZero())
 }
+
+func TestStackManager_nextPendingStack_PrioritizesDeletionOverDeployment(t *testing.T) {
+	t.Parallel()
+
+	// Reassigning an Edge group from one Edge stack to another marks the old
+	// stack for deletion and the new one for deployment in the same poll. The
+	// old stack's removal must always be picked first so it releases resources
+	// before the new stack is deployed.
+	manager := &StackManager{
+		stacks: map[edgeStackID]*edgeStack{
+			edgeStackID(1): {StackPayload: edge.StackPayload{ID: 1}, Status: StatusPending, Action: actionDeploy},
+			edgeStackID(2): {StackPayload: edge.StackPayload{ID: 2}, Status: StatusPending, Action: actionDelete},
+		},
+	}
+
+	next := manager.nextPendingStack()
+	require.NotNil(t, next)
+	require.Equal(t, actionDelete, next.Action)
+	require.Equal(t, 2, next.ID)
+}

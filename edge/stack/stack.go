@@ -323,7 +323,9 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	// find the first pending stack,
+	// find the first pending stack, prioritizing removals so that a stack
+	// being undeployed always releases its resources before another pending
+	// stack is deployed
 	// if not found, look for a stack waiting for status check or cleanup
 	// if not found, look for the first retry stack and set it to pending
 
@@ -335,6 +337,12 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 		}
 
 		coldStacks = append(coldStacks, stack)
+	}
+
+	for _, stack := range coldStacks {
+		if stack.Status == StatusPending && stack.Action == actionDelete {
+			return stack
+		}
 	}
 
 	for _, stack := range coldStacks {
