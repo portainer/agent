@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/gorilla/mux"
 	"github.com/portainer/agent/filesystem"
+	cefilesystem "github.com/portainer/portainer/api/filesystem"
 	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 	"github.com/stretchr/testify/require"
 )
@@ -58,7 +58,7 @@ func serve(h httperror.LoggerHandler, req *http.Request) *httptest.ResponseRecor
 
 func TestBrowseList_NoVolumeID_ListsDirectory(t *testing.T) {
 	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.txt"), []byte("x"), 0o600))
+	require.NoError(t, os.WriteFile(cefilesystem.JoinPaths(dir, "a.txt"), []byte("x"), 0o600))
 
 	h := newTestHandler(t, dir)
 	req := httptest.NewRequest(http.MethodGet, "/browse/ls?path="+dir, nil)
@@ -74,7 +74,7 @@ func TestBrowseList_NoVolumeID_ListsDirectory(t *testing.T) {
 
 func TestBrowseList_WithVolumeID_ListsResolvedPath(t *testing.T) {
 	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte("y"), 0o600))
+	require.NoError(t, os.WriteFile(cefilesystem.JoinPaths(dir, "file.txt"), []byte("y"), 0o600))
 
 	h := newTestHandler(t, dir)
 	req := httptest.NewRequest(http.MethodGet, "/browse/ls?volumeID=my_vol&path=file.txt", nil)
@@ -103,7 +103,7 @@ func TestBrowseList_InvalidVolume_Returns400(t *testing.T) {
 
 func TestBrowseListV1_ListsResolvedPath(t *testing.T) {
 	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "v1.txt"), []byte("v"), 0o600))
+	require.NoError(t, os.WriteFile(cefilesystem.JoinPaths(dir, "v1.txt"), []byte("v"), 0o600))
 
 	h := newTestHandler(t, dir)
 	rr := serveV1Route("/v1/browse/{id}/ls", "/v1/browse/my_vol/ls?path=v1.txt", http.MethodGet, nil, h.browseListV1)
@@ -122,7 +122,7 @@ func TestBrowseListV1_VolumeNotMounted_Returns500(t *testing.T) {
 
 func TestBrowseGet_NoVolumeID_ServesFile(t *testing.T) {
 	dir := t.TempDir()
-	f := filepath.Join(dir, "data.txt")
+	f := cefilesystem.JoinPaths(dir, "data.txt")
 	require.NoError(t, os.WriteFile(f, []byte("content"), 0o600))
 
 	h := newTestHandler(t, dir)
@@ -135,7 +135,7 @@ func TestBrowseGet_NoVolumeID_ServesFile(t *testing.T) {
 
 func TestBrowseGet_WithVolumeID_ServesResolvedFile(t *testing.T) {
 	dir := t.TempDir()
-	f := filepath.Join(dir, "vol.txt")
+	f := cefilesystem.JoinPaths(dir, "vol.txt")
 	require.NoError(t, os.WriteFile(f, []byte("voldata"), 0o600))
 
 	h := newTestHandler(t, f)
@@ -158,7 +158,7 @@ func TestBrowseGet_VolumeNotMounted_Returns500(t *testing.T) {
 
 func TestBrowseGetV1_ServesResolvedFile(t *testing.T) {
 	dir := t.TempDir()
-	f := filepath.Join(dir, "v1data.txt")
+	f := cefilesystem.JoinPaths(dir, "v1data.txt")
 	require.NoError(t, os.WriteFile(f, []byte("v1content"), 0o600))
 
 	h := newTestHandler(t, f)
@@ -179,7 +179,7 @@ func TestBrowseGetV1_VolumeNotMounted_Returns500(t *testing.T) {
 
 func TestBrowseDelete_NoVolumeID_DeletesFile(t *testing.T) {
 	dir := t.TempDir()
-	f := filepath.Join(dir, "del.txt")
+	f := cefilesystem.JoinPaths(dir, "del.txt")
 	require.NoError(t, os.WriteFile(f, []byte("x"), 0o600))
 
 	h := newTestHandler(t, dir)
@@ -193,7 +193,7 @@ func TestBrowseDelete_NoVolumeID_DeletesFile(t *testing.T) {
 
 func TestBrowseDelete_WithVolumeID_DeletesResolvedFile(t *testing.T) {
 	dir := t.TempDir()
-	f := filepath.Join(dir, "del2.txt")
+	f := cefilesystem.JoinPaths(dir, "del2.txt")
 	require.NoError(t, os.WriteFile(f, []byte("x"), 0o600))
 
 	h := newTestHandler(t, f)
@@ -217,7 +217,7 @@ func TestBrowseDelete_VolumeNotMounted_Returns500(t *testing.T) {
 
 func TestBrowseDeleteV1_DeletesResolvedFile(t *testing.T) {
 	dir := t.TempDir()
-	f := filepath.Join(dir, "v1del.txt")
+	f := cefilesystem.JoinPaths(dir, "v1del.txt")
 	require.NoError(t, os.WriteFile(f, []byte("x"), 0o600))
 
 	h := newTestHandler(t, f)
@@ -239,8 +239,8 @@ func TestBrowseDeleteV1_VolumeNotMounted_Returns500(t *testing.T) {
 
 func TestBrowseRename_NoVolumeID_RenamesFile(t *testing.T) {
 	dir := t.TempDir()
-	src := filepath.Join(dir, "old.txt")
-	dst := filepath.Join(dir, "new.txt")
+	src := cefilesystem.JoinPaths(dir, "old.txt")
+	dst := cefilesystem.JoinPaths(dir, "new.txt")
 	require.NoError(t, os.WriteFile(src, []byte("x"), 0o600))
 
 	h := newTestHandler(t, dir)
@@ -276,8 +276,8 @@ func TestBrowseRename_VolumeNotMounted_Returns500(t *testing.T) {
 
 func TestBrowseRenameV1_RenamesFile(t *testing.T) {
 	dir := t.TempDir()
-	src := filepath.Join(dir, "v1old.txt")
-	dst := filepath.Join(dir, "v1new.txt")
+	src := cefilesystem.JoinPaths(dir, "v1old.txt")
+	dst := cefilesystem.JoinPaths(dir, "v1new.txt")
 	require.NoError(t, os.WriteFile(src, []byte("x"), 0o600))
 
 	// Two successive calls: first for CurrentFilePath, then for NewFilePath.
@@ -332,7 +332,7 @@ func TestBrowsePutV1_WritesFile(t *testing.T) {
 
 	require.Equal(t, http.StatusNoContent, rr.Code)
 
-	content, err := os.ReadFile(filepath.Join(dir, "upload.txt"))
+	content, err := os.ReadFile(cefilesystem.JoinPaths(dir, "upload.txt"))
 	require.NoError(t, err)
 	require.Equal(t, "hello", string(content))
 }

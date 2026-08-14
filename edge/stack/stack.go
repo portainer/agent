@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -293,7 +292,7 @@ func (manager *StackManager) performActionOnStack() {
 		// Therefore, this operation should only be performed if the stack is new
 		// or the AlwaysCloneGitRepoForRelativePath flag is set to true.
 		if !IsHelmStack(stack) && IsRelativePathStack(stack) && (stack.Action == actionDeploy || stack.AlwaysCloneGitRepoForRelativePath) {
-			dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
+			dst := filesystem.JoinPaths(stack.FilesystemPath, agent.ComposePathPrefix)
 
 			if err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName); err != nil {
 				log.Error().Err(err).Msg("unable to copy the stack to host")
@@ -714,7 +713,7 @@ func (manager *StackManager) cleanupStack(stack *edgeStack, stackName string) {
 
 	// Remove git folder
 	if !IsHelmStack(stack) && IsRelativePathStack(stack) {
-		dst := filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix)
+		dst := filesystem.JoinPaths(stack.FilesystemPath, agent.ComposePathPrefix)
 
 		if err := docker.RemoveGitStackFromHost(stack.FileFolder, dst, stack.ID, stackName); err != nil {
 			log.Warn().

@@ -2,7 +2,6 @@ package stack
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 
 	"github.com/portainer/agent"
@@ -32,14 +31,14 @@ func getStackFileFolder(stack *edgeStack) string {
 	stackIDStr := strconv.Itoa(stack.ID)
 
 	if IsHelmStack(stack) {
-		return filepath.Join(agent.EdgeStackFilesPath, stackIDStr)
+		return filesystem.JoinPaths(agent.EdgeStackFilesPath, stackIDStr)
 	}
 
-	folder := filepath.Join(agent.EdgeStackFilesPath, stackIDStr)
+	folder := filesystem.JoinPaths(agent.EdgeStackFilesPath, stackIDStr)
 	if stack.EdgeUpdateID != 0 {
-		folder = filepath.Join(agent.UpdateEdgeStackFilesPath, stackIDStr)
+		folder = filesystem.JoinPaths(agent.UpdateEdgeStackFilesPath, stackIDStr)
 	} else if IsRelativePathStack(stack) {
-		folder = filepath.Join(stack.FilesystemPath, agent.ComposePathPrefix, stackIDStr)
+		folder = filesystem.JoinPaths(stack.FilesystemPath, agent.ComposePathPrefix, stackIDStr)
 	}
 
 	return folder

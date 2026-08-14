@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/api/logs"
 	"github.com/portainer/portainer/pkg/fips"
 	"github.com/portainer/portainer/pkg/librand"
@@ -34,7 +35,7 @@ func buildRemoveDirCmd(src, dst string, fips bool) []string {
 		cmd = append(cmd, "--fips-mode")
 	}
 
-	gitStackPath := filepath.Join(dst, filepath.Base(src))
+	gitStackPath := filesystem.JoinPaths(dst, filepath.Base(src))
 	cmd = append(cmd, []string{"remove-dir", gitStackPath}...)
 
 	return cmd

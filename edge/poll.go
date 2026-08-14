@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,6 +26,7 @@ import (
 	"github.com/portainer/agent/kubernetes"
 	"github.com/portainer/agent/policyreconcile"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/pkg/libcrypto"
 	"github.com/portainer/portainer/pkg/librand"
 	pkgmetrics "github.com/portainer/portainer/pkg/metrics"
@@ -675,7 +675,7 @@ func (service *PollService) tryInitEvaluator() {
 	}
 
 	endpointID := service.edgeManager.GetEndpointID()
-	dataDir := filepath.Join(service.edgeManager.agentOptions.DataPath, "alerting")
+	dataDir := filesystem.JoinPaths(service.edgeManager.agentOptions.DataPath, "alerting")
 
 	scrapeTarget := buildMetricsScrapeTarget(service.apiServerAddr)
 	alertmanagerTarget := buildAlertmanagerTarget(service.portainerURL, endpointID)
@@ -728,8 +728,8 @@ func (service *PollService) maybeReloadRules() {
 		Bool("has_yaml", service.alertRulesYAML != "").
 		Msg("poll: alert rules changed, writing to disk")
 
-	alertsDir := filepath.Join(service.edgeManager.agentOptions.DataPath, "alerting")
-	alertsFile := filepath.Join(alertsDir, "alerts.yaml")
+	alertsDir := filesystem.JoinPaths(service.edgeManager.agentOptions.DataPath, "alerting")
+	alertsFile := filesystem.JoinPaths(alertsDir, "alerts.yaml")
 	backupFile := alertsFile + ".bak"
 
 	if service.alertRulesYAML == "" {

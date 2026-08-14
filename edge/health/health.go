@@ -2,8 +2,9 @@ package health
 
 import (
 	"os"
-	"path/filepath"
 	"sync"
+
+	"github.com/portainer/portainer/api/filesystem"
 
 	"github.com/pkg/errors"
 )
@@ -13,7 +14,7 @@ const (
 )
 
 var (
-	portainerHealthyFilePath = filepath.Join(os.TempDir(), portainerHealthyFile)
+	portainerHealthyFilePath = filesystem.JoinPaths(os.TempDir(), portainerHealthyFile)
 	mu                       sync.Mutex
 )
 

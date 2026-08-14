@@ -3,7 +3,6 @@ package exec
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/portainer/agent/deployer"
@@ -301,7 +300,7 @@ func TestResolveChartPath(t *testing.T) {
 	t.Run("relative path within workingDir is resolved to absolute path", func(t *testing.T) {
 		t.Parallel()
 		workingDir := t.TempDir()
-		chartDir := filepath.Join(workingDir, "charts", "myapp")
+		chartDir := filesystem.JoinPaths(workingDir, "charts", "myapp")
 		require.NoError(t, os.MkdirAll(chartDir, 0o755))
 
 		got, err := resolveChartPath(workingDir, "charts/myapp")

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/portainer/agent/kubernetes"
 	"github.com/portainer/agent/policyreconcile"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/filesystem"
 	pkgmetrics "github.com/portainer/portainer/pkg/metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -122,7 +122,7 @@ func TestPollPublishesAlertStateAfterReloadHandling(t *testing.T) {
 	mockScheduler.EXPECT().Schedule(gomock.Any()).Return(nil)
 
 	eval, err := evaluator.New(evaluator.Config{
-		DataDir:    filepath.Join(dataDir, "tsdb"),
+		DataDir:    filesystem.JoinPaths(dataDir, "tsdb"),
 		EndpointID: 1,
 	})
 	require.NoError(t, err)
@@ -873,14 +873,14 @@ func TestPushPerformanceMetricsClearsAPIServerLatencyWhenUnsupported(t *testing.
 }
 
 func TestMaybeReloadRulesRetriesAfterFilesystemFailure(t *testing.T) {
-	invalidDataPath := filepath.Join(t.TempDir(), "data-path-file")
+	invalidDataPath := filesystem.JoinPaths(t.TempDir(), "data-path-file")
 	require.NoError(t, os.WriteFile(invalidDataPath, []byte("not a directory"), 0o600))
 
 	manager := NewManager(&ManagerParameters{
 		Options: &agent.Options{DataPath: invalidDataPath},
 	})
 	eval, err := evaluator.New(evaluator.Config{
-		DataDir:    filepath.Join(t.TempDir(), "evaluator-data"),
+		DataDir:    filesystem.JoinPaths(t.TempDir(), "evaluator-data"),
 		EndpointID: 1,
 	})
 	require.NoError(t, err)
@@ -912,7 +912,7 @@ func TestMaybeReloadRulesRetriesAfterFilesystemFailure(t *testing.T) {
 
 	require.Empty(t, service.configReloadError)
 	require.Equal(t, computeRulesHash(validRulesYAML), service.alertRulesHash)
-	_, err = os.Stat(filepath.Join(retryDataPath, "alerting", "alerts.yaml"))
+	_, err = os.Stat(filesystem.JoinPaths(retryDataPath, "alerting", "alerts.yaml"))
 	require.NoError(t, err)
 }
 

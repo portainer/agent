@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/api/logs"
 	"github.com/portainer/portainer/pkg/libhelm/options"
 	libhelmtypes "github.com/portainer/portainer/pkg/libhelm/types"
@@ -441,7 +441,7 @@ func (h *HelmHandler) installChartBundle(ctx context.Context, bundle portainer.P
 		h.setChartFailed(bundle.ChartName, "Failed to decode chart data", err)
 		return err
 	}
-	chartPath := filepath.Join(tempDir, bundle.ChartName+".tgz")
+	chartPath := filesystem.JoinPaths(tempDir, bundle.ChartName+".tgz")
 	if err := os.WriteFile(chartPath, chartData, 0o644); err != nil {
 		h.setChartFailed(bundle.ChartName, "Failed to save chart file", err)
 		return err
@@ -452,7 +452,7 @@ func (h *HelmHandler) installChartBundle(ctx context.Context, bundle portainer.P
 		h.setChartFailed(bundle.ChartName, "Failed to decode chart values", err)
 		return err
 	}
-	valuesPath := filepath.Join(tempDir, bundle.ChartName+".yaml")
+	valuesPath := filesystem.JoinPaths(tempDir, bundle.ChartName+".yaml")
 	if err := os.WriteFile(valuesPath, valuesData, 0o644); err != nil {
 		h.setChartFailed(bundle.ChartName, "Failed to save values file", err)
 		return err

@@ -2,19 +2,19 @@ package evaluator
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/filesystem"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewPreservesExistingTSDBDataDir(t *testing.T) {
 	t.Parallel()
-	dataDir := filepath.Join(t.TempDir(), "tsdb")
+	dataDir := filesystem.JoinPaths(t.TempDir(), "tsdb")
 	require.NoError(t, os.MkdirAll(dataDir, 0o750))
-	markerFile := filepath.Join(dataDir, "marker-file")
+	markerFile := filesystem.JoinPaths(dataDir, "marker-file")
 	require.NoError(t, os.WriteFile(markerFile, []byte("keep"), 0o600))
 
 	svc, err := New(Config{

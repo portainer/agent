@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/portainer/agent/constants"
+	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/api/logs"
 )
 
@@ -115,7 +116,7 @@ func WriteFile(folder, filename string, file []byte, mode uint32) error {
 		return err
 	}
 
-	filePath := path.Join(folder, filename)
+	filePath := filesystem.JoinPaths(folder, filename)
 
 	return os.WriteFile(filePath, file, os.FileMode(mode))
 }
@@ -127,7 +128,7 @@ func WriteBigFile(folder, filename string, srcfile multipart.File, mode uint32) 
 		return err
 	}
 
-	filePath := path.Join(folder, filename)
+	filePath := filesystem.JoinPaths(folder, filename)
 
 	dstfile, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
@@ -154,7 +155,7 @@ func BuildPathToFileInsideVolume(volumeID, filePath string) (string, error) {
 		return "", errors.New("Invalid path. Ensure that the path do not contain '..' elements")
 	}
 
-	return path.Join(constants.SystemVolumePath, volumeID, "_data", filePath), nil
+	return filesystem.JoinPaths(constants.SystemVolumePath, volumeID, "_data", filePath), nil
 }
 
 // BuildPathToFileInsideVolumeFromMountpoint builds the host-accessible path to a
@@ -183,17 +184,17 @@ func buildPathToFileInsideVolumeFromMountpoint(mountpoint, filePath, hostPrefix 
 		return "", err
 	}
 	if exists {
-		return path.Join(mountpoint, filePath), nil
+		return filesystem.JoinPaths(mountpoint, filePath), nil
 	}
 
-	hostMountpoint := path.Join(hostPrefix, mountpoint)
+	hostMountpoint := filesystem.JoinPaths(hostPrefix, mountpoint)
 
 	exists, err = FileExists(hostMountpoint)
 	if err != nil {
 		return "", err
 	}
 	if exists {
-		return path.Join(hostMountpoint, filePath), nil
+		return filesystem.JoinPaths(hostMountpoint, filePath), nil
 	}
 
 	return "", ErrSystemVolumePathNotMounted

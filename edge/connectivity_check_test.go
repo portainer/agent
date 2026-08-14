@@ -16,13 +16,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	agent "github.com/portainer/agent"
 	"github.com/portainer/portainer/api/crypto"
+	"github.com/portainer/portainer/api/filesystem"
 )
 
 func makeEdgeKey(portainerURL, tunnelAddr, fingerprint string, endpointID int) string {
@@ -151,9 +151,9 @@ func TestResolveCheckParams_InvalidMTLSCAPath(t *testing.T) {
 	t.Parallel()
 	opts := defaultOptions()
 	opts.EdgeConnectivityCheckURL = "https://portainer.example.com"
-	opts.SSLCert = filepath.Join(t.TempDir(), "client.crt")
-	opts.SSLKey = filepath.Join(t.TempDir(), "client.key")
-	opts.SSLCACert = filepath.Join(t.TempDir(), "ca.crt")
+	opts.SSLCert = filesystem.JoinPaths(t.TempDir(), "client.crt")
+	opts.SSLKey = filesystem.JoinPaths(t.TempDir(), "client.key")
+	opts.SSLCACert = filesystem.JoinPaths(t.TempDir(), "ca.crt")
 
 	_, err := resolveCheckParams(opts)
 	assertErrorContains(t, err, "failed to read MTLS_SSL_CA file")
@@ -443,9 +443,9 @@ func createMTLSCerts(t *testing.T) mtlsTestCerts {
 	)
 
 	dir := t.TempDir()
-	caPath := filepath.Join(dir, "ca.crt")
-	clientCertPath := filepath.Join(dir, "client.crt")
-	clientKeyPath := filepath.Join(dir, "client.key")
+	caPath := filesystem.JoinPaths(dir, "ca.crt")
+	clientCertPath := filesystem.JoinPaths(dir, "client.crt")
+	clientKeyPath := filesystem.JoinPaths(dir, "client.key")
 
 	writeTestFile(t, caPath, caPEM)
 	writeTestFile(t, clientCertPath, clientCertPEM)

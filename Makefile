@@ -77,7 +77,6 @@ check-lint-version:
 lint: check-lint-version ## Run linter
 	go mod tidy
 	golangci-lint run --timeout=10m --new-from-rev=HEAD~ -c .golangci.yaml
-	golangci-lint run --timeout=10m --new-from-rev=HEAD~ -c .golangci-forward.yaml
 
 clean: ## Remove all build and download artifacts
 	@echo "Clearing the dist directory..."

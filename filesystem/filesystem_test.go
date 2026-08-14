@@ -2,10 +2,10 @@ package filesystem
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/portainer/agent/constants"
+	"github.com/portainer/portainer/api/filesystem"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,19 +77,19 @@ func TestBuildPathToFileInsideVolumeFromMountpoint(t *testing.T) {
 		// Simulate the volumes-only mount: the mountpoint path exists directly
 		// inside the container at the same path as on the host.
 		root := t.TempDir()
-		mountpoint := filepath.Join(root, constants.SystemVolumePath, "test_volume", "_data")
+		mountpoint := filesystem.JoinPaths(root, constants.SystemVolumePath, "test_volume", "_data")
 		require.NoError(t, os.MkdirAll(mountpoint, 0o755))
 
 		got, err := BuildPathToFileInsideVolumeFromMountpoint(mountpoint, "myfile.txt")
 		require.NoError(t, err)
-		require.Equal(t, filepath.Join(mountpoint, "myfile.txt"), got)
+		require.Equal(t, filesystem.JoinPaths(mountpoint, "myfile.txt"), got)
 	})
 
 	t.Run("direct mountpoint exists, empty filePath", func(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		mountpoint := filepath.Join(root, constants.SystemVolumePath, "test_volume", "_data")
+		mountpoint := filesystem.JoinPaths(root, constants.SystemVolumePath, "test_volume", "_data")
 		require.NoError(t, os.MkdirAll(mountpoint, 0o755))
 
 		got, err := BuildPathToFileInsideVolumeFromMountpoint(mountpoint, "")
@@ -117,10 +117,10 @@ func TestBuildPathToFileInsideVolumeFromMountpoint(t *testing.T) {
 
 		// Use a file as a path component so os.Stat returns a real error (not IsNotExist).
 		dir := t.TempDir()
-		file := filepath.Join(dir, "notadir")
+		file := filesystem.JoinPaths(dir, "notadir")
 		require.NoError(t, os.WriteFile(file, []byte{}, 0o600))
 
-		_, err := buildPathToFileInsideVolumeFromMountpoint(filepath.Join(file, "child"), "file.txt", dir)
+		_, err := buildPathToFileInsideVolumeFromMountpoint(filesystem.JoinPaths(file, "child"), "file.txt", dir)
 		require.Error(t, err)
 		require.NotErrorIs(t, err, ErrSystemVolumePathNotMounted)
 	})
@@ -131,10 +131,10 @@ func TestBuildPathToFileInsideVolumeFromMountpoint(t *testing.T) {
 		// Direct mountpoint does not exist (nonexistent dir), but the host-prefixed
 		// path hits a file used as a directory component, triggering a real error.
 		dir := t.TempDir()
-		file := filepath.Join(dir, "notadir")
+		file := filesystem.JoinPaths(dir, "notadir")
 		require.NoError(t, os.WriteFile(file, []byte{}, 0o600))
 
-		// hostPrefix = file (a regular file), so path.Join(file, mountpoint) will
+		// hostPrefix = file (a regular file), so filesystem.JoinPaths(file, mountpoint) will
 		// cause os.Stat to fail with a non-IsNotExist error.
 		_, err := buildPathToFileInsideVolumeFromMountpoint("/nonexistent/mountpoint", "file.txt", file)
 		require.Error(t, err)
@@ -149,14 +149,14 @@ func TestBuildPathToFileInsideVolumeFromMountpoint(t *testing.T) {
 		// returns "not found" (not a permission error), then place the actual
 		// directory under hostPrefix so the /host lookup succeeds.
 		base := t.TempDir()
-		mountpoint := filepath.Join(base, "volumes", "test_volume", "_data")
+		mountpoint := filesystem.JoinPaths(base, "volumes", "test_volume", "_data")
 		hostPrefix := t.TempDir()
-		hostMountpoint := filepath.Join(hostPrefix, mountpoint)
+		hostMountpoint := filesystem.JoinPaths(hostPrefix, mountpoint)
 		require.NoError(t, os.MkdirAll(hostMountpoint, 0o755))
 
 		got, err := buildPathToFileInsideVolumeFromMountpoint(mountpoint, "myfile.txt", hostPrefix)
 		require.NoError(t, err)
-		require.Equal(t, filepath.Join(hostMountpoint, "myfile.txt"), got)
+		require.Equal(t, filesystem.JoinPaths(hostMountpoint, "myfile.txt"), got)
 	})
 }
 
@@ -167,7 +167,7 @@ func TestFileExists(t *testing.T) {
 		t.Parallel()
 
 		dir := t.TempDir()
-		f := filepath.Join(dir, "test.txt")
+		f := filesystem.JoinPaths(dir, "test.txt")
 		require.NoError(t, os.WriteFile(f, []byte("data"), 0o600))
 
 		exists, err := FileExists(f)
