@@ -174,7 +174,7 @@ func copyRequest(request *http.Request, member *agent.ClusterMember, useTLS bool
 		return nil, err
 	}
 
-	url := request.URL
+	url := *request.URL
 	url.Host = member.IPAddress + ":" + member.Port
 
 	url.Scheme = "http"
