@@ -170,11 +170,7 @@ func (service *PollService) startStatusPollLoopAsync() {
 	}
 }
 
-func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
-	if service.edgeID == "" {
-		return errors.New("edge ID is not set")
-	}
-
+func asyncPollFlags(doSnapshot, doCommand bool) []string {
 	flags := []string{}
 
 	if doSnapshot {
@@ -184,6 +180,16 @@ func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 	if doCommand {
 		flags = append(flags, "command")
 	}
+
+	return flags
+}
+
+func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
+	if service.edgeID == "" {
+		return errors.New("edge ID is not set")
+	}
+
+	flags := asyncPollFlags(doSnapshot, doCommand)
 
 	if service.firstPoll {
 		ctx, cancelFn := context.WithTimeout(context.Background(), time.Minute)
@@ -203,6 +209,14 @@ func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 			service.edgeManager.SetEndpointID(globalKeyInUse)
 			service.edgeStackManager.ResetStacks()
 			service.firstPoll = false
+
+			service.policies = nil
+			service.policyManager.Reset()
+			service.reconciler.Reset()
+
+			if ac, ok := service.portainerClient.(*client.PortainerAsyncClient); ok {
+				ac.RequestResync()
+			}
 		}
 
 		return err

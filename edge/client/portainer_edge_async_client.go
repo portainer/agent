@@ -58,6 +58,7 @@ type PortainerAsyncClient struct {
 	nextSnapshot      snapshot
 	nextSnapshotMutex sync.Mutex
 	snapshotRetried   bool
+	needsResync       bool
 
 	stackLogCollectionQueue []LogCommandData
 	liveLogCollectors       map[string]*LiveLogCollector
@@ -97,6 +98,7 @@ func NewPortainerAsyncClient(
 		agentPlatformIdentifier:    containerPlatform,
 		commandTimestamp:           time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 		timeZoneStr:                time.Local.String(),
+		needsResync:                true,
 		metaFields:                 metaFields,
 		createSnapshotFn:           clientOpts.dockerSnapshotter,
 		createKubernetesSnapshotFn: kubernetes.CreateSnapshot,
@@ -112,6 +114,10 @@ func (client *PortainerAsyncClient) SetAlertState(_ *pkgmetrics.EdgeAlertState) 
 	// Alert state reporting is only supported in non-async (short poll) mode.
 }
 
+func (client *PortainerAsyncClient) RequestResync() {
+	client.needsResync = true
+}
+
 type MetaFields struct {
 	EdgeGroupsIDs      []int `json:"edgeGroupsIds"`
 	TagsIDs            []int `json:"tagsIds"`
@@ -123,6 +129,7 @@ type AsyncRequest struct {
 	Snapshot         *snapshot            `json:"snapshot,omitempty"`
 	EndpointId       portainer.EndpointID `json:"endpointId,omitempty"`
 	MetaFields       *MetaFields          `json:"metaFields,omitempty"`
+	Resync           bool                 `json:"resync,omitempty"`
 }
 
 type EndpointLog struct {
@@ -285,6 +292,10 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 		client.pendingCmdsMutex.Unlock()
 
 		payload.CommandTimestamp = &minTS
+
+		if client.needsResync {
+			payload.Resync = true
+		}
 	}
 
 	if len(client.metaFields.EdgeGroupsIDs) > 0 || len(client.metaFields.TagsIDs) > 0 || client.metaFields.EnvironmentGroupID > 0 {
@@ -298,6 +309,10 @@ func (client *PortainerAsyncClient) GetEnvironmentStatus(flags ...string) (*Poll
 	asyncResponse, err := client.executeAsyncRequest(payload, pollURL)
 	if err != nil {
 		return nil, err
+	}
+
+	if payload.Resync {
+		client.needsResync = false
 	}
 
 	if doSnapshot {

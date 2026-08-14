@@ -57,6 +57,13 @@ func NewPolicyManager(
 	return pm
 }
 
+func (pm *PolicyManager) Reset() {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	pm.handlers = make(map[portainer.PolicyID]*helm.HelmHandler)
+}
+
 // ProcessPolicyHelmCharts groups the incoming per-chart summaries by PolicyID, fetches
 // chart bundles only for charts whose fingerprint changed (on-demand), dispatches
 // Apply/Remove to each HelmHandler, and reports per-chart statuses to the server.

@@ -164,6 +164,60 @@ func TestCommandPollingResiliency(t *testing.T) {
 	require.True(t, lastSentCommandTimestamp.Equal(cli.commandTimestamp))
 }
 
+func TestResyncRequest(t *testing.T) {
+	t.Parallel()
+	fips.InitFIPS(false)
+
+	var lastResync bool
+	var resyncCount int
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req AsyncRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CommandTimestamp == nil {
+			w.WriteHeader(http.StatusBadRequest)
+
+			return
+		}
+
+		lastResync = req.Resync
+		if req.Resync {
+			resyncCount++
+		}
+
+		resp := &AsyncResponse{EndpointID: 1}
+
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	cli := NewPortainerAsyncClient(
+		srv.URL,
+		func(id portainer.EndpointID) {},
+		func() portainer.EndpointID { return 1 },
+		"test-edge-id",
+		"invalid-edge-key",
+		agent.PlatformDocker,
+		agent.EdgeMetaFields{},
+		BuildHTTPClient(30, &agent.Options{}),
+	)
+
+	require.True(t, cli.needsResync)
+
+	// First command-flagged poll must request a resync, and clear the flag on success
+	_, err := cli.GetEnvironmentStatus("command")
+	require.NoError(t, err)
+	require.True(t, lastResync)
+	require.False(t, cli.needsResync)
+
+	// Subsequent polls must not resend the resync request
+	_, err = cli.GetEnvironmentStatus("command")
+	require.NoError(t, err)
+	require.False(t, lastResync)
+	require.Equal(t, 1, resyncCount)
+}
+
 func TestIsDockerSnapshotDiffEmpty(t *testing.T) {
 	t.Parallel()
 	// Empty cases

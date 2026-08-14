@@ -104,6 +104,14 @@ func (r *Reconciler) RegisterFactory(policyType string, f HandlerFactory) {
 	r.factories[policyType] = f
 }
 
+func (r *Reconciler) Reset() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.handlers = make(map[portainer.PolicyID]PolicyHandler)
+	r.actual = make(map[portainer.PolicyID]ActualState)
+}
+
 // Reconcile drives the reconcile cycle for a single poll. It serialises:
 //  1. Remove departed resource-patch policies first so restore annotations remain correct.
 //  2. Apply handlers for new or changed desired states.

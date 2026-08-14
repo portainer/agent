@@ -180,6 +180,39 @@ func TestReconcile_SameFingerprintApplied_NoOp(t *testing.T) {
 	assert.Equal(t, 1, handlers[1].applyCalls, "Apply should only be called once")
 }
 
+func TestReset_ForgottenHandlerReappliesSameFingerprint(t *testing.T) {
+	t.Parallel()
+	r := policyreconcile.NewReconciler()
+
+	var factoryCalls int
+	var lastHandler *stubHandler
+	r.RegisterFactory("test", func(id portainer.PolicyID) policyreconcile.PolicyHandler {
+		factoryCalls++
+		lastHandler = &stubHandler{policyID: id}
+		return lastHandler
+	})
+
+	desired := []policyreconcile.DesiredState{
+		{PolicyID: 1, Type: "test", Fingerprint: "fp1", Config: json.RawMessage(`{}`)},
+	}
+	r.Reconcile(context.Background(), desired)
+	require.Len(t, r.Statuses(), 1, "sanity check: the first Reconcile must have applied the policy")
+	firstHandler := lastHandler
+	require.Equal(t, 1, firstHandler.applyCalls)
+
+	r.Reconcile(context.Background(), desired) // same fingerprint, no Reset — must be skipped
+	require.Equal(t, 1, firstHandler.applyCalls, "sanity check: unchanged fingerprint is a no-op without Reset")
+
+	r.Reset()
+	assert.Empty(t, r.Statuses(), "Reset must clear tracked actual state")
+
+	r.Reconcile(context.Background(), desired) // same fingerprint as before Reset
+
+	assert.Equal(t, 2, factoryCalls, "Reset must forget the handler so a fresh one is created")
+	assert.NotSame(t, firstHandler, lastHandler, "Reset must replace the old handler instance")
+	assert.Equal(t, 1, lastHandler.applyCalls, "the fresh handler must be applied once, since Reset forgot the skip-cache")
+}
+
 func TestReconcile_ChangedFingerprint_ApplyCalledOnExistingHandler(t *testing.T) {
 	t.Parallel()
 	r := policyreconcile.NewReconciler()

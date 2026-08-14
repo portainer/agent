@@ -199,6 +199,40 @@ func TestProcessPolicyHelmCharts_RemovesHandlerForMissingPolicy(t *testing.T) {
 	assert.Empty(t, pm.handlers, "handler should be removed when policy no longer in summaries")
 }
 
+func TestReset_ClearsTrackedHandlers(t *testing.T) {
+	t.Parallel()
+
+	pc := &stubPMClient{
+		getChartsFunc: func(names []string) ([]portainer.PolicyChartBundle, portainer.RestoreSettingsBundle, error) {
+			return []portainer.PolicyChartBundle{{
+				PolicyChartSummary: portainer.PolicyChartSummary{PolicyID: 1, ChartName: "gatekeeper", Fingerprint: "fp1"},
+				Namespace:          "portainer",
+				EncodedTgz:         base64.StdEncoding.EncodeToString([]byte("chart")),
+				EncodedValues:      base64.StdEncoding.EncodeToString([]byte("values")),
+			}}, nil, nil
+		},
+	}
+	uninstallCalls := 0
+	hm := &stubPMHelmManager{
+		uninstallFunc: func(options.UninstallOptions) error {
+			uninstallCalls++
+			return nil
+		},
+	}
+	pm := newTestPolicyManager(pc, hm)
+
+	summaries := []portainer.PolicyChartSummary{
+		{PolicyID: 1, ChartName: "gatekeeper", Fingerprint: "fp1"},
+	}
+	pm.ProcessPolicyHelmCharts(summaries)
+	require.Contains(t, pm.handlers, portainer.PolicyID(1))
+
+	pm.Reset()
+
+	assert.Empty(t, pm.handlers, "Reset must forget every tracked handler")
+	assert.Zero(t, uninstallCalls, "Reset must not uninstall anything, only forget bookkeeping")
+}
+
 func TestProcessPolicyHelmCharts_MultiPolicy_IndependentHandlers(t *testing.T) {
 	t.Parallel()
 
