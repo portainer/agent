@@ -109,6 +109,8 @@ require (
 	github.com/containerd/platforms v1.0.0-rc.2 // indirect
 	github.com/containerd/ttrpc v1.2.7 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
+	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
+	github.com/containers/ocicrypt v1.2.1 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
@@ -257,6 +259,7 @@ require (
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
+	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
@@ -328,6 +331,8 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
+	go.podman.io/image/v5 v5.37.0 // indirect
+	go.podman.io/storage v1.60.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
