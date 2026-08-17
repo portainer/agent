@@ -2,12 +2,10 @@ package handler
 
 import (
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/portainer/agent"
-	"github.com/portainer/portainer/pkg/libhttp"
 	"github.com/portainer/agent/edge"
 	"github.com/portainer/agent/exec"
 	httpagenthandler "github.com/portainer/agent/http/handler/agent"
@@ -25,6 +23,7 @@ import (
 	"github.com/portainer/agent/http/proxy"
 	"github.com/portainer/agent/http/security"
 	kubecli "github.com/portainer/agent/kubernetes"
+	"github.com/portainer/portainer/pkg/libhttp"
 )
 
 // Handler is the main handler of the application.
@@ -60,8 +59,6 @@ type Config struct {
 	ContainerPlatform      agent.ContainerPlatform
 	PullLimitCheckDisabled bool
 }
-
-var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
 
 // NewHandler returns a pointer to a Handler.
 func NewHandler(config *Config) *Handler {
@@ -108,7 +105,6 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
 	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
 
@@ -121,9 +117,9 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	rw.Header().Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
 
 	switch {
-	case strings.HasPrefix(request.URL.Path, "/v1"):
+	case strings.HasPrefix(request.URL.Path, "/v1/"):
 		h.ServeHTTPV1(rw, request)
-	case strings.HasPrefix(request.URL.Path, "/v2"):
+	case strings.HasPrefix(request.URL.Path, "/v2/"):
 		h.ServeHTTPV2(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/ping"):
 		h.pingHandler.ServeHTTP(rw, request)
@@ -149,4 +145,3 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		h.dockerProxyHandler.ServeHTTP(rw, request)
 	}
 }
-
