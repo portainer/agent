@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -58,8 +57,6 @@ type Config struct {
 	PullLimitCheckDisabled bool
 }
 
-var dockerAPIVersionRegexp = regexp.MustCompile(`(/v[0-9]\.[0-9]*)?`)
-
 // NewHandler returns a pointer to a Handler.
 func NewHandler(config *Config) *Handler {
 	agentProxy := proxy.NewAgentProxy(config.ClusterService, config.RuntimeConfiguration, config.UseTLS)
@@ -88,7 +85,6 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	request.URL.Path = dockerAPIVersionRegexp.ReplaceAllString(request.URL.Path, "")
 	rw.Header().Set(agent.HTTPResponseAgentHeaderName, agent.Version)
 	rw.Header().Set(agent.HTTPResponseAgentApiVersion, agent.APIVersion)
 
@@ -101,9 +97,9 @@ func (h *Handler) ServeHTTP(rw http.ResponseWriter, request *http.Request) {
 	rw.Header().Set(agent.HTTPResponseAgentPlatform, strconv.Itoa(int(agentPlatformIdentifier)))
 
 	switch {
-	case strings.HasPrefix(request.URL.Path, "/v1"):
+	case strings.HasPrefix(request.URL.Path, "/v1/"):
 		h.ServeHTTPV1(rw, request)
-	case strings.HasPrefix(request.URL.Path, "/v2"):
+	case strings.HasPrefix(request.URL.Path, "/v2/"):
 		h.ServeHTTPV2(rw, request)
 	case strings.HasPrefix(request.URL.Path, "/ping"):
 		h.pingHandler.ServeHTTP(rw, request)
