@@ -294,7 +294,7 @@ func (manager *StackManager) performActionOnStack() {
 		if !IsHelmStack(stack) && IsRelativePathStack(stack) && (stack.Action == actionDeploy || stack.AlwaysCloneGitRepoForRelativePath) {
 			dst := filesystem.JoinPaths(stack.FilesystemPath, agent.ComposePathPrefix)
 
-			if err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName); err != nil {
+			if err := docker.CopyGitStackToHost(stack.FileFolder, dst, stack.ID, stackName, stack.RegistryCredentials); err != nil {
 				log.Error().Err(err).Msg("unable to copy the stack to host")
 
 				manager.mu.Lock()
@@ -715,7 +715,7 @@ func (manager *StackManager) cleanupStack(stack *edgeStack, stackName string) {
 	if !IsHelmStack(stack) && IsRelativePathStack(stack) {
 		dst := filesystem.JoinPaths(stack.FilesystemPath, agent.ComposePathPrefix)
 
-		if err := docker.RemoveGitStackFromHost(stack.FileFolder, dst, stack.ID, stackName); err != nil {
+		if err := docker.RemoveGitStackFromHost(stack.FileFolder, dst, stack.ID, stackName, stack.RegistryCredentials); err != nil {
 			log.Warn().
 				Err(err).
 				Str("context", "EdgeStackManager").

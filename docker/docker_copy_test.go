@@ -1,6 +1,8 @@
 package docker
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -8,7 +10,9 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/registry"
 	agent "github.com/portainer/agent"
+	"github.com/portainer/portainer/api/edge"
 	"github.com/portainer/portainer/pkg/fips"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -128,6 +132,51 @@ func TestGetUnpackerImage(t *testing.T) {
 	}
 }
 
+func TestUnpackerImageRegistryAuth(t *testing.T) {
+	t.Parallel()
+
+	f := func(unpackerImg string, registryCredentials []edge.RegistryCredentials, expectedCred *edge.RegistryCredentials) {
+		t.Helper()
+
+		auth := unpackerImageRegistryAuth(unpackerImg, registryCredentials)
+
+		if expectedCred == nil {
+			require.Empty(t, auth)
+			return
+		}
+
+		decoded, err := base64.URLEncoding.DecodeString(auth)
+		require.NoError(t, err)
+
+		var authConfig registry.AuthConfig
+		err = json.Unmarshal(decoded, &authConfig)
+		require.NoError(t, err)
+		require.Equal(t, expectedCred.Username, authConfig.Username)
+		require.Equal(t, expectedCred.Secret, authConfig.Password)
+		require.Equal(t, expectedCred.ServerURL, authConfig.ServerAddress)
+	}
+
+	// no registry credentials attached to the stack
+	f("myregistry.example.com/compose-unpacker:latest", nil, nil)
+
+	// none of the attached credentials match the unpacker image's registry
+	f("myregistry.example.com/compose-unpacker:latest", []edge.RegistryCredentials{
+		{ServerURL: "otherregistry.example.com", Username: "user", Secret: "pass"},
+	}, nil)
+
+	// a credential's server URL matches the unpacker image
+	matching := edge.RegistryCredentials{ServerURL: "myregistry.example.com", Username: "user2", Secret: "pass2"}
+	f("myregistry.example.com/compose-unpacker:latest", []edge.RegistryCredentials{
+		{ServerURL: "otherregistry.example.com", Username: "user", Secret: "pass"},
+		matching,
+	}, &matching)
+
+	// the default unpacker image never matches a private registry credential
+	f(agent.DefaultUnpackerImage, []edge.RegistryCredentials{
+		{ServerURL: "otherregistry.example.com", Username: "user", Secret: "pass"},
+	}, nil)
+}
+
 type fakeDockerEndpoint struct {
 	status int
 	body   string
@@ -180,6 +229,18 @@ func startFakeDockerServer(t *testing.T, overrides map[string]fakeDockerEndpoint
 	t.Cleanup(server.Close)
 
 	return server
+}
+
+func TestCopyGitStackToHostAndRemoveGitStackFromHost(t *testing.T) {
+	src := t.TempDir()
+	server := startFakeDockerServer(t, nil)
+	t.Setenv("DOCKER_HOST", "tcp://"+server.Listener.Addr().String())
+
+	err := CopyGitStackToHost(src, "/dst", 1, "test-stack", nil)
+	require.NoError(t, err)
+
+	err = RemoveGitStackFromHost(src, "/dst", 1, "test-stack", nil)
+	require.NoError(t, err)
 }
 
 func TestRemoveAndCopy(t *testing.T) {
@@ -241,7 +302,7 @@ func TestRemoveAndCopy(t *testing.T) {
 			server := startFakeDockerServer(t, tc.overrides)
 			t.Setenv("DOCKER_HOST", "tcp://"+server.Listener.Addr().String())
 
-			err := removeAndCopy(src, "/dst", 1, "test-stack", tc.needCopy)
+			err := removeAndCopy(src, "/dst", 1, "test-stack", nil, tc.needCopy)
 
 			if tc.expectError {
 				require.Error(t, err)

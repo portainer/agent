@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strconv"
@@ -22,6 +24,7 @@ import (
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/edge"
 	"github.com/portainer/portainer/api/filesystem"
+	"github.com/portainer/portainer/pkg/fips"
 	"github.com/portainer/portainer/pkg/libstack"
 
 	"github.com/rs/zerolog"
@@ -937,4 +940,154 @@ func TestStackManager_nextPendingStack_PrioritizesDeletionOverDeployment(t *test
 	require.NotNil(t, next)
 	require.Equal(t, actionDelete, next.Action)
 	require.Equal(t, 2, next.ID)
+}
+
+func startFakeDockerServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/images/create"):
+			w.WriteHeader(http.StatusOK)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/containers/create"):
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_, err := w.Write([]byte(`{"Id":"fake-container-id","Warnings":[]}`))
+			assert.NoError(t, err)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/start"):
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/wait"):
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{"StatusCode":0}`))
+			assert.NoError(t, err)
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	return server
+}
+
+func TestStackManager_cleanupStack_RemovesGitFolder(t *testing.T) {
+	fips.InitFIPS(false)
+
+	server := startFakeDockerServer(t)
+	t.Setenv("DOCKER_HOST", "tcp://"+server.Listener.Addr().String())
+
+	fileFolder := t.TempDir()
+	filesystemPath := t.TempDir()
+
+	manager := &StackManager{
+		stacks: map[edgeStackID]*edgeStack{
+			edgeStackID(1): {
+				StackPayload: edge.StackPayload{
+					ID:                  1,
+					FilesystemPath:      filesystemPath,
+					SupportRelativePath: true,
+					RegistryCredentials: []edge.RegistryCredentials{
+						{ServerURL: "otherregistry.example.com", Username: "user", Secret: "pass"},
+					},
+				},
+				FileFolder: fileFolder,
+			},
+		},
+	}
+
+	manager.cleanupStack(manager.stacks[edgeStackID(1)], "test-stack")
+
+	require.Empty(t, manager.stacks)
+}
+
+func TestStackManager_cleanupStack_LogsWarningWhenGitFolderRemovalFails(t *testing.T) {
+	fips.InitFIPS(false)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/images/create") {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("DOCKER_HOST", "tcp://"+server.Listener.Addr().String())
+
+	fileFolder := t.TempDir()
+	filesystemPath := t.TempDir()
+
+	manager := &StackManager{
+		stacks: map[edgeStackID]*edgeStack{
+			edgeStackID(1): {
+				StackPayload: edge.StackPayload{
+					ID:                  1,
+					FilesystemPath:      filesystemPath,
+					SupportRelativePath: true,
+				},
+				FileFolder: fileFolder,
+			},
+		},
+	}
+
+	manager.cleanupStack(manager.stacks[edgeStackID(1)], "test-stack")
+
+	require.Empty(t, manager.stacks, "the stack should still be removed from the manager even when the git folder removal fails")
+}
+
+func TestStackManager_performActionOnStack_RelativePathCopyFailure(t *testing.T) {
+	fips.InitFIPS(false)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDeployer := mocks.NewMockDeployer(ctrl)
+	mockPortainerClient := mocks.NewMockPortainerClient(ctrl)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/images/create") {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("DOCKER_HOST", "tcp://"+server.Listener.Addr().String())
+
+	dir := t.TempDir()
+
+	stack := &edgeStack{
+		StackPayload: edge.StackPayload{
+			ID:                  1,
+			Version:             1,
+			SupportRelativePath: true,
+			FilesystemPath:      dir,
+		},
+		FileFolder: dir,
+		FileName:   "docker-compose.yml",
+		Status:     StatusPending,
+		Action:     actionDeploy,
+		LastAction: time.Now().Add(-10 * time.Minute),
+	}
+
+	manager := &StackManager{
+		stacks:          map[edgeStackID]*edgeStack{edgeStackID(stack.ID): stack},
+		deployer:        mockDeployer,
+		portainerClient: mockPortainerClient,
+	}
+
+	mockDeployer.EXPECT().
+		Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
+	mockPortainerClient.EXPECT().
+		SetEdgeStackStatus(stack.ID, stack.Version, portainer.EdgeStackStatusError, stack.RollbackTo, gomock.Any()).
+		Return(nil)
+
+	manager.performActionOnStack()
+
+	require.Equal(t, StatusError, stack.Status)
 }

@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/portainer/agent"
+	"github.com/portainer/portainer/api/edge"
 	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/api/logs"
 	"github.com/portainer/portainer/pkg/fips"
@@ -15,18 +17,19 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
 // CopyGitStackToHost copies src folder to the dst folder on the host
-func CopyGitStackToHost(src, dst string, stackID int, stackName string) error {
-	return removeAndCopy(src, dst, stackID, stackName, true)
+func CopyGitStackToHost(src, dst string, stackID int, stackName string, registryCredentials []edge.RegistryCredentials) error {
+	return removeAndCopy(src, dst, stackID, stackName, registryCredentials, true)
 }
 
 // RemoveGitStackFromHost removes the copy of src folder on the host
-func RemoveGitStackFromHost(src, dst string, stackID int, stackName string) error {
-	return removeAndCopy(src, dst, stackID, stackName, false)
+func RemoveGitStackFromHost(src, dst string, stackID int, stackName string, registryCredentials []edge.RegistryCredentials) error {
+	return removeAndCopy(src, dst, stackID, stackName, registryCredentials, false)
 }
 
 func buildRemoveDirCmd(src, dst string, fips bool) []string {
@@ -43,8 +46,8 @@ func buildRemoveDirCmd(src, dst string, fips bool) []string {
 
 // removeAndCopy removes the copy of src folder on the host,
 // then copies src folder to the dst folder on the host
-func removeAndCopy(src, dst string, stackID int, stackName string, needCopy bool) error {
-	if err := pullUnpackerImage(); err != nil {
+func removeAndCopy(src, dst string, stackID int, stackName string, registryCredentials []edge.RegistryCredentials, needCopy bool) error {
+	if err := pullUnpackerImage(registryCredentials); err != nil {
 		return err
 	}
 
@@ -95,10 +98,12 @@ func getUnpackerImage() string {
 	return agent.DefaultUnpackerImage
 }
 
-func pullUnpackerImage() error {
+func pullUnpackerImage(registryCredentials []edge.RegistryCredentials) error {
 	unpackerImg := getUnpackerImage()
 
-	reader, err := ImagePull(unpackerImg, image.PullOptions{})
+	reader, err := ImagePull(unpackerImg, image.PullOptions{
+		RegistryAuth: unpackerImageRegistryAuth(unpackerImg, registryCredentials),
+	})
 	if err != nil {
 		return errors.Wrap(err, "unable to pull unpacker image")
 	}
@@ -107,6 +112,32 @@ func pullUnpackerImage() error {
 	_, _ = io.Copy(io.Discard, reader)
 
 	return nil
+}
+
+func unpackerImageRegistryAuth(unpackerImg string, registryCredentials []edge.RegistryCredentials) string {
+	for _, cred := range registryCredentials {
+		if cred.ServerURL == "" || !strings.Contains(unpackerImg, cred.ServerURL) {
+			continue
+		}
+
+		auth, err := registry.EncodeAuthConfig(registry.AuthConfig{
+			Username:      cred.Username,
+			Password:      cred.Secret,
+			ServerAddress: cred.ServerURL,
+		})
+		if err != nil {
+			log.Debug().
+				Err(err).
+				Str("image", unpackerImg).
+				Msg("failed to encode registry auth for the unpacker image, pulling without registry auth")
+
+			return ""
+		}
+
+		return auth
+	}
+
+	return ""
 }
 
 func createContainerConfig(cmd []string, fips bool) *container.Config {
