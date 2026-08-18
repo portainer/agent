@@ -226,7 +226,7 @@ type (
 
 const (
 	// Version represents the version of the agent.
-	Version = "2.44.0"
+	Version = "2.45.0"
 	// DefaultUnpackerImage is the default name of unpacker image
 	DefaultUnpackerImage = "portainer/compose-unpacker:" + Version
 )
