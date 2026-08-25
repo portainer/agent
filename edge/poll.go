@@ -231,9 +231,6 @@ func (service *PollService) Start() {
 
 func (service *PollService) Stop() {
 	service.stopSignal <- struct{}{}
-	if service.policyReconcileCh != nil {
-		close(service.policyReconcileCh)
-	}
 	if service.metricPushCancel != nil {
 		service.metricPushCancel()
 	}
