@@ -11,6 +11,7 @@ import (
 
 	"github.com/portainer/agent"
 	"github.com/portainer/portainer/api/crypto"
+	httprequest "github.com/portainer/portainer/pkg/libhttp/request"
 
 	"github.com/rs/zerolog/log"
 )
@@ -84,7 +85,7 @@ func (clusterProxy *ClusterProxy) ClusterOperation(request *http.Request, cluste
 		}
 	}
 
-	responseData := reproduceDockerAPIResponse(aggregatedData, request.URL.Path)
+	responseData := reproduceDockerAPIResponse(aggregatedData, httprequest.TrimDockerVersion(request.URL.Path))
 
 	return responseData, nil
 }
@@ -158,7 +159,7 @@ func (clusterProxy *ClusterProxy) copyAndExecuteRequest(request *http.Request, m
 		}
 	}()
 
-	data, err := responseToJSONArray(response, request.URL.Path)
+	data, err := responseToJSONArray(response, httprequest.TrimDockerVersion(request.URL.Path))
 	if err != nil {
 		ch <- agentRequestResult{err: err, nodeName: member.NodeName}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/portainer/agent"
 	"github.com/portainer/agent/http/proxy"
 	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	httprequest "github.com/portainer/portainer/pkg/libhttp/request"
 	"github.com/portainer/portainer/pkg/libhttp/response"
 
 	"github.com/rs/zerolog/log"
@@ -29,7 +30,7 @@ func (handler *Handler) dockerOperation(rw http.ResponseWriter, request *http.Re
 }
 
 func (handler *Handler) dispatchOperation(rw http.ResponseWriter, request *http.Request) *httperror.HandlerError {
-	path := request.URL.Path
+	path := httprequest.TrimDockerVersion(request.URL.Path)
 
 	switch {
 	case path == "/containers/json":
