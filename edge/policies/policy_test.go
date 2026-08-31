@@ -1,12 +1,15 @@
 package policies
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"testing"
 
 	"github.com/portainer/agent/edge/client"
 	"github.com/portainer/agent/edge/policies/helm"
+	"github.com/portainer/agent/policyreconcile"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/pkg/fips"
 	"github.com/portainer/portainer/pkg/libhelm/options"
@@ -231,6 +234,59 @@ func TestReset_ClearsTrackedHandlers(t *testing.T) {
 
 	assert.Empty(t, pm.handlers, "Reset must forget every tracked handler")
 	assert.Zero(t, uninstallCalls, "Reset must not uninstall anything, only forget bookkeeping")
+}
+
+// stubPolicyHandler implements policyreconcile.PolicyHandler but is not a
+// *helm.HelmHandler, so getOrCreateHandler's type assertion fails for it.
+type stubPolicyHandler struct{}
+
+func (stubPolicyHandler) Apply(context.Context, json.RawMessage) error { return nil }
+
+func (stubPolicyHandler) Remove(context.Context) error { return nil }
+
+func (stubPolicyHandler) Status() policyreconcile.ActualState { return policyreconcile.ActualState{} }
+
+// TestProcessPolicyHelmCharts_HandlerCreationFailure_SkipsPolicyInApplyLoop covers
+// the case where getOrCreateHandler fails for one policy (so it never lands in
+// pm.handlers) while succeeding for another. The Apply loop must skip the
+// handler-less policy via its "continue" guard instead of panicking on a nil map lookup.
+func TestProcessPolicyHelmCharts_HandlerCreationFailure_SkipsPolicyInApplyLoop(t *testing.T) {
+	t.Parallel()
+
+	pc := &stubPMClient{
+		getChartsFunc: func(names []string) ([]portainer.PolicyChartBundle, portainer.RestoreSettingsBundle, error) {
+			var bundles []portainer.PolicyChartBundle
+			for _, name := range names {
+				bundles = append(bundles, portainer.PolicyChartBundle{
+					PolicyChartSummary: portainer.PolicyChartSummary{ChartName: name, Fingerprint: "fp-" + name},
+					Namespace:          "portainer",
+					EncodedTgz:         base64.StdEncoding.EncodeToString([]byte(name)),
+					EncodedValues:      base64.StdEncoding.EncodeToString([]byte("val")),
+				})
+			}
+			return bundles, nil, nil
+		},
+	}
+	hm := &stubPMHelmManager{}
+	pm := newTestPolicyManager(pc, hm)
+
+	realFactory := pm.factory
+	pm.factory = func(policyID portainer.PolicyID) policyreconcile.PolicyHandler {
+		if policyID == 2 {
+			return stubPolicyHandler{}
+		}
+		return realFactory(policyID)
+	}
+
+	summaries := []portainer.PolicyChartSummary{
+		{PolicyID: 1, ChartName: "gatekeeper", Fingerprint: "fp-gatekeeper"},
+		{PolicyID: 2, ChartName: "portainer-registry-k8s", Fingerprint: "fp-portainer-registry-k8s"},
+	}
+
+	pm.ProcessPolicyHelmCharts(summaries)
+
+	require.Contains(t, pm.handlers, portainer.PolicyID(1), "policy 1's handler should be created and applied")
+	require.NotContains(t, pm.handlers, portainer.PolicyID(2), "policy 2's handler creation failed, so it must never be tracked")
 }
 
 func TestProcessPolicyHelmCharts_MultiPolicy_IndependentHandlers(t *testing.T) {

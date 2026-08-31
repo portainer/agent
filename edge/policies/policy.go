@@ -132,7 +132,10 @@ func (pm *PolicyManager) ProcessPolicyHelmCharts(summaries []portainer.PolicyCha
 
 	// Apply to each policy's handler.
 	for policyID, policySummaries := range byPolicy {
-		handler := pm.handlers[policyID]
+		handler, ok := pm.handlers[policyID]
+		if !ok {
+			continue
+		}
 
 		toInstall := chartsToInstallByPolicy[policyID]
 		var policyBundles []portainer.PolicyChartBundle
