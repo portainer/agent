@@ -10,8 +10,10 @@ import (
 	"github.com/portainer/portainer/pkg/libhelm/options"
 	"github.com/portainer/portainer/pkg/libhelm/release"
 	"github.com/portainer/portainer/pkg/libhelm/sdk"
+	"github.com/portainer/portainer/pkg/libkubectl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/rest"
 )
 
 // stubHelmManager is a minimal HelmPackageManager for unit tests.
@@ -344,4 +346,36 @@ func TestResolveChartPath(t *testing.T) {
 		assert.Contains(t, err.Error(), "chart path must be relative")
 	})
 
+}
+
+func TestInClusterKubeAccess_Success(t *testing.T) {
+	t.Setenv("DEV_KUBECONFIG_PATH", "")
+
+	original := inClusterConfig
+	t.Cleanup(func() { inClusterConfig = original })
+	inClusterConfig = func() (*rest.Config, error) {
+		return &rest.Config{Host: "https://10.0.0.1:443", BearerToken: "a-token"}, nil
+	}
+
+	access := InClusterKubeAccess()
+
+	require.NotNil(t, access)
+	assert.Equal(t, "in-cluster", access.ClusterName)
+	assert.Equal(t, "https://10.0.0.1:443", access.ClusterServerURL)
+	assert.Equal(t, "a-token", access.AuthToken)
+	assert.Equal(t, libkubectl.InClusterCAFile, access.CertificateAuthorityFile)
+}
+
+func TestInClusterKubeAccess_NotInCluster(t *testing.T) {
+	t.Setenv("DEV_KUBECONFIG_PATH", "")
+
+	original := inClusterConfig
+	t.Cleanup(func() { inClusterConfig = original })
+	inClusterConfig = func() (*rest.Config, error) {
+		return nil, errors.New("not running in a cluster")
+	}
+
+	access := InClusterKubeAccess()
+
+	assert.Nil(t, access)
 }

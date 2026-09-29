@@ -4,11 +4,69 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 
+	"github.com/portainer/agent"
+	"github.com/portainer/portainer/api/filesystem"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestOperation_InClusterBuildsClientWithVerifiedCA(t *testing.T) {
+	t.Setenv("DEV_KUBECONFIG_PATH", "")
+
+	tokenFile := filesystem.JoinPaths(t.TempDir(), "token")
+	require.NoError(t, os.WriteFile(tokenFile, []byte("a-token"), 0o600))
+
+	original := serviceAccountTokenFile
+	t.Cleanup(func() { serviceAccountTokenFile = original })
+	serviceAccountTokenFile = tokenFile
+
+	deployer := &KubernetesDeployer{}
+
+	err := deployer.operation(t.Context(), "stack", []string{"manifest.yaml"}, "delete", "default")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to execute kubectl delete command")
+}
+
+func TestDeployRawConfig_MissingServiceHostEnvVar(t *testing.T) {
+	t.Parallel()
+
+	deployer := &KubernetesDeployer{}
+
+	_, err := deployer.DeployRawConfig("a-token", "", "default")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), agent.KubernetesServiceHost)
+}
+
+func TestDeployRawConfig_MissingServicePortEnvVar(t *testing.T) {
+	t.Setenv(agent.KubernetesServiceHost, "10.0.0.1")
+
+	deployer := &KubernetesDeployer{}
+
+	_, err := deployer.DeployRawConfig("a-token", "", "default")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), agent.KubernetesServicePortHttps)
+}
+
+// DeployRawConfig always talks to the in-cluster API server, so it always sets
+// CAFile to verify against the service account CA bundle, regardless of the
+// literal host:port built from the env vars.
+func TestDeployRawConfig_BuildsClientAndReachesTheServer(t *testing.T) {
+	t.Setenv(agent.KubernetesServiceHost, "127.0.0.1")
+	t.Setenv(agent.KubernetesServicePortHttps, "0")
+
+	deployer := &KubernetesDeployer{}
+
+	_, err := deployer.DeployRawConfig("a-token", "apiVersion: v1\nkind: Namespace", "default")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to execute kubectl apply command")
+}
 
 type mockKubectlClient struct {
 	applyFunc          func(ctx context.Context, files []string) error

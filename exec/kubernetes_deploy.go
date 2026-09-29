@@ -17,6 +17,8 @@ const defaultServiceAccountTokenFile = "/var/run/secrets/kubernetes.io/serviceac
 
 var (
 	_ deployer.Deployer = &KubernetesDeployer{}
+
+	serviceAccountTokenFile = defaultServiceAccountTokenFile
 )
 
 // KubernetesDeployer represents a service to deploy resources inside a Kubernetes environment.
@@ -61,16 +63,13 @@ func (deployer *KubernetesDeployer) operation(_ context.Context, _ string, manif
 			return errors.Wrap(err, "failed to create kubectl client with kubeconfig")
 		}
 	} else {
-		token, err := os.ReadFile(defaultServiceAccountTokenFile)
+		token, err := os.ReadFile(serviceAccountTokenFile)
 		if err != nil {
 			return errors.Wrap(err, "failed to read service account token")
 		}
 
-		// insecure is true because we are using the in-cluster config
-		client, err = libkubectl.NewClient(&libkubectl.ClientAccess{
-			ServerUrl: "https://kubernetes.default.svc",
-			Token:     string(token),
-		}, namespace, "", true)
+		clientAccess, insecure := libkubectl.NewClientAccess(libkubectl.InClusterServerURL, string(token))
+		client, err = libkubectl.NewClient(clientAccess, namespace, "", insecure)
 		if err != nil {
 			return errors.Wrap(err, "failed to create kubectl client")
 		}
@@ -149,6 +148,7 @@ func (deployer *KubernetesDeployer) DeployRawConfig(token, config string, namesp
 	client, err := libkubectl.NewClient(&libkubectl.ClientAccess{
 		Token:     token,
 		ServerUrl: server,
+		CAFile:    libkubectl.InClusterCAFile,
 	}, namespace, "", false)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create kubectl client")

@@ -15,6 +15,7 @@ import (
 	"github.com/portainer/portainer/pkg/libhelm/options"
 	"github.com/portainer/portainer/pkg/libhelm/sdk"
 	helmtypes "github.com/portainer/portainer/pkg/libhelm/types"
+	"github.com/portainer/portainer/pkg/libkubectl"
 	"github.com/rs/zerolog/log"
 	"k8s.io/client-go/rest"
 	sigsyaml "sigs.k8s.io/yaml"
@@ -280,6 +281,8 @@ func (d *HelmDeployer) getKubeAccess() *options.KubernetesClusterAccess {
 	return InClusterKubeAccess()
 }
 
+var inClusterConfig = rest.InClusterConfig
+
 // InClusterKubeAccess builds an explicit KubernetesClusterAccess for Helm SDK
 // operations run from inside the cluster. Leaving KubernetesClusterAccess nil
 // makes the SDK fall back to Helm's cli.New()/genericclioptions path, which
@@ -296,7 +299,7 @@ func InClusterKubeAccess() *options.KubernetesClusterAccess {
 	}
 
 	// Get in-cluster config to extract cluster details
-	config, err := rest.InClusterConfig()
+	config, err := inClusterConfig()
 	if err != nil {
 		log.Warn().
 			Str("context", "InClusterKubeAccess").
@@ -308,11 +311,12 @@ func InClusterKubeAccess() *options.KubernetesClusterAccess {
 	// Build KubernetesClusterAccess with in-cluster configuration
 	// This ensures Helm respects the namespace parameter instead of using the service account's namespace
 	return &options.KubernetesClusterAccess{
-		ClusterName:      "in-cluster",
-		ContextName:      "in-cluster-context",
-		UserName:         "in-cluster-user",
-		ClusterServerURL: config.Host,
-		AuthToken:        config.BearerToken,
+		ClusterName:              "in-cluster",
+		ContextName:              "in-cluster-context",
+		UserName:                 "in-cluster-user",
+		ClusterServerURL:         config.Host,
+		CertificateAuthorityFile: libkubectl.InClusterCAFile,
+		AuthToken:                config.BearerToken,
 	}
 }
 
