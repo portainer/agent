@@ -153,6 +153,11 @@ func (service *KubernetesDeployer) getStatusForYAML(requiredStatus libstack.Stat
 		statuses = append(statuses, status)
 	}
 
+	// While waiting for removal, a manifest with no workloads has nothing to report, so it counts as removed
+	if len(statuses) == 0 && requiredStatus == libstack.StatusRemoved {
+		return libstack.StatusRemoved, "", nil
+	}
+
 	aggregatedStatus := kubernetes.AggregateStatuses(statuses)
 	return aggregatedStatus.Status, aggregatedStatus.Message, nil
 }

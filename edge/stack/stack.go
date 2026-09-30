@@ -100,8 +100,13 @@ func (manager *StackManager) processStack(stackID int, stackStatus client.StackS
 		clonedStack := *originalStack
 		stack = &clonedStack
 
-		if stack.Version == stackStatus.Version && !stackStatus.ForceRedeploy {
+		queuedDeleteNotYetStarted := stack.Action == actionDelete && stack.Status == StatusPending
+		if stack.Version == stackStatus.Version && !stackStatus.ForceRedeploy && !queuedDeleteNotYetStarted {
 			return nil // stack is unchanged
+		}
+
+		if queuedDeleteNotYetStarted {
+			log.Info().Int("stack_identifier", stackID).Msg("stack reappeared in poll response before its queued removal started, cancelling removal")
 		}
 
 		log.Debug().Int("stack_identifier", stackID).Msg("marking stack for update")
@@ -409,8 +414,8 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 		requiredStatus = libstack.StatusCompleted
 	}
 
-	// Wait for the required status until timeout
-	status, statusMessage := manager.waitForStatus(ctx, stackName, requiredStatus, options)
+	// This releases the lock only for the removal wait, since processRemovedStacks never resets that status
+	status, statusMessage := manager.waitForStatus(ctx, stackName, requiredStatus, options, requiredStatus == libstack.StatusRemoved)
 
 	// if the stack is an edge update, and the status message contains a context deadline exceeded error,
 	// the update takes longer than expected, and we need to ignore the status, and let it
@@ -441,6 +446,12 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 	switch status {
 	case libstack.StatusError:
 		stack.Status = StatusError
+
+		// Remove() already succeeded. This skips StatusError so it does not retry forever
+		if requiredStatus == libstack.StatusRemoved {
+			stack.Status = StatusAwaitingCleanup
+		}
+
 		return manager.portainerClient.SetEdgeStackStatus(stack.ID, stack.Version, portainer.EdgeStackStatusError, stack.RollbackTo, statusMessage)
 	case libstack.StatusRunning:
 		stack.Status = StatusDeployed
@@ -459,7 +470,12 @@ func (manager *StackManager) checkStackStatus(ctx context.Context, stackName str
 	return nil
 }
 
-func (manager *StackManager) waitForStatus(ctx context.Context, stackName string, requiredStatus libstack.Status, options deployer.CheckStatusOptions) (libstack.Status, string) {
+func (manager *StackManager) waitForStatus(ctx context.Context, stackName string, requiredStatus libstack.Status, options deployer.CheckStatusOptions, releaseLock bool) (libstack.Status, string) {
+	if releaseLock {
+		manager.mu.Unlock()
+		defer manager.mu.Lock()
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 

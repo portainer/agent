@@ -314,6 +314,17 @@ func TestStackManager_checkStackStatus(t *testing.T) {
 			expectedPortainerStatus: portainer.EdgeStackStatusRemoved,
 		},
 		{
+			name:                           "EdgeStack StatusAwaitingRemovedStatus -> StatusAwaitingCleanup (timeout/error)",
+			stackStatus:                    StatusAwaitingRemovedStatus,
+			expectedRequiredLibStackStatus: libstack.StatusRemoved,
+			expectedWaitResult: libstack.WaitResult{
+				Status:   libstack.StatusError,
+				ErrorMsg: "test " + context.DeadlineExceeded.Error(),
+			},
+			expectedEdgeStackStatus: StatusAwaitingCleanup,
+			expectedPortainerStatus: portainer.EdgeStackStatusError,
+		},
+		{
 			name:                           "EdgeUpdate StatusDeployed -> StatusCompleted (StatusCompleted)",
 			edgeUpdateID:                   1,
 			stackStatus:                    StatusDeployed,
@@ -506,6 +517,38 @@ func TestStackManager_processStack_ForceRecreate(t *testing.T) {
 		stack, exists := manager.stacks[edgeStackID(1)]
 		require.True(t, exists)
 		require.False(t, stack.DeployerOptionsPayload.ForceRecreate)
+	})
+}
+
+func TestStackManager_processStack_ReappearsDuringRemoval(t *testing.T) {
+	t.Run("Delete queued but not started - reappearing with unchanged version cancels the removal", func(t *testing.T) {
+		manager := setupStackManager(t)
+		manager.stacks[edgeStackID(1)].Action = actionDelete
+		manager.stacks[edgeStackID(1)].Status = StatusPending
+
+		stackStatus := client.StackStatus{Version: 1}
+
+		require.NoError(t, manager.processStack(1, stackStatus))
+
+		stack, exists := manager.stacks[edgeStackID(1)]
+		require.True(t, exists)
+		require.Equal(t, actionUpdate, stack.Action)
+		require.Equal(t, StatusPending, stack.Status)
+	})
+
+	t.Run("Removal already in progress - reappearing with unchanged version does not cancel it", func(t *testing.T) {
+		manager := setupStackManager(t)
+		manager.stacks[edgeStackID(1)].Action = actionDelete
+		manager.stacks[edgeStackID(1)].Status = StatusAwaitingRemovedStatus
+
+		stackStatus := client.StackStatus{Version: 1}
+
+		require.NoError(t, manager.processStack(1, stackStatus))
+
+		stack, exists := manager.stacks[edgeStackID(1)]
+		require.True(t, exists)
+		require.Equal(t, actionDelete, stack.Action)
+		require.Equal(t, StatusAwaitingRemovedStatus, stack.Status)
 	})
 }
 
