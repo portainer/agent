@@ -10,12 +10,30 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// wildcardChars are the glob characters that switch a pattern to wildcard
+// matching, using the same rules as `docker images --filter reference=<pattern>`.
+const wildcardChars = "*?"
+
+// dockerHubPrefixes are stripped from wildcard patterns so they compare against
+// the familiar form Docker shows, matching how exact patterns are normalised.
+var dockerHubPrefixes = []string{"docker.io/library/", "docker.io/", "library/"}
+
+func isWildcardPattern(pattern string) bool {
+	return strings.ContainsAny(pattern, wildcardChars)
+}
+
 // parseExclusionPatterns normalises each pattern via reference.ParseNormalizedNamed
-// so that matching is done against canonical image references. Patterns that
-// cannot be parsed (e.g. bare repo names without a tag) are kept as-is.
+// so that matching is done against canonical image references. Wildcard patterns
+// only have their Docker Hub prefix removed. Patterns that cannot be parsed
+// (e.g. bare repo names without a tag) are kept as-is.
 func parseExclusionPatterns(patterns []string) []string {
 	out := make([]string, 0, len(patterns))
 	for _, p := range patterns {
+		if isWildcardPattern(p) {
+			out = append(out, trimDockerHubPrefix(p))
+			continue
+		}
+
 		named, err := reference.ParseNormalizedNamed(p)
 		if err != nil {
 			log.Warn().
@@ -43,11 +61,21 @@ func parseExclusionPatterns(patterns []string) []string {
 //   - Pattern with no tag and no digest: exact match on the repository name
 //     alone, any tag (e.g. "nginx" or "myregistry:9000/myapp" protects all
 //     tags of that repository).
+//   - Pattern with "*" or "?": glob match via reference.FamiliarMatch against
+//     each tag, first as "repository:tag" then as the repository alone
+//     (e.g. "my-app-*" or "my-app:v1.*"). "*" does not match "/".
 //
 // Dangling images (no RepoTags) are never excluded via tag/name patterns but
 // can be excluded by a matching digest pattern in RepoDigests.
 func isExcluded(img image.Summary, patterns []string) bool {
 	for _, p := range patterns {
+		if isWildcardPattern(p) {
+			if matchesWildcard(img, p) {
+				return true
+			}
+			continue
+		}
+
 		patternNamed, err := reference.ParseNormalizedNamed(p)
 		if err != nil {
 			// Unparseable pattern (kept raw by parseExclusionPatterns):
@@ -107,6 +135,28 @@ func isExcluded(img image.Summary, patterns []string) bool {
 		}
 	}
 	return false
+}
+
+func matchesWildcard(img image.Summary, pattern string) bool {
+	for _, tag := range img.RepoTags {
+		tagNamed, err := reference.ParseNormalizedNamed(tag)
+		if err != nil {
+			continue
+		}
+		if matched, err := reference.FamiliarMatch(pattern, tagNamed); err == nil && matched {
+			return true
+		}
+	}
+	return false
+}
+
+func trimDockerHubPrefix(pattern string) string {
+	for _, prefix := range dockerHubPrefixes {
+		if trimmed, found := strings.CutPrefix(pattern, prefix); found {
+			return trimmed
+		}
+	}
+	return pattern
 }
 
 // oldImageCandidates returns images eligible for forced age-based removal.

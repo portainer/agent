@@ -67,6 +67,9 @@ type Config struct {
 	// and "nginx" are equivalent. To protect an image from a private registry,
 	// include the registry hostname: "harbor.example.com/myorg/myapp".
 	// A bare name like "nginx" does NOT protect "harbor.example.com/nginx:latest".
+	//
+	// Entries containing "*" or "?" are glob patterns matched like
+	// `docker images --filter reference=<pattern>` (e.g. "my-app-*", "my-app:v1.*").
 	ExcludedImages []string `json:"excludedImages"`
 
 	// ClearBuildCache controls whether the Docker build cache is pruned during

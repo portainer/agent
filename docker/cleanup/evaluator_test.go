@@ -1,6 +1,7 @@
 package cleanup
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -206,6 +207,136 @@ func TestIsExcluded_ExplicitDockerHubPathNormalisesToFamiliarForm(t *testing.T) 
 	patterns := parseExclusionPatterns([]string{"docker.io/library/nginx"})
 	assert.True(t, isExcluded(img, patterns),
 		"docker.io/library/nginx should normalise to nginx and match nginx:latest")
+}
+
+// ---- existing exclusion patterns (regression) ----
+
+const regressionDigest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+// TestIsExcluded_ExistingPatternsUnchanged pins the result of every
+// pattern/image pair below to what the matcher returned before wildcard
+// support was added, so non-wildcard exclusions keep behaving exactly as before.
+func TestIsExcluded_ExistingPatternsUnchanged(t *testing.T) {
+	images := map[string]image.Summary{
+		"nginx:latest":         {RepoTags: []string{"nginx:latest"}},
+		"nginx:1.25.3":         {RepoTags: []string{"nginx:1.25.3"}},
+		"nginx-proxy:latest":   {RepoTags: []string{"nginx-proxy:latest"}},
+		"myorg/app:v1":         {RepoTags: []string{"myorg/app:v1"}},
+		"myorg/app:v2":         {RepoTags: []string{"myorg/app:v2"}},
+		"harbor/myorg/nginx":   {RepoTags: []string{"harbor.example.com/myorg/nginx:1.25"}},
+		"harbor/library/nginx": {RepoTags: []string{"harbor.example.com/library/nginx:latest"}},
+		"myregistry:5000/app":  {RepoTags: []string{"myregistry:5000/app:v1"}},
+		"localhost/app":        {RepoTags: []string{"localhost/app:latest"}},
+		"localhost:5000/app":   {RepoTags: []string{"localhost:5000/app:dev"}},
+		"my-custom-image":      {RepoTags: []string{"my-custom-image:v1.2"}},
+		"nginx-digest":         {RepoTags: []string{"nginx:stable"}, RepoDigests: []string{"nginx@" + regressionDigest}},
+		"dangling-digest":      {RepoDigests: []string{"nginx@" + regressionDigest}},
+		"dangling":             {},
+	}
+
+	expected := map[string][]string{
+		"nginx":                               {"nginx-digest", "nginx:1.25.3", "nginx:latest"},
+		"nginx:latest":                        {"nginx:latest"},
+		"nginx:1.25.3":                        {"nginx:1.25.3"},
+		"docker.io/library/nginx":             {"nginx-digest", "nginx:1.25.3", "nginx:latest"},
+		"docker.io/library/nginx:latest":      {"nginx:latest"},
+		"library/nginx":                       {"nginx-digest", "nginx:1.25.3", "nginx:latest"},
+		"myorg/app":                           {"myorg/app:v1", "myorg/app:v2"},
+		"myorg/app:v1":                        {"myorg/app:v1"},
+		"docker.io/myorg/app":                 {"myorg/app:v1", "myorg/app:v2"},
+		"harbor.example.com/myorg/nginx":      {"harbor/myorg/nginx"},
+		"harbor.example.com/myorg/nginx:1.25": {"harbor/myorg/nginx"},
+		"harbor.example.com/myorg":            {},
+		"myregistry:5000/app":                 {"myregistry:5000/app"},
+		"myregistry:5000/app:v1":              {"myregistry:5000/app"},
+		"localhost/app":                       {"localhost/app"},
+		"localhost:5000/app":                  {"localhost:5000/app"},
+		"nginx@" + regressionDigest:           {"dangling-digest", "nginx-digest"},
+		"my-custom-image":                     {"my-custom-image"},
+		"my-custom-image:v1.2":                {"my-custom-image"},
+		"UPPERCASE":                           {},
+	}
+
+	for pattern, excludedImages := range expected {
+		t.Run(pattern, func(t *testing.T) {
+			patterns := parseExclusionPatterns([]string{pattern})
+			for name, img := range images {
+				assert.Equal(t, slices.Contains(excludedImages, name), isExcluded(img, patterns), "image %s", name)
+			}
+		})
+	}
+}
+
+// ---- wildcard exclusion patterns ----
+
+func TestParseExclusionPatterns_WildcardStripsDockerHubPrefix(t *testing.T) {
+	got := parseExclusionPatterns([]string{
+		"my-app-*",
+		"docker.io/library/ngin?",
+		"docker.io/myorg/*",
+		"library/ngin?",
+		"harbor.example.com/myorg/*",
+		"harbor.example.com/library/*",
+	})
+	assert.Equal(t, []string{"my-app-*", "ngin?", "myorg/*", "ngin?", "harbor.example.com/myorg/*", "harbor.example.com/library/*"}, got)
+}
+
+func TestIsExcluded_WildcardPatterns(t *testing.T) {
+	tests := []struct {
+		name     string
+		pattern  string
+		tags     []string
+		excluded bool
+	}{
+		{"prefix matches repository", "my-custom-*", []string{"my-custom-image:v1.2"}, true},
+		{"prefix does not match other repository", "my-custom-*", []string{"other-image:v1.2"}, false},
+		{"tag glob matches tag", "my-custom-image:v1.*", []string{"my-custom-image:v1.2"}, true},
+		{"tag glob does not match other tag", "my-custom-image:v1.*", []string{"my-custom-image:v2.0"}, false},
+		{"tag glob does not match other repository", "my-custom-image:v1.*", []string{"my-other-image:v1.2"}, false},
+		{"any tag of a repository", "my-custom-image:*", []string{"my-custom-image:latest"}, true},
+		{"star crosses the tag separator", "nginx*", []string{"nginx-proxy:latest"}, true},
+		{"single character wildcard", "app-v?", []string{"app-v1:latest"}, true},
+		{"single character wildcard does not match two characters", "app-v?", []string{"app-v10:latest"}, false},
+		{"star does not cross a slash", "*", []string{"myorg/app:v1"}, false},
+		{"star matches a single segment name", "*", []string{"nginx:latest"}, true},
+		{"namespace glob", "myorg/*", []string{"myorg/app:v1"}, true},
+		{"namespace glob does not match another registry", "myorg/*", []string{"harbor.example.com/myorg/app:v1"}, false},
+		{"registry glob", "harbor.example.com/myorg/*", []string{"harbor.example.com/myorg/nginx:1.25"}, true},
+		{"registry glob does not match Docker Hub", "harbor.example.com/myorg/*", []string{"myorg/nginx:1.25"}, false},
+		{"Docker Hub library prefix is ignored", "docker.io/library/ngin?", []string{"nginx:latest"}, true},
+		{"Docker Hub prefix is ignored", "docker.io/myorg/*", []string{"myorg/app:v1"}, true},
+		{"Docker Hub short prefix is ignored", "docker.io/ngin?", []string{"nginx:latest"}, true},
+		{"library prefix is ignored", "library/ngin?", []string{"nginx:latest"}, true},
+		{"library prefix does not match another registry", "library/ngin?", []string{"harbor.example.com/library/nginx:latest"}, false},
+		{"registry library path is kept", "harbor.example.com/library/*", []string{"harbor.example.com/library/nginx:latest"}, true},
+		{"localhost registry glob", "localhost/*", []string{"localhost/app:latest"}, true},
+		{"one matching tag is enough", "my-custom-*", []string{"other:v1", "my-custom-image:v1"}, true},
+		{"dangling image is never matched", "*", nil, false},
+		{"malformed glob never matches", "my-[app*", []string{"my-[app:latest"}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			img := image.Summary{RepoTags: tt.tags}
+			patterns := parseExclusionPatterns([]string{tt.pattern})
+			assert.Equal(t, tt.excluded, isExcluded(img, patterns))
+		})
+	}
+}
+
+func TestOldImageCandidates_SkipsWildcardExcluded(t *testing.T) {
+	now := time.Unix(1_000_000, 0)
+	old := now.Add(-48 * time.Hour).Unix()
+	imgs := []image.Summary{
+		makeImg("protected", old, "my-custom-image:v1.2"),
+		makeImg("removable", old, "other-image:v1.2"),
+	}
+	patterns := parseExclusionPatterns([]string{"my-custom-*"})
+
+	got := oldImageCandidates(now, imgs, map[string]bool{}, patterns, 24*time.Hour)
+
+	assert.Len(t, got, 1)
+	assert.Equal(t, "removable", got[0].ID)
 }
 
 // ---- oldImageCandidates ----
