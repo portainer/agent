@@ -19,6 +19,12 @@ func (proxy *LocalProxy) ServeHTTP(rw http.ResponseWriter, request *http.Request
 	request.URL.Scheme = "http"
 	request.URL.Host = "unixsocket"
 
+	// The HTTP/2 server never sets an empty body to http.NoBody, which makes the
+	// transport send it chunked. Docker rejects a chunked body on container start.
+	if request.ContentLength == 0 {
+		request.Body = http.NoBody
+	}
+
 	res, err := proxy.transport.RoundTrip(request)
 	if err != nil {
 		code := http.StatusInternalServerError
