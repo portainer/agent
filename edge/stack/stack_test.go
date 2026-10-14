@@ -985,6 +985,39 @@ func TestStackManager_nextPendingStack_PrioritizesDeletionOverDeployment(t *test
 	require.Equal(t, 2, next.ID)
 }
 
+func TestStackManager_nextPendingStack_SkipsDeployedHelmStacks(t *testing.T) {
+	t.Parallel()
+
+	// Deployed helm stacks are not polled for status, so they must never be
+	// picked up again once deployed.
+	tests := []struct {
+		name       string
+		helmConfig portainer.HelmConfig
+		wantPicked bool
+	}{
+		{name: "non-helm stack", wantPicked: true},
+		{name: "helm repository stack", helmConfig: portainer.HelmConfig{ChartURL: "https://charts.example.com"}},
+		{name: "git repository helm stack", helmConfig: portainer.HelmConfig{ChartPath: "charts/nginx"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			manager := &StackManager{
+				stacks: map[edgeStackID]*edgeStack{
+					edgeStackID(1): {
+						StackPayload: edge.StackPayload{ID: 1, HelmConfig: tt.helmConfig},
+						Status:       StatusDeployed,
+					},
+				},
+			}
+
+			require.Equal(t, tt.wantPicked, manager.nextPendingStack() != nil)
+		})
+	}
+}
+
 func startFakeDockerServer(t *testing.T) *httptest.Server {
 	t.Helper()
 

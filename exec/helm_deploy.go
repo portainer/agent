@@ -21,6 +21,12 @@ import (
 	sigsyaml "sigs.k8s.io/yaml"
 )
 
+// maxChartHistory caps how many old revisions Helm keeps per Edge Stack release.
+//
+// Helm keeps every revision forever by default, so each redeploy of an Edge Stack
+// would otherwise add another release Secret to the namespace without bound.
+const maxChartHistory = 20
+
 // HelmDeployer implements the Deployer interface for Helm chart deployments
 type HelmDeployer struct {
 	helmManager helmtypes.HelmPackageManager
@@ -169,6 +175,7 @@ func (d *HelmDeployer) buildInstallOptsForGitRepo(releaseName string, deployOpts
 		Timeout:                 timeout,
 		CreateNamespace:         true,
 		Atomic:                  helmConfig.Atomic,
+		MaxHistory:              maxChartHistory,
 		KubernetesClusterAccess: d.getKubeAccess(),
 		HelmAppLabels:           deployOpts.HelmAppLabels,
 	}, nil
@@ -195,6 +202,7 @@ func (d *HelmDeployer) buildInstallOptsForHelmRepo(releaseName string, deployOpt
 		Timeout:                 timeout,
 		CreateNamespace:         true,
 		Atomic:                  helmConfig.Atomic,
+		MaxHistory:              maxChartHistory,
 		KubernetesClusterAccess: d.getKubeAccess(),
 		HelmAppLabels:           deployOpts.HelmAppLabels,
 	}, nil

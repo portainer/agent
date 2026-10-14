@@ -372,7 +372,7 @@ func (manager *StackManager) nextPendingStack() *edgeStack {
 	}
 
 	for _, stack := range coldStacks {
-		if stack.Status == StatusDeployed {
+		if stack.Status == StatusDeployed && !IsHelmStack(stack) {
 			return stack
 		}
 	}

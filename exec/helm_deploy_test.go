@@ -198,6 +198,7 @@ func TestDeploy_HelmRepo_Success(t *testing.T) {
 	assert.Equal(t, "https://charts.example.com", capturedOpts.Repo)
 	assert.Equal(t, "nginx", capturedOpts.Chart)
 	assert.Equal(t, "15.0.0", capturedOpts.Version)
+	assert.Equal(t, maxChartHistory, capturedOpts.MaxHistory)
 }
 
 // --- Deploy: helm manager error propagation ---
@@ -296,6 +297,7 @@ func TestDeploy_GitRepo_Success(t *testing.T) {
 	// Verify the values file was read and merged. We check key existence rather than
 	// the exact integer type because YAML libraries may decode "2" as int, int64, or float64.
 	assert.Contains(t, capturedOpts.Values, "replicaCount")
+	assert.Equal(t, maxChartHistory, capturedOpts.MaxHistory)
 }
 
 func TestResolveChartPath(t *testing.T) {
