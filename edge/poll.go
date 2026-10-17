@@ -26,6 +26,7 @@ import (
 	"github.com/portainer/agent/kubernetes"
 	"github.com/portainer/agent/policyreconcile"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/edge"
 	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/pkg/libcrypto"
 	"github.com/portainer/portainer/pkg/librand"
@@ -90,7 +91,7 @@ type PollService struct {
 	stopSignal               chan struct{}
 	metricPushCancel         context.CancelFunc
 	edgeManager              *Manager
-	edgeStackManager         *stack.StackManager
+	edgeStackManager         edgeStackService
 	portainerURL             string
 	tunnelServerAddr         string
 	tunnelServerFingerprint  string
@@ -116,6 +117,16 @@ type PollService struct {
 	snapshotTicker   *time.Ticker
 	commandTicker    *time.Ticker
 	policies         map[string]string // Name -> Fingerprint
+}
+
+// edgeStackService is the part of *stack.StackManager used by the poll service.
+type edgeStackService interface {
+	ResetStacks()
+	LoadExistingEdgeStacks(ctx context.Context) error
+	LoadExistingPortainerUpdaterEdgeStack(ctx context.Context) error
+	UpdateStacksStatus(pollResponseStacks map[int]client.StackStatus) error
+	DeployStack(ctx context.Context, stackData edge.StackPayload) error
+	DeleteStack(ctx context.Context, stackData edge.StackPayload) error
 }
 
 type pollServiceConfig struct {
@@ -342,7 +353,14 @@ func (service *PollService) poll() error {
 		var nonOkError *client.NonOkResponseError
 		if errors.As(err, &nonOkError) {
 			service.edgeManager.SetEndpointID(globalKeyInUse)
-			service.edgeStackManager.ResetStacks()
+
+			// Only forget the deployed stacks when the server says that this
+			// environment is gone or not trusted. A transient error (for example
+			// a 503 from a proxy while the server restarts) must not make the
+			// agent redeploy every stack on the next successful poll.
+			if nonOkError.EnvironmentRemoved() {
+				service.edgeStackManager.ResetStacks()
+			}
 		}
 
 		return err

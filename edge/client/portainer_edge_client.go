@@ -56,16 +56,30 @@ type logFilePayload struct {
 	FileContent string
 }
 
+// NonOkResponseError is returned when the Portainer server answers a poll
+// request with an HTTP status other than 200 OK.
 type NonOkResponseError struct {
-	msg string
+	msg        string
+	StatusCode int
 }
 
-func newNonOkResponseError(msg string) *NonOkResponseError {
-	return &NonOkResponseError{msg: msg}
+func newNonOkResponseError(statusCode int, msg string) *NonOkResponseError {
+	return &NonOkResponseError{msg: msg, StatusCode: statusCode}
 }
 
 func (e *NonOkResponseError) Error() string {
 	return e.msg
+}
+
+// EnvironmentRemoved reports whether the response means that the server no
+// longer knows or trusts this environment. The Portainer edge status handler
+// answers 403 Forbidden when the environment does not exist (anymore), when the
+// Edge ID does not match, or when the environment has not been trusted yet, and
+// documents 404 Not Found for an unknown environment. Any other status (for
+// example a 502/503/504 from a proxy while the server restarts, or a 429) is
+// treated as transient.
+func (e *NonOkResponseError) EnvironmentRemoved() bool {
+	return e.StatusCode == http.StatusForbidden || e.StatusCode == http.StatusNotFound
 }
 
 // NewPortainerEdgeClient returns a pointer to a new PortainerEdgeClient instance
@@ -241,10 +255,10 @@ func (client *PortainerEdgeClient) GetEnvironmentStatus(flags ...string) (*PollS
 		logError(resp, errorData)
 
 		if errorData != nil {
-			return nil, newNonOkResponseError(errorData.Message + ": " + errorData.Details)
+			return nil, newNonOkResponseError(resp.StatusCode, errorData.Message+": "+errorData.Details)
 		}
 
-		return nil, newNonOkResponseError("short poll request failed")
+		return nil, newNonOkResponseError(resp.StatusCode, "short poll request failed")
 	}
 
 	var responseData PollStatusResponse
