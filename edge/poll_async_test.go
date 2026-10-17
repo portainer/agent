@@ -114,3 +114,82 @@ func TestPollAsync_LostEndpointForgetsPolicyStateAndRearmsResync(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, resync, "losing the endpoint must rearm the resync request")
 }
+
+// TestPollAsync_TransientErrorKeepsLocalState verifies that a transient poll
+// failure (here a 503 from a proxy while the server restarts) does not make the
+// agent forget its stacks and policy bookkeeping, unlike a lost endpoint.
+func TestPollAsync_TransientErrorKeepsLocalState(t *testing.T) {
+	t.Parallel()
+	fips.InitFIPS(false)
+
+	var (
+		mu     sync.Mutex
+		fail   bool
+		resync bool
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		if fail {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+
+		var req client.AsyncRequest
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		resync = req.Resync
+
+		assert.NoError(t, json.NewEncoder(w).Encode(&client.AsyncResponse{EndpointID: 1}))
+	}))
+	defer srv.Close()
+
+	asyncClient := client.NewPortainerAsyncClient(
+		srv.URL,
+		func(id portainer.EndpointID) {},
+		func() portainer.EndpointID { return 1 },
+		"edge-id",
+		"edge-key",
+		agent.PlatformDocker,
+		agent.EdgeMetaFields{},
+		client.BuildHTTPClient(30, &agent.Options{}),
+	)
+
+	// Consume the resync that's armed by default at construction.
+	_, err := asyncClient.GetEnvironmentStatus("command")
+	require.NoError(t, err)
+	require.True(t, resync)
+
+	manager := NewManager(&ManagerParameters{Options: &agent.Options{DataPath: t.TempDir()}})
+	manager.key = &edgeKey{EndpointID: 1, Global: true}
+
+	stacks := &fakeEdgeStackService{}
+	service := &PollService{
+		edgeID:           "edge-id",
+		edgeManager:      manager,
+		edgeStackManager: stacks,
+		policyManager:    policies.NewPolicyManager(nil, nil, nil, nil, nil, nil, 0),
+		reconciler:       policyreconcile.NewReconciler(),
+		portainerClient:  asyncClient,
+		firstPoll:        false,
+		policies:         map[string]string{"chart": "fp"},
+	}
+
+	mu.Lock()
+	fail = true
+	mu.Unlock()
+
+	err = service.pollAsync(false, true)
+	require.Error(t, err, "a non-OK response must still be surfaced as an error")
+	require.Zero(t, stacks.resets, "a transient error must not reset the stacks")
+	require.Equal(t, map[string]string{"chart": "fp"}, service.policies, "a transient error must keep the chart fingerprint cache")
+
+	mu.Lock()
+	fail = false
+	resync = false
+	mu.Unlock()
+
+	_, err = asyncClient.GetEnvironmentStatus("command")
+	require.NoError(t, err)
+	require.False(t, resync, "a transient error must not rearm the resync request")
+}

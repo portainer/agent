@@ -207,15 +207,20 @@ func (service *PollService) pollAsync(doSnapshot, doCommand bool) error {
 		var nonOkError *client.NonOkResponseError
 		if errors.As(err, &nonOkError) {
 			service.edgeManager.SetEndpointID(globalKeyInUse)
-			service.edgeStackManager.ResetStacks()
-			service.firstPoll = false
 
-			service.policies = nil
-			service.policyManager.Reset()
-			service.reconciler.Reset()
+			// Only forget the local state when the server says that this
+			// environment is gone or not trusted, see poll().
+			if nonOkError.EnvironmentRemoved() {
+				service.edgeStackManager.ResetStacks()
+				service.firstPoll = false
 
-			if ac, ok := service.portainerClient.(*client.PortainerAsyncClient); ok {
-				ac.RequestResync()
+				service.policies = nil
+				service.policyManager.Reset()
+				service.reconciler.Reset()
+
+				if ac, ok := service.portainerClient.(*client.PortainerAsyncClient); ok {
+					ac.RequestResync()
+				}
 			}
 		}
 

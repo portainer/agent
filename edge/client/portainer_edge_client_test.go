@@ -332,3 +332,84 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
+
+// TestGetEnvironmentStatus_NonOkResponseClassification verifies which poll
+// failures are reported as "this environment is gone or not trusted". Only that
+// case makes the agent forget its deployed Edge stacks; everything else is
+// transient and retried on the next poll.
+func TestGetEnvironmentStatus_NonOkResponseClassification(t *testing.T) {
+	t.Parallel()
+	fips.InitFIPS(false)
+
+	portainerError := `{"message":"Permission denied to access environment. The device has not been trusted yet","details":"Unable to retrieve endpoint heartbeat. Environment ID: 1"}`
+
+	tests := []struct {
+		name               string
+		statusCode         int
+		body               string
+		environmentRemoved bool
+	}{
+		{name: "503 from a proxy while the server restarts", statusCode: http.StatusServiceUnavailable, body: "<html>503 Service Temporarily Unavailable</html>"},
+		{name: "502 bad gateway", statusCode: http.StatusBadGateway},
+		{name: "504 gateway timeout", statusCode: http.StatusGatewayTimeout},
+		{name: "500 from the server", statusCode: http.StatusInternalServerError, body: `{"message":"Unexpected error","details":"edge polling error"}`},
+		{name: "429 too many requests", statusCode: http.StatusTooManyRequests},
+		{name: "403 environment unknown or not trusted", statusCode: http.StatusForbidden, body: portainerError, environmentRemoved: true},
+		{name: "403 without a body", statusCode: http.StatusForbidden, environmentRemoved: true},
+		{name: "404 environment not found", statusCode: http.StatusNotFound, environmentRemoved: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			httpClient := BuildHTTPClient(30, &agent.Options{})
+			httpClient.httpClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: tt.statusCode,
+					Body:       io.NopCloser(strings.NewReader(tt.body)),
+					Header:     make(http.Header),
+					Request:    r,
+				}, nil
+			})
+
+			client := &PortainerEdgeClient{
+				edgeID:          "edge-id",
+				getEndpointIDFn: func() portainer.EndpointID { return 1 },
+				httpClient:      httpClient,
+				serverAddress:   "http://edge.test",
+			}
+
+			_, err := client.GetEnvironmentStatus()
+			require.Error(t, err)
+
+			var nonOkError *NonOkResponseError
+			require.ErrorAs(t, err, &nonOkError)
+			require.Equal(t, tt.statusCode, nonOkError.StatusCode)
+			require.Equal(t, tt.environmentRemoved, nonOkError.EnvironmentRemoved())
+		})
+	}
+}
+
+func TestGetEnvironmentStatus_TransportErrorIsNotANonOkResponse(t *testing.T) {
+	t.Parallel()
+	fips.InitFIPS(false)
+
+	httpClient := BuildHTTPClient(30, &agent.Options{})
+	httpClient.httpClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return nil, errors.New("dial tcp: connect: connection refused")
+	})
+
+	client := &PortainerEdgeClient{
+		edgeID:          "edge-id",
+		getEndpointIDFn: func() portainer.EndpointID { return 1 },
+		httpClient:      httpClient,
+		serverAddress:   "http://edge.test",
+	}
+
+	_, err := client.GetEnvironmentStatus()
+	require.Error(t, err)
+
+	var nonOkError *NonOkResponseError
+	require.False(t, errors.As(err, &nonOkError))
+}

@@ -20,6 +20,7 @@ import (
 	"github.com/portainer/agent/policyreconcile"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/filesystem"
+	"github.com/portainer/portainer/pkg/fips"
 	pkgmetrics "github.com/portainer/portainer/pkg/metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -925,4 +926,77 @@ func serveMetrics(t *testing.T, h *agentmetrics.Handler) string {
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	return rec.Body.String()
+}
+
+// fakeEdgeStackService records the calls to ResetStacks. The other methods are
+// not expected to be called by the tests that use it.
+type fakeEdgeStackService struct {
+	edgeStackService
+	resets int
+}
+
+func (f *fakeEdgeStackService) ResetStacks() {
+	f.resets++
+}
+
+// TestPollResetsStacksOnlyWhenEnvironmentIsRemoved verifies that the agent keeps
+// its deployed Edge stacks when a poll fails for a transient reason (a 5xx from
+// a proxy while the server restarts, a network error). Forgetting them makes the
+// agent redeploy every stack on the next successful poll. The stacks are only
+// reset when the server says that the environment is gone or not trusted.
+func TestPollResetsStacksOnlyWhenEnvironmentIsRemoved(t *testing.T) {
+	t.Parallel()
+	fips.InitFIPS(false)
+
+	tests := []struct {
+		name               string
+		statusCode         int // 0 means the server cannot be reached
+		expectedResets     int
+		expectedEndpointID portainer.EndpointID
+	}{
+		{name: "503 from a proxy keeps the stacks", statusCode: http.StatusServiceUnavailable, expectedResets: 0, expectedEndpointID: globalKeyInUse},
+		{name: "network error keeps the stacks", statusCode: 0, expectedResets: 0, expectedEndpointID: 1},
+		{name: "403 environment not trusted resets the stacks", statusCode: http.StatusForbidden, expectedResets: 1, expectedEndpointID: globalKeyInUse},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.statusCode)
+			}))
+			serverURL := srv.URL
+			if tt.statusCode == 0 {
+				srv.Close()
+			} else {
+				defer srv.Close()
+			}
+
+			manager := NewManager(&ManagerParameters{Options: &agent.Options{DataPath: t.TempDir()}})
+			manager.key = &edgeKey{EndpointID: 1, Global: true}
+
+			edgeClient := client.NewPortainerEdgeClient(
+				serverURL,
+				manager.SetEndpointID,
+				manager.GetEndpointID,
+				"edge-id",
+				agent.PlatformDocker,
+				agent.EdgeMetaFields{},
+				client.BuildHTTPClient(30, &agent.Options{}),
+			)
+
+			stacks := &fakeEdgeStackService{}
+			service := &PollService{
+				edgeManager:      manager,
+				edgeStackManager: stacks,
+				portainerClient:  edgeClient,
+			}
+
+			err := service.poll()
+			require.Error(t, err)
+			require.Equal(t, tt.expectedResets, stacks.resets)
+			require.Equal(t, tt.expectedEndpointID, manager.GetEndpointID())
+		})
+	}
 }
