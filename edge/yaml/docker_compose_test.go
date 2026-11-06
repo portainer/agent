@@ -58,7 +58,6 @@ services:
 func TestUpdateServiceWithEnv(t *testing.T) {
 	t.Parallel()
 	compose := Compose{
-		Version: "3",
 		Services: map[string]Service{
 			"updater": {
 				Image: "portainer/portainer-updater:latest",
@@ -181,19 +180,47 @@ func TestAddCredentialsAsEnvForSpecificService_InvalidYAML(t *testing.T) {
 	assert.Contains(t, err.Error(), "unmarshalling")
 }
 
-func TestAddCredentialsAsEnvForSpecificService_MissingVersion(t *testing.T) {
+func TestAddCredentialsAsEnvForSpecificService_PreservesUnknownFields(t *testing.T) {
 	t.Parallel()
+	// The obsolete version key must not be required, and fields not modeled by the Service and Compose structs must survive the rewrite
 	composeFileContent := `
 services:
   updater:
     image: registry.example.com/portainer/updater:latest
+    network_mode: none
+    deploy:
+      mode: replicated
+      replicas: 1
+networks:
+  custom: {}
 `
-	dockerComposeYAML := NewDockerComposeYAML(composeFileContent, nil, nil)
+	registryCredentials := []edge.RegistryCredentials{
+		{
+			ServerURL: "registry.example.com",
+			Username:  "user123",
+			Secret:    "pass123",
+		},
+	}
 
-	envVars, updatedYAML, err := dockerComposeYAML.AddCredentialsAsEnvForSpecificService("updater")
+	dockerComposeYAML := NewDockerComposeYAML(composeFileContent, registryCredentials, nil)
 
-	assertBasicErrorResult(t, envVars, updatedYAML, err)
-	assert.Equal(t, "Failed to validate the compose file content", err.Error())
+	_, updatedYAML, err := dockerComposeYAML.AddCredentialsAsEnvForSpecificService("updater")
+	require.NoError(t, err)
+
+	var compose map[string]any
+	err = yaml.Unmarshal([]byte(updatedYAML), &compose)
+	require.NoError(t, err)
+	require.NotContains(t, compose, "version")
+	require.Contains(t, compose, "networks")
+
+	services, ok := compose["services"].(map[string]any)
+	require.True(t, ok)
+
+	updater, ok := services["updater"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "none", updater["network_mode"])
+	require.Equal(t, map[string]any{"mode": "replicated", "replicas": 1}, updater["deploy"])
+	require.Contains(t, updater["environment"], "REGISTRY_USED=1")
 }
 
 func TestAddCredentialsAsEnvForSpecificService_NoServices(t *testing.T) {
@@ -277,7 +304,6 @@ services:
 func TestUpdateServiceWithEnv_ServiceNotFound(t *testing.T) {
 	t.Parallel()
 	compose := Compose{
-		Version:  "3",
 		Services: map[string]Service{}, // empty map
 	}
 
