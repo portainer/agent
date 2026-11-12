@@ -21,8 +21,10 @@ type DockerComposeYaml struct {
 }
 
 type Compose struct {
-	Version  string             `yaml:"version"`
 	Services map[string]Service `yaml:"services"`
+
+	// Extra holds every top-level key not modeled above so it survives the re-marshal in updateServiceWithEnv
+	Extra map[string]any `yaml:",inline"`
 }
 
 type Service struct {
@@ -31,6 +33,9 @@ type Service struct {
 	Command     []string `yaml:"command,omitempty"`
 	Environment []string `yaml:"environment,omitempty"`
 	Volumes     []string `yaml:"volumes,omitempty"`
+
+	// Extra holds every service key not modeled above, such as network_mode, so it survives the re-marshal in updateServiceWithEnv
+	Extra map[string]any `yaml:",inline"`
 }
 
 func NewDockerComposeYAML(fileContent string, credentials []edge.RegistryCredentials, config *agent.AWSConfig) *DockerComposeYaml {
@@ -142,7 +147,7 @@ func updateServiceWithEnv(compose Compose, serviceName string, envs map[string]s
 }
 
 func validateComposeFile(compose *Compose, serviceName string) bool {
-	if compose == nil || compose.Version == "" || len(compose.Services) == 0 {
+	if compose == nil || len(compose.Services) == 0 {
 		return false
 	}
 
