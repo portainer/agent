@@ -22,14 +22,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// CopyGitStackToHost copies src folder to the dst folder on the host
+// CopyGitStackToHost copies src folder to the dst folder on the host, overwriting the existing files in place
 func CopyGitStackToHost(src, dst string, stackID int, stackName string, registryCredentials []edge.RegistryCredentials) error {
-	return removeAndCopy(src, dst, stackID, stackName, registryCredentials, true)
-}
+	if err := pullUnpackerImage(registryCredentials); err != nil {
+		return err
+	}
 
-// RemoveGitStackFromHost removes the copy of src folder on the host
-func RemoveGitStackFromHost(src, dst string, stackID int, stackName string, registryCredentials []edge.RegistryCredentials) error {
-	return removeAndCopy(src, dst, stackID, stackName, registryCredentials, false)
+	unpackerContainer, err := createUnpackerContainer(stackID, stackName, dst, nil, fips.FIPSMode())
+	if err != nil {
+		return err
+	}
+
+	defer removeUnpackerContainer(unpackerContainer)
+
+	return CopyToContainer(unpackerContainer.ID, dst, src)
 }
 
 func buildRemoveDirCmd(src, dst string, fips bool) []string {
@@ -44,9 +50,8 @@ func buildRemoveDirCmd(src, dst string, fips bool) []string {
 	return cmd
 }
 
-// removeAndCopy removes the copy of src folder on the host,
-// then copies src folder to the dst folder on the host
-func removeAndCopy(src, dst string, stackID int, stackName string, registryCredentials []edge.RegistryCredentials, needCopy bool) error {
+// RemoveGitStackFromHost removes the copy of src folder on the host
+func RemoveGitStackFromHost(src, dst string, stackID int, stackName string, registryCredentials []edge.RegistryCredentials) error {
 	if err := pullUnpackerImage(registryCredentials); err != nil {
 		return err
 	}
@@ -73,10 +78,6 @@ func removeAndCopy(src, dst string, stackID int, stackName string, registryCrede
 			return err
 		}
 	case <-statusCh:
-	}
-
-	if needCopy {
-		return CopyToContainer(unpackerContainer.ID, dst, src)
 	}
 
 	return nil

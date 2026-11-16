@@ -1,11 +1,16 @@
 package docker
 
 import (
+	"archive/tar"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"io"
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -13,6 +18,7 @@ import (
 	"github.com/docker/docker/api/types/registry"
 	agent "github.com/portainer/agent"
 	"github.com/portainer/portainer/api/edge"
+	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/pkg/fips"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -243,11 +249,10 @@ func TestCopyGitStackToHostAndRemoveGitStackFromHost(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRemoveAndCopy(t *testing.T) {
+func TestRemoveGitStackFromHost(t *testing.T) {
 	testCases := []struct {
 		name        string
 		overrides   map[string]fakeDockerEndpoint
-		needCopy    bool
 		expectError bool
 	}{
 		{
@@ -279,20 +284,7 @@ func TestRemoveAndCopy(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:     "remove only succeeds",
-			needCopy: false,
-		},
-		{
-			name:     "copy succeeds",
-			needCopy: true,
-		},
-		{
-			name: "copy fails",
-			overrides: map[string]fakeDockerEndpoint{
-				"/archive": {http.StatusInternalServerError, `{"message":"copy failed"}`},
-			},
-			needCopy:    true,
-			expectError: true,
+			name: "remove succeeds",
 		},
 	}
 
@@ -302,7 +294,7 @@ func TestRemoveAndCopy(t *testing.T) {
 			server := startFakeDockerServer(t, tc.overrides)
 			t.Setenv("DOCKER_HOST", "tcp://"+server.Listener.Addr().String())
 
-			err := removeAndCopy(src, "/dst", 1, "test-stack", nil, tc.needCopy)
+			err := RemoveGitStackFromHost(src, "/dst", 1, "test-stack", nil)
 
 			if tc.expectError {
 				require.Error(t, err)
@@ -311,4 +303,91 @@ func TestRemoveAndCopy(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCopyGitStackToHostOverwritesInPlace(t *testing.T) {
+	f := func(overrides map[string]fakeDockerEndpoint, expectError bool) {
+		t.Helper()
+
+		src := t.TempDir()
+		server := startFakeDockerServer(t, overrides)
+		t.Setenv("DOCKER_HOST", "tcp://"+server.Listener.Addr().String())
+
+		err := CopyGitStackToHost(src, "/dst", 1, "test-stack", nil)
+		if expectError {
+			require.Error(t, err)
+
+			return
+		}
+
+		require.NoError(t, err)
+	}
+
+	// the copy never starts the unpacker container, so nothing deletes the existing folder
+	f(map[string]fakeDockerEndpoint{
+		"/start": {http.StatusInternalServerError, `{"message":"start must not be called"}`},
+		"/wait":  {http.StatusInternalServerError, `{"message":"wait must not be called"}`},
+	}, false)
+
+	// pulling the unpacker image fails
+	f(map[string]fakeDockerEndpoint{
+		"images/create": {http.StatusInternalServerError, `{"message":"pull failed"}`},
+	}, true)
+
+	// creating the unpacker container fails
+	f(map[string]fakeDockerEndpoint{
+		"containers/create": {http.StatusInternalServerError, `{"message":"create failed"}`},
+	}, true)
+
+	// copying the files into the container fails
+	f(map[string]fakeDockerEndpoint{
+		"/archive": {http.StatusInternalServerError, `{"message":"copy failed"}`},
+	}, true)
+}
+
+func TestCopyGitStackToHostArchiveRequest(t *testing.T) {
+	src := t.TempDir()
+	err := os.WriteFile(filesystem.JoinPaths(src, "docker-compose.yml"), []byte("services: {}\n"), 0o600)
+	require.NoError(t, err)
+
+	archives := make(chan map[string]string, 1)
+
+	fake := startFakeDockerServer(t, nil)
+	recorder := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/archive") {
+			assert.Contains(t, r.URL.Path, "/containers/fake-container-id/archive")
+			assert.Equal(t, "/dst", r.URL.Query().Get("path"))
+
+			entries := map[string]string{}
+			tr := tar.NewReader(r.Body)
+
+			for {
+				hdr, err := tr.Next()
+				if errors.Is(err, io.EOF) {
+					break
+				}
+
+				if !assert.NoError(t, err) {
+					break
+				}
+
+				content, err := io.ReadAll(tr)
+				assert.NoError(t, err)
+				entries[hdr.Name] = string(content)
+			}
+
+			archives <- entries
+		}
+
+		fake.Config.Handler.ServeHTTP(w, r)
+	}))
+	t.Cleanup(recorder.Close)
+	t.Setenv("DOCKER_HOST", "tcp://"+recorder.Listener.Addr().String())
+
+	err = CopyGitStackToHost(src, "/dst", 1, "test-stack", nil)
+	require.NoError(t, err)
+
+	// the stack files are extracted on top of the destination inside the created container
+	entries := <-archives
+	require.Equal(t, "services: {}\n", entries[filepath.Base(src)+"/docker-compose.yml"])
 }

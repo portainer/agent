@@ -291,10 +291,9 @@ func (manager *StackManager) performActionOnStack() {
 			return
 		}
 
-		// Copying the stack files to the host will delete all existing files in the
-		// bind source folder. However, container recreation is not guaranteed during
-		// this process, so changes to the bind source may not be reflected in the container.
-		// Therefore, this operation should only be performed if the stack is new
+		// The stack files are copied over the existing ones in the bind source folder
+		// without deleting it, so containers that are not recreated keep a valid mount.
+		// This operation is only performed if the stack is new
 		// or the AlwaysCloneGitRepoForRelativePath flag is set to true.
 		if !IsHelmStack(stack) && IsRelativePathStack(stack) && (stack.Action == actionDeploy || stack.AlwaysCloneGitRepoForRelativePath) {
 			dst := filesystem.JoinPaths(stack.FilesystemPath, agent.ComposePathPrefix)
