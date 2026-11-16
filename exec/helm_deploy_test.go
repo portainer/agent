@@ -300,6 +300,39 @@ func TestDeploy_GitRepo_Success(t *testing.T) {
 	assert.Equal(t, maxChartHistory, capturedOpts.MaxHistory)
 }
 
+func TestDeploy_GitRepo_DependencyOutsideWorkingDir(t *testing.T) {
+	t.Parallel()
+
+	workingDir := t.TempDir()
+	chartDir := filesystem.JoinPaths(workingDir, "charts", "myapp")
+	require.NoError(t, os.MkdirAll(chartDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filesystem.JoinPaths(chartDir, "Chart.yaml"),
+		[]byte("apiVersion: v2\nname: myapp\ndependencies:\n  - name: outside\n    repository: file://../../../outside\n"),
+		0o644,
+	))
+
+	upgradeCalled := false
+	mock := &stubHelmManager{
+		upgradeFunc: func(opts options.InstallOptions) (*release.Release, error) {
+			upgradeCalled = true
+			return nil, nil
+		},
+	}
+
+	d := newHelmDeployerWithManager(mock, nil)
+	err := d.Deploy(t.Context(), "edge_myapp", nil, deployer.DeployOptions{
+		DeployerBaseOptions: deployer.DeployerBaseOptions{
+			Namespace:  "staging",
+			WorkingDir: workingDir,
+			Env:        []string{"HELM_CHART_PATH=charts/myapp"},
+		},
+	})
+
+	require.ErrorIs(t, err, sdk.ErrLocalDependencyOutsideRoot)
+	assert.False(t, upgradeCalled, "Upgrade must not be called for a chart with a dependency outside the working directory")
+}
+
 func TestResolveChartPath(t *testing.T) {
 	t.Run("relative path within workingDir is resolved to absolute path", func(t *testing.T) {
 		t.Parallel()

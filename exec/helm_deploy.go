@@ -135,6 +135,10 @@ func (d *HelmDeployer) buildInstallOptsForGitRepo(releaseName string, deployOpts
 		return options.InstallOptions{}, fmt.Errorf("failed to resolve chart path: %w", err)
 	}
 
+	if err := sdk.ValidateLocalDependencies(deployOpts.WorkingDir, absoluteChartPath); err != nil {
+		return options.InstallOptions{}, fmt.Errorf("failed to validate chart dependencies: %w", err)
+	}
+
 	log.Debug().
 		Str("context", "HelmDeployer").
 		Str("relative_chart_path", helmConfig.ChartPath).
