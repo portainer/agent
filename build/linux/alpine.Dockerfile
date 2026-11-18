@@ -1,4 +1,8 @@
-FROM alpine:3.24.1
+FROM alpine:3.24.4
+
+# Use the CA bundle from portainer/base instead of Alpine's. It leaves
+# out the eMudhra emSign roots (related to the CVE-2026-111943 incident).
+COPY --from=portainer/base /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 ENV PATH="/app:$PATH"
 WORKDIR /app
